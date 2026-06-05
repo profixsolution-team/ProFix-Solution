@@ -70,6 +70,17 @@ tr:hover td{background:rgba(255,255,255,.015);}
 .status-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 6px;cursor:pointer;outline:none;transition:all .15s;}
 .status-select:hover{border-color:var(--accent);}
 .status-select option{background:var(--surface2);font-size:12px;}
+.action-cell{position:relative;text-align:right;}
+.icon-btn{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;font-weight:800;line-height:1;}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface2);}
+.action-menu{display:none;position:absolute;right:10px;top:34px;z-index:30;min-width:150px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:6px;box-shadow:0 12px 32px rgba(0,0,0,.35);}
+.action-menu.open{display:block;}
+.action-menu button{display:block;width:100%;padding:7px 9px;border:0;background:transparent;color:var(--text);text-align:left;border-radius:6px;font-family:var(--sans);font-size:12px;cursor:pointer;}
+.action-menu button:hover{background:var(--surface3);}
+.combo-row{display:flex;gap:6px;align-items:center;}
+.combo-row input,.combo-row select{flex:1;}
+.inline-input{max-width:105px;padding:5px 8px;font-size:12px;font-family:var(--mono);}
+.link-btn{background:none;border:0;color:var(--accent);font-family:var(--mono);font-size:11px;cursor:pointer;padding:0;text-decoration:underline;}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:90%;max-width:640px;max-height:90vh;overflow-y:auto;}
@@ -139,7 +150,6 @@ select option{background:var(--surface2);}
 .flex{display:flex;align-items:center;}.g6{gap:6px;}.g8{gap:8px;}.g12{gap:12px;}
 @media(max-width:768px){.sidebar{display:none;}.stats-row{grid-template-columns:1fr 1fr;}.form-row{grid-template-columns:1fr;}.detail-grid{grid-template-columns:1fr;}.fin-grid{grid-template-columns:1fr;}}
 </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app">
@@ -189,7 +199,7 @@ select option{background:var(--surface2);}
     </div>
     <div class="table-wrap">
       <div class="table-header"><div class="table-title">งานล่าสุด</div><button class="btn btn-ghost btn-sm" onclick="goTo('jobs')">คิวช่างทั้งหมด →</button></div>
-      <table><thead><tr><th>Job ID</th><th>สาขา</th><th>ทีม</th><th>สถานะ</th><th>กำไร</th></tr></thead><tbody id="ds-tbody"></tbody></table>
+      <table><thead><tr><th>PR</th><th>สาขา</th><th>ทีม</th><th>สถานะ</th><th>กำไร</th></tr></thead><tbody id="ds-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -208,7 +218,7 @@ select option{background:var(--surface2);}
     </div>
     <div class="table-wrap">
       <div class="table-header"><div class="table-title" id="admin-tbl-title">งาน Admin</div><span class="mono tm" style="font-size:11px;" id="admin-cnt"></span></div>
-      <table><thead><tr><th>Task ID</th><th>ประเภท</th><th>รายละเอียด</th><th>ลูกค้า/สาขา</th><th>Assign</th><th>กำหนด</th><th>สถานะ</th><th>Job</th></tr></thead><tbody id="admin-tbody"></tbody></table>
+      <table><thead><tr><th>Task ID</th><th>ประเภท</th><th>รายละเอียด</th><th>ลูกค้า/สาขา</th><th>Assign</th><th>กำหนด</th><th>สถานะ</th><th>PR</th><th></th></tr></thead><tbody id="admin-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -227,7 +237,7 @@ select option{background:var(--surface2);}
     </div>
     <div class="table-wrap">
       <div class="table-header"><div class="table-title" id="job-tbl-title">คิวช่าง</div><span class="mono tm" style="font-size:11px;" id="job-cnt"></span></div>
-      <table><thead><tr><th>Job ID</th><th>สถานะ</th><th>ลูกค้า</th><th>สาขา</th><th>ประเภท</th><th>ทีม</th><th>วันนัด</th><th>กำไร</th><th></th></tr></thead><tbody id="job-tbody"></tbody></table>
+      <table><thead><tr><th>PR</th><th>สถานะ</th><th>ลูกค้า</th><th>สาขา</th><th>ประเภท</th><th>ทีม</th><th>วันนัด</th><th></th></tr></thead><tbody id="job-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -248,12 +258,12 @@ select option{background:var(--surface2);}
     <div class="filter-bar" id="fin-fbar" style="margin-bottom:16px;border-radius:8px;border:1px solid var(--border);"></div>
     <div class="table-wrap mb16">
       <div class="table-header"><div class="table-title" id="fin-tbl-title">P&L ต่องาน</div><span class="mono tm" style="font-size:11px;" id="fin-cnt"></span></div>
-      <table><thead><tr><th>Job ID</th><th>สาขา</th><th>ทีม</th><th>รายรับ</th><th>จ่ายช่าง</th><th>ต้นทุนอะไหล่</th><th>กำไร</th><th>สถานะเงิน</th><th></th></tr></thead><tbody id="fin-tbody"></tbody></table>
+      <table><thead><tr><th>PR</th><th>สาขา</th><th>ทีม</th><th>รายรับ</th><th>จ่ายช่าง</th><th>ต้นทุนอะไหล่</th><th>กำไร</th><th>สถานะเงิน</th><th></th></tr></thead><tbody id="fin-tbody"></tbody></table>
     </div>
     <div class="table-wrap">
-      <div class="table-header"><div class="table-title">รายจ่าย Fixed</div><button class="btn btn-ghost btn-sm">+ เพิ่ม</button></div>
-      <table><thead><tr><th>รายการ</th><th>ประเภท</th><th>จำนวน</th><th>วันที่</th></tr></thead>
-      <tbody><tr><td>ค่าเช่าสำนักงาน</td><td><span class="chip">Fixed</span></td><td class="mono tr">฿8,000</td><td class="tm">1 มิ.ย.</td></tr><tr><td>ค่า Internet + โทรศัพท์</td><td><span class="chip">Fixed</span></td><td class="mono tr">฿1,500</td><td class="tm">1 มิ.ย.</td></tr></tbody>
+      <div class="table-header"><div class="table-title">รายจ่าย Fixed</div><button class="btn btn-ghost btn-sm" onclick="openFixedModal()">+ เพิ่ม</button></div>
+      <table><thead><tr><th>รายการ</th><th>ประเภท</th><th>จำนวน</th><th>วันที่</th><th></th></tr></thead>
+      <tbody id="fixed-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -272,7 +282,7 @@ select option{background:var(--surface2);}
     <div class="ai-box">
       <div class="ai-header"><div class="ai-dot"></div><div><div style="font-weight:700;font-size:13px;">Claude AI — Document Reader</div><div style="font-size:11px;color:var(--text2);">อ่านลายมือ แยกข้อมูล พร้อม confirm เข้าระบบ</div></div></div>
       <div class="ai-body">
-        <div class="form-group"><label>ผูกกับ Job ID</label><select id="ai-job-sel"><option value="">-- เลือก Job ID --</option></select></div>
+        <div class="form-group"><label>ผูกกับ PR</label><select id="ai-job-sel"><option value="">-- เลือก PR --</option></select></div>
         <div class="upload-zone" id="upzone" onclick="document.getElementById('img-inp').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="doDrop(event)">
           <div style="font-size:32px;margin-bottom:8px;">📸</div>
           <div style="font-weight:700;margin-bottom:4px;">คลิกหรือลากรูปมาวางที่นี่</div>
@@ -300,7 +310,7 @@ select option{background:var(--surface2);}
       <div class="ai-body">
         <div class="form-row mb12">
           <div class="form-group"><label>ทีมช่าง</label><select id="lp-team"><option>ทีม A</option><option>ทีม B</option><option>ทีม C</option><option>ทีม D</option><option>ทีม E</option><option>ทีม F</option><option>ทีม G</option><option>ทีม H</option></select></div>
-          <div class="form-group"><label>ผูก Job ID</label><select id="lp-job"><option value="">-- ให้ AI หา --</option></select></div>
+          <div class="form-group"><label>ผูก PR</label><select id="lp-job"><option value="">-- ให้ AI หา --</option></select></div>
         </div>
         <div class="form-group"><label>วางข้อความ Line</label><textarea id="lp-text" placeholder="วางข้อความจากช่างได้เลย..." style="min-height:100px;font-family:var(--mono);font-size:12px;"></textarea></div>
         <div style="display:flex;gap:8px;margin-bottom:12px;"><button class="btn btn-primary" onclick="doParseLP()">🤖 Parse</button><button class="btn btn-ghost" onclick="document.getElementById('lp-text').value=''">ล้าง</button></div>
@@ -314,7 +324,7 @@ select option{background:var(--surface2);}
     </div>
     <div class="table-wrap" style="margin-top:16px;">
       <div class="table-header"><div class="table-title">ประวัติ Parse</div></div>
-      <table><thead><tr><th>เวลา</th><th>ทีม</th><th>สาขา</th><th>งาน</th><th>Job ID</th></tr></thead><tbody id="lp-history"></tbody></table>
+      <table><thead><tr><th>เวลา</th><th>ทีม</th><th>สาขา</th><th>งาน</th><th>PR</th></tr></thead><tbody id="lp-history"></tbody></table>
     </div>
   </div>
 </div>
@@ -325,8 +335,8 @@ select option{background:var(--surface2);}
   <div class="content">
     <div class="tab-bar"><button class="tab-btn active" onclick="switchDoc('qt',this)">ใบเสนอราคา (QT)</button><button class="tab-btn" onclick="switchDoc('iv',this)">ใบแจ้งหนี้ (IV)</button><button class="tab-btn" onclick="switchDoc('tx',this)">ใบกำกับภาษี</button></div>
     <div style="padding:14px 0;">
-      <div class="tab-panel active" id="doc-qt"><div class="table-wrap"><table><thead><tr><th>เลขที่</th><th>Job ID</th><th>ลูกค้า</th><th>ยอด</th><th>วันที่</th><th>สถานะ</th><th></th></tr></thead><tbody id="qt-tbody"></tbody></table></div></div>
-      <div class="tab-panel" id="doc-iv"><div class="table-wrap"><table><thead><tr><th>เลขที่</th><th>Job ID</th><th>ลูกค้า</th><th>ยอด</th><th>ครบกำหนด</th><th>สถานะ</th><th></th></tr></thead><tbody id="iv-tbody"></tbody></table></div></div>
+      <div class="tab-panel active" id="doc-qt"><div class="table-wrap"><table><thead><tr><th>เลขที่</th><th>PR</th><th>ลูกค้า</th><th>ยอด</th><th>วันที่</th><th>สถานะ</th><th></th></tr></thead><tbody id="qt-tbody"></tbody></table></div></div>
+      <div class="tab-panel" id="doc-iv"><div class="table-wrap"><table><thead><tr><th>เลขที่</th><th>PR</th><th>ลูกค้า</th><th>ยอด</th><th>ครบกำหนด</th><th>สถานะ</th><th></th></tr></thead><tbody id="iv-tbody"></tbody></table></div></div>
       <div class="tab-panel" id="doc-tx"><div class="empty"><div class="empty-icon">🧾</div><div>สร้างจากใบแจ้งหนี้ที่ชำระแล้ว</div></div></div>
     </div>
   </div>
@@ -337,7 +347,7 @@ select option{background:var(--surface2);}
 <div class="page" id="page-settings-clients">
   <div class="page-header">
     <div><div class="page-title">ลูกค้า & ราคากลาง</div><div class="page-sub">ราคากลางต่อลูกค้า × ประเภทงาน — แอดมินเท่านั้น</div></div>
-    <button class="btn btn-primary" onclick="openM('m-client')">+ เพิ่มลูกค้า</button>
+    <button class="btn btn-primary" onclick="openClientModal()">+ เพิ่มลูกค้า</button>
   </div>
   <div class="content">
     <div class="table-wrap mb16">
@@ -360,7 +370,7 @@ select option{background:var(--surface2);}
 <div class="page" id="page-settings-teams">
   <div class="page-header">
     <div><div class="page-title">ทีมช่าง & ราคา</div><div class="page-sub">ราคาจ่ายช่างแต่ละทีมต่อประเภทงาน</div></div>
-    <button class="btn btn-primary" onclick="openM('m-team')">+ เพิ่มทีม</button>
+    <button class="btn btn-primary" onclick="openTeamModal()">+ เพิ่มทีม</button>
   </div>
   <div class="content">
     <div class="table-wrap mb16">
@@ -383,7 +393,7 @@ select option{background:var(--surface2);}
 <div class="page" id="page-settings-branches">
   <div class="page-header">
     <div><div class="page-title">สาขา</div><div class="page-sub">รายชื่อสาขาทั้งหมดพร้อมข้อมูลติดต่อ</div></div>
-    <button class="btn btn-primary" onclick="openM('m-branch')">+ เพิ่มสาขา</button>
+    <button class="btn btn-primary" onclick="openBranchModal()">+ เพิ่มสาขา</button>
   </div>
   <div class="content">
     <div style="display:flex;gap:10px;margin-bottom:14px;">
@@ -402,7 +412,7 @@ select option{background:var(--surface2);}
 <div class="page" id="page-settings-suppliers">
   <div class="page-header">
     <div><div class="page-title">ซัพพลายเออร์อะไหล่</div><div class="page-sub">รายชื่อร้านค้า + รายการอะไหล่ + ราคาต้นทุน</div></div>
-    <button class="btn btn-primary" onclick="openM('m-supplier')">+ เพิ่มซัพพลายเออร์</button>
+    <button class="btn btn-primary" onclick="openSupplierModal()">+ เพิ่มซัพพลายเออร์</button>
   </div>
   <div class="content">
     <div class="table-wrap mb16">
@@ -415,7 +425,7 @@ select option{background:var(--surface2);}
         <div class="table-title">รายการอะไหล่ & ราคา</div>
         <div class="flex g8">
           <input type="text" id="part-search" placeholder="ค้นหาอะไหล่..." style="width:200px;" oninput="renderParts()">
-          <button class="btn btn-ghost btn-sm" onclick="openM('m-part')">+ เพิ่มอะไหล่</button>
+          <button class="btn btn-ghost btn-sm" onclick="openPartModal()">+ เพิ่มอะไหล่</button>
         </div>
       </div>
       <table><thead><tr><th>ชื่ออะไหล่</th><th>ยี่ห้อ/รุ่น</th><th>ซัพพลายเออร์</th><th>ราคาต้นทุน</th><th>ราคาขาย</th><th>Margin</th><th>หมายเหตุ</th><th></th></tr></thead>
@@ -546,10 +556,40 @@ select option{background:var(--surface2);}
     <div class="modal-body">
       <div class="form-row"><div class="form-group"><label>ประเภทงาน</label><select id="fa-type"><option>เปิดงานใหม่จากลูกค้า</option><option>ทำใบเสนอราคา</option><option>ทำใบกำกับภาษี</option><option>จัดซื้ออะไหล่</option><option>ติดต่อลูกค้า</option><option>อื่นๆ</option></select></div><div class="form-group"><label>ลูกค้า/สาขา</label><input type="text" id="fa-client" placeholder="ชื่อลูกค้า หรือสาขา"></div></div>
       <div class="form-group"><label>รายละเอียด</label><textarea id="fa-detail" placeholder="รายละเอียดงาน..."></textarea></div>
-      <div class="form-row"><div class="form-group"><label>Assign ให้</label><select id="fa-assign"><option>แอดมิน 1</option><option>แอดมิน 2</option><option>ทั้งคู่</option></select></div><div class="form-group"><label>กำหนดเสร็จ</label><input type="date" id="fa-due"></div></div>
-      <div class="form-row"><div class="form-group"><label>ลิงก์ Job ID</label><select id="fa-job"><option value="">-- ไม่ระบุ --</option></select></div><div class="form-group"><label>ความสำคัญ</label><select id="fa-pri"><option>ปกติ</option><option>ด่วน</option><option>เร่งด่วนมาก</option></select></div></div>
+      <div class="form-row"><div class="form-group"><label>Assign ให้</label><div class="combo-row"><input list="admin-list" id="fa-assign" placeholder="เลือกหรือพิมพ์ชื่อแอดมิน"><datalist id="admin-list"></datalist><button class="btn btn-ghost btn-sm" onclick="addAdminName()" type="button">+ ชื่อ</button></div></div><div class="form-group"><label>กำหนดเสร็จ</label><input type="date" id="fa-due"></div></div>
+      <div class="form-row"><div class="form-group"><label>PR</label><div class="combo-row"><input list="pr-list" id="fa-job" placeholder="เช่น PR-2025-001"><datalist id="pr-list"></datalist><button class="btn btn-ghost btn-sm" onclick="addPRValue()" type="button">+ PR</button></div></div><div class="form-group"><label>ความสำคัญ</label><select id="fa-pri"><option>ปกติ</option><option>ด่วน</option><option>เร่งด่วนมาก</option></select></div></div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-admin')">ยกเลิก</button><button class="btn btn-primary" onclick="saveAdminTask()">✓ บันทึก</button></div>
+  </div>
+</div>
+
+
+<!-- FINANCE EDIT MODAL -->
+<div class="modal-overlay" id="m-finance-edit">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">แก้ไขการเงินงาน</div><button class="close-btn" onclick="closeM('m-finance-edit')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="ff-id">
+      <div class="form-row"><div class="form-group"><label>รายรับงาน (฿)</label><input type="number" id="ff-pc"></div><div class="form-group"><label>ขายอะไหล่ (฿)</label><input type="number" id="ff-partR"></div></div>
+      <div class="form-row"><div class="form-group"><label>จ่ายช่าง (฿)</label><input type="number" id="ff-pt"></div><div class="form-group"><label>ต้นทุนอะไหล่ (฿)</label><input type="number" id="ff-partC"></div></div>
+      <div class="form-row"><div class="form-group"><label>น้ำมัน/เดินทาง (฿)</label><input type="number" id="ff-fuel"></div><div class="form-group"><label>สถานะเงิน</label><select id="ff-pay"><option value="unpaid">รอเก็บเงิน</option><option value="paid">เก็บแล้ว</option><option value="overdue">เกินกำหนด</option></select></div></div>
+      <div class="form-group"><label>รายละเอียดการเงิน</label><textarea id="ff-note" placeholder="หมายเหตุการเก็บเงิน / ใบแจ้งหนี้"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-finance-edit')">ยกเลิก</button><button class="btn btn-primary" onclick="saveFinanceEdit()">✓ บันทึก</button></div>
+  </div>
+</div>
+
+<!-- FIXED EXPENSE MODAL -->
+<div class="modal-overlay" id="m-fixed">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">เพิ่ม/แก้ไขรายจ่าย Fixed</div><button class="close-btn" onclick="closeM('m-fixed')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="fx-index">
+      <div class="form-row"><div class="form-group"><label>รายการ</label><input type="text" id="fx-name" placeholder="เช่น ค่าเช่าสำนักงาน"></div><div class="form-group"><label>ประเภท</label><input type="text" id="fx-type" value="Fixed"></div></div>
+      <div class="form-row"><div class="form-group"><label>จำนวน (฿)</label><input type="number" id="fx-amount" placeholder="0"></div><div class="form-group"><label>วันที่</label><input type="text" id="fx-date" placeholder="1 มิ.ย."></div></div>
+      <div class="form-group"><label>หมายเหตุ</label><textarea id="fx-note" placeholder="รายละเอียดเพิ่มเติม"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-fixed')">ยกเลิก</button><button class="btn btn-primary" onclick="saveFixedExpense()">✓ บันทึก</button></div>
   </div>
 </div>
 
@@ -563,382 +603,42 @@ select option{background:var(--surface2);}
 </div>
 
 <script>
-// ============================================================
-// SUPABASE CONFIG — แก้ค่านี้ก่อนใช้งาน
-// 1. ไปที่ https://supabase.com → Project → Settings → API
-// 2. ก็อป Project URL และ anon/public key มาใส่ด้านล่าง
-// ============================================================
-const SUPABASE_URL  = 'https://cfikdkytopyqxvaytiks.supabase.co';   // เช่น https://xxxx.supabase.co
-const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-
-const supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// ============================================================
-// CONFIG CHECK — แสดง banner ถ้ายังไม่ได้ตั้งค่า
-// ============================================================
-function checkConfig() {
-  if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_KEY === 'YOUR_SUPABASE_ANON_KEY') {
-    const banner = document.createElement('div');
-    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#d29922;color:#0d1117;padding:10px 20px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:12px;';
-    banner.innerHTML = '⚠️ ยังไม่ได้ตั้งค่า Supabase — แก้ไข SUPABASE_URL และ SUPABASE_KEY ในไฟล์ก่อนใช้งานจริง <span style="font-weight:400;opacity:.8;">(ตอนนี้ใช้ข้อมูล local แทน)</span>';
-    document.body.prepend(banner);
-    return false;
-  }
-  return true;
-}
-
-// ============================================================
-// DB LAYER — ฟังก์ชัน CRUD ทั้งหมด
-// ถ้า Supabase พร้อม → ดึงจาก DB
-// ถ้ายังไม่ได้ตั้งค่า → ใช้ข้อมูล local (demo mode)
-// ============================================================
-const DB = {
-  async getAll(table) {
-    if (!isConfigured()) return null;
-    const { data, error } = await supa.from(table).select('*').order('created_at', { ascending: false });
-    if (error) { console.error(table, error); return null; }
-    return data;
-  },
-  async upsert(table, data, conflictCol = 'id') {
-    if (!isConfigured()) return null;
-    const { error } = await supa.from(table).upsert(data, { onConflict: conflictCol });
-    if (error) { console.error('upsert', table, error); return false; }
-    return true;
-  },
-  async update(table, id, data) {
-    if (!isConfigured()) return null;
-    const { error } = await supa.from(table).update(data).eq('id', id);
-    if (error) { console.error('update', table, error); return false; }
-    return true;
-  },
-  async insert(table, data) {
-    if (!isConfigured()) return null;
-    const { data: result, error } = await supa.from(table).insert(data).select().single();
-    if (error) { console.error('insert', table, error); return null; }
-    return result;
-  },
-  async delete(table, id) {
-    if (!isConfigured()) return null;
-    const { error } = await supa.from(table).delete().eq('id', id);
-    if (error) { console.error('delete', table, error); return false; }
-    return true;
-  }
-};
-
-function isConfigured() {
-  return SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_KEY !== 'YOUR_SUPABASE_ANON_KEY';
-}
-
-// ============================================================
-// REALTIME — sync อัตโนมัติเมื่อมีการเปลี่ยนแปลง
-// แอดมิน 2 คนแก้ไขพร้อมกัน เห็นผลทันที
-// ============================================================
-function setupRealtime() {
-  if (!isConfigured()) return;
-  supa.channel('db-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
-      loadJobs().then(() => { renderJobs(); renderDash(); });
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_tasks' }, () => {
-      loadAdminTasks().then(() => { renderAdmin(); renderDash(); });
-    })
-    .subscribe();
-}
-
-// ============================================================
-// LOADERS — โหลดข้อมูลจาก Supabase → ใส่ตัวแปร local
-// ============================================================
-async function loadJobs() {
-  const data = await DB.getAll('jobs');
-  if (data) {
-    jobs = data.map(r => ({
-      id: r.id, client: r.client, ref: r.client_ref, branch: r.branch,
-      type: r.job_type, team: r.team, date: r.scheduled_date,
-      status: r.status, pc: r.price_client, pt: r.price_tech,
-      partC: r.parts_cost, partR: r.parts_revenue, fuel: r.fuel,
-      note: r.note, report: r.report, isNew: r.is_new, pay: r.pay_status
-    }));
-  }
-}
-
-async function loadAdminTasks() {
-  const data = await DB.getAll('admin_tasks');
-  if (data) {
-    adminTasks = data.map(r => ({
-      id: r.id, type: r.type, client: r.client, detail: r.detail,
-      assign: r.assign_to, due: r.due_date, jobId: r.job_id,
-      pri: r.priority, status: r.status
-    }));
-  }
-}
-
-async function loadClients() {
-  const data = await DB.getAll('clients');
-  if (data) clients = data.map(r => ({ id: r.id, name: r.name, contact: r.contact, phone: r.phone, payTerm: r.pay_term, credit: r.credit_limit, note: r.note }));
-}
-
-async function loadPricing() {
-  const data = await DB.getAll('pricing');
-  if (data) pricing = data.map(r => ({ id: r.id, client: r.client_name, type: r.job_type, price: r.price, note: r.note }));
-}
-
-async function loadTeams() {
-  const data = await DB.getAll('teams');
-  if (data) teams = data.map(r => ({ id: r.id, name: r.name, lead: r.lead_name, phone: r.phone, skill: r.skill, note: r.note }));
-}
-
-async function loadTeamPricing() {
-  const data = await DB.getAll('team_pricing');
-  if (data) teamPricing = data.map(r => ({ id: r.id, team: r.team_name, type: r.job_type, price: r.price, note: r.note }));
-}
-
-async function loadBranches() {
-  const data = await DB.getAll('branches');
-  if (data) branches = data.map(r => ({ id: r.id, name: r.name, client: r.client_name, mgr: r.manager, phone: r.phone, hours: r.hours, addr: r.address }));
-}
-
-async function loadSuppliers() {
-  const data = await DB.getAll('suppliers');
-  if (data) suppliers = data.map(r => ({ id: r.id, name: r.name, type: r.type, contact: r.contact, phone: r.phone, terms: r.terms, lead: r.lead_time, note: r.note }));
-}
-
-async function loadParts() {
-  const data = await DB.getAll('parts');
-  if (data) parts = data.map(r => ({ id: r.id, name: r.name, brand: r.brand, sup: r.supplier_name, cost: r.cost_price, sell: r.sell_price, note: r.note }));
-}
-
-// ============================================================
-// SAVE FUNCTIONS — บันทึกลง Supabase (override ฟังก์ชันเดิม)
-// ============================================================
-
-// Override saveJob
-const _saveJobOrig = window.saveJob;
-async function saveJob() {
-  const id = 'JOB-' + String(jCnt++).padStart(3,'0');
-  const payload = {
-    id, client: document.getElementById('fj-client').value,
-    client_ref: document.getElementById('fj-ref').value || 'N/A',
-    branch: document.getElementById('fj-branch').value || 'ไม่ระบุ',
-    job_type: document.getElementById('fj-type').value,
-    team: document.getElementById('fj-team').value,
-    scheduled_date: document.getElementById('fj-date').value,
-    status: 'รอเปิดงาน',
-    price_client: parseFloat(document.getElementById('fj-pc').value) || 0,
-    price_tech: parseFloat(document.getElementById('fj-pt').value) || 0,
-    parts_cost: 0, parts_revenue: 0, fuel: 0,
-    note: document.getElementById('fj-note').value,
-    report: '', is_new: true, pay_status: 'unpaid'
-  };
-  if (isConfigured()) {
-    await DB.insert('jobs', payload);
-    await loadJobs();
-  } else {
-    jobs.unshift({ ...payload, ref: payload.client_ref, type: payload.job_type, date: payload.scheduled_date, pc: payload.price_client, pt: payload.price_tech, partC: 0, partR: 0, isNew: true, pay: 'unpaid' });
-  }
-  closeM('m-job'); renderJobs(); renderDash(); fillSelects();
-  document.getElementById('nb-new').textContent = jobs.filter(j=>j.isNew||j.status==='รอเปิดงาน').length;
-}
-
-// Override setJS (status change)
-async function setJS(id, status) {
-  const j = jobs.find(x => x.id === id);
-  if (!j) return;
-  j.status = status;
-  if (status !== 'รอเปิดงาน') j.isNew = false;
-  if (isConfigured()) {
-    await DB.update('jobs', id, { status, is_new: j.isNew, updated_at: new Date().toISOString() });
-  }
-  renderJobs(); renderDash();
-  document.getElementById('nb-new').textContent = jobs.filter(j=>j.isNew||j.status==='รอเปิดงาน').length;
-}
-
-// Override setPay
-async function setPay(id, status) {
-  const j = jobs.find(x => x.id === id);
-  if (!j) return;
-  j.pay = status;
-  if (isConfigured()) await DB.update('jobs', id, { pay_status: status });
-  renderFin(); renderDash();
-}
-
-// Override setAS (admin task status)
-async function setAS(id, status) {
-  const t = adminTasks.find(x => x.id === id);
-  if (!t) return;
-  t.status = status;
-  if (isConfigured()) await DB.update('admin_tasks', id, { status, updated_at: new Date().toISOString() });
-  renderAdmin(); renderDash();
-  document.getElementById('nb-admin').textContent = adminTasks.filter(t=>t.status==='รอดำเนินการ'||t.status==='กำลังทำ').length;
-}
-
-// Override saveAdminTask
-async function saveAdminTask() {
-  const id = 'TASK-' + String(aCnt++).padStart(3,'0');
-  const payload = {
-    id, type: document.getElementById('fa-type').value,
-    client: document.getElementById('fa-client').value,
-    detail: document.getElementById('fa-detail').value,
-    assign_to: document.getElementById('fa-assign').value,
-    due_date: document.getElementById('fa-due').value,
-    job_id: document.getElementById('fa-job').value || null,
-    priority: document.getElementById('fa-pri').value,
-    status: 'รอดำเนินการ'
-  };
-  if (isConfigured()) {
-    await DB.insert('admin_tasks', payload);
-    await loadAdminTasks();
-  } else {
-    adminTasks.unshift({ ...payload, assign: payload.assign_to, due: payload.due_date, jobId: payload.job_id, pri: payload.priority });
-  }
-  closeM('m-admin'); renderAdmin(); renderDash();
-  document.getElementById('nb-admin').textContent = adminTasks.filter(t=>t.status==='รอดำเนินการ'||t.status==='กำลังทำ').length;
-}
-
-// Override savePricing
-async function savePricing() {
-  const cl = document.getElementById('fp-client').value;
-  const tp = document.getElementById('fp-type').value;
-  const pr = parseFloat(document.getElementById('fp-price').value) || 0;
-  const nt = document.getElementById('fp-note').value;
-  if (isConfigured()) {
-    await supa.from('pricing').upsert({ client_name: cl, job_type: tp, price: pr, note: nt, updated_at: new Date().toISOString() }, { onConflict: 'client_name,job_type' });
-    await loadPricing();
-  } else {
-    const ex = pricing.find(p=>p.client===cl&&p.type===tp);
-    if (ex) { ex.price=pr; ex.note=nt; } else { pricing.push({client:cl,type:tp,price:pr,note:nt}); }
-  }
-  closeM('m-pricing'); renderPricing();
-}
-
-// Override saveTeamPricing
-async function saveTeamPricing() {
-  const tm = document.getElementById('ftp-team').value;
-  const tp = document.getElementById('ftp-type').value;
-  const pr = parseFloat(document.getElementById('ftp-price').value) || 0;
-  const nt = document.getElementById('ftp-note').value;
-  if (isConfigured()) {
-    await supa.from('team_pricing').upsert({ team_name: tm, job_type: tp, price: pr, note: nt, updated_at: new Date().toISOString() }, { onConflict: 'team_name,job_type' });
-    await loadTeamPricing();
-  } else {
-    const ex = teamPricing.find(p=>p.team===tm&&p.type===tp);
-    if (ex) { ex.price=pr; ex.note=nt; } else { teamPricing.push({team:tm,type:tp,price:pr,note:nt}); }
-  }
-  closeM('m-team-pricing'); renderTeamPricing();
-}
-
-// Override saveClient
-async function saveClient() {
-  const payload = { id: document.getElementById('fc-id').value, name: document.getElementById('fc-name').value, contact: document.getElementById('fc-contact').value, phone: document.getElementById('fc-phone').value, pay_term: document.getElementById('fc-pay').value, credit_limit: parseFloat(document.getElementById('fc-credit').value)||0, note: document.getElementById('fc-note').value };
-  if (isConfigured()) { await DB.insert('clients', payload); await loadClients(); }
-  else clients.push({ id: payload.id, name: payload.name, contact: payload.contact, phone: payload.phone, payTerm: payload.pay_term, credit: payload.credit_limit, note: payload.note });
-  closeM('m-client'); renderClients();
-}
-
-// Override saveTeam
-async function saveTeam() {
-  const payload = { name: document.getElementById('ft-name').value, lead_name: document.getElementById('ft-lead').value, phone: document.getElementById('ft-phone').value, skill: document.getElementById('ft-skill').value, note: document.getElementById('ft-note').value };
-  if (isConfigured()) { await DB.insert('teams', payload); await loadTeams(); }
-  else teams.push({ name: payload.name, lead: payload.lead_name, phone: payload.phone, skill: payload.skill, note: payload.note });
-  closeM('m-team'); renderTeams();
-}
-
-// Override saveBranch
-async function saveBranch() {
-  const payload = { id: document.getElementById('fb-id').value, name: document.getElementById('fb-name').value, client_name: document.getElementById('fb-client').value, manager: document.getElementById('fb-mgr').value, phone: document.getElementById('fb-phone').value, hours: document.getElementById('fb-hours').value, address: document.getElementById('fb-addr').value };
-  if (isConfigured()) { await DB.insert('branches', payload); await loadBranches(); }
-  else branches.push({ id: payload.id, name: payload.name, client: payload.client_name, mgr: payload.manager, phone: payload.phone, hours: payload.hours, addr: payload.address });
-  closeM('m-branch'); renderBranches();
-}
-
-// Override saveSupplier
-async function saveSupplier() {
-  const payload = { name: document.getElementById('fs-name').value, type: document.getElementById('fs-type').value, contact: document.getElementById('fs-contact').value, phone: document.getElementById('fs-phone').value, terms: document.getElementById('fs-terms').value, lead_time: document.getElementById('fs-lead').value, note: document.getElementById('fs-note').value };
-  if (isConfigured()) { await DB.insert('suppliers', payload); await loadSuppliers(); }
-  else suppliers.push({ name: payload.name, type: payload.type, contact: payload.contact, phone: payload.phone, terms: payload.terms, lead: payload.lead_time, note: payload.note });
-  closeM('m-supplier'); renderSuppliers();
-}
-
-// Override savePart
-async function savePart() {
-  const payload = { name: document.getElementById('fpa-name').value, brand: document.getElementById('fpa-brand').value, supplier_name: document.getElementById('fpa-sup').value, cost_price: parseFloat(document.getElementById('fpa-cost').value)||0, sell_price: parseFloat(document.getElementById('fpa-sell').value)||0, note: document.getElementById('fpa-note').value };
-  if (isConfigured()) { await DB.insert('parts', payload); await loadParts(); }
-  else parts.push({ name: payload.name, brand: payload.brand, sup: payload.supplier_name, cost: payload.cost_price, sell: payload.sell_price, note: payload.note });
-  closeM('m-part'); renderParts();
-}
-
-// Override delPricing
-async function delPricing(i) {
-  if (!confirm('ลบราคากลางนี้?')) return;
-  if (isConfigured() && pricing[i]?.id) { await DB.delete('pricing', pricing[i].id); await loadPricing(); }
-  else pricing.splice(i, 1);
-  renderPricing();
-}
-
-// Override delTP
-async function delTP(i) {
-  if (!confirm('ลบราคานี้?')) return;
-  if (isConfigured() && teamPricing[i]?.id) { await DB.delete('team_pricing', teamPricing[i].id); await loadTeamPricing(); }
-  else teamPricing.splice(i, 1);
-  renderTeamPricing();
-}
-
-// ============================================================
-// INIT — โหลดข้อมูลทั้งหมดก่อน render
-// ============================================================
-async function initApp() {
-  checkConfig();
-  // โหลดข้อมูลทั้งหมดจาก Supabase (ถ้าตั้งค่าแล้ว)
-  if (isConfigured()) {
-    showLoading(true);
-    await Promise.all([
-      loadJobs(), loadAdminTasks(), loadClients(), loadPricing(),
-      loadTeams(), loadTeamPricing(), loadBranches(), loadSuppliers(), loadParts()
-    ]);
-    showLoading(false);
-    setupRealtime();
-  }
-  renderDash();
-  fillSelects();
-  renderLPHist();
-}
-
-function showLoading(show) {
-  let el = document.getElementById('global-loading');
-  if (show && !el) {
-    el = document.createElement('div');
-    el.id = 'global-loading';
-    el.style.cssText = 'position:fixed;inset:0;background:rgba(13,17,23,.85);z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;';
-    el.innerHTML = '<div style="width:36px;height:36px;border:3px solid #30363d;border-top-color:#58a6ff;border-radius:50%;animation:spin .7s linear infinite;"></div><div style="color:#8b949e;font-size:13px;">กำลังโหลดข้อมูลจาก Supabase...</div>';
-    document.body.appendChild(el);
-  } else if (!show && el) el.remove();
-}
-
 // DATA
-const J_ST = ['รอเปิดงาน','รอจัดช่าง','จัดช่างแล้ว','ช่างออกงาน','รออะไหล่','เสร็จงาน','ปิดงาน','ติดปัญหา','Reject'];
+const J_ST = ['รอเปิดงาน','รอจัดช่าง','จัดช่างแล้ว','ช่างออกงาน','รออะไหล่','เสร็จงาน','รอจ่าย','ปิดงาน','ติดปัญหา','Reject'];
 const A_ST = ['รอดำเนินการ','กำลังทำ','รอลูกค้า','เสร็จแล้ว','ติดปัญหา','Reject'];
-const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','รออะไหล่':'b-parts','เสร็จงาน':'b-done','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done'};
+const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done'};
 
 let jobs = [
-  {id:'JOB-001',client:'บริษัท A',ref:'WO-2001',branch:'เซ็นทรัลลาดพร้าว',type:'ซ่อมแอร์',team:'ทีม A',date:'2025-06-03',status:'เสร็จงาน',pc:3500,pt:2400,partC:300,partR:500,fuel:150,note:'แอร์ไม่เย็น',report:'เติมน้ำยา R22 2 ปอนด์',isNew:false,pay:'unpaid'},
-  {id:'JOB-002',client:'บริษัท A',ref:'WO-2002',branch:'เซ็นทรัลปิ่นเกล้า',type:'PM แอร์',team:'ทีม B',date:'2025-06-04',status:'ช่างออกงาน',pc:2000,pt:1400,partC:0,partR:0,fuel:200,note:'PM ไตรมาส',report:'',isNew:false,pay:'unpaid'},
-  {id:'JOB-003',client:'บริษัท B',ref:'SV-5501',branch:'BigC รังสิต',type:'ซ่อมตู้แช่',team:'ทีม C',date:'2025-06-04',status:'รออะไหล่',pc:5000,pt:3200,partC:1800,partR:2500,fuel:300,note:'สั่งคอมเพรสเซอร์',report:'',isNew:false,pay:'unpaid'},
-  {id:'JOB-004',client:'บริษัท A',ref:'WO-2003',branch:'เซ็นทรัลเวิลด์',type:'ติดตั้ง',team:'ทีม D',date:'2025-06-05',status:'รอเปิดงาน',pc:8000,pt:5500,partC:0,partR:0,fuel:0,note:'ติดตั้งแอร์ 2 ตัว',report:'',isNew:true,pay:'unpaid'},
-  {id:'JOB-005',client:'บริษัท C',ref:'MNT-001',branch:'โลตัสบางนา',type:'PM ตู้แช่',team:'ทีม E',date:'2025-06-02',status:'ปิดงาน',pc:4500,pt:3000,partC:200,partR:350,fuel:250,note:'PM รอบ 2/3',report:'ตรวจเช็คระบบ ล้างคอยล์',isNew:false,pay:'paid'},
-  {id:'JOB-006',client:'บริษัท B',ref:'SV-5502',branch:'BigC นวนคร',type:'ซ่อมแอร์',team:'ทีม F',date:'2025-06-01',status:'ปิดงาน',pc:2800,pt:1900,partC:600,partR:900,fuel:200,note:'',report:'เปลี่ยนแผงคอยล์',isNew:false,pay:'paid'},
-  {id:'JOB-007',client:'บริษัท B',ref:'SV-5503',branch:'BigC ฟิวเจอร์',type:'ซ่อมตู้แช่',team:'ทีม G',date:'2025-06-05',status:'รอเปิดงาน',pc:3200,pt:2100,partC:0,partR:0,fuel:0,note:'',report:'',isNew:true,pay:'unpaid'},
-  {id:'JOB-008',client:'บริษัท A',ref:'WO-2004',branch:'เซ็นทรัลบางนา',type:'ซ่อมแอร์',team:'ทีม H',date:'2025-06-06',status:'Reject',pc:1500,pt:0,partC:0,partR:0,fuel:0,note:'ลูกค้ายกเลิก',report:'',isNew:false,pay:'unpaid'},
+  {id:'PR-001',client:'บริษัท A',ref:'WO-2001',branch:'เซ็นทรัลลาดพร้าว',type:'ซ่อมแอร์',team:'ทีม A',date:'2025-06-03',status:'เสร็จงาน',pc:3500,pt:2400,partC:300,partR:500,fuel:150,note:'แอร์ไม่เย็น',report:'เติมน้ำยา R22 2 ปอนด์',isNew:false,pay:'unpaid'},
+  {id:'PR-002',client:'บริษัท A',ref:'WO-2002',branch:'เซ็นทรัลปิ่นเกล้า',type:'PM แอร์',team:'ทีม B',date:'2025-06-04',status:'ช่างออกงาน',pc:2000,pt:1400,partC:0,partR:0,fuel:200,note:'PM ไตรมาส',report:'',isNew:false,pay:'unpaid'},
+  {id:'PR-003',client:'บริษัท B',ref:'SV-5501',branch:'BigC รังสิต',type:'ซ่อมตู้แช่',team:'ทีม C',date:'2025-06-04',status:'รออะไหล่',pc:5000,pt:3200,partC:1800,partR:2500,fuel:300,note:'สั่งคอมเพรสเซอร์',report:'',isNew:false,pay:'unpaid'},
+  {id:'PR-004',client:'บริษัท A',ref:'WO-2003',branch:'เซ็นทรัลเวิลด์',type:'ติดตั้ง',team:'ทีม D',date:'2025-06-05',status:'รอเปิดงาน',pc:8000,pt:5500,partC:0,partR:0,fuel:0,note:'ติดตั้งแอร์ 2 ตัว',report:'',isNew:true,pay:'unpaid'},
+  {id:'PR-005',client:'บริษัท C',ref:'MNT-001',branch:'โลตัสบางนา',type:'PM ตู้แช่',team:'ทีม E',date:'2025-06-02',status:'ปิดงาน',pc:4500,pt:3000,partC:200,partR:350,fuel:250,note:'PM รอบ 2/3',report:'ตรวจเช็คระบบ ล้างคอยล์',isNew:false,pay:'paid'},
+  {id:'PR-006',client:'บริษัท B',ref:'SV-5502',branch:'BigC นวนคร',type:'ซ่อมแอร์',team:'ทีม F',date:'2025-06-01',status:'ปิดงาน',pc:2800,pt:1900,partC:600,partR:900,fuel:200,note:'',report:'เปลี่ยนแผงคอยล์',isNew:false,pay:'paid'},
+  {id:'PR-007',client:'บริษัท B',ref:'SV-5503',branch:'BigC ฟิวเจอร์',type:'ซ่อมตู้แช่',team:'ทีม G',date:'2025-06-05',status:'รอเปิดงาน',pc:3200,pt:2100,partC:0,partR:0,fuel:0,note:'',report:'',isNew:true,pay:'unpaid'},
+  {id:'PR-008',client:'บริษัท A',ref:'WO-2004',branch:'เซ็นทรัลบางนา',type:'ซ่อมแอร์',team:'ทีม H',date:'2025-06-06',status:'Reject',pc:1500,pt:0,partC:0,partR:0,fuel:0,note:'ลูกค้ายกเลิก',report:'',isNew:false,pay:'unpaid'},
 ];
 
 let adminTasks = [
-  {id:'TASK-001',type:'ทำใบกำกับภาษี',client:'บริษัท C — โลตัสบางนา',detail:'ออก IV สำหรับ JOB-005',assign:'แอดมิน 1',due:'2025-06-10',jobId:'JOB-005',pri:'ด่วน',status:'รอดำเนินการ'},
-  {id:'TASK-002',type:'จัดซื้ออะไหล่',client:'BigC รังสิต',detail:'คอมเพรสเซอร์ตู้แช่ JOB-003',assign:'แอดมิน 2',due:'2025-06-07',jobId:'JOB-003',pri:'เร่งด่วนมาก',status:'กำลังทำ'},
-  {id:'TASK-003',type:'เปิดงานใหม่จากลูกค้า',client:'บริษัท A — WO-2003',detail:'ประสานงานวันนัดช่าง JOB-004',assign:'แอดมิน 1',due:'2025-06-06',jobId:'JOB-004',pri:'ปกติ',status:'รอดำเนินการ'},
+  {id:'TASK-001',type:'ทำใบกำกับภาษี',client:'บริษัท C — โลตัสบางนา',detail:'ออก IV สำหรับ PR-005',assign:'แอดมิน 1',due:'2025-06-10',jobId:'PR-005',pri:'ด่วน',status:'รอดำเนินการ'},
+  {id:'TASK-002',type:'จัดซื้ออะไหล่',client:'BigC รังสิต',detail:'คอมเพรสเซอร์ตู้แช่ PR-003',assign:'แอดมิน 2',due:'2025-06-07',jobId:'PR-003',pri:'เร่งด่วนมาก',status:'กำลังทำ'},
+  {id:'TASK-003',type:'เปิดงานใหม่จากลูกค้า',client:'บริษัท A — WO-2003',detail:'ประสานงานวันนัดช่าง PR-004',assign:'แอดมิน 1',due:'2025-06-06',jobId:'PR-004',pri:'ปกติ',status:'รอดำเนินการ'},
 ];
 
 let lpHistory=[], aiData=null, lpData=null;
 let jCnt=9, aCnt=4, jobFilter='ทั้งหมด', adminFilter='ทั้งหมด', finFilter='ทั้งหมด';
+let editJobId=null, editAdminId=null;
+let adminNames=['แอดมิน 1','แอดมิน 2','ทั้งคู่'];
+let prValues=[];
+let fixedExpenses=[{name:'ค่าเช่าสำนักงาน',type:'Fixed',amount:8000,date:'1 มิ.ย.',note:''},{name:'ค่า Internet + โทรศัพท์',type:'Fixed',amount:1500,date:'1 มิ.ย.',note:''}];
+let editClientIndex='', editTeamIndex='', editBranchIndex='', editSupplierIndex='', editPartIndex='';
 
 const gp = j => (j.pc - j.pt) + (j.partR - j.partC) - j.fuel;
+const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const payLabel = p => ({unpaid:'รอเก็บเงิน',paid:'เก็บแล้ว',overdue:'เกินกำหนด'}[p]||p);
+function closeMenus(){document.querySelectorAll('.action-menu.open').forEach(m=>m.classList.remove('open'));}
+function toggleMenu(id,e){e.stopPropagation();document.querySelectorAll('.action-menu.open').forEach(m=>{if(m.id!==id)m.classList.remove('open')});document.getElementById(id)?.classList.toggle('open');}
+document.addEventListener('click', closeMenus);
 
 // NAV
 function goTo(id, el){
@@ -947,7 +647,7 @@ function goTo(id, el){
   document.getElementById('page-'+id).classList.add('active');
   if(el) el.classList.add('active');
   else { const b=document.querySelector('[data-page="'+id+'"]'); if(b) b.classList.add('active'); }
-  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, finance:renderFin, 'tech-pay':renderTP, documents:renderDocs, 'ai-reader':fillSelects, 'line-parser':fillSelects};
+  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, finance:renderFin, 'tech-pay':renderTP, documents:renderDocs, 'ai-reader':fillSelects, 'line-parser':fillSelects, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':renderSuppliers};
   if(m[id]) m[id]();
 }
 
@@ -996,99 +696,131 @@ function renderAdmin(){
   buildFbar('admin-fbar',cnts,adminFilter,(f)=>{adminFilter=f;renderAdmin();},{'ติดปัญหา':'t-red','Reject':'t-red','เสร็จแล้ว':'t-green','กำลังทำ':'t-yellow'});
   const rj=all.filter(t=>t.status==='ติดปัญหา'||t.status==='Reject');
   const rb=document.getElementById('admin-reject-box');
-  if(rj.length){rb.style.display='block';document.getElementById('admin-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('admin-reject-list').innerHTML=rj.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${t.id}</span><span>${t.type}</span><span class="tm">—</span><span>${t.client}</span><span class="badge ${SB[t.status]||'b-reject'}">${t.status}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setAS('${t.id}','รอดำเนินการ')">รีเซ็ต</button></div>`).join('');}
+  if(rj.length){rb.style.display='block';document.getElementById('admin-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('admin-reject-list').innerHTML=rj.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${esc(t.id)}</span><span>${esc(t.type)}</span><span class="tm">-</span><span>${esc(t.client)}</span><span class="badge ${SB[t.status]||'b-reject'}">${esc(t.status)}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setAS('${t.id}','รอดำเนินการ')">รีเซ็ต</button></div>`).join('');}
   else rb.style.display='none';
   let fil=adminFilter==='ทั้งหมด'?all.filter(t=>t.status!=='ติดปัญหา'&&t.status!=='Reject'):adminFilter==='ติดปัญหา'?all.filter(t=>t.status==='ติดปัญหา'||t.status==='Reject'):all.filter(t=>t.status===adminFilter);
   document.getElementById('admin-cnt').textContent=fil.length+' รายการ';
-  document.getElementById('admin-tbl-title').textContent='งาน Admin — '+adminFilter;
+  document.getElementById('admin-tbl-title').textContent='งาน Admin - '+adminFilter;
   const tb=document.getElementById('admin-tbody');
-  if(!fil.length){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-icon">✅</div><div>ไม่มีงาน</div></div></td></tr>';return;}
-  tb.innerHTML=fil.map(t=>`<tr><td class="mono ta" style="font-size:11px;">${t.id}</td><td><span class="chip">${t.type}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td style="max-width:160px;font-size:12px;">${t.detail}</td><td style="font-size:12px;">${t.client}</td><td>${t.assign}</td><td class="tm" style="font-size:11px;">${t.due}</td><td><select class="status-select" onchange="setAS('${t.id}',this.value)" style="color:${t.status==='เสร็จแล้ว'?'var(--green)':t.status==='กำลังทำ'?'var(--yellow)':t.status==='ติดปัญหา'||t.status==='Reject'?'var(--red)':'var(--text2)'}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td>${t.jobId?`<button class="btn btn-ghost btn-sm" onclick="openDet('${t.jobId}')">→ ${t.jobId}</button>`:''}</td></tr>`).join('');
+  if(!fil.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">OK</div><div>ไม่มีงาน</div></div></td></tr>';return;}
+  tb.innerHTML=fil.map(t=>{
+    const pr=t.jobId||'';
+    const linked=jobs.find(j=>j.id===pr);
+    const mid='am-'+t.id;
+    return `<tr><td class="mono ta" style="font-size:11px;">${esc(t.id)}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td style="max-width:210px;font-size:12px;">${esc(t.detail)}</td><td style="font-size:12px;">${esc(t.client)}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onchange="setAS('${t.id}',this.value)" style="color:${t.status==='เสร็จแล้ว'?'var(--green)':t.status==='กำลังทำ'?'var(--yellow)':t.status==='ติดปัญหา'||t.status==='Reject'?'var(--red)':'var(--text2)'}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td>${pr?`<button class="link-btn" onclick="${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="openJobFromAdmin('${t.id}')">เปิดคิว</button>`}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
+  }).join('');
 }
-function setAS(id,s){const t=adminTasks.find(x=>x.id===id);if(t){t.status=s;renderAdmin();renderDash();document.getElementById('nb-admin').textContent=adminTasks.filter(t=>t.status==='รอดำเนินการ'||t.status==='กำลังทำ').length;}}
+function setAS(id,s){const t=adminTasks.find(x=>x.id===id);if(t){t.status=s;renderAdmin();renderDash();}}
+function openAdminModal(){
+  editAdminId=null;
+  document.querySelector('#m-admin .modal-title').textContent='เพิ่มงาน Admin';
+  ['fa-client','fa-detail','fa-job'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fa-type').value='เปิดงานใหม่จากลูกค้า';
+  document.getElementById('fa-assign').value=adminNames[0]||'';
+  document.getElementById('fa-due').value=new Date().toISOString().split('T')[0];
+  document.getElementById('fa-pri').value='ปกติ';
+  fillSelects();openM('m-admin');
+}
+function saveAdminTask(){
+  const data={type:document.getElementById('fa-type').value,client:document.getElementById('fa-client').value,detail:document.getElementById('fa-detail').value,assign:document.getElementById('fa-assign').value,due:document.getElementById('fa-due').value,jobId:document.getElementById('fa-job').value,pri:document.getElementById('fa-pri').value};
+  if(data.assign&&!adminNames.includes(data.assign))adminNames.push(data.assign);
+  if(data.jobId&&!prValues.includes(data.jobId))prValues.push(data.jobId);
+  if(editAdminId){Object.assign(adminTasks.find(t=>t.id===editAdminId),data);}else{adminTasks.unshift({id:'TASK-'+String(aCnt++).padStart(3,'0'),...data,status:'รอดำเนินการ'});}
+  closeM('m-admin');renderAdmin();renderDash();fillSelects();
+}
+function editAdminTask(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;editAdminId=id;fillSelects();document.querySelector('#m-admin .modal-title').textContent='แก้ไขงาน Admin';document.getElementById('fa-type').value=t.type;document.getElementById('fa-client').value=t.client;document.getElementById('fa-detail').value=t.detail;document.getElementById('fa-assign').value=t.assign;document.getElementById('fa-due').value=t.due;document.getElementById('fa-job').value=t.jobId||'';document.getElementById('fa-pri').value=t.pri;openM('m-admin');}
+function deleteAdminTask(id){if(confirm('ลบงาน Admin นี้?')){adminTasks=adminTasks.filter(t=>t.id!==id);renderAdmin();renderDash();}}
+function openAdminDetail(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;alert(`${t.id}\nประเภท: ${t.type}\nลูกค้า/สาขา: ${t.client}\nAssign: ${t.assign}\nกำหนด: ${t.due}\nPR: ${t.jobId||'-'}\nสถานะ: ${t.status}\n\n${t.detail}`);}
+function addAdminName(){const v=document.getElementById('fa-assign').value.trim();if(v&&!adminNames.includes(v)){adminNames.push(v);fillSelects();alert('เพิ่มชื่อแอดมินแล้ว');}}
+function addPRValue(){const v=document.getElementById('fa-job').value.trim();if(v&&!prValues.includes(v)){prValues.push(v);fillSelects();alert('เพิ่ม PR แล้ว');}}
+function openJobFromAdmin(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;openJobModal({id:t.jobId||'',client:t.client,branch:t.client,ref:t.jobId||'',note:t.detail,type:t.type});}
 
 // JOB QUEUE
 function renderJobs(){
   const cnts={'ทั้งหมด':jobs.length};
   J_ST.forEach(s=>{const c=jobs.filter(j=>j.status===s).length;if(c)cnts[s]=c;});
-  buildFbar('job-fbar',cnts,jobFilter,(f)=>{jobFilter=f;renderJobs();},{'ติดปัญหา':'t-red','Reject':'t-red','เสร็จงาน':'t-green','ปิดงาน':'t-green','รอเปิดงาน':'t-yellow','ช่างออกงาน':'t-yellow'});
+  buildFbar('job-fbar',cnts,jobFilter,(f)=>{jobFilter=f;renderJobs();},{'ติดปัญหา':'t-red','Reject':'t-red','เสร็จงาน':'t-green','ปิดงาน':'t-green','รอจ่าย':'t-yellow','รอเปิดงาน':'t-yellow','ช่างออกงาน':'t-yellow'});
   const rj=jobs.filter(j=>j.status==='Reject'||j.status==='ติดปัญหา');
   const rb=document.getElementById('job-reject-box');
-  if(rj.length&&(jobFilter==='ทั้งหมด'||jobFilter==='Reject'||jobFilter==='ติดปัญหา')){rb.style.display='block';document.getElementById('job-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('job-reject-list').innerHTML=rj.map(j=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${j.id}</span><span>${j.branch}</span><span class="chip">${j.type}</span><span class="badge ${SB[j.status]}">${j.status}</span><span class="tm" style="font-size:11px;">${j.note}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setJS('${j.id}','รอจัดช่าง')">รีเซ็ต</button></div>`).join('');}
+  if(rj.length&&(jobFilter==='ทั้งหมด'||jobFilter==='Reject'||jobFilter==='ติดปัญหา')){rb.style.display='block';document.getElementById('job-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('job-reject-list').innerHTML=rj.map(j=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${esc(j.id)}</span><span>${esc(j.branch)}</span><span class="chip">${esc(j.type)}</span><span class="badge ${SB[j.status]}">${esc(j.status)}</span><span class="tm" style="font-size:11px;">${esc(j.note)}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setJS('${j.id}','รอจัดช่าง')">รีเซ็ต</button></div>`).join('');}
   else rb.style.display='none';
   let fil=jobFilter==='ทั้งหมด'?jobs.filter(j=>j.status!=='Reject'&&j.status!=='ติดปัญหา'):jobs.filter(j=>j.status===jobFilter);
   document.getElementById('job-cnt').textContent=fil.length+' รายการ';
-  document.getElementById('job-tbl-title').textContent='คิวช่าง — '+jobFilter;
+  document.getElementById('job-tbl-title').textContent='คิวช่าง - '+jobFilter;
   const tb=document.getElementById('job-tbody');
-  if(!fil.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">📋</div><div>ไม่มีงาน</div></div></td></tr>';return;}
-  tb.innerHTML=fil.map(j=>`<tr><td class="mono ta fw7" style="font-size:11px;">${j.id}${j.isNew?' <span class="new-pill">NEW</span>':''}</td><td><select class="status-select" onchange="setJS('${j.id}',this.value)" style="color:${j.status==='เสร็จงาน'||j.status==='ปิดงาน'?'var(--green)':j.status==='ช่างออกงาน'||j.status==='รอเปิดงาน'?'var(--yellow)':j.status==='Reject'||j.status==='ติดปัญหา'?'var(--red)':j.status==='รออะไหล่'?'var(--purple)':'var(--text2)'}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td style="font-size:12px;">${j.client}</td><td>${j.branch}<br><span style="font-size:10px;color:var(--text3);">${j.ref}</span></td><td><span class="chip">${j.type}</span></td><td>${j.team}</td><td class="tm" style="font-size:11px;">${j.date}</td><td class="mono ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><button class="btn btn-ghost btn-sm" onclick="openDet('${j.id}')">ดู</button></td></tr>`).join('');
+  if(!fil.length){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีงาน</div></div></td></tr>';return;}
+  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;return `<tr><td class="mono ta fw7" style="font-size:11px;">${esc(j.id)}${j.isNew?' <span class="new-pill">NEW</span>':''}</td><td><select class="status-select" onchange="setJS('${j.id}',this.value)" style="color:${j.status==='เสร็จงาน'||j.status==='ปิดงาน'?'var(--green)':j.status==='ช่างออกงาน'||j.status==='รอเปิดงาน'||j.status==='รอจ่าย'?'var(--yellow)':j.status==='Reject'||j.status==='ติดปัญหา'?'var(--red)':j.status==='รออะไหล่'?'var(--purple)':'var(--text2)'}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
-function setJS(id,s){const j=jobs.find(x=>x.id===id);if(j){j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;renderJobs();renderDash();document.getElementById('nb-new').textContent=jobs.filter(j=>j.isNew||j.status==='รอเปิดงาน').length;}}
-
-// JOB DETAIL
+function setJS(id,s){const j=jobs.find(x=>x.id===id);if(j){j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;if(s==='รอจ่าย'){j.pay='unpaid';goFinanceForJob(id);return;}renderJobs();renderDash();}}
 function openDet(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;
-  document.getElementById('det-title').textContent=j.id+' — '+j.branch;
+  document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
-  const p=gp(j);
-  document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${j.team}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${j.date}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[j.status]||'b-wait'}">${j.status}</span></div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${j.type}</div></div></div><div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ราคากลาง ⚠</div><div class="detail-val mono ta">฿${j.pc.toLocaleString()}</div></div><div class="detail-item"><div class="detail-label">จ่ายช่าง</div><div class="detail-val mono tr">฿${j.pt.toLocaleString()}</div></div><div class="detail-item"><div class="detail-label">ต้นทุนอะไหล่</div><div class="detail-val mono tr">฿${j.partC.toLocaleString()}</div></div><div class="detail-item"><div class="detail-label">ขายอะไหล่</div><div class="detail-val mono tg">฿${j.partR.toLocaleString()}</div></div></div><div class="profit-row mb12"><div class="profit-label">กำไรรวม</div><div class="profit-val">฿${p.toLocaleString()}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:var(--text2);">${j.report}</div></div>`:''}<div class="form-group" style="margin-top:10px;"><label>เปลี่ยนสถานะ</label><select onchange="setJS('${j.id}',this.value);this.parentElement.querySelector('small')&&(this.parentElement.querySelector('small').textContent='✓ อัปเดตแล้ว');" style="width:auto;">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></div>`;
+  document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span></div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:var(--text2);">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:var(--text2);">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:var(--text2);">${esc(j.report)}</div></div>`:''}<div class="form-row"><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
   openM('m-detail');
 }
-
-// NEW JOB
-function openJobModal(){document.getElementById('fj-date').value=new Date().toISOString().split('T')[0];openM('m-job');}
+function openJobModal(pref={}){editJobId=null;document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
 function calcM(){const c=parseFloat(document.getElementById('fj-pc').value)||0,t=parseFloat(document.getElementById('fj-pt').value)||0;if(c>0||t>0){document.getElementById('m-profit').style.display='flex';document.getElementById('m-profit-v').textContent='฿'+(c-t).toLocaleString();}}
 function saveJob(){
-  const id='JOB-'+String(jCnt++).padStart(3,'0');
-  jobs.unshift({id,client:document.getElementById('fj-client').value,ref:document.getElementById('fj-ref').value||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,status:'รอเปิดงาน',pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,partC:0,partR:0,fuel:0,note:document.getElementById('fj-note').value,report:'',isNew:true,pay:'unpaid'});
+  const data={client:document.getElementById('fj-client').value,ref:document.getElementById('fj-ref').value||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value};
+  if(editJobId){Object.assign(jobs.find(j=>j.id===editJobId),data);}else{const id=data.ref&&data.ref!=='N/A'?data.ref:'PR-'+String(jCnt++).padStart(3,'0');jobs.unshift({id,...data,status:'รอเปิดงาน',partC:0,partR:0,fuel:0,report:'',isNew:true,pay:'unpaid'});if(id&&!prValues.includes(id))prValues.push(id);}
   closeM('m-job');renderJobs();renderDash();fillSelects();
-  document.getElementById('nb-new').textContent=jobs.filter(j=>j.isNew||j.status==='รอเปิดงาน').length;
 }
-
-// ADMIN TASK
-function openAdminModal(){document.getElementById('fa-due').value=new Date().toISOString().split('T')[0];fillSelects();openM('m-admin');}
-function saveAdminTask(){
-  const id='TASK-'+String(aCnt++).padStart(3,'0');
-  adminTasks.unshift({id,type:document.getElementById('fa-type').value,client:document.getElementById('fa-client').value,detail:document.getElementById('fa-detail').value,assign:document.getElementById('fa-assign').value,due:document.getElementById('fa-due').value,jobId:document.getElementById('fa-job').value,pri:document.getElementById('fa-pri').value,status:'รอดำเนินการ'});
-  closeM('m-admin');renderAdmin();renderDash();
-  document.getElementById('nb-admin').textContent=adminTasks.filter(t=>t.status==='รอดำเนินการ'||t.status==='กำลังทำ').length;
-}
+function editJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;editJobId=id;document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
+function deleteJob(id){if(confirm('ลบงานคิวช่างนี้?')){jobs=jobs.filter(j=>j.id!==id);renderJobs();renderDash();fillSelects();}}
+function goFinanceForJob(id){finFilter='ทั้งหมด';goTo('finance');setTimeout(()=>openFinanceEdit(id),0);}
 
 // FINANCE
 function setFinFilter(f){finFilter=f;renderFin();}
 function renderFin(){
+  const fixed=fixedExpenses.reduce((s,x)=>s+x.amount,0);
   const inc=jobs.reduce((s,j)=>s+j.pc+j.partR,0);
   const exp=jobs.reduce((s,j)=>s+j.pt+j.partC+j.fuel,0);
-  const pro=inc-exp-9500;
-  const ar=jobs.filter(j=>j.pay==='unpaid'&&(j.status==='ปิดงาน'||j.status==='เสร็จงาน'));
+  const pro=inc-exp-fixed;
+  const ar=jobs.filter(j=>j.pay==='unpaid'&&(j.status==='ปิดงาน'||j.status==='เสร็จงาน'||j.status==='รอจ่าย'));
   const arA=ar.reduce((s,j)=>s+j.pc+j.partR,0);
   document.getElementById('fin-income').textContent='฿'+inc.toLocaleString();
-  document.getElementById('fin-expense').textContent='฿'+exp.toLocaleString();
+  document.getElementById('fin-expense').textContent='฿'+(exp+fixed).toLocaleString();
   document.getElementById('fin-profit').textContent='฿'+pro.toLocaleString();
   document.getElementById('fin-margin').textContent='margin '+(inc>0?Math.round(pro/inc*100):0)+'%';
   document.getElementById('fin-ar').textContent='฿'+arA.toLocaleString();
   document.getElementById('fin-ar-m').textContent=ar.length+' รายการรอเก็บ';
-  const cnts={'ทั้งหมด':jobs.length,'รอเก็บเงิน':jobs.filter(j=>j.pay==='unpaid').length,'เก็บแล้ว':jobs.filter(j=>j.pay==='paid').length};
-  buildFbar('fin-fbar',cnts,finFilter,(f)=>setFinFilter(f),{'รอเก็บเงิน':'t-yellow','เก็บแล้ว':'t-green'});
-  let fil=finFilter==='รอเก็บเงิน'?jobs.filter(j=>j.pay==='unpaid'):finFilter==='เก็บแล้ว'?jobs.filter(j=>j.pay==='paid'):jobs;
+  const cnts={'ทั้งหมด':jobs.length,'รอเก็บเงิน':jobs.filter(j=>j.pay==='unpaid').length,'เก็บแล้ว':jobs.filter(j=>j.pay==='paid').length,'เกินกำหนด':jobs.filter(j=>j.pay==='overdue').length};
+  buildFbar('fin-fbar',cnts,finFilter,(f)=>setFinFilter(f),{'รอเก็บเงิน':'t-yellow','เก็บแล้ว':'t-green','เกินกำหนด':'t-red'});
+  let fil=finFilter==='รอเก็บเงิน'?jobs.filter(j=>j.pay==='unpaid'):finFilter==='เก็บแล้ว'?jobs.filter(j=>j.pay==='paid'):finFilter==='เกินกำหนด'?jobs.filter(j=>j.pay==='overdue'):jobs;
   document.getElementById('fin-cnt').textContent=fil.length+' รายการ';
-  document.getElementById('fin-tbl-title').textContent='P&L ต่องาน — '+finFilter;
-  document.getElementById('fin-tbody').innerHTML=fil.map(j=>`<tr><td class="mono ta" style="font-size:11px;cursor:pointer;" onclick="openDet('${j.id}')">${j.id}</td><td style="font-size:12px;">${j.branch}</td><td style="font-size:12px;">${j.team}</td><td class="mono tg" style="font-size:12px;">฿${(j.pc+j.partR).toLocaleString()}</td><td class="mono tr" style="font-size:12px;">฿${j.pt.toLocaleString()}</td><td class="mono tr" style="font-size:12px;">฿${j.partC.toLocaleString()}</td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${j.pay==='paid'?'var(--green)':'var(--yellow)'}"><option value="unpaid"${j.pay==='unpaid'?' selected':''}>รอเก็บเงิน</option><option value="paid"${j.pay==='paid'?' selected':''}>เก็บแล้ว</option><option value="overdue"${j.pay==='overdue'?' selected':''}>เกินกำหนด</option></select></td><td><button class="btn btn-ghost btn-sm" onclick="openDet('${j.id}')">→</button></td></tr>`).join('');
+  document.getElementById('fin-tbl-title').textContent='P&L ต่องาน - '+finFilter;
+  document.getElementById('fin-tbody').innerHTML=fil.map(j=>`<tr><td class="mono ta" style="font-size:11px;"><button class="link-btn" onclick="openFinanceEdit('${j.id}')">${esc(j.id)}</button></td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${j.pc+j.partR}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${j.pay==='paid'?'var(--green)':j.pay==='overdue'?'var(--red)':'var(--yellow)'}"><option value="unpaid"${j.pay==='unpaid'?' selected':''}>รอเก็บเงิน</option><option value="paid"${j.pay==='paid'?' selected':''}>เก็บแล้ว</option><option value="overdue"${j.pay==='overdue'?' selected':''}>เกินกำหนด</option></select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button></div></td></tr>`).join('');
+  renderFixedExpenses();
 }
 function setPay(id,s){const j=jobs.find(x=>x.id===id);if(j){j.pay=s;renderFin();renderDash();}}
+function updateJobMoney(id,field,value){const j=jobs.find(x=>x.id===id);if(!j)return;const v=parseFloat(value)||0;if(field==='income')j.pc=Math.max(0,v-j.partR);else j[field]=v;renderFin();renderDash();}
+function openFinanceEdit(id){const j=jobs.find(x=>x.id===id);if(!j)return;document.getElementById('ff-id').value=id;document.getElementById('ff-pc').value=j.pc;document.getElementById('ff-partR').value=j.partR;document.getElementById('ff-pt').value=j.pt;document.getElementById('ff-partC').value=j.partC;document.getElementById('ff-fuel').value=j.fuel;document.getElementById('ff-pay').value=j.pay;document.getElementById('ff-note').value=j.financeNote||'';openM('m-finance-edit');}
+function saveFinanceEdit(){const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id);if(!j)return;Object.assign(j,{pc:parseFloat(document.getElementById('ff-pc').value)||0,partR:parseFloat(document.getElementById('ff-partR').value)||0,pt:parseFloat(document.getElementById('ff-pt').value)||0,partC:parseFloat(document.getElementById('ff-partC').value)||0,fuel:parseFloat(document.getElementById('ff-fuel').value)||0,pay:document.getElementById('ff-pay').value,financeNote:document.getElementById('ff-note').value});closeM('m-finance-edit');renderFin();renderDash();}
+function renderFixedExpenses(){const tb=document.getElementById('fixed-tbody');if(!tb)return;tb.innerHTML=fixedExpenses.map((x,i)=>`<tr><td>${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td class="mono tr">฿${x.amount.toLocaleString()}</td><td class="tm">${esc(x.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fxm-${i}',event)">...</button><div class="action-menu" id="fxm-${i}"><button onclick="openFixedModal(${i})">แก้ไข</button><button onclick="deleteFixedExpense(${i})">ลบ</button><button onclick="alert('${esc(x.note||'ไม่มีรายละเอียด')}')">ดูดีเทล</button></div></td></tr>`).join('');}
+function openFixedModal(i=''){document.getElementById('fx-index').value=i;if(i===''){['fx-name','fx-amount','fx-date','fx-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fx-type').value='Fixed';}else{const x=fixedExpenses[i];document.getElementById('fx-name').value=x.name;document.getElementById('fx-type').value=x.type;document.getElementById('fx-amount').value=x.amount;document.getElementById('fx-date').value=x.date;document.getElementById('fx-note').value=x.note||'';}openM('m-fixed');}
+function saveFixedExpense(){const i=document.getElementById('fx-index').value;const data={name:document.getElementById('fx-name').value,type:document.getElementById('fx-type').value||'Fixed',amount:parseFloat(document.getElementById('fx-amount').value)||0,date:document.getElementById('fx-date').value,note:document.getElementById('fx-note').value};if(i==='')fixedExpenses.push(data);else fixedExpenses[+i]=data;closeM('m-fixed');renderFin();}
+function deleteFixedExpense(i){if(confirm('ลบรายจ่าย Fixed นี้?')){fixedExpenses.splice(i,1);renderFin();}}
 
 // TECH PAY
 function renderTP(){
   const ts=['ทีม A','ทีม B','ทีม C','ทีม D','ทีม E','ทีม F','ทีม G','ทีม H'];
   const c=document.getElementById('techpay-list');
-  const h=ts.map(t=>{const tj=jobs.filter(j=>j.team===t&&j.status!=='รอเปิดงาน'&&j.status!=='Reject');const tot=tj.reduce((s,j)=>s+j.pt,0);if(!tot)return'';return`<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${t}</div><div class="flex g8"><span class="mono fw7 tg">฿${tot.toLocaleString()}</span><button class="btn btn-success btn-sm" onclick="alert('ยืนยันจ่าย ${t}')">✓ จ่ายแล้ว</button></div></div><table><thead><tr><th>Job ID</th><th>สาขา</th><th>วันที่</th><th>ประเภท</th><th>ค่าแรงช่าง</th><th>สถานะ</th></tr></thead><tbody>${tj.map(j=>`<tr><td class="mono ta" style="font-size:11px;">${j.id}</td><td style="font-size:12px;">${j.branch}</td><td class="tm" style="font-size:11px;">${j.date}</td><td><span class="chip">${j.type}</span></td><td class="mono fw7 tg">฿${j.pt.toLocaleString()}</td><td><span class="badge ${SB[j.status]||'b-wait'}">${j.status}</span></td></tr>`).join('')}</tbody></table></div>`;}).join('');
+  const h=ts.map(t=>{const tj=jobs.filter(j=>j.team===t&&j.status!=='รอเปิดงาน'&&j.status!=='Reject');const tot=tj.reduce((s,j)=>s+j.pt,0);if(!tot)return'';return`<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${t}</div><div class="flex g8"><span class="mono fw7 tg">฿${tot.toLocaleString()}</span><button class="btn btn-success btn-sm" onclick="alert('ยืนยันจ่าย ${t}')">✓ จ่ายแล้ว</button></div></div><table><thead><tr><th>PR</th><th>สาขา</th><th>วันที่</th><th>ประเภท</th><th>ค่าแรงช่าง</th><th>สถานะ</th></tr></thead><tbody>${tj.map(j=>`<tr><td class="mono ta" style="font-size:11px;">${j.id}</td><td style="font-size:12px;">${j.branch}</td><td class="tm" style="font-size:11px;">${j.date}</td><td><span class="chip">${j.type}</span></td><td class="mono fw7 tg">฿${j.pt.toLocaleString()}</td><td><span class="badge ${SB[j.status]||'b-wait'}">${j.status}</span></td></tr>`).join('')}</tbody></table></div>`;}).join('');
   c.innerHTML=h||'<div class="empty"><div class="empty-icon">✅</div><div>ไม่มียอดค้างจ่าย</div></div>';
 }
 
 // FILL SELECTS
 function fillSelects(){
-  const opts=jobs.map(j=>`<option value="${j.id}">${j.id} — ${j.branch}</option>`).join('');
-  ['ai-job-sel','lp-job','fa-job'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const pre=id==='ai-job-sel'?'<option value="">-- เลือก --</option>':'<option value="">-- ไม่ระบุ --</option>';el.innerHTML=pre+opts;});
+  prValues=[...new Set([...prValues,...jobs.map(j=>j.id),...adminTasks.map(t=>t.jobId).filter(Boolean)])];
+  const jobOpts=jobs.map(j=>`<option value="${esc(j.id)}">${esc(j.id)} - ${esc(j.branch)}</option>`).join('');
+  ['ai-job-sel','lp-job'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<option value="">-- เลือก --</option>'+jobOpts;});
+  const prList=document.getElementById('pr-list');if(prList)prList.innerHTML=prValues.map(v=>`<option value="${esc(v)}"></option>`).join('');
+  const adminList=document.getElementById('admin-list');if(adminList)adminList.innerHTML=adminNames.map(v=>`<option value="${esc(v)}"></option>`).join('');
+  const clientOpts=(typeof clients!=='undefined'?clients.map(c=>c.name):['บริษัท A','บริษัท B','บริษัท C']).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  ['fj-client','fp-client','fb-client','cl-filter','branch-cl-filter'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const all=(id==='cl-filter'||id==='branch-cl-filter')?'<option value="">ทุกลูกค้า</option>':'';const old=el.value;el.innerHTML=all+clientOpts;if([...el.options].some(o=>o.value===old))el.value=old;});
+  const teamOpts=(typeof teams!=='undefined'?teams.map(t=>t.name):['ทีม A','ทีม B','ทีม C','ทีม D','ทีม E','ทีม F','ทีม G','ทีม H']).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  ['fj-team','lp-team','ftp-team','team-filter'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const all=id==='team-filter'?'<option value="">ทุกทีม</option>':'';const old=el.value;el.innerHTML=all+teamOpts;if([...el.options].some(o=>o.value===old))el.value=old;});
 }
 
 // AI READER
@@ -1105,7 +837,7 @@ async function doAI(b64){
 }
 const AILBL={branch:'สาขา',work_type:'ประเภทงาน',problem:'อาการ',solution:'การแก้ไข',parts_used:'อะไหล่',tech_sign:'ลายเซ็นช่าง',mgr_sign:'ลายเซ็น ผจก.',date:'วันที่'};
 function showAIRes(d){document.getElementById('ai-load').style.display='none';document.getElementById('ai-res').style.display='block';document.getElementById('ai-res-box').innerHTML=Object.entries(d).map(([k,v])=>`<div class="result-field"><span class="result-key">${AILBL[k]||k}</span><span class="result-val">${v}</span></div>`).join('');}
-function confirmAI(){const jid=document.getElementById('ai-job-sel').value;if(!jid){alert('เลือก Job ID ก่อน');return;}const j=jobs.find(x=>x.id===jid);if(j&&aiData){j.report=`อาการ: ${aiData.problem} | แก้ไข: ${aiData.solution} | อะไหล่: ${aiData.parts_used}`;if(j.status==='ช่างออกงาน')j.status='เสร็จงาน';alert('✓ บันทึกเข้า '+jid);resetAI();}}
+function confirmAI(){const jid=document.getElementById('ai-job-sel').value;if(!jid){alert('เลือก PR ก่อน');return;}const j=jobs.find(x=>x.id===jid);if(j&&aiData){j.report=`อาการ: ${aiData.problem} | แก้ไข: ${aiData.solution} | อะไหล่: ${aiData.parts_used}`;if(j.status==='ช่างออกงาน')j.status='เสร็จงาน';alert('✓ บันทึกเข้า '+jid);resetAI();}}
 function resetAI(){imgB64=null;aiData=null;document.getElementById('upzone').style.display='block';document.getElementById('img-preview').style.display='none';document.getElementById('ai-res').style.display='none';document.getElementById('img-inp').value='';}
 
 // LINE PARSER
@@ -1125,7 +857,7 @@ function renderLPHist(){const tb=document.getElementById('lp-history');tb.innerH
 function resetLP(){lpData=null;document.getElementById('lp-text').value='';document.getElementById('lp-res').style.display='none';}
 
 // DOCUMENTS
-const docs={qt:[{no:'QT-2025-001',jid:'JOB-005',cl:'บริษัท C',amt:4850,date:'2025-06-02',st:'อนุมัติแล้ว'},{no:'QT-2025-002',jid:'JOB-006',cl:'บริษัท B',amt:3700,date:'2025-06-01',st:'อนุมัติแล้ว'}],iv:[{no:'IV-2025-001',jid:'JOB-005',cl:'บริษัท C',amt:4850,due:'2025-06-16',st:'ค้างชำระ'},{no:'IV-2025-002',jid:'JOB-006',cl:'บริษัท B',amt:3700,due:'2025-06-16',st:'ค้างชำระ'}]};
+const docs={qt:[{no:'QT-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,date:'2025-06-02',st:'อนุมัติแล้ว'},{no:'QT-2025-002',jid:'PR-006',cl:'บริษัท B',amt:3700,date:'2025-06-01',st:'อนุมัติแล้ว'}],iv:[{no:'IV-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,due:'2025-06-16',st:'ค้างชำระ'},{no:'IV-2025-002',jid:'PR-006',cl:'บริษัท B',amt:3700,due:'2025-06-16',st:'ค้างชำระ'}]};
 function renderDocs(){document.getElementById('qt-tbody').innerHTML=docs.qt.map(d=>`<tr><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${d.amt.toLocaleString()}</td><td class="tm">${d.date}</td><td><span class="badge b-done">${d.st}</span></td><td><button class="btn btn-ghost btn-sm">พิมพ์</button></td></tr>`).join('');document.getElementById('iv-tbody').innerHTML=docs.iv.map(d=>`<tr><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${d.amt.toLocaleString()}</td><td class="tm">${d.due}</td><td><span class="badge b-unpaid">${d.st}</span></td><td><button class="btn btn-ghost btn-sm">พิมพ์</button><button class="btn btn-success btn-sm" style="margin-left:4px;" onclick="markIV('${d.no}')">รับเงิน</button></td></tr>`).join('');}
 function markIV(no){const iv=docs.iv.find(d=>d.no===no);if(iv){iv.st='ชำระแล้ว';renderDocs();}}
 function switchDoc(t,btn){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('doc-'+t).classList.add('active');}
@@ -1198,171 +930,55 @@ let parts = [
 ];
 
 // ===== SETTINGS RENDERS =====
-function renderClients() {
-  // populate client filter selects
-  const clOpts = clients.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-  ['cl-filter','branch-cl-filter'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.innerHTML='<option value="">ทุกลูกค้า</option>'+clOpts;
-  });
-  const fp=document.getElementById('fp-client');
-  if(fp) fp.innerHTML=clOpts;
-  const fb=document.getElementById('fb-client');
-  if(fb) fb.innerHTML=clOpts;
+function detailText(obj){return Object.entries(obj).map(([k,v])=>`${k}: ${v||'-'}`).join('\n');}
+function actionCell(prefix,i,items){return `<td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${prefix}-${i}',event)">...</button><div class="action-menu" id="${prefix}-${i}">${items}</div></td>`;}
+function openClientModal(i=''){editClientIndex=i;if(i===''){['fc-id','fc-name','fc-contact','fc-phone','fc-credit','fc-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fc-id').value='CLT-'+String(clients.length+1).padStart(3,'0');document.getElementById('fc-pay').value='30 วัน';}else{const c=clients[i];document.getElementById('fc-id').value=c.id;document.getElementById('fc-name').value=c.name;document.getElementById('fc-contact').value=c.contact;document.getElementById('fc-phone').value=c.phone;document.getElementById('fc-pay').value=c.payTerm;document.getElementById('fc-credit').value=c.credit;document.getElementById('fc-note').value=c.note||'';}openM('m-client');}
+function openTeamModal(i=''){editTeamIndex=i;if(i===''){['ft-name','ft-lead','ft-phone','ft-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('ft-skill').value='แอร์';}else{const t=teams[i];document.getElementById('ft-name').value=t.name;document.getElementById('ft-lead').value=t.lead;document.getElementById('ft-phone').value=t.phone;document.getElementById('ft-skill').value=t.skill;document.getElementById('ft-note').value=t.note||'';}openM('m-team');}
+function openBranchModal(i=''){editBranchIndex=i;renderClients();if(i===''){['fb-name','fb-mgr','fb-phone','fb-hours','fb-addr'].forEach(id=>document.getElementById(id).value='');document.getElementById('fb-id').value='BRN-'+String(branches.length+1).padStart(3,'0');}else{const b=branches[i];document.getElementById('fb-id').value=b.id;document.getElementById('fb-name').value=b.name;document.getElementById('fb-client').value=b.client;document.getElementById('fb-mgr').value=b.mgr;document.getElementById('fb-phone').value=b.phone;document.getElementById('fb-hours').value=b.hours;document.getElementById('fb-addr').value=b.addr;}openM('m-branch');}
+function openSupplierModal(i=''){editSupplierIndex=i;if(i===''){['fs-name','fs-contact','fs-phone','fs-terms','fs-lead','fs-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fs-type').value='อะไหล่แอร์';}else{const x=suppliers[i];document.getElementById('fs-name').value=x.name;document.getElementById('fs-type').value=x.type;document.getElementById('fs-contact').value=x.contact;document.getElementById('fs-phone').value=x.phone;document.getElementById('fs-terms').value=x.terms;document.getElementById('fs-lead').value=x.lead;document.getElementById('fs-note').value=x.note||'';}openM('m-supplier');}
+function openPartModal(i=''){editPartIndex=i;renderSuppliers();if(i===''){['fpa-name','fpa-brand','fpa-cost','fpa-sell','fpa-margin','fpa-note'].forEach(id=>document.getElementById(id).value='');}else{const x=parts[i];document.getElementById('fpa-name').value=x.name;document.getElementById('fpa-brand').value=x.brand;document.getElementById('fpa-sup').value=x.sup;document.getElementById('fpa-cost').value=x.cost;document.getElementById('fpa-sell').value=x.sell;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
 
-  document.getElementById('cl-tbody').innerHTML = clients.map(c=>`
-    <tr>
-      <td class="mono ta" style="font-size:11px;">${c.id}</td>
-      <td style="font-weight:600;">${c.name}</td>
-      <td><span class="chip">${c.payTerm}</span></td>
-      <td>${c.contact}</td>
-      <td class="mono" style="font-size:12px;">${c.phone}</td>
-      <td><span class="badge b-done">ใช้งาน</span></td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="openAddPricing('${c.name}')">+ ราคากลาง</button>
-      </td>
-    </tr>`).join('');
+function renderClients() {
+  fillSelects();
+  document.getElementById('cl-tbody').innerHTML = clients.map((c,i)=>`
+    <tr><td class="mono ta" style="font-size:11px;">${esc(c.id)}</td><td style="font-weight:600;">${esc(c.name)}</td><td><span class="chip">${esc(c.payTerm)}</span></td><td>${esc(c.contact)}</td><td class="mono" style="font-size:12px;">${esc(c.phone)}</td><td><span class="badge b-done">ใช้งาน</span></td>${actionCell('clm',i,`<button onclick="alert(detailText(clients[${i}]))">ดูดีเทล</button><button onclick="openClientModal(${i})">แก้ไข</button><button onclick="openAddPricing('${esc(c.name)}')">+ ราคากลาง</button><button onclick="delClient(${i})">ลบ</button>`)}</tr>`).join('');
   renderPricing();
 }
-
 function renderPricing() {
   const f = document.getElementById('cl-filter')?.value || '';
   const fil = f ? pricing.filter(p=>p.client===f) : pricing;
-  document.getElementById('price-tbody').innerHTML = fil.map((p,i)=>`
-    <tr>
-      <td>${p.client}</td>
-      <td><span class="chip">${p.type}</span></td>
-      <td class="mono fw7 ta">฿${p.price.toLocaleString()}</td>
-      <td class="tm" style="font-size:12px;">${p.note||'—'}</td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="editPricing(${pricing.indexOf(p)})">แก้ไข</button>
-        <button class="btn btn-danger btn-sm" style="margin-left:4px;" onclick="delPricing(${pricing.indexOf(p)})">ลบ</button>
-      </td>
-    </tr>`).join('');
+  document.getElementById('price-tbody').innerHTML = fil.map(p=>{const i=pricing.indexOf(p);return `<tr><td>${esc(p.client)}</td><td><span class="chip">${esc(p.type)}</span></td><td class="mono fw7 ta">฿${p.price.toLocaleString()}</td><td class="tm" style="font-size:12px;">${esc(p.note||'-')}</td>${actionCell('prm',i,`<button onclick="alert(detailText(pricing[${i}]))">ดูดีเทล</button><button onclick="editPricing(${i})">แก้ไข</button><button onclick="delPricing(${i})">ลบ</button>`)}</tr>`;}).join('');
 }
-
-function openAddPricing(clientName) {
-  document.getElementById('fp-client').value = clientName;
-  openM('m-pricing');
-}
-
-function editPricing(i) {
-  const p = pricing[i];
-  document.getElementById('fp-client').value = p.client;
-  document.getElementById('fp-type').value = p.type;
-  document.getElementById('fp-price').value = p.price;
-  document.getElementById('fp-note').value = p.note;
-  openM('m-pricing');
-}
-
-function savePricing() {
-  const cl=document.getElementById('fp-client').value;
-  const tp=document.getElementById('fp-type').value;
-  const pr=parseFloat(document.getElementById('fp-price').value)||0;
-  const nt=document.getElementById('fp-note').value;
-  const ex=pricing.find(p=>p.client===cl&&p.type===tp);
-  if(ex){ex.price=pr;ex.note=nt;}else{pricing.push({client:cl,type:tp,price:pr,note:nt});}
-  closeM('m-pricing');renderPricing();
-}
-
+function openAddPricing(clientName) {document.getElementById('fp-client').value = clientName;document.getElementById('fp-price').value='';document.getElementById('fp-note').value='';openM('m-pricing');}
+function editPricing(i) {const p = pricing[i];document.getElementById('fp-client').value = p.client;document.getElementById('fp-type').value = p.type;document.getElementById('fp-price').value = p.price;document.getElementById('fp-note').value = p.note;openM('m-pricing');}
+function savePricing() {const cl=document.getElementById('fp-client').value,tp=document.getElementById('fp-type').value,pr=parseFloat(document.getElementById('fp-price').value)||0,nt=document.getElementById('fp-note').value;const ex=pricing.find(p=>p.client===cl&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{pricing.push({client:cl,type:tp,price:pr,note:nt});}closeM('m-pricing');renderPricing();}
 function delPricing(i){if(confirm('ลบราคากลางนี้?')){pricing.splice(i,1);renderPricing();}}
-
-function saveClient(){
-  clients.push({id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value});
-  closeM('m-client');renderClients();
-}
+function saveClient(){const data={id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value};if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;closeM('m-client');renderClients();fillSelects();}
+function delClient(i){if(confirm('ลบลูกค้านี้?')){clients.splice(i,1);renderClients();fillSelects();}}
 
 function renderTeams() {
-  const tmOpts=teams.map(t=>`<option value="${t.name}">${t.name}</option>`).join('');
-  ['team-filter'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<option value="">ทุกทีม</option>'+tmOpts;});
-  const ftp=document.getElementById('ftp-team');if(ftp)ftp.innerHTML=tmOpts;
-  document.getElementById('team-tbody').innerHTML=teams.map(t=>`
-    <tr>
-      <td style="font-weight:700;">${t.name}</td>
-      <td>${t.lead}</td>
-      <td class="mono" style="font-size:12px;">${t.phone}</td>
-      <td><span class="chip">${t.skill}</span></td>
-      <td><span class="badge b-done">ใช้งาน</span></td>
-      <td><button class="btn btn-ghost btn-sm" onclick="openM('m-team-pricing');document.getElementById('ftp-team').value='${t.name}'">+ ราคา</button></td>
-    </tr>`).join('');
+  fillSelects();
+  document.getElementById('team-tbody').innerHTML=teams.map((t,i)=>`<tr><td style="font-weight:700;">${esc(t.name)}</td><td>${esc(t.lead)}</td><td class="mono" style="font-size:12px;">${esc(t.phone)}</td><td><span class="chip">${esc(t.skill)}</span></td><td><span class="badge b-done">ใช้งาน</span></td>${actionCell('tmm',i,`<button onclick="alert(detailText(teams[${i}]))">ดูดีเทล</button><button onclick="openTeamModal(${i})">แก้ไข</button><button onclick="openM('m-team-pricing');document.getElementById('ftp-team').value='${esc(t.name)}'">+ ราคา</button><button onclick="delTeam(${i})">ลบ</button>`)}</tr>`).join('');
   renderTeamPricing();
 }
-
-function renderTeamPricing(){
-  const f=document.getElementById('team-filter')?.value||'';
-  const fil=f?teamPricing.filter(p=>p.team===f):teamPricing;
-  document.getElementById('team-price-tbody').innerHTML=fil.map((p,i)=>`
-    <tr>
-      <td>${p.team}</td><td><span class="chip">${p.type}</span></td>
-      <td class="mono fw7 tg">฿${p.price.toLocaleString()}</td>
-      <td class="tm" style="font-size:12px;">${p.note||'—'}</td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="editTP(${teamPricing.indexOf(p)})">แก้ไข</button>
-        <button class="btn btn-danger btn-sm" style="margin-left:4px;" onclick="delTP(${teamPricing.indexOf(p)})">ลบ</button>
-      </td>
-    </tr>`).join('');
-}
-
+function renderTeamPricing(){const f=document.getElementById('team-filter')?.value||'';const fil=f?teamPricing.filter(p=>p.team===f):teamPricing;document.getElementById('team-price-tbody').innerHTML=fil.map(p=>{const i=teamPricing.indexOf(p);return `<tr><td>${esc(p.team)}</td><td><span class="chip">${esc(p.type)}</span></td><td class="mono fw7 tg">฿${p.price.toLocaleString()}</td><td class="tm" style="font-size:12px;">${esc(p.note||'-')}</td>${actionCell('tpm',i,`<button onclick="alert(detailText(teamPricing[${i}]))">ดูดีเทล</button><button onclick="editTP(${i})">แก้ไข</button><button onclick="delTP(${i})">ลบ</button>`)}</tr>`;}).join('');}
 function editTP(i){const p=teamPricing[i];document.getElementById('ftp-team').value=p.team;document.getElementById('ftp-type').value=p.type;document.getElementById('ftp-price').value=p.price;document.getElementById('ftp-note').value=p.note;openM('m-team-pricing');}
 function saveTeamPricing(){const tm=document.getElementById('ftp-team').value,tp=document.getElementById('ftp-type').value,pr=parseFloat(document.getElementById('ftp-price').value)||0,nt=document.getElementById('ftp-note').value;const ex=teamPricing.find(p=>p.team===tm&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{teamPricing.push({team:tm,type:tp,price:pr,note:nt});}closeM('m-team-pricing');renderTeamPricing();}
 function delTP(i){if(confirm('ลบราคานี้?')){teamPricing.splice(i,1);renderTeamPricing();}}
-function saveTeam(){teams.push({name:document.getElementById('ft-name').value,lead:document.getElementById('ft-lead').value,phone:document.getElementById('ft-phone').value,skill:document.getElementById('ft-skill').value,note:document.getElementById('ft-note').value});closeM('m-team');renderTeams();}
+function saveTeam(){const data={name:document.getElementById('ft-name').value,lead:document.getElementById('ft-lead').value,phone:document.getElementById('ft-phone').value,skill:document.getElementById('ft-skill').value,note:document.getElementById('ft-note').value};if(editTeamIndex==='')teams.push(data);else teams[+editTeamIndex]=data;closeM('m-team');renderTeams();fillSelects();}
+function delTeam(i){if(confirm('ลบทีมนี้?')){teams.splice(i,1);renderTeams();fillSelects();}}
 
-function renderBranches(){
-  const s=document.getElementById('branch-search')?.value?.toLowerCase()||'';
-  const cf=document.getElementById('branch-cl-filter')?.value||'';
-  let fil=branches;
-  if(s)fil=fil.filter(b=>b.name.toLowerCase().includes(s)||b.id.toLowerCase().includes(s));
-  if(cf)fil=fil.filter(b=>b.client===cf);
-  document.getElementById('branch-cnt').textContent=fil.length+' สาขา';
-  const lastJob=id=>{ const j=[...jobs].filter(j=>j.branch.includes(id.replace('BRN-',''))); return j.length?j[j.length-1].date:'—'; };
-  document.getElementById('branch-tbody').innerHTML=fil.map(b=>`
-    <tr>
-      <td class="mono ta" style="font-size:11px;">${b.id}</td>
-      <td style="font-weight:600;">${b.name}</td>
-      <td>${b.client}</td>
-      <td class="tm" style="font-size:11px;max-width:160px;">${b.addr}</td>
-      <td>${b.mgr}</td>
-      <td class="mono" style="font-size:11px;">${b.phone}</td>
-      <td class="tm" style="font-size:11px;">${b.hours}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="alert('แก้ไข ${b.name}')">แก้ไข</button></td>
-    </tr>`).join('');
-}
+function renderBranches(){fillSelects();const q=document.getElementById('branch-search')?.value?.toLowerCase()||'';const cf=document.getElementById('branch-cl-filter')?.value||'';let fil=branches;if(q)fil=fil.filter(b=>b.name.toLowerCase().includes(q)||b.id.toLowerCase().includes(q));if(cf)fil=fil.filter(b=>b.client===cf);document.getElementById('branch-cnt').textContent=fil.length+' สาขา';document.getElementById('branch-tbody').innerHTML=fil.map(b=>{const i=branches.indexOf(b);return `<tr><td class="mono ta" style="font-size:11px;">${esc(b.id)}</td><td style="font-weight:600;">${esc(b.name)}</td><td>${esc(b.client)}</td><td class="tm" style="font-size:11px;max-width:160px;">${esc(b.addr)}</td><td>${esc(b.mgr)}</td><td class="mono" style="font-size:11px;">${esc(b.phone)}</td><td class="tm" style="font-size:11px;">${esc(b.hours)}</td>${actionCell('brm',i,`<button onclick="alert(detailText(branches[${i}]))">ดูดีเทล</button><button onclick="openBranchModal(${i})">แก้ไข</button><button onclick="delBranch(${i})">ลบ</button>`)}</tr>`;}).join('');}
+function saveBranch(){const data={id:document.getElementById('fb-id').value,name:document.getElementById('fb-name').value,client:document.getElementById('fb-client').value,mgr:document.getElementById('fb-mgr').value,phone:document.getElementById('fb-phone').value,hours:document.getElementById('fb-hours').value,addr:document.getElementById('fb-addr').value};if(editBranchIndex==='')branches.push(data);else branches[+editBranchIndex]=data;closeM('m-branch');renderBranches();}
+function delBranch(i){if(confirm('ลบสาขานี้?')){branches.splice(i,1);renderBranches();}}
 
-function saveBranch(){const cl=document.getElementById('fb-client').value;branches.push({id:document.getElementById('fb-id').value,name:document.getElementById('fb-name').value,client:cl,mgr:document.getElementById('fb-mgr').value,phone:document.getElementById('fb-phone').value,hours:document.getElementById('fb-hours').value,addr:document.getElementById('fb-addr').value});closeM('m-branch');renderBranches();}
-
-function renderSuppliers(){
-  document.getElementById('sup-tbody').innerHTML=suppliers.map(s=>`
-    <tr>
-      <td style="font-weight:600;">${s.name}</td><td><span class="chip">${s.type}</span></td>
-      <td>${s.contact}</td><td class="mono" style="font-size:12px;">${s.phone}</td>
-      <td style="font-size:12px;">${s.terms}</td><td class="tm" style="font-size:12px;">${s.note||'—'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="alert('แก้ไข')">แก้ไข</button></td>
-    </tr>`).join('');
-  const supOpts=suppliers.map(s=>`<option value="${s.name}">${s.name}</option>`).join('');
-  const fpaS=document.getElementById('fpa-sup');if(fpaS)fpaS.innerHTML=supOpts;
-  renderParts();
-}
-
-function renderParts(){
-  const s=document.getElementById('part-search')?.value?.toLowerCase()||'';
-  const fil=s?parts.filter(p=>p.name.toLowerCase().includes(s)||p.brand.toLowerCase().includes(s)):parts;
-  document.getElementById('part-tbody').innerHTML=fil.map((p,i)=>{
-    const m=p.cost>0?Math.round((p.sell-p.cost)/p.sell*100):0;
-    return`<tr>
-      <td style="font-weight:600;">${p.name}</td><td class="tm" style="font-size:12px;">${p.brand||'—'}</td>
-      <td style="font-size:12px;">${p.sup}</td>
-      <td class="mono tr">฿${p.cost.toLocaleString()}</td>
-      <td class="mono tg">฿${p.sell.toLocaleString()}</td>
-      <td class="mono fw7" style="color:${m>=30?'var(--green)':m>=15?'var(--yellow)':'var(--red)'};">${m}%</td>
-      <td class="tm" style="font-size:12px;">${p.note||'—'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="alert('แก้ไข')">แก้ไข</button></td>
-    </tr>`;}).join('');
-}
-
+function renderSuppliers(){document.getElementById('sup-tbody').innerHTML=suppliers.map((x,i)=>`<tr><td style="font-weight:600;">${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td>${esc(x.contact)}</td><td class="mono" style="font-size:12px;">${esc(x.phone)}</td><td style="font-size:12px;">${esc(x.terms)}</td><td class="tm" style="font-size:12px;">${esc(x.note||'-')}</td>${actionCell('spm',i,`<button onclick="alert(detailText(suppliers[${i}]))">ดูดีเทล</button><button onclick="openSupplierModal(${i})">แก้ไข</button><button onclick="delSupplier(${i})">ลบ</button>`)}</tr>`).join('');const supOpts=suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');const fpaS=document.getElementById('fpa-sup');if(fpaS)fpaS.innerHTML=supOpts;renderParts();}
+function renderParts(){const q=document.getElementById('part-search')?.value?.toLowerCase()||'';const fil=q?parts.filter(p=>p.name.toLowerCase().includes(q)||p.brand.toLowerCase().includes(q)):parts;document.getElementById('part-tbody').innerHTML=fil.map(x=>{const i=parts.indexOf(x),m=x.sell>0?Math.round((x.sell-x.cost)/x.sell*100):0;return `<tr><td style="font-weight:600;">${esc(x.name)}</td><td class="tm" style="font-size:12px;">${esc(x.brand||'-')}</td><td style="font-size:12px;">${esc(x.sup)}</td><td class="mono tr">฿${x.cost.toLocaleString()}</td><td class="mono tg">฿${x.sell.toLocaleString()}</td><td class="mono fw7" style="color:${m>=30?'var(--green)':m>=15?'var(--yellow)':'var(--red)'};">${m}%</td><td class="tm" style="font-size:12px;">${esc(x.note||'-')}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');}
 function calcPartMargin(){const c=parseFloat(document.getElementById('fpa-cost').value)||0,s=parseFloat(document.getElementById('fpa-sell').value)||0;if(s>0){const m=Math.round((s-c)/s*100);document.getElementById('fpa-margin').value=m+'% (฿'+(s-c).toLocaleString()+')';}}
-function savePart(){parts.push({name:document.getElementById('fpa-name').value,brand:document.getElementById('fpa-brand').value,sup:document.getElementById('fpa-sup').value,cost:parseFloat(document.getElementById('fpa-cost').value)||0,sell:parseFloat(document.getElementById('fpa-sell').value)||0,note:document.getElementById('fpa-note').value});closeM('m-part');renderParts();}
-function saveSupplier(){suppliers.push({name:document.getElementById('fs-name').value,type:document.getElementById('fs-type').value,contact:document.getElementById('fs-contact').value,phone:document.getElementById('fs-phone').value,terms:document.getElementById('fs-terms').value,lead:document.getElementById('fs-lead').value,note:document.getElementById('fs-note').value});closeM('m-supplier');renderSuppliers();}
+function savePart(){const data={name:document.getElementById('fpa-name').value,brand:document.getElementById('fpa-brand').value,sup:document.getElementById('fpa-sup').value,cost:parseFloat(document.getElementById('fpa-cost').value)||0,sell:parseFloat(document.getElementById('fpa-sell').value)||0,note:document.getElementById('fpa-note').value};if(editPartIndex==='')parts.push(data);else parts[+editPartIndex]=data;closeM('m-part');renderParts();}
+function delPart(i){if(confirm('ลบอะไหล่นี้?')){parts.splice(i,1);renderParts();}}
+function saveSupplier(){const data={name:document.getElementById('fs-name').value,type:document.getElementById('fs-type').value,contact:document.getElementById('fs-contact').value,phone:document.getElementById('fs-phone').value,terms:document.getElementById('fs-terms').value,lead:document.getElementById('fs-lead').value,note:document.getElementById('fs-note').value};if(editSupplierIndex==='')suppliers.push(data);else suppliers[+editSupplierIndex]=data;closeM('m-supplier');renderSuppliers();}
+function delSupplier(i){if(confirm('ลบซัพพลายเออร์นี้?')){suppliers.splice(i,1);renderSuppliers();}}
 
 // INIT
 renderDash();fillSelects();renderLPHist();
