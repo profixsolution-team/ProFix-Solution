@@ -139,6 +139,7 @@ select option{background:var(--surface2);}
 .flex{display:flex;align-items:center;}.g6{gap:6px;}.g8{gap:8px;}.g12{gap:12px;}
 @media(max-width:768px){.sidebar{display:none;}.stats-row{grid-template-columns:1fr 1fr;}.form-row{grid-template-columns:1fr;}.detail-grid{grid-template-columns:1fr;}.fin-grid{grid-template-columns:1fr;}}
 </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app">
@@ -562,6 +563,356 @@ select option{background:var(--surface2);}
 </div>
 
 <script>
+// ============================================================
+// SUPABASE CONFIG — แก้ค่านี้ก่อนใช้งาน
+// 1. ไปที่ https://supabase.com → Project → Settings → API
+// 2. ก็อป Project URL และ anon/public key มาใส่ด้านล่าง
+// ============================================================
+const SUPABASE_URL  = 'YOUR_SUPABASE_URL';   // เช่น https://xxxx.supabase.co
+const SUPABASE_KEY  = 'YOUR_SUPABASE_ANON_KEY';
+
+const supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ============================================================
+// CONFIG CHECK — แสดง banner ถ้ายังไม่ได้ตั้งค่า
+// ============================================================
+function checkConfig() {
+  if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#d29922;color:#0d1117;padding:10px 20px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:12px;';
+    banner.innerHTML = '⚠️ ยังไม่ได้ตั้งค่า Supabase — แก้ไข SUPABASE_URL และ SUPABASE_KEY ในไฟล์ก่อนใช้งานจริง <span style="font-weight:400;opacity:.8;">(ตอนนี้ใช้ข้อมูล local แทน)</span>';
+    document.body.prepend(banner);
+    return false;
+  }
+  return true;
+}
+
+// ============================================================
+// DB LAYER — ฟังก์ชัน CRUD ทั้งหมด
+// ถ้า Supabase พร้อม → ดึงจาก DB
+// ถ้ายังไม่ได้ตั้งค่า → ใช้ข้อมูล local (demo mode)
+// ============================================================
+const DB = {
+  async getAll(table) {
+    if (!isConfigured()) return null;
+    const { data, error } = await supa.from(table).select('*').order('created_at', { ascending: false });
+    if (error) { console.error(table, error); return null; }
+    return data;
+  },
+  async upsert(table, data, conflictCol = 'id') {
+    if (!isConfigured()) return null;
+    const { error } = await supa.from(table).upsert(data, { onConflict: conflictCol });
+    if (error) { console.error('upsert', table, error); return false; }
+    return true;
+  },
+  async update(table, id, data) {
+    if (!isConfigured()) return null;
+    const { error } = await supa.from(table).update(data).eq('id', id);
+    if (error) { console.error('update', table, error); return false; }
+    return true;
+  },
+  async insert(table, data) {
+    if (!isConfigured()) return null;
+    const { data: result, error } = await supa.from(table).insert(data).select().single();
+    if (error) { console.error('insert', table, error); return null; }
+    return result;
+  },
+  async delete(table, id) {
+    if (!isConfigured()) return null;
+    const { error } = await supa.from(table).delete().eq('id', id);
+    if (error) { console.error('delete', table, error); return false; }
+    return true;
+  }
+};
+
+function isConfigured() {
+  return SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_KEY !== 'YOUR_SUPABASE_ANON_KEY';
+}
+
+// ============================================================
+// REALTIME — sync อัตโนมัติเมื่อมีการเปลี่ยนแปลง
+// แอดมิน 2 คนแก้ไขพร้อมกัน เห็นผลทันที
+// ============================================================
+function setupRealtime() {
+  if (!isConfigured()) return;
+  supa.channel('db-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
+      loadJobs().then(() => { renderJobs(); renderDash(); });
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_tasks' }, () => {
+      loadAdminTasks().then(() => { renderAdmin(); renderDash(); });
+    })
+    .subscribe();
+}
+
+// ============================================================
+// LOADERS — โหลดข้อมูลจาก Supabase → ใส่ตัวแปร local
+// ============================================================
+async function loadJobs() {
+  const data = await DB.getAll('jobs');
+  if (data) {
+    jobs = data.map(r => ({
+      id: r.id, client: r.client, ref: r.client_ref, branch: r.branch,
+      type: r.job_type, team: r.team, date: r.scheduled_date,
+      status: r.status, pc: r.price_client, pt: r.price_tech,
+      partC: r.parts_cost, partR: r.parts_revenue, fuel: r.fuel,
+      note: r.note, report: r.report, isNew: r.is_new, pay: r.pay_status
+    }));
+  }
+}
+
+async function loadAdminTasks() {
+  const data = await DB.getAll('admin_tasks');
+  if (data) {
+    adminTasks = data.map(r => ({
+      id: r.id, type: r.type, client: r.client, detail: r.detail,
+      assign: r.assign_to, due: r.due_date, jobId: r.job_id,
+      pri: r.priority, status: r.status
+    }));
+  }
+}
+
+async function loadClients() {
+  const data = await DB.getAll('clients');
+  if (data) clients = data.map(r => ({ id: r.id, name: r.name, contact: r.contact, phone: r.phone, payTerm: r.pay_term, credit: r.credit_limit, note: r.note }));
+}
+
+async function loadPricing() {
+  const data = await DB.getAll('pricing');
+  if (data) pricing = data.map(r => ({ id: r.id, client: r.client_name, type: r.job_type, price: r.price, note: r.note }));
+}
+
+async function loadTeams() {
+  const data = await DB.getAll('teams');
+  if (data) teams = data.map(r => ({ id: r.id, name: r.name, lead: r.lead_name, phone: r.phone, skill: r.skill, note: r.note }));
+}
+
+async function loadTeamPricing() {
+  const data = await DB.getAll('team_pricing');
+  if (data) teamPricing = data.map(r => ({ id: r.id, team: r.team_name, type: r.job_type, price: r.price, note: r.note }));
+}
+
+async function loadBranches() {
+  const data = await DB.getAll('branches');
+  if (data) branches = data.map(r => ({ id: r.id, name: r.name, client: r.client_name, mgr: r.manager, phone: r.phone, hours: r.hours, addr: r.address }));
+}
+
+async function loadSuppliers() {
+  const data = await DB.getAll('suppliers');
+  if (data) suppliers = data.map(r => ({ id: r.id, name: r.name, type: r.type, contact: r.contact, phone: r.phone, terms: r.terms, lead: r.lead_time, note: r.note }));
+}
+
+async function loadParts() {
+  const data = await DB.getAll('parts');
+  if (data) parts = data.map(r => ({ id: r.id, name: r.name, brand: r.brand, sup: r.supplier_name, cost: r.cost_price, sell: r.sell_price, note: r.note }));
+}
+
+// ============================================================
+// SAVE FUNCTIONS — บันทึกลง Supabase (override ฟังก์ชันเดิม)
+// ============================================================
+
+// Override saveJob
+const _saveJobOrig = window.saveJob;
+async function saveJob() {
+  const id = 'JOB-' + String(jCnt++).padStart(3,'0');
+  const payload = {
+    id, client: document.getElementById('fj-client').value,
+    client_ref: document.getElementById('fj-ref').value || 'N/A',
+    branch: document.getElementById('fj-branch').value || 'ไม่ระบุ',
+    job_type: document.getElementById('fj-type').value,
+    team: document.getElementById('fj-team').value,
+    scheduled_date: document.getElementById('fj-date').value,
+    status: 'รอเปิดงาน',
+    price_client: parseFloat(document.getElementById('fj-pc').value) || 0,
+    price_tech: parseFloat(document.getElementById('fj-pt').value) || 0,
+    parts_cost: 0, parts_revenue: 0, fuel: 0,
+    note: document.getElementById('fj-note').value,
+    report: '', is_new: true, pay_status: 'unpaid'
+  };
+  if (isConfigured()) {
+    await DB.insert('jobs', payload);
+    await loadJobs();
+  } else {
+    jobs.unshift({ ...payload, ref: payload.client_ref, type: payload.job_type, date: payload.scheduled_date, pc: payload.price_client, pt: payload.price_tech, partC: 0, partR: 0, isNew: true, pay: 'unpaid' });
+  }
+  closeM('m-job'); renderJobs(); renderDash(); fillSelects();
+  document.getElementById('nb-new').textContent = jobs.filter(j=>j.isNew||j.status==='รอเปิดงาน').length;
+}
+
+// Override setJS (status change)
+async function setJS(id, status) {
+  const j = jobs.find(x => x.id === id);
+  if (!j) return;
+  j.status = status;
+  if (status !== 'รอเปิดงาน') j.isNew = false;
+  if (isConfigured()) {
+    await DB.update('jobs', id, { status, is_new: j.isNew, updated_at: new Date().toISOString() });
+  }
+  renderJobs(); renderDash();
+  document.getElementById('nb-new').textContent = jobs.filter(j=>j.isNew||j.status==='รอเปิดงาน').length;
+}
+
+// Override setPay
+async function setPay(id, status) {
+  const j = jobs.find(x => x.id === id);
+  if (!j) return;
+  j.pay = status;
+  if (isConfigured()) await DB.update('jobs', id, { pay_status: status });
+  renderFin(); renderDash();
+}
+
+// Override setAS (admin task status)
+async function setAS(id, status) {
+  const t = adminTasks.find(x => x.id === id);
+  if (!t) return;
+  t.status = status;
+  if (isConfigured()) await DB.update('admin_tasks', id, { status, updated_at: new Date().toISOString() });
+  renderAdmin(); renderDash();
+  document.getElementById('nb-admin').textContent = adminTasks.filter(t=>t.status==='รอดำเนินการ'||t.status==='กำลังทำ').length;
+}
+
+// Override saveAdminTask
+async function saveAdminTask() {
+  const id = 'TASK-' + String(aCnt++).padStart(3,'0');
+  const payload = {
+    id, type: document.getElementById('fa-type').value,
+    client: document.getElementById('fa-client').value,
+    detail: document.getElementById('fa-detail').value,
+    assign_to: document.getElementById('fa-assign').value,
+    due_date: document.getElementById('fa-due').value,
+    job_id: document.getElementById('fa-job').value || null,
+    priority: document.getElementById('fa-pri').value,
+    status: 'รอดำเนินการ'
+  };
+  if (isConfigured()) {
+    await DB.insert('admin_tasks', payload);
+    await loadAdminTasks();
+  } else {
+    adminTasks.unshift({ ...payload, assign: payload.assign_to, due: payload.due_date, jobId: payload.job_id, pri: payload.priority });
+  }
+  closeM('m-admin'); renderAdmin(); renderDash();
+  document.getElementById('nb-admin').textContent = adminTasks.filter(t=>t.status==='รอดำเนินการ'||t.status==='กำลังทำ').length;
+}
+
+// Override savePricing
+async function savePricing() {
+  const cl = document.getElementById('fp-client').value;
+  const tp = document.getElementById('fp-type').value;
+  const pr = parseFloat(document.getElementById('fp-price').value) || 0;
+  const nt = document.getElementById('fp-note').value;
+  if (isConfigured()) {
+    await supa.from('pricing').upsert({ client_name: cl, job_type: tp, price: pr, note: nt, updated_at: new Date().toISOString() }, { onConflict: 'client_name,job_type' });
+    await loadPricing();
+  } else {
+    const ex = pricing.find(p=>p.client===cl&&p.type===tp);
+    if (ex) { ex.price=pr; ex.note=nt; } else { pricing.push({client:cl,type:tp,price:pr,note:nt}); }
+  }
+  closeM('m-pricing'); renderPricing();
+}
+
+// Override saveTeamPricing
+async function saveTeamPricing() {
+  const tm = document.getElementById('ftp-team').value;
+  const tp = document.getElementById('ftp-type').value;
+  const pr = parseFloat(document.getElementById('ftp-price').value) || 0;
+  const nt = document.getElementById('ftp-note').value;
+  if (isConfigured()) {
+    await supa.from('team_pricing').upsert({ team_name: tm, job_type: tp, price: pr, note: nt, updated_at: new Date().toISOString() }, { onConflict: 'team_name,job_type' });
+    await loadTeamPricing();
+  } else {
+    const ex = teamPricing.find(p=>p.team===tm&&p.type===tp);
+    if (ex) { ex.price=pr; ex.note=nt; } else { teamPricing.push({team:tm,type:tp,price:pr,note:nt}); }
+  }
+  closeM('m-team-pricing'); renderTeamPricing();
+}
+
+// Override saveClient
+async function saveClient() {
+  const payload = { id: document.getElementById('fc-id').value, name: document.getElementById('fc-name').value, contact: document.getElementById('fc-contact').value, phone: document.getElementById('fc-phone').value, pay_term: document.getElementById('fc-pay').value, credit_limit: parseFloat(document.getElementById('fc-credit').value)||0, note: document.getElementById('fc-note').value };
+  if (isConfigured()) { await DB.insert('clients', payload); await loadClients(); }
+  else clients.push({ id: payload.id, name: payload.name, contact: payload.contact, phone: payload.phone, payTerm: payload.pay_term, credit: payload.credit_limit, note: payload.note });
+  closeM('m-client'); renderClients();
+}
+
+// Override saveTeam
+async function saveTeam() {
+  const payload = { name: document.getElementById('ft-name').value, lead_name: document.getElementById('ft-lead').value, phone: document.getElementById('ft-phone').value, skill: document.getElementById('ft-skill').value, note: document.getElementById('ft-note').value };
+  if (isConfigured()) { await DB.insert('teams', payload); await loadTeams(); }
+  else teams.push({ name: payload.name, lead: payload.lead_name, phone: payload.phone, skill: payload.skill, note: payload.note });
+  closeM('m-team'); renderTeams();
+}
+
+// Override saveBranch
+async function saveBranch() {
+  const payload = { id: document.getElementById('fb-id').value, name: document.getElementById('fb-name').value, client_name: document.getElementById('fb-client').value, manager: document.getElementById('fb-mgr').value, phone: document.getElementById('fb-phone').value, hours: document.getElementById('fb-hours').value, address: document.getElementById('fb-addr').value };
+  if (isConfigured()) { await DB.insert('branches', payload); await loadBranches(); }
+  else branches.push({ id: payload.id, name: payload.name, client: payload.client_name, mgr: payload.manager, phone: payload.phone, hours: payload.hours, addr: payload.address });
+  closeM('m-branch'); renderBranches();
+}
+
+// Override saveSupplier
+async function saveSupplier() {
+  const payload = { name: document.getElementById('fs-name').value, type: document.getElementById('fs-type').value, contact: document.getElementById('fs-contact').value, phone: document.getElementById('fs-phone').value, terms: document.getElementById('fs-terms').value, lead_time: document.getElementById('fs-lead').value, note: document.getElementById('fs-note').value };
+  if (isConfigured()) { await DB.insert('suppliers', payload); await loadSuppliers(); }
+  else suppliers.push({ name: payload.name, type: payload.type, contact: payload.contact, phone: payload.phone, terms: payload.terms, lead: payload.lead_time, note: payload.note });
+  closeM('m-supplier'); renderSuppliers();
+}
+
+// Override savePart
+async function savePart() {
+  const payload = { name: document.getElementById('fpa-name').value, brand: document.getElementById('fpa-brand').value, supplier_name: document.getElementById('fpa-sup').value, cost_price: parseFloat(document.getElementById('fpa-cost').value)||0, sell_price: parseFloat(document.getElementById('fpa-sell').value)||0, note: document.getElementById('fpa-note').value };
+  if (isConfigured()) { await DB.insert('parts', payload); await loadParts(); }
+  else parts.push({ name: payload.name, brand: payload.brand, sup: payload.supplier_name, cost: payload.cost_price, sell: payload.sell_price, note: payload.note });
+  closeM('m-part'); renderParts();
+}
+
+// Override delPricing
+async function delPricing(i) {
+  if (!confirm('ลบราคากลางนี้?')) return;
+  if (isConfigured() && pricing[i]?.id) { await DB.delete('pricing', pricing[i].id); await loadPricing(); }
+  else pricing.splice(i, 1);
+  renderPricing();
+}
+
+// Override delTP
+async function delTP(i) {
+  if (!confirm('ลบราคานี้?')) return;
+  if (isConfigured() && teamPricing[i]?.id) { await DB.delete('team_pricing', teamPricing[i].id); await loadTeamPricing(); }
+  else teamPricing.splice(i, 1);
+  renderTeamPricing();
+}
+
+// ============================================================
+// INIT — โหลดข้อมูลทั้งหมดก่อน render
+// ============================================================
+async function initApp() {
+  checkConfig();
+  // โหลดข้อมูลทั้งหมดจาก Supabase (ถ้าตั้งค่าแล้ว)
+  if (isConfigured()) {
+    showLoading(true);
+    await Promise.all([
+      loadJobs(), loadAdminTasks(), loadClients(), loadPricing(),
+      loadTeams(), loadTeamPricing(), loadBranches(), loadSuppliers(), loadParts()
+    ]);
+    showLoading(false);
+    setupRealtime();
+  }
+  renderDash();
+  fillSelects();
+  renderLPHist();
+}
+
+function showLoading(show) {
+  let el = document.getElementById('global-loading');
+  if (show && !el) {
+    el = document.createElement('div');
+    el.id = 'global-loading';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(13,17,23,.85);z-index:9998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;';
+    el.innerHTML = '<div style="width:36px;height:36px;border:3px solid #30363d;border-top-color:#58a6ff;border-radius:50%;animation:spin .7s linear infinite;"></div><div style="color:#8b949e;font-size:13px;">กำลังโหลดข้อมูลจาก Supabase...</div>';
+    document.body.appendChild(el);
+  } else if (!show && el) el.remove();
+}
+
 // DATA
 const J_ST = ['รอเปิดงาน','รอจัดช่าง','จัดช่างแล้ว','ช่างออกงาน','รออะไหล่','เสร็จงาน','ปิดงาน','ติดปัญหา','Reject'];
 const A_ST = ['รอดำเนินการ','กำลังทำ','รอลูกค้า','เสร็จแล้ว','ติดปัญหา','Reject'];
