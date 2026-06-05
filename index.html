@@ -11,7 +11,13 @@
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;}
 .app{display:flex;min-height:100vh;}
 .sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
-.main{flex:1;overflow-x:hidden;}
+.main{flex:1;overflow-x:hidden;min-width:0;}
+.mobile-topbar{display:none;position:sticky;top:0;z-index:900;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 12px;align-items:center;gap:10px;}
+.hamburger{width:38px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:20px;cursor:pointer;}
+.mobile-title{font-weight:700;font-size:14px;line-height:1.1;}
+.mobile-sub{font-size:10px;color:var(--text3);margin-top:2px;}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1090;}
+.sidebar-backdrop.open{display:block;}
 .logo{padding:20px 18px 16px;border-bottom:1px solid var(--border);}
 .logo-text{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;}
 .logo-sub{font-size:11px;color:var(--text3);margin-top:3px;}
@@ -156,10 +162,48 @@ select option{background:var(--surface2);}
 .mono{font-family:var(--mono);}.fw7{font-weight:700;}
 .mb12{margin-bottom:12px;}.mb16{margin-bottom:16px;}.mb20{margin-bottom:20px;}
 .flex{display:flex;align-items:center;}.g6{gap:6px;}.g8{gap:8px;}.g12{gap:12px;}
-@media(max-width:768px){.sidebar{display:none;}.stats-row{grid-template-columns:1fr 1fr;}.form-row{grid-template-columns:1fr;}.detail-grid{grid-template-columns:1fr;}.fin-grid{grid-template-columns:1fr;}.dash-grid{grid-template-columns:1fr;}}
+@media(max-width:768px){
+  body{font-size:13px;}
+  .app{display:block;min-height:100vh;}
+  .mobile-topbar{display:flex;}
+  .sidebar{display:flex;position:fixed;left:0;top:0;bottom:0;width:min(82vw,300px);min-width:0;height:100vh;z-index:1100;transform:translateX(-105%);transition:transform .2s ease;box-shadow:18px 0 40px rgba(0,0,0,.45);}
+  .sidebar.open{transform:translateX(0);}
+  .main{width:100%;overflow-x:hidden;}
+  .page-header{padding:14px 14px 12px;gap:10px;align-items:flex-start;}
+  .page-header .btn,.page-header select{flex-shrink:0;}
+  .page-title{font-size:16px;}
+  .page-sub{font-size:11px;}
+  .content{padding:14px;}
+  .stats-row{grid-template-columns:1fr 1fr;gap:10px;}
+  .stat-card{padding:12px;}
+  .stat-value{font-size:19px;}
+  .form-row{grid-template-columns:1fr;}
+  .detail-grid{grid-template-columns:1fr;}
+  .fin-grid{grid-template-columns:1fr!important;}
+  .dash-grid{grid-template-columns:1fr;}
+  .filter-bar{padding:10px 14px;gap:6px;overflow-x:auto;flex-wrap:nowrap;align-items:center;}
+  .filter-tab,.filter-bar .btn{white-space:nowrap;flex:0 0 auto;}
+  .filter-label{white-space:nowrap;margin-left:4px;flex:0 0 auto;}
+  .filter-input{min-width:132px;flex:0 0 132px;}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;}
+  table{min-width:760px;}
+  th,td{padding:8px 10px;font-size:12px;white-space:nowrap;}
+  .table-header{position:sticky;left:0;min-width:100%;gap:8px;padding:10px 12px;}
+  .table-title{font-size:13px;}
+  .modal{width:calc(100vw - 20px);max-height:88vh;border-radius:10px;}
+  .modal-header,.modal-body,.modal-footer{padding-left:14px;padding-right:14px;}
+  .modal-footer{position:sticky;bottom:0;background:var(--surface);flex-wrap:wrap;}
+  .select-tools,.combo-row{align-items:stretch;}
+  .select-tools .btn,.combo-row .btn{padding-left:10px;padding-right:10px;}
+}
 </style>
 </head>
 <body>
+<div class="mobile-topbar">
+  <button class="hamburger" onclick="toggleSidebar()" aria-label="เปิดเมนู">☰</button>
+  <div><div class="mobile-title">SVC ADMIN</div><div class="mobile-sub">ระบบจัดการงานช่าง</div></div>
+</div>
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
 <div class="app">
 <aside class="sidebar">
   <div class="logo"><div class="logo-text">SVC ADMIN</div><div class="logo-sub">ระบบจัดการงานช่าง</div></div>
@@ -591,7 +635,7 @@ select option{background:var(--surface2);}
         <button class="btn btn-primary" onclick="addListItem()" type="button">+ เพิ่ม</button>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-list-manager')">ปิด</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-list-manager')">ยกเลิก</button><button class="btn btn-primary" onclick="commitListManager()">✓ Save</button></div>
   </div>
 </div>
 
@@ -668,6 +712,7 @@ let payStatuses=['รอเก็บเงิน','เก็บแล้ว','�
 let prValues=[];
 let fixedExpenses=[{name:'ค่าเช่าสำนักงาน',type:'Fixed',amount:8000,date:'1 มิ.ย.',note:''},{name:'ค่า Internet + โทรศัพท์',type:'Fixed',amount:1500,date:'1 มิ.ย.',note:''}];
 let editClientIndex='', editTeamIndex='', editBranchIndex='', editSupplierIndex='', editPartIndex='';
+let listDraft=[];
 
 const gp = j => (j.pc - j.pt) + (j.partR - j.partC) - j.fuel;
 const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -742,6 +787,16 @@ function goTo(id, el){
   else { const b=document.querySelector('[data-page="'+id+'"]'); if(b) b.classList.add('active'); }
   const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, finance:renderFin, 'tech-pay':renderTP, documents:renderDocs, 'ai-reader':fillSelects, 'line-parser':fillSelects, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':renderSuppliers};
   if(m[id]) m[id]();
+  closeSidebar();
+}
+
+function toggleSidebar(){
+  document.querySelector('.sidebar')?.classList.toggle('open');
+  document.getElementById('sidebar-backdrop')?.classList.toggle('open');
+}
+function closeSidebar(){
+  document.querySelector('.sidebar')?.classList.remove('open');
+  document.getElementById('sidebar-backdrop')?.classList.remove('open');
 }
 
 // FILTER BUILDER
@@ -815,13 +870,12 @@ function openListManager(key){
   document.getElementById('lm-key').value=key;
   document.getElementById('lm-title').textContent='จัดการ '+r.title;
   document.getElementById('lm-new').value='';
+  listDraft=[...r.get()];
   renderListManager();
   openM('m-list-manager');
 }
 function renderListManager(){
-  const key=document.getElementById('lm-key').value,r=listRef(key);if(!r)return;
-  const items=r.get();
-  document.getElementById('lm-list').innerHTML=items.map((v,i)=>`<div class="list-editor-row"><input value="${esc(v)}" onchange="renameListItem(${i},this.value)"><button class="btn btn-ghost btn-sm" onclick="moveListItem(${i},-1)" type="button">↑</button><button class="btn btn-danger btn-sm" onclick="deleteListItem(${i})" type="button">ลบ</button></div>`).join('')||'<div class="tm">ยังไม่มีรายการ</div>';
+  document.getElementById('lm-list').innerHTML=listDraft.map((v,i)=>`<div class="list-editor-row"><input value="${esc(v)}" onchange="renameListItem(${i},this.value)"><button class="btn btn-ghost btn-sm" onclick="moveListItem(${i},-1)" type="button">↑</button><button class="btn btn-danger btn-sm" onclick="deleteListItem(${i})" type="button">ลบ</button></div>`).join('')||'<div class="tm">ยังไม่มีรายการ</div>';
 }
 function saveList(key,items){
   const r=listRef(key);if(!r)return;
@@ -833,10 +887,11 @@ function saveList(key,items){
   if(key==='clients')renderClients();
   if(key==='teams')renderTeams();
 }
-function renameListItem(i,v){const key=document.getElementById('lm-key').value,r=listRef(key),items=r.get();items[i]=v;saveList(key,items);renderListManager();}
-function deleteListItem(i){const key=document.getElementById('lm-key').value,r=listRef(key),items=r.get();items.splice(i,1);saveList(key,items);renderListManager();}
-function moveListItem(i,d){const key=document.getElementById('lm-key').value,r=listRef(key),items=r.get(),j=i+d;if(j<0||j>=items.length)return;[items[i],items[j]]=[items[j],items[i]];saveList(key,items);renderListManager();}
-function addListItem(){const key=document.getElementById('lm-key').value,v=document.getElementById('lm-new').value.trim(),r=listRef(key);if(!v||!r)return;saveList(key,[...r.get(),v]);document.getElementById('lm-new').value='';renderListManager();}
+function renameListItem(i,v){listDraft[i]=v;renderListManager();}
+function deleteListItem(i){listDraft.splice(i,1);renderListManager();}
+function moveListItem(i,d){const j=i+d;if(j<0||j>=listDraft.length)return;[listDraft[i],listDraft[j]]=[listDraft[j],listDraft[i]];renderListManager();}
+function addListItem(){const v=document.getElementById('lm-new').value.trim();if(!v)return;listDraft.push(v);document.getElementById('lm-new').value='';renderListManager();}
+function commitListManager(){const key=document.getElementById('lm-key').value;saveList(key,listDraft);closeM('m-list-manager');}
 
 // DASHBOARD
 function renderDash(){
@@ -1143,10 +1198,10 @@ function renderPricing() {
 }
 function openAddPricing(clientName) {document.getElementById('fp-client').value = clientName;document.getElementById('fp-price').value='';document.getElementById('fp-note').value='';openM('m-pricing');}
 function editPricing(i) {const p = pricing[i];document.getElementById('fp-client').value = p.client;document.getElementById('fp-type').value = p.type;document.getElementById('fp-price').value = p.price;document.getElementById('fp-note').value = p.note;openM('m-pricing');}
-function savePricing() {const cl=document.getElementById('fp-client').value,tp=document.getElementById('fp-type').value,pr=parseFloat(document.getElementById('fp-price').value)||0,nt=document.getElementById('fp-note').value;const ex=pricing.find(p=>p.client===cl&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{pricing.push({client:cl,type:tp,price:pr,note:nt});}closeM('m-pricing');renderPricing();}
-function delPricing(i){if(confirm('ลบราคากลางนี้?')){pricing.splice(i,1);renderPricing();}}
-function saveClient(){const data={id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value};if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;closeM('m-client');renderClients();fillSelects();}
-function delClient(i){if(confirm('ลบลูกค้านี้?')){clients.splice(i,1);renderClients();fillSelects();}}
+function savePricing() {const cl=document.getElementById('fp-client').value,tp=document.getElementById('fp-type').value,pr=parseFloat(document.getElementById('fp-price').value)||0,nt=document.getElementById('fp-note').value;const ex=pricing.find(p=>p.client===cl&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{pricing.push({client:cl,type:tp,price:pr,note:nt});}closeM('m-pricing');renderPricing();saveState();}
+function delPricing(i){if(confirm('ลบราคากลางนี้?')){pricing.splice(i,1);renderPricing();saveState();}}
+function saveClient(){const data={id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value};if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;closeM('m-client');renderClients();fillSelects();saveState();}
+function delClient(i){if(confirm('ลบลูกค้านี้?')){clients.splice(i,1);renderClients();fillSelects();saveState();}}
 
 function renderTeams() {
   fillSelects();
@@ -1155,22 +1210,22 @@ function renderTeams() {
 }
 function renderTeamPricing(){const f=document.getElementById('team-filter')?.value||'';const fil=f?teamPricing.filter(p=>p.team===f):teamPricing;document.getElementById('team-price-tbody').innerHTML=fil.map(p=>{const i=teamPricing.indexOf(p);return `<tr><td>${esc(p.team)}</td><td><span class="chip">${esc(p.type)}</span></td><td class="mono fw7 tg">฿${p.price.toLocaleString()}</td><td class="tm" style="font-size:12px;">${esc(p.note||'-')}</td>${actionCell('tpm',i,`<button onclick="alert(detailText(teamPricing[${i}]))">ดูดีเทล</button><button onclick="editTP(${i})">แก้ไข</button><button onclick="delTP(${i})">ลบ</button>`)}</tr>`;}).join('');}
 function editTP(i){const p=teamPricing[i];document.getElementById('ftp-team').value=p.team;document.getElementById('ftp-type').value=p.type;document.getElementById('ftp-price').value=p.price;document.getElementById('ftp-note').value=p.note;openM('m-team-pricing');}
-function saveTeamPricing(){const tm=document.getElementById('ftp-team').value,tp=document.getElementById('ftp-type').value,pr=parseFloat(document.getElementById('ftp-price').value)||0,nt=document.getElementById('ftp-note').value;const ex=teamPricing.find(p=>p.team===tm&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{teamPricing.push({team:tm,type:tp,price:pr,note:nt});}closeM('m-team-pricing');renderTeamPricing();}
-function delTP(i){if(confirm('ลบราคานี้?')){teamPricing.splice(i,1);renderTeamPricing();}}
-function saveTeam(){const data={name:document.getElementById('ft-name').value,lead:document.getElementById('ft-lead').value,phone:document.getElementById('ft-phone').value,skill:document.getElementById('ft-skill').value,note:document.getElementById('ft-note').value};if(editTeamIndex==='')teams.push(data);else teams[+editTeamIndex]=data;closeM('m-team');renderTeams();fillSelects();}
-function delTeam(i){if(confirm('ลบทีมนี้?')){teams.splice(i,1);renderTeams();fillSelects();}}
+function saveTeamPricing(){const tm=document.getElementById('ftp-team').value,tp=document.getElementById('ftp-type').value,pr=parseFloat(document.getElementById('ftp-price').value)||0,nt=document.getElementById('ftp-note').value;const ex=teamPricing.find(p=>p.team===tm&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{teamPricing.push({team:tm,type:tp,price:pr,note:nt});}closeM('m-team-pricing');renderTeamPricing();saveState();}
+function delTP(i){if(confirm('ลบราคานี้?')){teamPricing.splice(i,1);renderTeamPricing();saveState();}}
+function saveTeam(){const data={name:document.getElementById('ft-name').value,lead:document.getElementById('ft-lead').value,phone:document.getElementById('ft-phone').value,skill:document.getElementById('ft-skill').value,note:document.getElementById('ft-note').value};if(editTeamIndex==='')teams.push(data);else teams[+editTeamIndex]=data;closeM('m-team');renderTeams();fillSelects();saveState();}
+function delTeam(i){if(confirm('ลบทีมนี้?')){teams.splice(i,1);renderTeams();fillSelects();saveState();}}
 
 function renderBranches(){fillSelects();const q=document.getElementById('branch-search')?.value?.toLowerCase()||'';const cf=document.getElementById('branch-cl-filter')?.value||'';let fil=branches;if(q)fil=fil.filter(b=>b.name.toLowerCase().includes(q)||b.id.toLowerCase().includes(q));if(cf)fil=fil.filter(b=>b.client===cf);document.getElementById('branch-cnt').textContent=fil.length+' สาขา';document.getElementById('branch-tbody').innerHTML=fil.map(b=>{const i=branches.indexOf(b);return `<tr><td class="mono ta" style="font-size:11px;">${esc(b.id)}</td><td style="font-weight:600;">${esc(b.name)}</td><td>${esc(b.client)}</td><td class="tm" style="font-size:11px;max-width:160px;">${esc(b.addr)}</td><td>${esc(b.mgr)}</td><td class="mono" style="font-size:11px;">${esc(b.phone)}</td><td class="tm" style="font-size:11px;">${esc(b.hours)}</td>${actionCell('brm',i,`<button onclick="alert(detailText(branches[${i}]))">ดูดีเทล</button><button onclick="openBranchModal(${i})">แก้ไข</button><button onclick="delBranch(${i})">ลบ</button>`)}</tr>`;}).join('');}
-function saveBranch(){const data={id:document.getElementById('fb-id').value,name:document.getElementById('fb-name').value,client:document.getElementById('fb-client').value,mgr:document.getElementById('fb-mgr').value,phone:document.getElementById('fb-phone').value,hours:document.getElementById('fb-hours').value,addr:document.getElementById('fb-addr').value};if(editBranchIndex==='')branches.push(data);else branches[+editBranchIndex]=data;closeM('m-branch');renderBranches();}
-function delBranch(i){if(confirm('ลบสาขานี้?')){branches.splice(i,1);renderBranches();}}
+function saveBranch(){const data={id:document.getElementById('fb-id').value,name:document.getElementById('fb-name').value,client:document.getElementById('fb-client').value,mgr:document.getElementById('fb-mgr').value,phone:document.getElementById('fb-phone').value,hours:document.getElementById('fb-hours').value,addr:document.getElementById('fb-addr').value};if(editBranchIndex==='')branches.push(data);else branches[+editBranchIndex]=data;closeM('m-branch');renderBranches();saveState();}
+function delBranch(i){if(confirm('ลบสาขานี้?')){branches.splice(i,1);renderBranches();saveState();}}
 
 function renderSuppliers(){document.getElementById('sup-tbody').innerHTML=suppliers.map((x,i)=>`<tr><td style="font-weight:600;">${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td>${esc(x.contact)}</td><td class="mono" style="font-size:12px;">${esc(x.phone)}</td><td style="font-size:12px;">${esc(x.terms)}</td><td class="tm" style="font-size:12px;">${esc(x.note||'-')}</td>${actionCell('spm',i,`<button onclick="alert(detailText(suppliers[${i}]))">ดูดีเทล</button><button onclick="openSupplierModal(${i})">แก้ไข</button><button onclick="delSupplier(${i})">ลบ</button>`)}</tr>`).join('');const supOpts=suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');const fpaS=document.getElementById('fpa-sup');if(fpaS)fpaS.innerHTML=supOpts;renderParts();}
 function renderParts(){const q=document.getElementById('part-search')?.value?.toLowerCase()||'';const fil=q?parts.filter(p=>p.name.toLowerCase().includes(q)||p.brand.toLowerCase().includes(q)):parts;document.getElementById('part-tbody').innerHTML=fil.map(x=>{const i=parts.indexOf(x),m=x.sell>0?Math.round((x.sell-x.cost)/x.sell*100):0;return `<tr><td style="font-weight:600;">${esc(x.name)}</td><td class="tm" style="font-size:12px;">${esc(x.brand||'-')}</td><td style="font-size:12px;">${esc(x.sup)}</td><td class="mono tr">฿${x.cost.toLocaleString()}</td><td class="mono tg">฿${x.sell.toLocaleString()}</td><td class="mono fw7" style="color:${m>=30?'var(--green)':m>=15?'var(--yellow)':'var(--red)'};">${m}%</td><td class="tm" style="font-size:12px;">${esc(x.note||'-')}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');}
 function calcPartMargin(){const c=parseFloat(document.getElementById('fpa-cost').value)||0,s=parseFloat(document.getElementById('fpa-sell').value)||0;if(s>0){const m=Math.round((s-c)/s*100);document.getElementById('fpa-margin').value=m+'% (฿'+(s-c).toLocaleString()+')';}}
-function savePart(){const data={name:document.getElementById('fpa-name').value,brand:document.getElementById('fpa-brand').value,sup:document.getElementById('fpa-sup').value,cost:parseFloat(document.getElementById('fpa-cost').value)||0,sell:parseFloat(document.getElementById('fpa-sell').value)||0,note:document.getElementById('fpa-note').value};if(editPartIndex==='')parts.push(data);else parts[+editPartIndex]=data;closeM('m-part');renderParts();}
-function delPart(i){if(confirm('ลบอะไหล่นี้?')){parts.splice(i,1);renderParts();}}
-function saveSupplier(){const data={name:document.getElementById('fs-name').value,type:document.getElementById('fs-type').value,contact:document.getElementById('fs-contact').value,phone:document.getElementById('fs-phone').value,terms:document.getElementById('fs-terms').value,lead:document.getElementById('fs-lead').value,note:document.getElementById('fs-note').value};if(editSupplierIndex==='')suppliers.push(data);else suppliers[+editSupplierIndex]=data;closeM('m-supplier');renderSuppliers();}
-function delSupplier(i){if(confirm('ลบซัพพลายเออร์นี้?')){suppliers.splice(i,1);renderSuppliers();}}
+function savePart(){const data={name:document.getElementById('fpa-name').value,brand:document.getElementById('fpa-brand').value,sup:document.getElementById('fpa-sup').value,cost:parseFloat(document.getElementById('fpa-cost').value)||0,sell:parseFloat(document.getElementById('fpa-sell').value)||0,note:document.getElementById('fpa-note').value};if(editPartIndex==='')parts.push(data);else parts[+editPartIndex]=data;closeM('m-part');renderParts();saveState();}
+function delPart(i){if(confirm('ลบอะไหล่นี้?')){parts.splice(i,1);renderParts();saveState();}}
+function saveSupplier(){const data={name:document.getElementById('fs-name').value,type:document.getElementById('fs-type').value,contact:document.getElementById('fs-contact').value,phone:document.getElementById('fs-phone').value,terms:document.getElementById('fs-terms').value,lead:document.getElementById('fs-lead').value,note:document.getElementById('fs-note').value};if(editSupplierIndex==='')suppliers.push(data);else suppliers[+editSupplierIndex]=data;closeM('m-supplier');renderSuppliers();saveState();}
+function delSupplier(i){if(confirm('ลบซัพพลายเออร์นี้?')){suppliers.splice(i,1);renderSuppliers();saveState();}}
 
 // INIT
 async function initApp(){
