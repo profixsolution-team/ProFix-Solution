@@ -360,7 +360,7 @@ function toggleNoParts(){
   else { ta.disabled=false; ta.style.opacity='1'; }
 }
 
-function compressImage(file, maxW=1600, quality=0.75){
+function compressImage(file, maxW=1100, quality=0.68){
   return new Promise((resolve, reject)=>{
     const img = new Image();
     const reader = new FileReader();
@@ -449,8 +449,17 @@ async function submitJob(){
     for(const cat of ['before','during','after']){
       for(const p of photos[cat]){
         document.getElementById('upload-detail').textContent = `อัปโหลดรูป ${done+1}/${total}`;
-        const url = await uploadPhoto(p.compressed, cat, done);
-        uploadedImages.push({ category:cat, url });
+        const uploaded = await uploadPhoto(p.compressed, cat, done, p);
+        uploadedImages.push({
+          id: p.id,
+          category: cat,
+          label: CAT_LABEL[cat],
+          url: uploaded.url,
+          name: p.file?.name || `${cat}_${done+1}.jpg`,
+          size: p.compressed?.size || p.file?.size || 0,
+          uploadedAt: new Date().toISOString(),
+          storage: uploaded.storage
+        });
         done++;
       }
     }
@@ -496,11 +505,11 @@ async function submitJob(){
   }
 }
 
-async function uploadPhoto(blob, category, index){
+async function uploadPhoto(blob, category, index, photo){
   // ถ้ายังไม่ได้ตั้ง Worker → demo mode (ไม่อัปจริง)
   if(!UPLOAD_ENDPOINT.startsWith('http')){
     await new Promise(r=>setTimeout(r,300)); // จำลองดีเลย์
-    return 'demo://'+JOB_ID+'/'+category+'/'+index+'.jpg';
+    return { url: photo?.dataUrl || '', storage:'app_state_demo' };
   }
   const fd = new FormData();
   fd.append('file', blob, `${category}_${index}.jpg`);
@@ -510,7 +519,7 @@ async function uploadPhoto(blob, category, index){
   const res = await fetch(UPLOAD_ENDPOINT, { method:'POST', body:fd });
   if(!res.ok) throw new Error('อัปโหลดรูปไม่สำเร็จ');
   const data = await res.json();
-  return data.url || data.fileUrl || '';
+  return { url: data.url || data.fileUrl || '', storage:'external' };
 }
 
 async function notifyLine(report, counts){
