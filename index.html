@@ -636,8 +636,8 @@ select option{background:var(--surface2);}
             <th>ประเภทงาน</th>
             <th>ทีมช่าง</th>
             <th>วันแจ้งซ่อม</th>
-            <th>วันเข้าซ่อม</th>
-            <th>วันเสร็จ</th>
+            <th>เข้าจริง</th>
+            <th>เสร็จงาน</th>
             <th>ผู้รับผิดชอบ</th>
             <th>สถานะ</th>
             <th>รายงาน</th>
@@ -1455,6 +1455,10 @@ function applyRptSearch(){
   rptSearch=el?el.value.trim():rptSearch;
   renderReports();
 }
+function formatDateTime(d,t){
+  if(!d&&!t)return '—';
+  return `${d||'—'}${t?` ${t}`:''}`;
+}
 function renderReports(){
   const scoped=jobs.filter(j=>inDateScope(j,'rpt'));
   const cnts={};
@@ -1478,11 +1482,11 @@ function renderReports(){
       <td><span class="chip">${j.type}</span></td>
       <td style="font-size:12px;">${j.team}</td>
       <td class="tm" style="font-size:11px;">${j.date||'—'}</td>
-      <td class="tm" style="font-size:11px;">${j.dateIn||'—'}</td>
-      <td class="tm" style="font-size:11px;">${j.dateDone||'—'}</td>
+      <td class="tm" style="font-size:11px;">${formatDateTime(j.dateIn,j.timeIn)}</td>
+      <td class="tm" style="font-size:11px;">${formatDateTime(j.dateDone,j.timeDone)}</td>
       <td style="font-size:12px;">${j.pic||'—'}</td>
       <td><span class="badge ${SB[j.status]||'b-wait'}">${j.status}</span></td>
-      <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);">${hasReport?(j.symptom||j.report||'').substring(0,50):'<span style="color:var(--text3);">ยังไม่มีรายงาน</span>'}</td>
+      <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);">${hasReport?(j.symptom||j.technicianReport?.symptom||j.report||'').substring(0,60):'<span style="color:var(--text3);">ยังไม่มีรายงาน</span>'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openReportModal('${j.id}')">${hasReport?'แก้ไข':'+ กรอก'}</button></td>
     </tr>`;
   }).join('');
@@ -1500,12 +1504,17 @@ function openReportModal(id){
     <div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${j.team}</div></div>
     <div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[j.status]||'b-wait'}">${j.status}</span></div></div>
     <div class="detail-item"><div class="detail-label">วันแจ้งซ่อม</div><div class="detail-val">${j.date||'—'}</div></div>
-    <div class="detail-item"><div class="detail-label">Ref ลูกค้า</div><div class="detail-val mono">${j.ref||'—'}</div></div>`;
-  document.getElementById('mrpt-date-in').value=j.dateIn||'';
-  document.getElementById('mrpt-date-done').value=j.dateDone||'';
-  document.getElementById('mrpt-symptom').value=j.symptom||j.note||'';
-  document.getElementById('mrpt-fix').value=j.fix||j.report||'';
-  document.getElementById('mrpt-note2').value=j.note2||'';
+    <div class="detail-item"><div class="detail-label">Ref ลูกค้า</div><div class="detail-val mono">${j.ref||'—'}</div></div>
+    <div class="detail-item"><div class="detail-label">ช่างส่งเมื่อ</div><div class="detail-val">${j.techSubmittedAt?new Date(j.techSubmittedAt).toLocaleString('th-TH'):'—'}</div></div>`;
+  const tr=j.technicianReport||{};
+  document.getElementById('mrpt-date-in').value=j.dateIn||tr.dateIn||'';
+  document.getElementById('mrpt-time-in').value=j.timeIn||tr.timeIn||'';
+  document.getElementById('mrpt-date-done').value=j.dateDone||tr.dateDone||'';
+  document.getElementById('mrpt-time-done').value=j.timeDone||tr.timeDone||'';
+  document.getElementById('mrpt-symptom').value=j.symptom||tr.symptom||j.note||'';
+  document.getElementById('mrpt-fix').value=j.fix||tr.fix||j.report||'';
+  document.getElementById('mrpt-parts').value=j.partsUsed||tr.parts||'';
+  document.getElementById('mrpt-note2').value=j.note2||tr.note||'';
   const picSel=document.getElementById('mrpt-pic');
   picSel.innerHTML=['— ไม่ระบุ —',...(adminNames||[])].map(a=>`<option${a===j.pic?' selected':''}>${a}</option>`).join('');
   openM('m-report');
@@ -1514,15 +1523,21 @@ async function saveReport(){
   const id=document.getElementById('mrpt-jobid').value;
   const j=jobs.find(x=>x.id===id);if(!j)return;
   j.dateIn=document.getElementById('mrpt-date-in').value;
+  j.timeIn=document.getElementById('mrpt-time-in').value;
   j.dateDone=document.getElementById('mrpt-date-done').value;
+  j.timeDone=document.getElementById('mrpt-time-done').value;
   j.pic=document.getElementById('mrpt-pic').value;
   j.symptom=document.getElementById('mrpt-symptom').value;
   j.fix=document.getElementById('mrpt-fix').value;
+  j.partsUsed=document.getElementById('mrpt-parts').value;
   j.note2=document.getElementById('mrpt-note2').value;
   j.report=j.fix;
-  if(supa){await DB.update('jobs',id,{date_in:j.dateIn||null,date_done:j.dateDone||null,pic:j.pic,symptom:j.symptom,fix:j.fix,note2:j.note2,report:j.report});}
+  j.technicianReport={...(j.technicianReport||{}),dateIn:j.dateIn,timeIn:j.timeIn,dateDone:j.dateDone,timeDone:j.timeDone,symptom:j.symptom,fix:j.fix,parts:j.partsUsed,note:j.note2,reviewedAt:new Date().toISOString()};
   closeM('m-report');
   renderReports();
+  renderJobs();
+  renderDash();
+  saveState();
 }
 
 function clearRptFilter(){rptSearch='';rptDateFilter='';rptMonthFilter='';rptFilter='ทั้งหมด';renderReports();}
@@ -1562,8 +1577,18 @@ initApp();
             <input type="date" id="mrpt-date-in" onclick="openDatePicker(this)" onfocus="openDatePicker(this)">
           </div>
           <div class="form-group">
+            <label>เวลาเข้าจริง</label>
+            <input type="time" id="mrpt-time-in" step="300">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
             <label>วันที่เสร็จงาน</label>
             <input type="date" id="mrpt-date-done" onclick="openDatePicker(this)" onfocus="openDatePicker(this)">
+          </div>
+          <div class="form-group">
+            <label>เวลาเสร็จงาน</label>
+            <input type="time" id="mrpt-time-done" step="300">
           </div>
         </div>
         <div class="form-group">
@@ -1577,6 +1602,10 @@ initApp();
         <div class="form-group">
           <label>การแก้ไข / วิธีซ่อม</label>
           <textarea id="mrpt-fix" placeholder="เช่น เติมน้ำยา R22 จำนวน 2 ปอนด์ เปลี่ยนแผงคอยล์..." style="min-height:70px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>อะไหล่ที่ใช้</label>
+          <textarea id="mrpt-parts" placeholder="เช่น น้ำยา R22 x2, แผงคอยล์เย็น x1 หรือ ไม่มีการใช้อะไหล่" style="min-height:60px;"></textarea>
         </div>
         <div class="form-group">
           <label>หมายเหตุเพิ่มเติม</label>
