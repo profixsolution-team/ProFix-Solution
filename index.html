@@ -1130,7 +1130,7 @@ function openAdminDetail(id){
   const t=adminTasks.find(x=>x.id===id);if(!t)return;
   document.getElementById('det-title').textContent=t.id+' - '+t.type;
   document.getElementById('det-sub').textContent=(t.client||'-')+' | Assign: '+(t.assign||'-');
-  document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">Assign</div><div class="detail-val">${esc(t.assign||'-')}</div></div><div class="detail-item"><div class="detail-label">กำหนด</div><div class="detail-val">${esc(t.due||'-')}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status||'-')}</span></div></div><div class="detail-item"><div class="detail-label">PR</div><div class="detail-val">${esc(t.jobId||'-')}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(t.client||'-')}</div></div>${t.phone?`<div class="form-group"><label>เบอร์ติดต่อ</label><div class="text-box">${esc(t.phone)}</div></div>`:''}<div class="form-group"><label>รายละเอียด</label><div class="text-box">${esc(t.detail||'-')}</div></div><div class="form-row"><button class="btn btn-ghost" onclick="editAdminTask('${t.id}')">แก้ไขงาน</button><button class="btn btn-primary" onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button></div>`;
+  document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">Assign</div><div class="detail-val">${esc(t.assign||'-')}</div></div><div class="detail-item"><div class="detail-label">กำหนด</div><div class="detail-val">${esc(t.due||'-')}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status||'-')}</span></div></div><div class="detail-item"><div class="detail-label">PR</div><div class="detail-val">${esc(t.jobId||'-')}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(t.client||'-')}</div></div>${t.phone?`<div class="form-group"><label>เบอร์ติดต่อ</label><div class="text-box">${esc(t.phone)}</div></div>`:''}<div class="form-group"><label>รายละเอียด</label><div class="text-box">${esc(t.detail||'-')}</div></div>${t.reportReviewNote?`<div class="form-group"><label>หมายเหตุจากรายงานช่าง</label><div class="text-box">${esc(t.reportReviewNote)}</div></div>`:''}<div class="form-row"><button class="btn btn-ghost" onclick="editAdminTask('${t.id}')">แก้ไขงาน</button><button class="btn btn-primary" onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button></div>`;
   openM('m-detail');
 }
 function addAdminName(){const v=document.getElementById('fa-assign').value.trim();if(v&&!adminNames.includes(v)){adminNames.push(v);fillSelects();alert('เพิ่มชื่อแอดมินแล้ว');}}
@@ -1478,6 +1478,20 @@ function formatDateTime(d,t){
 function ensureJobStatus(status){
   if(status && Array.isArray(J_ST) && !J_ST.includes(status))J_ST.push(status);
 }
+function ensureAdminStatus(status){
+  if(status && Array.isArray(A_ST) && !A_ST.includes(status))A_ST.push(status);
+}
+function syncAdminTasksFromReport(jobId,status,note=''){
+  ensureAdminStatus(status);
+  adminTasks.forEach(t=>{
+    if(t.jobId===jobId){
+      t.status=status;
+      t.isNew=false;
+      t.reportReviewNote=note;
+      t.reportReviewedAt=new Date().toISOString();
+    }
+  });
+}
 function renderReports(){
   const scoped=jobs.filter(j=>inDateScope(j,'rpt'));
   const cnts={};
@@ -1576,8 +1590,9 @@ async function approveReport(){
   x.status='แอดมินตรวจแล้ว';
   x.reviewNote=document.getElementById('mrpt-review-note').value||'อนุมัติรายงานแล้ว';
   ensureJobStatus('แอดมินตรวจแล้ว');
+  syncAdminTasksFromReport(id,'แอดมินตรวจแล้ว',x.reviewNote);
   x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ตรวจแล้ว',reviewNote:x.reviewNote,reviewedAt:new Date().toISOString()};
-  renderReports();renderJobs();renderDash();fillSelects();saveState();
+  renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
 }
 async function returnReportForFix(){
   const id=document.getElementById('mrpt-jobid').value;
@@ -1591,8 +1606,9 @@ async function returnReportForFix(){
   x.status='ต้องแก้ไข';
   x.reviewNote=note;
   ensureJobStatus('ต้องแก้ไข');
+  syncAdminTasksFromReport(id,'ต้องแก้ไข',note);
   x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ต้องแก้ไข',reviewNote:note,reviewedAt:new Date().toISOString()};
-  renderReports();renderJobs();renderDash();fillSelects();saveState();
+  renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
 }
 
 function clearRptFilter(){rptSearch='';rptDateFilter='';rptMonthFilter='';rptFilter='ทั้งหมด';rptReviewFilter='ทั้งหมด';renderReports();saveUIState();}
