@@ -281,9 +281,6 @@ select option{background:var(--surface2);}
     <div class="nav-section">การเงิน</div>
     <button class="nav-item" data-page="finance" onclick="goTo('finance',this)"><span class="nav-icon">💰</span>รายรับ-รายจ่าย</button>
     <button class="nav-item" data-page="tech-pay" onclick="goTo('tech-pay',this)"><span class="nav-icon">👷</span>จ่ายช่าง</button>
-    <div class="nav-section">เครื่องมือ AI</div>
-    <button class="nav-item" data-page="ai-reader" onclick="goTo('ai-reader',this)"><span class="nav-icon">📷</span>อ่านรูปกระดาษ</button>
-    <button class="nav-item" data-page="line-parser" onclick="goTo('line-parser',this)"><span class="nav-icon">💬</span>Line Parser</button>
     <div class="nav-section">เอกสาร</div>
     <button class="nav-item" data-page="documents" onclick="goTo('documents',this)"><span class="nav-icon">📄</span>ใบเสนอราคา/บิล</button>
     <div class="nav-section">ข้อมูลระบบ</div>
@@ -419,61 +416,7 @@ select option{background:var(--surface2);}
   <div class="page-header"><div><div class="page-title">จ่ายเงินช่าง Outsource</div><div class="page-sub">ราคาล็อคต่องาน — ช่างไม่เห็นราคากลาง</div></div></div>
   <div class="content"><div id="techpay-list"></div></div>
 </div>
-
-<!-- AI READER -->
-<div class="page" id="page-ai-reader">
-  <div class="page-header"><div><div class="page-title">AI อ่านรูปกระดาษ</div><div class="page-sub">ถ่ายรูป template ลูกค้า → AI แปลงเป็นข้อมูล</div></div></div>
-  <div class="content">
-    <div class="ai-box">
-      <div class="ai-header"><div class="ai-dot"></div><div><div style="font-weight:700;font-size:13px;">Claude AI — Document Reader</div><div style="font-size:11px;color:var(--text2);">อ่านลายมือ แยกข้อมูล พร้อม confirm เข้าระบบ</div></div></div>
-      <div class="ai-body">
-        <div class="form-group"><label>ผูกกับ PR</label><select id="ai-job-sel"><option value="">-- เลือก PR --</option></select></div>
-        <div class="upload-zone" id="upzone" onclick="document.getElementById('img-inp').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="doDrop(event)">
-          <div style="font-size:32px;margin-bottom:8px;">📸</div>
-          <div style="font-weight:700;margin-bottom:4px;">คลิกหรือลากรูปมาวางที่นี่</div>
-          <div style="font-size:12px;color:var(--text2);">JPG, PNG — รูปถ่ายกระดาษที่ช่างกรอก</div>
-          <input type="file" id="img-inp" accept="image/*" style="display:none" onchange="doImgUpload(event)">
-        </div>
-        <div id="img-preview" style="display:none;margin-top:12px;"><img id="preview-img" style="max-width:100%;max-height:260px;border-radius:8px;border:1px solid var(--border);"></div>
-        <div id="ai-load" style="display:none;text-align:center;padding:20px;"><span class="spinner"></span>AI กำลังอ่าน...</div>
-        <div id="ai-res" style="display:none;">
-          <div style="color:var(--green);font-weight:700;margin:12px 0 8px;">✓ อ่านสำเร็จ — กรุณาตรวจสอบ</div>
-          <div class="result-box" id="ai-res-box"></div>
-          <div style="margin-top:12px;display:flex;gap:8px;"><button class="btn btn-success" onclick="confirmAI()">✓ เพิ่มเข้าระบบ</button><button class="btn btn-ghost" onclick="resetAI()">ลองใหม่</button></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- LINE PARSER -->
-<div class="page" id="page-line-parser">
-  <div class="page-header"><div><div class="page-title">Line Message Parser</div><div class="page-sub">วางข้อความช่าง → AI ดึงข้อมูลเข้าระบบ</div></div></div>
-  <div class="content">
-    <div class="ai-box">
-      <div class="ai-header"><div class="ai-dot"></div><div><div style="font-weight:700;font-size:13px;">Claude AI — Line Parser</div><div style="font-size:11px;color:var(--text2);">รองรับข้อความไม่มีรูปแบบ</div></div></div>
-      <div class="ai-body">
-        <div class="form-row mb12">
-          <div class="form-group"><label>ทีมช่าง</label><select id="lp-team"><option>ทีม A</option><option>ทีม B</option><option>ทีม C</option><option>ทีม D</option><option>ทีม E</option><option>ทีม F</option><option>ทีม G</option><option>ทีม H</option></select></div>
-          <div class="form-group"><label>ผูก PR</label><select id="lp-job"><option value="">-- ให้ AI หา --</option></select></div>
-        </div>
-        <div class="form-group"><label>วางข้อความ Line</label><textarea id="lp-text" placeholder="วางข้อความจากช่างได้เลย..." style="min-height:100px;font-family:var(--mono);font-size:12px;"></textarea></div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;"><button class="btn btn-primary" onclick="doParseLP()">🤖 Parse</button><button class="btn btn-ghost" onclick="document.getElementById('lp-text').value=''">ล้าง</button></div>
-        <div id="lp-load" style="display:none;text-align:center;padding:16px;"><span class="spinner"></span>กำลังวิเคราะห์...</div>
-        <div id="lp-res" style="display:none;">
-          <div style="color:var(--green);font-weight:700;margin-bottom:8px;">✓ วิเคราะห์สำเร็จ</div>
-          <div class="result-box" id="lp-res-box"></div>
-          <div style="margin-top:12px;display:flex;gap:8px;"><button class="btn btn-success" onclick="confirmLP()">✓ เพิ่มเข้าระบบ</button><button class="btn btn-ghost" onclick="resetLP()">ล้าง</button></div>
-        </div>
-      </div>
-    </div>
-    <div class="table-wrap" style="margin-top:16px;">
-      <div class="table-header"><div class="table-title">ประวัติ Parse</div></div>
-      <table><thead><tr><th>เวลา</th><th>ทีม</th><th>สาขา</th><th>งาน</th><th>PR</th></tr></thead><tbody id="lp-history"></tbody></table>
-    </div>
-  </div>
-</div>
-
 <!-- DOCUMENTS -->
 <div class="page" id="page-documents">
   <div class="page-header"><div><div class="page-title">เอกสาร</div><div class="page-sub">ใบเสนอราคา, ใบแจ้งหนี้, ใบกำกับภาษี</div></div><button class="btn btn-primary">+ สร้างเอกสาร</button></div>
@@ -676,13 +619,7 @@ select option{background:var(--surface2);}
 <!-- REPORTS PAGE -->
 <div class="page" id="page-reports">
   <div class="page-header">
-    <div><div class="page-title">รายงานช่าง</div><div class="page-sub">รายละเอียดงานซ่อมทั้งหมด — เชื่อมกับคิวช่าง real-time</div></div>
-    <div class="flex g8">
-      <input type="text" id="rpt-search" placeholder="ค้นหา PR, สาขา, ทีม..." style="width:220px;" oninput="renderReports()">
-      <input type="date" id="rpt-date-from" onchange="renderReports()" title="วันที่เริ่ม">
-      <input type="date" id="rpt-date-to" onchange="renderReports()" title="วันที่สิ้นสุด">
-      <button class="btn btn-ghost btn-sm" onclick="clearRptFilter()">ล้าง</button>
-    </div>
+        <div><div class="page-title">รายงานช่าง</div><div class="page-sub">รายละเอียดงานซ่อมทั้งหมด — เชื่อมกับคิวช่าง real-time</div></div>
   </div>
   <div class="filter-bar" id="rpt-fbar"></div>
   <div class="content" style="padding-top:16px;">
@@ -943,7 +880,7 @@ function goTo(id, el){
   document.getElementById('page-'+id).classList.add('active');
   if(el) el.classList.add('active');
   else { const b=document.querySelector('[data-page="'+id+'"]'); if(b) b.classList.add('active'); }
-  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, 'job-calendar':renderCalendar, finance:renderFin, 'tech-pay':renderTP, documents:renderDocs, 'ai-reader':fillSelects, 'line-parser':fillSelects, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':renderSuppliers,'reports':renderReports};
+  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, 'job-calendar':renderCalendar, finance:renderFin, 'tech-pay':renderTP, documents:renderDocs, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':renderSuppliers,'reports':renderReports};
   if(m[id]) m[id]();
   closeSidebar();
 }
@@ -1563,12 +1500,11 @@ function openReportModal(id){
     <div class="detail-item"><div class="detail-label">Ref ลูกค้า</div><div class="detail-val mono">${j.ref||'—'}</div></div>`;
   document.getElementById('mrpt-date-in').value=j.dateIn||'';
   document.getElementById('mrpt-date-done').value=j.dateDone||'';
-  document.getElementById('mrpt-tech').value=j.techName||'';
   document.getElementById('mrpt-symptom').value=j.symptom||j.note||'';
   document.getElementById('mrpt-fix').value=j.fix||j.report||'';
   document.getElementById('mrpt-note2').value=j.note2||'';
   const picSel=document.getElementById('mrpt-pic');
-  picSel.innerHTML=['— ไม่ระบุ —',...(admins||[])].map(a=>`<option${a===j.pic?' selected':''}>${a}</option>`).join('');
+  picSel.innerHTML=['— ไม่ระบุ —',...(adminNames||[])].map(a=>`<option${a===j.pic?' selected':''}>${a}</option>`).join('');
   openM('m-report');
 }
 async function saveReport(){
@@ -1577,12 +1513,11 @@ async function saveReport(){
   j.dateIn=document.getElementById('mrpt-date-in').value;
   j.dateDone=document.getElementById('mrpt-date-done').value;
   j.pic=document.getElementById('mrpt-pic').value;
-  j.techName=document.getElementById('mrpt-tech').value;
   j.symptom=document.getElementById('mrpt-symptom').value;
   j.fix=document.getElementById('mrpt-fix').value;
   j.note2=document.getElementById('mrpt-note2').value;
   j.report=j.fix;
-  if(supa){await DB.update('jobs',id,{date_in:j.dateIn||null,date_done:j.dateDone||null,pic:j.pic,tech_name:j.techName,symptom:j.symptom,fix:j.fix,note2:j.note2,report:j.report});}
+  if(supa){await DB.update('jobs',id,{date_in:j.dateIn||null,date_done:j.dateDone||null,pic:j.pic,symptom:j.symptom,fix:j.fix,note2:j.note2,report:j.report});}
   closeM('m-report');
   renderReports();
 }
@@ -1621,22 +1556,16 @@ initApp();
         <div class="form-row">
           <div class="form-group">
             <label>วันที่เข้าซ่อมจริง</label>
-            <input type="date" id="mrpt-date-in">
+            <input type="date" id="mrpt-date-in" onclick="openDatePicker(this)" onfocus="openDatePicker(this)">
           </div>
           <div class="form-group">
             <label>วันที่เสร็จงาน</label>
-            <input type="date" id="mrpt-date-done">
+            <input type="date" id="mrpt-date-done" onclick="openDatePicker(this)" onfocus="openDatePicker(this)">
           </div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>ผู้รับผิดชอบ (แอดมิน)</label>
-            <select id="mrpt-pic"></select>
-          </div>
-          <div class="form-group">
-            <label>ช่างผู้ดำเนินการ</label>
-            <input type="text" id="mrpt-tech" placeholder="ชื่อช่าง">
-          </div>
+        <div class="form-group">
+          <label>ผู้รับผิดชอบ (แอดมิน)</label>
+          <select id="mrpt-pic"></select>
         </div>
         <div class="form-group">
           <label>อาการที่พบ / สาเหตุ</label>
