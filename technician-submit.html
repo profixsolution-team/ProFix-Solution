@@ -120,6 +120,24 @@ textarea{resize:vertical;min-height:80px;}
     <div class="card">
       <div class="sec-title">📝 สรุปงานที่ทำ</div>
       <div class="sec-sub">กรอกรายละเอียดงานที่ออกหน้างาน</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label>วันที่เข้าจริง <span class="req-star">*</span></label>
+          <input type="date" id="f-date-in">
+        </div>
+        <div class="form-group">
+          <label>เวลาเข้าจริง <span class="req-star">*</span></label>
+          <input type="time" id="f-time-in" step="300">
+        </div>
+        <div class="form-group">
+          <label>วันที่เสร็จงาน <span class="req-star">*</span></label>
+          <input type="date" id="f-date-done">
+        </div>
+        <div class="form-group">
+          <label>เวลาเสร็จงาน <span class="req-star">*</span></label>
+          <input type="time" id="f-time-done" step="300">
+        </div>
+      </div>
       <div class="form-group">
         <label>อาการที่พบ / สาเหตุ <span class="req-star">*</span></label>
         <textarea id="f-symptom" placeholder="เช่น แอร์ไม่เย็น น้ำยาหมด / คอมเพรสเซอร์เสีย / แผงตัน..."></textarea>
@@ -288,6 +306,17 @@ function showForm(){
   document.getElementById('j-team').textContent = jobData.team || '—';
   document.getElementById('j-date').textContent = jobData.scheduled_date || jobData.date || '—';
   document.getElementById('j-ref').textContent = jobData.client_ref || jobData.ref || '—';
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const time = `${String(now.getHours()).padStart(2,'0')}:${String(Math.floor(now.getMinutes()/5)*5).padStart(2,'0')}`;
+  document.getElementById('f-date-in').value = jobData.dateIn || today;
+  document.getElementById('f-time-in').value = jobData.timeIn || time;
+  document.getElementById('f-date-done').value = jobData.dateDone || today;
+  document.getElementById('f-time-done').value = jobData.timeDone || time;
+  document.getElementById('f-symptom').value = jobData.symptom || jobData.technicianReport?.symptom || '';
+  document.getElementById('f-fix').value = jobData.fix || jobData.technicianReport?.fix || '';
+  document.getElementById('f-parts').value = jobData.partsUsed || jobData.technicianReport?.parts || '';
+  document.getElementById('f-note').value = jobData.note2 || jobData.technicianReport?.note || '';
 }
 
 // ============================================================
@@ -374,10 +403,18 @@ function removePhoto(cat, id){
 // ============================================================
 async function submitJob(){
   // validate text fields
+  const dateIn = document.getElementById('f-date-in').value;
+  const timeIn = document.getElementById('f-time-in').value;
+  const dateDone = document.getElementById('f-date-done').value;
+  const timeDone = document.getElementById('f-time-done').value;
   const symptom = document.getElementById('f-symptom').value.trim();
   const fix = document.getElementById('f-fix').value.trim();
   const noParts = document.getElementById('f-noparts').checked;
   const partsVal = document.getElementById('f-parts').value.trim();
+  if(!dateIn){ alert('กรุณาเลือกวันที่เข้าจริง'); document.getElementById('f-date-in').focus(); return; }
+  if(!timeIn){ alert('กรุณาเลือกเวลาเข้าจริง'); document.getElementById('f-time-in').focus(); return; }
+  if(!dateDone){ alert('กรุณาเลือกวันที่เสร็จงาน'); document.getElementById('f-date-done').focus(); return; }
+  if(!timeDone){ alert('กรุณาเลือกเวลาเสร็จงาน'); document.getElementById('f-time-done').focus(); return; }
   if(!symptom){ alert('กรุณากรอกอาการที่พบ / สาเหตุ'); document.getElementById('f-symptom').focus(); return; }
   if(!fix){ alert('กรุณากรอกวิธีแก้ไข'); document.getElementById('f-fix').focus(); return; }
   if(!noParts && !partsVal){ alert('กรุณากรอกอะไหล่ที่ใช้ หรือติ๊ก "ไม่มีการใช้อะไหล่"'); document.getElementById('f-parts').focus(); return; }
@@ -398,6 +435,7 @@ async function submitJob(){
   document.getElementById('overlay-upload').classList.add('show');
 
   const report = {
+    dateIn, timeIn, dateDone, timeDone,
     symptom, cause: '',
     fix, parts: noParts ? 'ไม่มีการใช้อะไหล่' : partsVal,
     note: document.getElementById('f-note').value.trim(),
@@ -427,6 +465,10 @@ async function submitJob(){
     const submittedAt = new Date().toISOString();
     Object.assign(job, {
       status: 'ช่างส่งงานแล้ว',
+      dateIn: report.dateIn,
+      timeIn: report.timeIn,
+      dateDone: report.dateDone,
+      timeDone: report.timeDone,
       symptom: report.symptom,
       fix: report.fix,
       report: report.fix,
@@ -435,6 +477,7 @@ async function submitJob(){
       techSubmittedAt: submittedAt,
       technicianReport: { ...report, images: uploadedImages, submittedAt }
     });
+    if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes('ช่างส่งงานแล้ว')) latestState.J_ST.push('ช่างส่งงานแล้ว');
     latestState.lastDataUpdatedAt = submittedAt;
     await saveAppState(latestState);
 
