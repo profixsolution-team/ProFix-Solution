@@ -44,6 +44,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .filter-bar{display:flex;gap:6px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;}
 .filter-input{width:auto;min-width:138px;padding:5px 9px;font-size:12px;}
 .filter-label{font-size:11px;color:var(--text3);margin-left:8px;}
+.filter-select{width:auto;min-width:150px;padding:6px 10px;font-size:12px;}
+.search-input{width:240px;max-width:100%;padding:6px 10px;font-size:12px;}
 .filter-tab{padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-size:12px;font-family:var(--sans);font-weight:600;transition:all .15s;display:flex;align-items:center;gap:4px;}
 .filter-tab:hover{border-color:var(--border2);color:var(--text);}
 .filter-tab.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
@@ -93,6 +95,16 @@ tr:hover td{background:rgba(255,255,255,.015);}
 .list-editor{display:grid;gap:8px;}
 .list-editor-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;}
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.calendar-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.cal-head,.cal-day{background:var(--surface);min-height:104px;padding:8px;}
+.cal-head{min-height:auto;background:var(--surface2);font-family:var(--mono);font-size:10px;color:var(--text2);text-align:center;text-transform:uppercase;letter-spacing:.4px;}
+.cal-day.muted{background:#111821;color:var(--text3);}
+.cal-num{font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:6px;}
+.cal-job{display:block;width:100%;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;padding:5px 6px;margin-bottom:5px;text-align:left;cursor:pointer;font-family:var(--sans);}
+.cal-job:hover{border-color:var(--accent);}
+.cal-job-pr{font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700;}
+.cal-job-meta{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
 .inline-input{max-width:105px;padding:5px 8px;font-size:12px;font-family:var(--mono);}
 .link-btn{background:none;border:0;color:var(--accent);font-family:var(--mono);font-size:11px;cursor:pointer;padding:0;text-decoration:underline;}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;}
@@ -185,6 +197,8 @@ select option{background:var(--surface2);}
   .filter-tab,.filter-bar .btn{white-space:nowrap;flex:0 0 auto;}
   .filter-label{white-space:nowrap;margin-left:4px;flex:0 0 auto;}
   .filter-input{min-width:132px;flex:0 0 132px;}
+  .filter-select{min-width:142px;flex:0 0 142px;}
+  .search-input{min-width:190px;flex:0 0 190px;}
   .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;}
   table{min-width:760px;}
   th,td{padding:8px 10px;font-size:12px;white-space:nowrap;}
@@ -195,6 +209,11 @@ select option{background:var(--surface2);}
   .modal-footer{position:sticky;bottom:0;background:var(--surface);flex-wrap:wrap;}
   .select-tools,.combo-row{align-items:stretch;}
   .select-tools .btn,.combo-row .btn{padding-left:10px;padding-right:10px;}
+  .calendar-toolbar{gap:6px;}
+  .calendar-grid{display:block;background:transparent;border:0;border-radius:0;overflow:visible;}
+  .cal-head{display:none;}
+  .cal-day{min-height:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;}
+  .cal-day.muted{display:none;}
 }
 </style>
 </head>
@@ -214,6 +233,7 @@ select option{background:var(--surface2);}
     <div class="nav-section">Tracker</div>
     <button class="nav-item" data-page="admin-tracker" onclick="goTo('admin-tracker',this)"><span class="nav-icon">🗂</span>Admin Tracker<span class="nav-badge-y" id="nb-admin">2</span></button>
     <button class="nav-item" data-page="jobs" onclick="goTo('jobs',this)"><span class="nav-icon">📋</span>คิวช่าง<span class="nav-badge" id="nb-new">3</span></button>
+    <button class="nav-item" data-page="job-calendar" onclick="goTo('job-calendar',this)"><span class="nav-icon">▦</span>Calendar คิวช่าง</button>
     <div class="nav-section">การเงิน</div>
     <button class="nav-item" data-page="finance" onclick="goTo('finance',this)"><span class="nav-icon">💰</span>รายรับ-รายจ่าย</button>
     <button class="nav-item" data-page="tech-pay" onclick="goTo('tech-pay',this)"><span class="nav-icon">👷</span>จ่ายช่าง</button>
@@ -298,6 +318,25 @@ select option{background:var(--surface2);}
       <div class="table-header"><div class="table-title" id="job-tbl-title">คิวช่าง</div><span class="mono tm" style="font-size:11px;" id="job-cnt"></span></div>
       <table><thead><tr><th>PR</th><th>วันที่ Assign</th><th>สถานะ</th><th>ลูกค้า</th><th>สาขา</th><th>ประเภท</th><th>ทีม</th><th>วันนัด</th><th></th></tr></thead><tbody id="job-tbody"></tbody></table>
     </div>
+  </div>
+</div>
+
+<!-- JOB CALENDAR -->
+<div class="page" id="page-job-calendar">
+  <div class="page-header">
+    <div><div class="page-title">Calendar คิวช่าง</div><div class="page-sub">ดูตารางงานตามทีมและเดือน</div></div>
+    <button class="btn btn-primary" onclick="openJobModal()">+ เปิดงานใหม่</button>
+  </div>
+  <div class="content">
+    <div class="calendar-toolbar">
+      <span class="filter-label">ทีม:</span>
+      <select class="filter-select" id="cal-team" onchange="calendarTeamFilter=this.value;renderCalendar();saveUIState();"></select>
+      <span class="filter-label">เดือน:</span>
+      <input class="filter-input" id="cal-month" type="month" onchange="calendarMonthFilter=this.value;renderCalendar();saveUIState();">
+      <span class="filter-label">ค้นหา:</span>
+      <input class="search-input" id="cal-search" placeholder="PR / สาขา / งาน" oninput="calendarSearch=this.value;renderCalendar();saveUIState();">
+    </div>
+    <div class="calendar-grid" id="job-calendar-grid"></div>
   </div>
 </div>
 
@@ -703,6 +742,7 @@ let adminTasks = [
 let lpHistory=[], aiData=null, lpData=null;
 let jCnt=9, aCnt=4, jobFilter='ทั้งหมด', adminFilter='ทั้งหมด', finFilter='ทั้งหมด';
 let adminDateFilter='', adminMonthFilter='', jobDateFilter='', jobMonthFilter='';
+let adminSearch='', jobSearch='', jobTeamFilter='ทั้งหมด', calendarTeamFilter='ทั้งหมด', calendarMonthFilter='', calendarSearch='';
 let editJobId=null, editAdminId=null;
 let adminNames=['แอดมิน 1','แอดมิน 2','ทั้งคู่'];
 let adminTypes=['เปิดงานใหม่จากลูกค้า','ทำใบเสนอราคา','ทำใบกำกับภาษี','จัดซื้ออะไหล่','ติดต่อลูกค้า','อื่นๆ'];
@@ -717,13 +757,20 @@ let listDraft=[];
 const gp = j => (j.pc - j.pt) + (j.partR - j.partC) - j.fuel;
 const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const payLabel = p => ({unpaid:'รอเก็บเงิน',paid:'เก็บแล้ว',overdue:'เกินกำหนด'}[p]||p);
-function closeMenus(){document.querySelectorAll('.action-menu.open').forEach(m=>m.classList.remove('open'));}
+function closeMenus(){document.querySelectorAll('.action-menu.open').forEach(m=>m.classList.remove('open'));document.querySelectorAll('.action-menu[data-floating="1"]').forEach(m=>m.remove());}
 function toggleMenu(id,e){
   e.stopPropagation();
   document.querySelectorAll('.action-menu.open').forEach(m=>{if(m.id!==id)m.classList.remove('open')});
-  const m=document.getElementById(id), b=e.currentTarget;
+  document.querySelectorAll('.action-menu[data-floating="1"]').forEach(m=>{if(m.id!==id)m.remove();});
+  let m=document.getElementById(id), b=e.currentTarget;
   if(!m||!b)return;
   const r=b.getBoundingClientRect();
+  if(m.parentElement!==document.body){
+    const clone=m.cloneNode(true);
+    clone.dataset.floating='1';
+    document.body.appendChild(clone);
+    m=clone;
+  }
   m.classList.toggle('open');
   if(m.classList.contains('open')){
     m.style.left=Math.max(12, Math.min(r.right-m.offsetWidth, window.innerWidth-m.offsetWidth-12))+'px';
@@ -739,6 +786,7 @@ const STATE_KEY='service_management_tracker';
 const LS_UI_KEY='svc_admin_tracker_ui_v1';
 const todayISO=()=>new Date().toISOString().split('T')[0];
 const monthOf=v=>(v||'').slice(0,7);
+const dateLocalISO=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 let saveTimer=null, isHydrated=false, supabaseOnline=false;
 function sbHeaders(extra={}){return {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',...extra};}
 function ensureMeta(){
@@ -747,8 +795,8 @@ function ensureMeta(){
 }
 function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,jCnt,aCnt};}
 function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;}
-function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.adminMonthFilter!==undefined)adminMonthFilter=ui.adminMonthFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;if(ui.jobMonthFilter!==undefined)jobMonthFilter=ui.jobMonthFilter;}catch(e){}}
-function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter}));}catch(e){}}
+function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.adminMonthFilter!==undefined)adminMonthFilter=ui.adminMonthFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;if(ui.jobMonthFilter!==undefined)jobMonthFilter=ui.jobMonthFilter;if(ui.adminSearch!==undefined)adminSearch=ui.adminSearch;if(ui.jobSearch!==undefined)jobSearch=ui.jobSearch;if(ui.jobTeamFilter)jobTeamFilter=ui.jobTeamFilter;if(ui.calendarTeamFilter)calendarTeamFilter=ui.calendarTeamFilter;if(ui.calendarMonthFilter!==undefined)calendarMonthFilter=ui.calendarMonthFilter;if(ui.calendarSearch!==undefined)calendarSearch=ui.calendarSearch;}catch(e){}}
+function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,adminSearch,jobSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch}));}catch(e){}}
 async function loadState(){
   loadUIState();
   try{
@@ -785,7 +833,7 @@ function goTo(id, el){
   document.getElementById('page-'+id).classList.add('active');
   if(el) el.classList.add('active');
   else { const b=document.querySelector('[data-page="'+id+'"]'); if(b) b.classList.add('active'); }
-  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, finance:renderFin, 'tech-pay':renderTP, documents:renderDocs, 'ai-reader':fillSelects, 'line-parser':fillSelects, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':renderSuppliers};
+  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, 'job-calendar':renderCalendar, finance:renderFin, 'tech-pay':renderTP, documents:renderDocs, 'ai-reader':fillSelects, 'line-parser':fillSelects, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':renderSuppliers};
   if(m[id]) m[id]();
   closeSidebar();
 }
@@ -820,6 +868,22 @@ function addFbarManager(bid, key){
   btn.onclick=()=>openListManager(key);
   b.appendChild(btn);
 }
+function statusOptionHtml(statuses, counts, current){
+  return ['ทั้งหมด',...statuses].map(s=>`<option value="${esc(s)}"${s===current?' selected':''}>${esc(s)} (${counts[s]||0})</option>`).join('');
+}
+function buildAdminControls(counts){
+  const b=document.getElementById('admin-fbar');if(!b)return;
+  b.innerHTML=`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="adminFilter=this.value;renderAdmin();saveUIState();">${statusOptionHtml(A_ST,counts,adminFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" value="${esc(adminSearch)}" placeholder="Task / PR / ชื่องาน" oninput="adminSearch=this.value;renderAdmin();saveUIState();">`;
+  addFbarManager('admin-fbar','adminStatuses');
+  addDateControls('admin-fbar','admin');
+}
+function buildJobControls(counts){
+  const b=document.getElementById('job-fbar');if(!b)return;
+  const teamOpts=['ทั้งหมด',...teams.map(t=>t.name)].map(t=>`<option value="${esc(t)}"${t===jobTeamFilter?' selected':''}>${esc(t)}</option>`).join('');
+  b.innerHTML=`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="jobFilter=this.value;renderJobs();saveUIState();">${statusOptionHtml(J_ST,counts,jobFilter)}</select><span class="filter-label">ทีม:</span><select class="filter-select" onchange="jobTeamFilter=this.value;renderJobs();saveUIState();">${teamOpts}</select><span class="filter-label">ค้นหา:</span><input class="search-input" value="${esc(jobSearch)}" placeholder="PR / สาขา / ใบงาน" oninput="jobSearch=this.value;renderJobs();saveUIState();">`;
+  addFbarManager('job-fbar','jobStatuses');
+  addDateControls('job-fbar','jobs');
+}
 function addDateControls(bid, scope){
   const b=document.getElementById(bid);if(!b)return;
   const dateVal=scope==='admin'?adminDateFilter:jobDateFilter;
@@ -850,6 +914,11 @@ function inDateScope(item,scope){
     if(jobMonthFilter)return monthOf(d)===jobMonthFilter;
   }
   return true;
+}
+function matchText(item, fields, q){
+  const s=(q||'').trim().toLowerCase();
+  if(!s)return true;
+  return fields.some(f=>String(item[f]??'').toLowerCase().includes(s));
 }
 function listRef(key){
   const refs={
@@ -885,7 +954,7 @@ function saveList(key,items){
   if(key==='jobStatuses')renderJobs();
   if(key==='payStatuses')renderFin();
   if(key==='clients')renderClients();
-  if(key==='teams')renderTeams();
+  if(key==='teams'){renderTeams();renderCalendar();}
 }
 function renameListItem(i,v){listDraft[i]=v;renderListManager();}
 function deleteListItem(i){listDraft.splice(i,1);renderListManager();}
@@ -925,16 +994,15 @@ function renderAdmin(){
   const scoped=all.filter(t=>inDateScope(t,'admin'));
   const cnts={'ทั้งหมด':scoped.length};
   A_ST.forEach(s=>{cnts[s]=scoped.filter(t=>t.status===s).length;});
-  buildFbar('admin-fbar',cnts,adminFilter,(f)=>{adminFilter=f;renderAdmin();saveState();},{'ติดปัญหา':'t-red','Reject':'t-red','เสร็จแล้ว':'t-green','กำลังทำ':'t-yellow'});
-  addFbarManager('admin-fbar','adminStatuses');
-  addDateControls('admin-fbar','admin');
+  buildAdminControls(cnts);
   const rj=all.filter(t=>t.status==='ติดปัญหา'||t.status==='Reject');
   const rb=document.getElementById('admin-reject-box');
   if(rj.length){rb.style.display='block';document.getElementById('admin-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('admin-reject-list').innerHTML=rj.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${esc(t.id)}</span><span>${esc(t.type)}</span><span class="tm">-</span><span>${esc(t.client)}</span><span class="badge ${SB[t.status]||'b-reject'}">${esc(t.status)}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setAS('${t.id}','รอดำเนินการ')">รีเซ็ต</button></div>`).join('');}
   else rb.style.display='none';
   let fil=adminFilter==='ทั้งหมด'?scoped:adminFilter==='ติดปัญหา'?scoped.filter(t=>t.status==='ติดปัญหา'||t.status==='Reject'):scoped.filter(t=>t.status===adminFilter);
+  fil=fil.filter(t=>matchText(t,['id','jobId','type','detail','client','assign','due','status'],adminSearch));
   document.getElementById('admin-cnt').textContent=fil.length+' รายการ';
-  document.getElementById('admin-tbl-title').textContent='งาน Admin - '+adminFilter;
+  document.getElementById('admin-tbl-title').textContent='งาน Admin - '+adminFilter+(adminSearch?' / ค้นหา: '+adminSearch:'');
   const tb=document.getElementById('admin-tbody');
   if(!fil.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">OK</div><div>ไม่มีงาน</div></div></td></tr>';return;}
   tb.innerHTML=fil.map(t=>{
@@ -975,21 +1043,21 @@ function renderJobs(){
   const scoped=jobs.filter(j=>inDateScope(j,'jobs'));
   const cnts={'ทั้งหมด':scoped.length};
   J_ST.forEach(s=>{cnts[s]=scoped.filter(j=>j.status===s).length;});
-  buildFbar('job-fbar',cnts,jobFilter,(f)=>{jobFilter=f;renderJobs();saveState();},{'ติดปัญหา':'t-red','Reject':'t-red','เสร็จงาน':'t-green','ปิดงาน':'t-green','รอจ่าย':'t-yellow','รอเปิดงาน':'t-yellow','ช่างออกงาน':'t-yellow'});
-  addFbarManager('job-fbar','jobStatuses');
-  addDateControls('job-fbar','jobs');
+  buildJobControls(cnts);
   const rj=jobs.filter(j=>j.status==='Reject'||j.status==='ติดปัญหา');
   const rb=document.getElementById('job-reject-box');
   if(rj.length&&(jobFilter==='ทั้งหมด'||jobFilter==='Reject'||jobFilter==='ติดปัญหา')){rb.style.display='block';document.getElementById('job-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('job-reject-list').innerHTML=rj.map(j=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${esc(j.id)}</span><span>${esc(j.branch)}</span><span class="chip">${esc(j.type)}</span><span class="badge ${SB[j.status]}">${esc(j.status)}</span><span class="tm" style="font-size:11px;">${esc(j.note)}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setJS('${j.id}','รอจัดช่าง')">รีเซ็ต</button></div>`).join('');}
   else rb.style.display='none';
   let fil=jobFilter==='ทั้งหมด'?scoped:scoped.filter(j=>j.status===jobFilter);
+  if(jobTeamFilter!=='ทั้งหมด')fil=fil.filter(j=>j.team===jobTeamFilter);
+  fil=fil.filter(j=>matchText(j,['id','ref','branch','client','type','team','date','status','note'],jobSearch));
   document.getElementById('job-cnt').textContent=fil.length+' รายการ';
-  document.getElementById('job-tbl-title').textContent='คิวช่าง - '+jobFilter;
+  document.getElementById('job-tbl-title').textContent='คิวช่าง - '+jobFilter+(jobTeamFilter!=='ทั้งหมด'?' / '+jobTeamFilter:'')+(jobSearch?' / ค้นหา: '+jobSearch:'');
   const tb=document.getElementById('job-tbody');
   if(!fil.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีงาน</div></div></td></tr>';return;}
   tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;return `<tr><td class="mono ta fw7" style="font-size:11px;">${esc(j.id)}${j.isNew?' <span class="new-pill">NEW</span>':''}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onchange="setJS('${j.id}',this.value)" style="color:${j.status==='เสร็จงาน'||j.status==='ปิดงาน'?'var(--green)':j.status==='ช่างออกงาน'||j.status==='รอเปิดงาน'||j.status==='รอจ่าย'?'var(--yellow)':j.status==='Reject'||j.status==='ติดปัญหา'?'var(--red)':j.status==='รออะไหล่'?'var(--purple)':'var(--text2)'}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
-function setJS(id,s){const j=jobs.find(x=>x.id===id);if(j){j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;if(s==='รอจ่าย'){j.pay=payStatuses[0]||'รอเก็บเงิน';goFinanceForJob(id);return;}renderJobs();renderDash();saveState();}}
+function setJS(id,s){const j=jobs.find(x=>x.id===id);if(j){j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;if(s==='รอจ่าย'){j.pay=payStatuses[0]||'รอเก็บเงิน';goFinanceForJob(id);return;}renderJobs();renderCalendar();renderDash();saveState();}}
 function openDet(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
@@ -1002,11 +1070,40 @@ function calcM(){const c=parseFloat(document.getElementById('fj-pc').value)||0,t
 function saveJob(){
   const data={client:document.getElementById('fj-client').value,ref:document.getElementById('fj-ref').value||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value};
   if(editJobId){Object.assign(jobs.find(j=>j.id===editJobId),data);}else{const id=data.ref&&data.ref!=='N/A'?data.ref:'PR-'+String(jCnt++).padStart(3,'0');jobs.unshift({id,...data,status:J_ST[0]||'รอเปิดงาน',assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()});if(id&&!prValues.includes(id))prValues.push(id);}
-  closeM('m-job');renderJobs();renderDash();fillSelects();saveState();
+  closeM('m-job');renderJobs();renderCalendar();renderDash();fillSelects();saveState();
 }
 function editJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;closeM('m-detail');fillSelects();editJobId=id;document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
-function deleteJob(id){if(confirm('ลบงานคิวช่างนี้?')){jobs=jobs.filter(j=>j.id!==id);renderJobs();renderDash();fillSelects();saveState();}}
+function deleteJob(id){if(confirm('ลบงานคิวช่างนี้?')){jobs=jobs.filter(j=>j.id!==id);renderJobs();renderCalendar();renderDash();fillSelects();saveState();}}
 function goFinanceForJob(id){closeM('m-detail');finFilter='ทั้งหมด';goTo('finance');setTimeout(()=>openFinanceEdit(id),0);}
+
+// JOB CALENDAR
+function renderCalendar(){
+  const month=calendarMonthFilter||monthOf(todayISO());
+  calendarMonthFilter=month;
+  const teamSel=document.getElementById('cal-team');
+  const monthInp=document.getElementById('cal-month');
+  const searchInp=document.getElementById('cal-search');
+  if(teamSel)teamSel.innerHTML=['ทั้งหมด',...teams.map(t=>t.name)].map(t=>`<option value="${esc(t)}"${t===calendarTeamFilter?' selected':''}>${esc(t)}</option>`).join('');
+  if(monthInp)monthInp.value=month;
+  if(searchInp)searchInp.value=calendarSearch;
+  const grid=document.getElementById('job-calendar-grid');if(!grid)return;
+  const [yy,mm]=month.split('-').map(Number);
+  const first=new Date(yy,mm-1,1);
+  const last=new Date(yy,mm,0);
+  const start=new Date(first);start.setDate(first.getDate()-first.getDay());
+  const end=new Date(last);end.setDate(last.getDate()+(6-last.getDay()));
+  const headers=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="cal-head">${d}</div>`).join('');
+  const days=[];
+  for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+    const iso=dateLocalISO(d);
+    const dayJobs=jobs.filter(j=>j.date===iso)
+      .filter(j=>calendarTeamFilter==='ทั้งหมด'||j.team===calendarTeamFilter)
+      .filter(j=>matchText(j,['id','ref','branch','client','type','team','status','note'],calendarSearch));
+    const muted=d.getMonth()!==mm-1;
+    days.push(`<div class="cal-day${muted?' muted':''}"><div class="cal-num">${d.getDate()}${dayJobs.length?` <span class="fc">${dayJobs.length}</span>`:''}</div>${dayJobs.map(j=>`<button class="cal-job" onclick="openDet('${j.id}')"><div class="cal-job-pr">${esc(j.id)} <span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span></div><div class="cal-job-meta">${esc(j.team)} · ${esc(j.branch)}</div><div class="cal-job-meta">${esc(j.type)}</div></button>`).join('')}</div>`);
+  }
+  grid.innerHTML=headers+days.join('');
+}
 
 // FINANCE
 function setFinFilter(f){finFilter=f;renderFin();}
@@ -1039,8 +1136,8 @@ function openFinanceEdit(id){const j=jobs.find(x=>x.id===id);if(!j)return;fillSe
 function saveFinanceEdit(){const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id);if(!j)return;Object.assign(j,{pc:parseFloat(document.getElementById('ff-pc').value)||0,partR:parseFloat(document.getElementById('ff-partR').value)||0,pt:parseFloat(document.getElementById('ff-pt').value)||0,partC:parseFloat(document.getElementById('ff-partC').value)||0,fuel:parseFloat(document.getElementById('ff-fuel').value)||0,pay:document.getElementById('ff-pay').value,financeNote:document.getElementById('ff-note').value});closeM('m-finance-edit');renderFin();renderDash();saveState();}
 function renderFixedExpenses(){const tb=document.getElementById('fixed-tbody');if(!tb)return;tb.innerHTML=fixedExpenses.map((x,i)=>`<tr><td>${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td class="mono tr">฿${x.amount.toLocaleString()}</td><td class="tm">${esc(x.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fxm-${i}',event)">...</button><div class="action-menu" id="fxm-${i}"><button onclick="openFixedModal(${i})">แก้ไข</button><button onclick="deleteFixedExpense(${i})">ลบ</button><button onclick="alert('${esc(x.note||'ไม่มีรายละเอียด')}')">ดูดีเทล</button></div></td></tr>`).join('');}
 function openFixedModal(i=''){document.getElementById('fx-index').value=i;if(i===''){['fx-name','fx-amount','fx-date','fx-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fx-type').value='Fixed';}else{const x=fixedExpenses[i];document.getElementById('fx-name').value=x.name;document.getElementById('fx-type').value=x.type;document.getElementById('fx-amount').value=x.amount;document.getElementById('fx-date').value=x.date;document.getElementById('fx-note').value=x.note||'';}openM('m-fixed');}
-function saveFixedExpense(){const i=document.getElementById('fx-index').value;const data={name:document.getElementById('fx-name').value,type:document.getElementById('fx-type').value||'Fixed',amount:parseFloat(document.getElementById('fx-amount').value)||0,date:document.getElementById('fx-date').value,note:document.getElementById('fx-note').value};if(i==='')fixedExpenses.push(data);else fixedExpenses[+i]=data;closeM('m-fixed');renderFin();}
-function deleteFixedExpense(i){if(confirm('ลบรายจ่าย Fixed นี้?')){fixedExpenses.splice(i,1);renderFin();}}
+function saveFixedExpense(){const i=document.getElementById('fx-index').value;const data={name:document.getElementById('fx-name').value,type:document.getElementById('fx-type').value||'Fixed',amount:parseFloat(document.getElementById('fx-amount').value)||0,date:document.getElementById('fx-date').value,note:document.getElementById('fx-note').value};if(i==='')fixedExpenses.push(data);else fixedExpenses[+i]=data;closeM('m-fixed');renderFin();saveState();}
+function deleteFixedExpense(i){if(confirm('ลบรายจ่าย Fixed นี้?')){fixedExpenses.splice(i,1);renderFin();saveState();}}
 
 // TECH PAY
 function renderTP(){
