@@ -475,7 +475,9 @@ async function submitJob(){
       partsUsed: report.parts,
       note2: report.note,
       techSubmittedAt: submittedAt,
-      technicianReport: { ...report, images: uploadedImages, submittedAt }
+      reportReviewStatus: 'รอตรวจ',
+      reviewNote: '',
+      technicianReport: { ...report, images: uploadedImages, submittedAt, reviewStatus:'รอตรวจ', reviewNote:'' }
     });
     if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes('ช่างส่งงานแล้ว')) latestState.J_ST.push('ช่างส่งงานแล้ว');
     latestState.lastDataUpdatedAt = submittedAt;
