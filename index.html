@@ -17,7 +17,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .mobile-topbar{display:none;position:sticky;top:0;z-index:900;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 12px;align-items:center;gap:10px;}
 .mobile-topbar .brand-lockup{flex:1;}
 .hamburger{width:38px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:20px;cursor:pointer;}
-.mobile-title{font-family:var(--sans);font-weight:800;font-size:14px;line-height:1.1;}
+.mobile-title{font-family:var(--mono);font-weight:800;font-size:14px;line-height:1.1;}
 .mobile-title span{color:var(--accent);}
 .mobile-sub{font-size:10px;color:var(--text3);margin-top:2px;}
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1090;}
@@ -291,6 +291,8 @@ select option{background:var(--surface2);}
     <button class="nav-item" data-page="settings-teams" onclick="goTo('settings-teams',this)"><span class="nav-icon">👷</span>ทีมช่าง & ราคา</button>
     <button class="nav-item" data-page="settings-branches" onclick="goTo('settings-branches',this)"><span class="nav-icon">🏬</span>สาขา</button>
     <button class="nav-item" data-page="settings-suppliers" onclick="goTo('settings-suppliers',this)"><span class="nav-icon">🔩</span>ซัพพลายเออร์</button>
+    <div class="nav-section">รายงาน</div>
+    <button class="nav-item" data-page="reports" onclick="goTo('reports',this)"><span class="nav-icon">📝</span>รายงานช่าง</button>
   </nav>
 </aside>
 <main class="main">
@@ -670,6 +672,105 @@ select option{background:var(--surface2);}
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-part')">ยกเลิก</button><button class="btn btn-primary" onclick="savePart()">✓ บันทึก</button></div>
   </div>
 </div>
+
+<!-- REPORTS PAGE -->
+<div class="page" id="page-reports">
+  <div class="page-header">
+    <div><div class="page-title">รายงานช่าง</div><div class="page-sub">รายละเอียดงานซ่อมทั้งหมด — เชื่อมกับคิวช่าง real-time</div></div>
+    <div class="flex g8">
+      <input type="text" id="rpt-search" placeholder="ค้นหา PR, สาขา, ทีม..." style="width:220px;" oninput="renderReports()">
+      <input type="date" id="rpt-date-from" onchange="renderReports()" title="วันที่เริ่ม">
+      <input type="date" id="rpt-date-to" onchange="renderReports()" title="วันที่สิ้นสุด">
+      <button class="btn btn-ghost btn-sm" onclick="clearRptFilter()">ล้าง</button>
+    </div>
+  </div>
+  <div class="filter-bar" id="rpt-fbar"></div>
+  <div class="content" style="padding-top:16px;">
+    <div class="table-wrap">
+      <div class="table-header">
+        <div class="table-title" id="rpt-title">รายงานช่างทั้งหมด</div>
+        <span class="mono tm" style="font-size:11px;" id="rpt-cnt"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>PR / Job ID</th>
+            <th>สาขา</th>
+            <th>ประเภทงาน</th>
+            <th>ทีมช่าง</th>
+            <th>วันแจ้งซ่อม</th>
+            <th>วันเข้าซ่อม</th>
+            <th>วันเสร็จ</th>
+            <th>ผู้รับผิดชอบ</th>
+            <th>สถานะ</th>
+            <th>รายงาน</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="rpt-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REPORT DETAIL -->
+<div class="modal-overlay" id="m-report">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="mrpt-title">รายงานงานซ่อม</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;" id="mrpt-sub"></div>
+      </div>
+      <button class="close-btn" onclick="closeM('m-report')">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- Info Grid -->
+      <div class="detail-grid mb12" id="mrpt-info"></div>
+      <!-- Repair Detail Form -->
+      <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:12px;color:var(--accent);">📋 รายละเอียดการซ่อม</div>
+        <input type="hidden" id="mrpt-jobid">
+        <div class="form-row">
+          <div class="form-group">
+            <label>วันที่เข้าซ่อมจริง</label>
+            <input type="date" id="mrpt-date-in">
+          </div>
+          <div class="form-group">
+            <label>วันที่เสร็จงาน</label>
+            <input type="date" id="mrpt-date-done">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>ผู้รับผิดชอบ (แอดมิน)</label>
+            <select id="mrpt-pic"></select>
+          </div>
+          <div class="form-group">
+            <label>ช่างผู้ดำเนินการ</label>
+            <input type="text" id="mrpt-tech" placeholder="ชื่อช่าง">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>อาการที่พบ / สาเหตุ</label>
+          <textarea id="mrpt-symptom" placeholder="เช่น แอร์ไม่เย็น น้ำยาหมด คอมเพรสเซอร์เสีย..." style="min-height:70px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>การแก้ไข / วิธีซ่อม</label>
+          <textarea id="mrpt-fix" placeholder="เช่น เติมน้ำยา R22 จำนวน 2 ปอนด์ เปลี่ยนแผงคอยล์..." style="min-height:70px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>หมายเหตุเพิ่มเติม</label>
+          <textarea id="mrpt-note2" placeholder="ข้อควรระวัง นัดติดตามผล..." style="min-height:50px;"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeM('m-report')">ปิด</button>
+      <button class="btn btn-primary" onclick="saveReport()">✓ บันทึกรายงาน</button>
+    </div>
+  </div>
+</div>
+
 </main>
 </div>
 
@@ -900,7 +1001,7 @@ function goTo(id, el){
   document.getElementById('page-'+id).classList.add('active');
   if(el) el.classList.add('active');
   else { const b=document.querySelector('[data-page="'+id+'"]'); if(b) b.classList.add('active'); }
-  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, 'job-calendar':renderCalendar, finance:renderFin, 'tech-pay':renderTP, documents:renderDocs, 'ai-reader':fillSelects, 'line-parser':fillSelects, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':renderSuppliers};
+  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, 'job-calendar':renderCalendar, finance:renderFin, 'tech-pay':renderTP, documents:renderDocs, 'ai-reader':fillSelects, 'line-parser':fillSelects, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':renderSuppliers,'reports':renderReports};
   if(m[id]) m[id]();
   closeSidebar();
 }
@@ -1438,6 +1539,120 @@ function saveSupplier(){const data={name:document.getElementById('fs-name').valu
 function delSupplier(i){if(confirm('ลบซัพพลายเออร์นี้?')){suppliers.splice(i,1);renderSuppliers();saveState();}}
 
 // INIT
+
+// ============================================================
+// REPORTS PAGE
+// ============================================================
+let rptFilter = 'ทั้งหมด';
+
+function renderReports() {
+  const search = (document.getElementById('rpt-search')?.value || '').toLowerCase();
+  const dateFrom = document.getElementById('rpt-date-from')?.value || '';
+  const dateTo   = document.getElementById('rpt-date-to')?.value   || '';
+
+  const cnts = {'ทั้งหมด': jobs.length};
+  ['เสร็จงาน','ปิดงาน','ช่างออกงาน','รออะไหล่'].forEach(s => {
+    const c = jobs.filter(j => j.status === s).length;
+    if (c) cnts[s] = c;
+  });
+  buildFbar('rpt-fbar', cnts, rptFilter, f => { rptFilter = f; renderReports(); },
+    {'เสร็จงาน':'t-green','ปิดงาน':'t-green','รออะไหล่':'t-yellow'});
+
+  let fil = rptFilter === 'ทั้งหมด' ? [...jobs] : jobs.filter(j => j.status === rptFilter);
+  if (search) fil = fil.filter(j =>
+    (j.id||'').toLowerCase().includes(search) ||
+    (j.branch||'').toLowerCase().includes(search) ||
+    (j.team||'').toLowerCase().includes(search) ||
+    (j.client||'').toLowerCase().includes(search)
+  );
+  if (dateFrom) fil = fil.filter(j => (j.date||'') >= dateFrom);
+  if (dateTo)   fil = fil.filter(j => (j.date||'') <= dateTo);
+
+  document.getElementById('rpt-cnt').textContent = fil.length + ' รายการ';
+  document.getElementById('rpt-title').textContent = 'รายงานช่าง — ' + rptFilter;
+
+  const tb = document.getElementById('rpt-tbody');
+  if (!fil.length) {
+    tb.innerHTML = '<tr><td colspan="11"><div class="empty"><div class="empty-icon">📝</div><div>ไม่พบรายการ</div></div></td></tr>';
+    return;
+  }
+  tb.innerHTML = fil.map(j => {
+    const hasReport = j.symptom || j.fix || j.report;
+    return `<tr onclick="openReportModal('${j.id}')" style="cursor:pointer;">
+      <td class="mono ta fw7" style="font-size:11px;">${j.id}</td>
+      <td style="font-size:12px;">${j.branch}</td>
+      <td><span class="chip">${j.type}</span></td>
+      <td style="font-size:12px;">${j.team}</td>
+      <td class="tm" style="font-size:11px;">${j.date||'—'}</td>
+      <td class="tm" style="font-size:11px;">${j.dateIn||'—'}</td>
+      <td class="tm" style="font-size:11px;">${j.dateDone||'—'}</td>
+      <td style="font-size:12px;">${j.pic||'—'}</td>
+      <td><span class="badge ${SB[j.status]||'b-wait'}">${j.status}</span></td>
+      <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);">${hasReport ? (j.symptom||j.report||'').substring(0,50) : '<span style="color:var(--text3);">ยังไม่มีรายงาน</span>'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openReportModal('${j.id}')">${hasReport?'แก้ไข':'+ กรอก'}</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function clearRptFilter() {
+  document.getElementById('rpt-search').value = '';
+  document.getElementById('rpt-date-from').value = '';
+  document.getElementById('rpt-date-to').value = '';
+  rptFilter = 'ทั้งหมด';
+  renderReports();
+}
+
+function openReportModal(id) {
+  const j = jobs.find(x => x.id === id);
+  if (!j) return;
+  document.getElementById('mrpt-title').textContent = j.id + ' — ' + j.branch;
+  document.getElementById('mrpt-sub').textContent = j.client + ' | ' + j.type + ' | ' + j.team;
+  document.getElementById('mrpt-jobid').value = id;
+  document.getElementById('mrpt-info').innerHTML = `
+    <div class="detail-item"><div class="detail-label">PR / Job ID</div><div class="detail-val mono ta">${j.id}</div></div>
+    <div class="detail-item"><div class="detail-label">สาขา</div><div class="detail-val">${j.branch}</div></div>
+    <div class="detail-item"><div class="detail-label">ลูกค้า</div><div class="detail-val">${j.client}</div></div>
+    <div class="detail-item"><div class="detail-label">ประเภทงาน</div><div class="detail-val">${j.type}</div></div>
+    <div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${j.team}</div></div>
+    <div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[j.status]||'b-wait'}">${j.status}</span></div></div>
+    <div class="detail-item"><div class="detail-label">วันแจ้งซ่อม</div><div class="detail-val">${j.date||'—'}</div></div>
+    <div class="detail-item"><div class="detail-label">Ref ลูกค้า</div><div class="detail-val mono">${j.ref||'—'}</div></div>
+  `;
+  document.getElementById('mrpt-date-in').value   = j.dateIn   || '';
+  document.getElementById('mrpt-date-done').value  = j.dateDone || '';
+  document.getElementById('mrpt-tech').value       = j.techName || '';
+  document.getElementById('mrpt-symptom').value    = j.symptom  || j.note || '';
+  document.getElementById('mrpt-fix').value        = j.fix      || j.report || '';
+  document.getElementById('mrpt-note2').value      = j.note2    || '';
+  const picSel = document.getElementById('mrpt-pic');
+  picSel.innerHTML = ['— ไม่ระบุ —', ...(admins||[])].map(a =>
+    `<option${a === j.pic ? ' selected' : ''}>${a}</option>`).join('');
+  openM('m-report');
+}
+
+async function saveReport() {
+  const id = document.getElementById('mrpt-jobid').value;
+  const j = jobs.find(x => x.id === id);
+  if (!j) return;
+  j.dateIn   = document.getElementById('mrpt-date-in').value;
+  j.dateDone = document.getElementById('mrpt-date-done').value;
+  j.pic      = document.getElementById('mrpt-pic').value;
+  j.techName = document.getElementById('mrpt-tech').value;
+  j.symptom  = document.getElementById('mrpt-symptom').value;
+  j.fix      = document.getElementById('mrpt-fix').value;
+  j.note2    = document.getElementById('mrpt-note2').value;
+  j.report   = j.fix;
+  if (supa) {
+    await DB.update('jobs', id, {
+      date_in: j.dateIn||null, date_done: j.dateDone||null,
+      pic: j.pic, tech_name: j.techName,
+      symptom: j.symptom, fix: j.fix, note2: j.note2, report: j.report,
+    });
+  }
+  closeM('m-report');
+  renderReports();
+}
+
 async function initApp(){
   applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
   await loadState();
