@@ -84,6 +84,10 @@ textarea{resize:vertical;min-height:80px;}
     <div class="ic">⚠️</div>
     <div style="font-weight:700;font-size:18px;margin-bottom:8px;" id="error-title">ไม่พบงานนี้</div>
     <div style="color:var(--text2);font-size:14px;" id="error-msg">ลิงก์อาจไม่ถูกต้อง หรือหมดอายุแล้ว กรุณาติดต่อแอดมิน</div>
+    <div style="margin-top:16px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;">
+      <input id="manual-job" placeholder="กรอก PR เช่น PR-001" onkeydown="if(event.key==='Enter')openManualJob()" style="width:min(100%,220px);height:44px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);padding:0 12px;font-size:15px;font-weight:700;text-align:center;">
+      <button class="btn btn-primary" onclick="openManualJob()" style="width:auto;padding:0 16px;">เปิดงาน</button>
+    </div>
   </div>
 
   <!-- ALREADY SUBMITTED -->
@@ -200,13 +204,15 @@ textarea{resize:vertical;min-height:80px;}
 // ============================================================
 // CONFIG — ต้องใส่ค่าเดียวกับระบบหลัก
 // ============================================================
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://cfikdkytopyqxvaytiks.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
+const STATE_KEY = 'service_management_tracker';
 // Cloudflare Worker endpoint สำหรับอัปรูปเข้า Google Drive (ใส่ทีหลัง)
 const UPLOAD_ENDPOINT = 'YOUR_CLOUDFLARE_WORKER_URL';
 
 let supa = null;
 try { if(SUPABASE_URL.startsWith('http')) supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){ console.error(e); }
+function sbHeaders(extra={}){return {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json',...extra};}
 
 // ============================================================
 // PARSE URL: /technician-submit.html?job=JOB-1023&token=xxx
@@ -214,8 +220,14 @@ try { if(SUPABASE_URL.startsWith('http')) supa = supabase.createClient(SUPABASE_
 const params = new URLSearchParams(location.search);
 const JOB_ID = params.get('job') || params.get('pr') || '';
 const TOKEN = params.get('token') || '';
+function openManualJob(){
+  const id = document.getElementById('manual-job')?.value.trim();
+  if(!id){ alert('กรุณากรอก PR'); return; }
+  location.href = `${location.pathname}?job=${encodeURIComponent(id)}`;
+}
 
 let jobData = null;
+let appState = null;
 let photos = { before: [], during: [], after: [] };
 const PHOTO_MIN = { before: 2, during: 6, after: 2 };
 const PHOTO_MAX = { before: 10, during: 40, after: 20 };
@@ -226,24 +238,37 @@ const CAT_LABEL = { before: 'ก่อนทำ', during: 'ระหว่าง
 // ============================================================
 async function loadJob(){
   if(!JOB_ID){ showError('ไม่พบเลขงาน','ลิงก์ไม่ถูกต้อง กรุณาติดต่อแอดมิน'); return; }
-  if(!supa){
-    // demo mode — ไม่มี supabase config
-    jobData = { id:JOB_ID, client:'(ตัวอย่าง) บริษัท A', branch:'เซ็นทรัลลาดพร้าว', job_type:'ซ่อมแอร์', team:'ทีม A', scheduled_date:'2025-06-06', client_ref:'WO-2001', status:'รอสรุปงาน' };
-    showForm();
-    return;
-  }
   try{
-    const { data, error } = await supa.from('jobs').select('*').eq('id', JOB_ID).single();
-    if(error || !data){ showError('ไม่พบงานนี้','ลิงก์อาจหมดอายุ กรุณาติดต่อแอดมิน'); return; }
+    const data = await loadAppState();
+    appState = data || {};
+    const job = (appState.jobs || []).find(j => String(j.id) === String(JOB_ID));
+    if(!job){ showError('ไม่พบงานนี้','ลิงก์อาจหมดอายุ หรือยังไม่มีงานนี้ในระบบหลัก'); return; }
     // ถ้าส่งแล้ว
-    if(data.status === 'ช่างส่งงานแล้ว' || data.status === 'แอดมินตรวจแล้ว' || data.status === 'ปิดงาน'){
+    if(job.status === 'ช่างส่งงานแล้ว' || job.status === 'แอดมินตรวจแล้ว' || job.status === 'ปิดงาน'){
       document.getElementById('state-loading').classList.add('hidden');
       document.getElementById('state-done').classList.remove('hidden');
       return;
     }
-    jobData = data;
+    jobData = job;
     showForm();
   }catch(e){ showError('เกิดข้อผิดพลาด', e.message); }
+}
+
+async function loadAppState(){
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/app_state?key=eq.${encodeURIComponent(STATE_KEY)}&select=data`, { headers: sbHeaders() });
+  if(!r.ok) throw new Error(await r.text());
+  const rows = await r.json();
+  return rows?.[0]?.data || null;
+}
+
+async function saveAppState(data){
+  const body = JSON.stringify({ key: STATE_KEY, data, updated_at: new Date().toISOString() });
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/app_state`, {
+    method: 'POST',
+    headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+    body
+  });
+  if(!r.ok) throw new Error(await r.text());
 }
 
 function showError(title, msg){
@@ -392,27 +417,26 @@ async function submitJob(){
       }
     }
 
-    // 2. save report + images to Supabase
+    // 2. save report + images to Supabase app_state
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
     document.getElementById('upload-detail').textContent = '';
-    if(supa){
-      await supa.from('technician_reports').insert({
-        job_id: JOB_ID, symptom: report.symptom, cause: report.cause,
-        fix: report.fix, parts: report.parts, note: report.note,
-        submitted_at: new Date().toISOString(),
-      });
-      if(uploadedImages.length){
-        await supa.from('job_images').insert(
-          uploadedImages.map(im=>({ job_id:JOB_ID, category:im.category, url:im.url, uploaded_at:new Date().toISOString() }))
-        );
-      }
-      // update job status + sync report fields
-      await supa.from('jobs').update({
-        status:'ช่างส่งงานแล้ว',
-        symptom: report.symptom, fix: report.fix,
-        report: report.fix, note2: report.note,
-      }).eq('id', JOB_ID);
-    }
+    const latestState = await loadAppState();
+    if(!latestState || !Array.isArray(latestState.jobs)) throw new Error('ไม่พบข้อมูลระบบหลักใน Supabase');
+    const job = latestState.jobs.find(j => String(j.id) === String(JOB_ID));
+    if(!job) throw new Error('ไม่พบงานนี้ในระบบหลัก');
+    const submittedAt = new Date().toISOString();
+    Object.assign(job, {
+      status: 'ช่างส่งงานแล้ว',
+      symptom: report.symptom,
+      fix: report.fix,
+      report: report.fix,
+      partsUsed: report.parts,
+      note2: report.note,
+      techSubmittedAt: submittedAt,
+      technicianReport: { ...report, images: uploadedImages, submittedAt }
+    });
+    latestState.lastDataUpdatedAt = submittedAt;
+    await saveAppState(latestState);
 
     // 3. notify LINE (ผ่าน Worker)
     notifyLine(report, { before:photos.before.length, during:photos.during.length, after:photos.after.length });
