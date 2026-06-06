@@ -225,8 +225,9 @@ textarea{resize:vertical;min-height:80px;}
 const SUPABASE_URL = 'https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
 const STATE_KEY = 'service_management_tracker';
-// Cloudflare Worker endpoint สำหรับอัปรูปเข้า Google Drive (ใส่ทีหลัง)
-const UPLOAD_ENDPOINT = 'YOUR_CLOUDFLARE_WORKER_URL';
+// Cloudflare Worker endpoint สำหรับอัปรูปเข้า Google Drive
+// ตัวอย่าง: https://profix-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload
+const UPLOAD_ENDPOINT = 'YOUR_CLOUDFLARE_WORKER_URL/upload';
 
 let supa = null;
 try { if(SUPABASE_URL.startsWith('http')) supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){ console.error(e); }
