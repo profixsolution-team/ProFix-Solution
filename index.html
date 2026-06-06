@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProFix Service Console</title>
 <link rel="icon" type="image/svg+xml" href="assets/profix-icon.svg">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto Sans Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--surface2:#1f2937;--surface3:#273344;--border:#30363d;--border2:#3d4754;--accent:#58a6ff;--accent-dim:#1a3a5c;--green:#3fb950;--green-dim:#1a3a1f;--yellow:#d29922;--yellow-dim:#3a2a0a;--red:#f85149;--red-dim:#3a0f0f;--purple:#bc8cff;--purple-dim:#2d1f4e;--orange:#f0883e;--orange-dim:#3a1e0a;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--mono:"IBM Plex Mono",monospace;--sans:"Sarabun",sans-serif;}
 body[data-theme="light"]{--bg:#f5f7fb;--surface:#ffffff;--surface2:#eef3f8;--surface3:#e3ebf4;--border:#d7e0ea;--border2:#bac8d8;--accent:#175fff;--accent-dim:#e7efff;--green:#138a3d;--green-dim:#e7f6ec;--yellow:#9a6700;--yellow-dim:#fff4d6;--red:#cf222e;--red-dim:#ffebe9;--purple:#8250df;--purple-dim:#f2eafd;--orange:#bc4c00;--orange-dim:#fff1e5;--text:#16202d;--text2:#536173;--text3:#7b8795;}
@@ -23,10 +23,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1090;}
 .sidebar-backdrop.open{display:block;}
 .logo{padding:18px;border-bottom:1px solid var(--border);}
+.brand-home{display:block;border:0;background:transparent;color:inherit;padding:0;text-align:left;cursor:pointer;border-radius:8px;}
+.brand-home:focus-visible{outline:2px solid var(--accent);outline-offset:4px;}
+.brand-home:hover .brand-logo{filter:brightness(1.08);}
 .brand-lockup{display:flex;align-items:center;gap:10px;}
+.mobile-topbar .brand-lockup{gap:8px;}
 .brand-mark{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,.25);}
 .brand-mark img{width:100%;height:100%;display:block;object-fit:contain;}
-.brand-logo{height:34px;max-width:130px;display:block;object-fit:contain;}
+.brand-logo{height:68px;max-width:290px;display:block;object-fit:contain;}
+.sidebar .brand-logo{height:84px;max-width:178px;}
 .logo-light{display:none;}
 body[data-theme="light"] .logo-dark{display:none;}
 body[data-theme="light"] .logo-light{display:block;}
@@ -48,11 +53,11 @@ body[data-theme="light"] .logo-light{display:block;}
 .page-title{font-size:18px;font-weight:700;}
 .page-sub{font-size:12px;color:var(--text2);margin-top:2px;}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s;}
-.btn-primary{background:var(--accent);color:#0d1117;}
-.btn-primary:hover{background:#79b8ff;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{filter:brightness(1.08);}
 .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border);}
 .btn-ghost:hover{border-color:var(--border2);color:var(--text);}
-.btn-success{background:var(--green);color:#0d1117;}
+.btn-success{background:var(--green);color:#fff;}
 .btn-danger{background:var(--red);color:#fff;}
 .btn-sm{padding:4px 10px;font-size:11px;}
 .content{padding:20px 24px;}
@@ -97,6 +102,18 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .b-unpaid{background:var(--yellow-dim);color:var(--yellow);}
 .new-pill{display:inline-flex;align-items:center;background:linear-gradient(135deg,#1a4a1a,#0f2a1f);border:1px solid #3fb950;color:#3fb950;font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;animation:np 2s infinite;}
 .urgent-pill{display:inline-flex;align-items:center;background:var(--red-dim);border:1px solid var(--red);color:var(--red);font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;margin-left:4px;}
+body[data-theme="light"] .badge,body[data-theme="light"] .chip{background:#fff;border:1px solid currentColor;box-shadow:0 1px 0 rgba(16,24,40,.04);}
+body[data-theme="light"] .chip{color:#536173;}
+body[data-theme="light"] .b-new{color:#067a2d;}
+body[data-theme="light"] .b-wait,body[data-theme="light"] .b-closed{color:#536173;}
+body[data-theme="light"] .b-open,body[data-theme="light"] .b-assigned{color:#175fff;}
+body[data-theme="light"] .b-working,body[data-theme="light"] .b-unpaid{color:#9a6700;}
+body[data-theme="light"] .b-parts{color:#8250df;}
+body[data-theme="light"] .b-done,body[data-theme="light"] .b-paid{color:#138a3d;}
+body[data-theme="light"] .b-reject{color:#cf222e;}
+body[data-theme="light"] .b-hold{color:#bc4c00;}
+body[data-theme="light"] .new-pill{background:#fff;border-color:#067a2d;color:#067a2d;box-shadow:none;}
+body[data-theme="light"] .urgent-pill{background:#fff;border-color:#cf222e;color:#cf222e;}
 @keyframes np{0%,100%{border-color:#3fb950}50%{border-color:#56d364;box-shadow:0 0 6px rgba(63,185,80,.3)}}
 .status-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 6px;cursor:pointer;outline:none;transition:all .15s;}
 .status-select:hover{border-color:var(--accent);}
@@ -199,6 +216,7 @@ select option{background:var(--surface2);}
   body{font-size:13px;}
   .app{display:block;min-height:100vh;}
   .mobile-topbar{display:flex;}
+  .mobile-topbar .brand-logo{height:56px;max-width:190px;}
   .sidebar{display:flex;position:fixed;left:0;top:0;bottom:0;width:min(82vw,300px);min-width:0;height:100vh;z-index:1100;transform:translateX(-105%);transition:transform .2s ease;box-shadow:18px 0 40px rgba(0,0,0,.45);}
   .sidebar.open{transform:translateX(0);}
   .main{width:100%;overflow-x:hidden;}
@@ -241,19 +259,16 @@ select option{background:var(--surface2);}
 <body>
 <div class="mobile-topbar">
   <button class="hamburger" onclick="toggleSidebar()" aria-label="เปิดเมนู">☰</button>
-  <div class="brand-lockup"><div class="brand-mark"><img src="assets/profix-icon.svg" alt=""></div><div><div class="mobile-title">Pro<span>Fix</span></div><div class="mobile-sub">Service Console</div></div></div>
+  <button class="brand-home brand-lockup" onclick="goTo('dashboard')" type="button" aria-label="กลับหน้า Dashboard"><div><img class="brand-logo logo-dark" src="assets/profix-logo.svg" alt="ProFix Solution"><img class="brand-logo logo-light" src="assets/profix-logo-dark.svg" alt="ProFix Solution"><div class="mobile-sub">Service Console</div></div></button>
   <button class="hamburger" onclick="toggleTheme()" id="mobile-theme-btn" aria-label="สลับธีม">☀</button>
 </div>
 <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
 <div class="app">
 <aside class="sidebar">
   <div class="logo">
-    <div class="brand-lockup">
-      <div class="brand-mark" aria-hidden="true">
-        <img src="assets/profix-icon.svg" alt="">
-      </div>
+    <button class="brand-home brand-lockup" onclick="goTo('dashboard')" type="button" aria-label="กลับหน้า Dashboard">
       <div><img class="brand-logo logo-dark" src="assets/profix-logo.svg" alt="ProFix Solution"><img class="brand-logo logo-light" src="assets/profix-logo-dark.svg" alt="ProFix Solution"><div class="logo-sub">Service Console</div></div>
-    </div>
+    </button>
     <button class="theme-toggle" onclick="toggleTheme()" type="button"><span id="theme-label">Light mode</span><span class="theme-icon" id="theme-icon">☀</span></button>
   </div>
   <nav class="nav">
