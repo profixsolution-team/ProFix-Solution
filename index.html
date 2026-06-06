@@ -87,6 +87,16 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .task-detail{white-space:pre-line;line-height:1.35;}
 .task-phone{display:block;margin-top:6px;color:var(--text2);font-size:11px;line-height:1.35;}
 .text-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:var(--text2);white-space:pre-line;line-height:1.55;}
+.report-gallery{display:grid;gap:14px;margin-top:12px;}
+.report-gallery-section{border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--bg);}
+.report-gallery-title{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:800;color:var(--text);margin-bottom:8px;}
+.report-gallery-count{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.report-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px;}
+.report-thumb{border:1px solid var(--border);background:var(--surface2);border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer;padding:0;position:relative;}
+.report-thumb:hover{border-color:var(--accent);}
+.report-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.report-thumb-badge{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.72);color:#fff;font-family:var(--mono);font-size:9px;border-radius:999px;padding:2px 5px;}
+.image-preview{max-width:min(92vw,980px);max-height:78vh;display:block;border-radius:10px;border:1px solid var(--border);background:var(--bg);}
 .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:var(--mono);white-space:nowrap;}
 .b-new{background:#1a2a1a;color:#56d364;border:1px solid #2a4a2a;}
 .b-wait{background:var(--surface3);color:var(--text2);}
@@ -1492,6 +1502,29 @@ function syncAdminTasksFromReport(jobId,status,note=''){
     }
   });
 }
+const REPORT_IMAGE_LABELS={before:'ก่อนทำ',during:'ระหว่างทำ',after:'หลังทำ'};
+function reportImages(j){
+  return Array.isArray(j?.technicianReport?.images)?j.technicianReport.images:[];
+}
+function renderReportImages(j){
+  const imgs=reportImages(j);
+  if(!imgs.length)return '<div class="text-box">ยังไม่มีรูปจากช่าง</div>';
+  return `<div class="report-gallery">${['before','during','after'].map(cat=>{
+    const group=imgs.filter(im=>im.category===cat);
+    return `<div class="report-gallery-section"><div class="report-gallery-title"><span>${REPORT_IMAGE_LABELS[cat]}</span><span class="report-gallery-count">${group.length} รูป</span></div>${group.length?`<div class="report-thumbs">${group.map(im=>{
+      const idx=imgs.indexOf(im);
+      return `<button class="report-thumb" type="button" onclick="openReportImage('${esc(j.id)}',${idx})"><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat])}"><span class="report-thumb-badge">${idx+1}</span></button>`;
+    }).join('')}</div>`:'<div class="tm" style="font-size:12px;">ไม่มีรูปในหมวดนี้</div>'}</div>`;
+  }).join('')}</div>`;
+}
+function openReportImage(jobId,index){
+  const j=jobs.find(x=>x.id===jobId);if(!j)return;
+  const im=reportImages(j)[index];if(!im||!im.url)return;
+  document.getElementById('img-prev-title').textContent=`${j.id} - ${im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน'}`;
+  document.getElementById('img-prev-sub').textContent=`${im.name||''}${im.uploadedAt?' | '+new Date(im.uploadedAt).toLocaleString('th-TH'):''}`;
+  document.getElementById('img-prev').src=im.url;
+  openM('m-image-preview');
+}
 function renderReports(){
   const scoped=jobs.filter(j=>inDateScope(j,'rpt'));
   const cnts={};
@@ -1555,6 +1588,7 @@ function openReportModal(id){
   document.getElementById('mrpt-parts').value=j.partsUsed||tr.parts||'';
   document.getElementById('mrpt-note2').value=j.note2||tr.note||'';
   document.getElementById('mrpt-review-note').value=j.reviewNote||tr.reviewNote||'';
+  document.getElementById('mrpt-images').innerHTML=renderReportImages(j);
   const picSel=document.getElementById('mrpt-pic');
   picSel.innerHTML=['— ไม่ระบุ —',...(adminNames||[])].map(a=>`<option${a===j.pic?' selected':''}>${a}</option>`).join('');
   openM('m-report');
@@ -1686,6 +1720,10 @@ initApp();
           <label>หมายเหตุแอดมิน / เหตุผลส่งกลับแก้ไข</label>
           <textarea id="mrpt-review-note" placeholder="เช่น รูปไม่ครบ ขอเพิ่มรูปหลังทำ / ข้อมูลครบ อนุมัติแล้ว" style="min-height:50px;"></textarea>
         </div>
+        <div class="form-group">
+          <label>รูปจากช่าง</label>
+          <div id="mrpt-images"></div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1693,6 +1731,21 @@ initApp();
       <button class="btn btn-ghost" onclick="returnReportForFix()">ส่งกลับแก้ไข</button>
       <button class="btn btn-success" onclick="approveReport()">อนุมัติรายงาน</button>
       <button class="btn btn-primary" onclick="saveReport()">✓ บันทึกรายงาน</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="m-image-preview">
+  <div class="modal" style="max-width:1040px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="img-prev-title">รูปงาน</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;" id="img-prev-sub"></div>
+      </div>
+      <button class="close-btn" onclick="closeM('m-image-preview')">×</button>
+    </div>
+    <div class="modal-body" style="display:flex;justify-content:center;">
+      <img id="img-prev" class="image-preview" alt="รูปงานจากช่าง">
     </div>
   </div>
 </div>
