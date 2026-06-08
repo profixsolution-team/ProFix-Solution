@@ -217,8 +217,9 @@ textarea{resize:vertical;min-height:80px;}
 
     <!-- SUBMIT -->
     <div class="card">
+      <button class="btn" id="draft-btn" onclick="saveDraft()" style="margin-bottom:10px;background:var(--card2);border:1px solid var(--border);color:var(--text);">บันทึกฉบับร่าง</button>
       <button class="btn btn-primary" id="submit-btn" onclick="submitJob()">✓ ส่งงาน</button>
-      <div style="font-size:12px;color:var(--text3);text-align:center;margin-top:10px;">เมื่อส่งแล้ว แอดมินจะได้รับแจ้งเตือนทันที</div>
+      <div style="font-size:12px;color:var(--text3);text-align:center;margin-top:10px;">บันทึกร่างเพื่อกลับมากรอกต่อได้ หรือกดส่งงานเมื่อข้อมูลครบแล้ว</div>
     </div>
     </div>
   </div>
@@ -481,29 +482,127 @@ function removePhoto(cat, id){
 // ============================================================
 // SUBMIT
 // ============================================================
-async function submitJob(){
-  // validate text fields
-  const dateIn = document.getElementById('f-date-in').value;
-  const timeIn = document.getElementById('f-time-in').value;
-  const dateDone = document.getElementById('f-date-done').value;
-  const timeDone = document.getElementById('f-time-done').value;
-  const symptom = document.getElementById('f-symptom').value.trim();
-  const cause = document.getElementById('f-cause').value.trim();
-  const fix = document.getElementById('f-fix').value.trim();
+function collectReportDraft(){
   const noParts = document.getElementById('f-noparts').checked;
   const partsVal = document.getElementById('f-parts').value.trim();
-  const needQuote = document.getElementById('f-need-quote').checked;
-  if(!dateIn){ alert('กรุณาเลือกวันที่เข้าจริง'); document.getElementById('f-date-in').focus(); return; }
-  if(!timeIn){ alert('กรุณาเลือกเวลาเข้าจริง'); document.getElementById('f-time-in').focus(); return; }
-  if(!needQuote && !dateDone){ alert('กรุณาเลือกวันที่เสร็จงาน'); document.getElementById('f-date-done').focus(); return; }
-  if(!needQuote && !timeDone){ alert('กรุณาเลือกเวลาเสร็จงาน'); document.getElementById('f-time-done').focus(); return; }
-  if(!cause){ alert('กรุณากรอกสาเหตุ'); document.getElementById('f-cause').focus(); return; }
-  if(!fix){ alert('กรุณากรอกวิธีแก้ไข'); document.getElementById('f-fix').focus(); return; }
-  if(!noParts && !partsVal){ alert('กรุณากรอกอะไหล่ที่ใช้ หรือติ๊ก "ไม่มีการใช้อะไหล่"'); document.getElementById('f-parts').focus(); return; }
+  return {
+    dateIn: document.getElementById('f-date-in').value,
+    timeIn: document.getElementById('f-time-in').value,
+    dateDone: document.getElementById('f-date-done').value,
+    timeDone: document.getElementById('f-time-done').value,
+    symptom: document.getElementById('f-symptom').value.trim(),
+    cause: document.getElementById('f-cause').value.trim(),
+    fix: document.getElementById('f-fix').value.trim(),
+    parts: noParts ? 'ไม่มีการใช้อะไหล่' : partsVal,
+    noParts,
+    note: document.getElementById('f-note').value.trim(),
+    needQuote: document.getElementById('f-need-quote').checked,
+    noPhoto: { ...noPhoto }
+  };
+}
+
+async function collectUploadedImages(report){
+  const allPhotos = [...photos.before, ...photos.during, ...photos.after];
+  if(allPhotos.some(p=>p.status==='compressing')) throw new Error('กรุณารอรูปบีบอัดเสร็จก่อน');
+  const uploadedImages = [];
+  let done = 0;
+  const uploadQueue = allPhotos.filter(p=>!p.existing);
+  const total = uploadQueue.length;
+  for(const cat of ['before','during','after']){
+    for(const p of photos[cat]){
+      if(p.existing){
+        uploadedImages.push(p.uploadedMeta || {id:p.id,category:cat,label:CAT_LABEL[cat],url:p.url||p.dataUrl||'',uploadedAt:new Date().toISOString(),storage:'external'});
+        continue;
+      }
+      document.getElementById('upload-detail').textContent = total ? `อัปโหลดรูป ${done+1}/${total}` : '';
+      const uploaded = await uploadPhoto(p.compressed, cat, done, p);
+      const meta = {
+        id: p.id,
+        category: cat,
+        label: CAT_LABEL[cat],
+        url: uploaded.url,
+        name: p.file?.name || `${cat}_${done+1}.jpg`,
+        size: p.compressed?.size || p.file?.size || 0,
+        width: p.width || 0,
+        height: p.height || 0,
+        orientation: (p.height||0) > (p.width||0) ? 'portrait' : 'landscape',
+        roundType: report.needQuote ? 'survey' : 'repair',
+        roundLabel: report.needQuote ? 'สำรวจ' : 'ซ่อมจริง',
+        uploadedAt: new Date().toISOString(),
+        storage: uploaded.storage
+      };
+      p.existing = true;
+      p.uploadedMeta = meta;
+      p.url = meta.url;
+      p.dataUrl = meta.url || p.dataUrl;
+      uploadedImages.push(meta);
+      done++;
+    }
+  }
+  return uploadedImages;
+}
+
+async function saveDraft(){
+  const report = collectReportDraft();
+  const allPhotos = [...photos.before, ...photos.during, ...photos.after];
+  if(allPhotos.some(p=>p.status==='compressing')){ alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
+  document.getElementById('draft-btn').disabled = true;
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('upload-status').textContent = 'กำลังบันทึกฉบับร่าง...';
+  document.getElementById('upload-detail').textContent = allPhotos.length ? 'กำลังอัปโหลดรูปที่เพิ่มไว้' : '';
+  document.getElementById('overlay-upload').classList.add('show');
+  try{
+    const uploadedImages = await collectUploadedImages(report);
+    document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
+    document.getElementById('upload-detail').textContent = '';
+    const latestState = await loadAppState();
+    if(!latestState || !Array.isArray(latestState.jobs)) throw new Error('ไม่พบข้อมูลระบบหลักใน Supabase');
+    const job = latestState.jobs.find(j => String(j.id) === String(JOB_ID));
+    if(!job) throw new Error('ไม่พบงานนี้ในระบบหลัก');
+    const savedAt = new Date().toISOString();
+    Object.assign(job, {
+      dateIn: report.dateIn,
+      timeIn: report.timeIn,
+      dateDone: report.dateDone,
+      timeDone: report.timeDone,
+      symptom: report.symptom,
+      cause: report.cause,
+      fix: report.fix,
+      report: report.fix,
+      partsUsed: report.parts,
+      note2: report.note,
+      technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, draftSavedAt:savedAt, isDraft:true, reviewStatus:'ฉบับร่าง' }
+    });
+    if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes('ฉบับร่าง')) latestState.J_ST.push('ฉบับร่าง');
+    if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes('ฉบับร่าง')) latestState.A_ST.push('ฉบับร่าง');
+    latestState.lastDataUpdatedAt = savedAt;
+    await saveAppState(latestState);
+    jobData = job;
+    document.getElementById('overlay-upload').classList.remove('show');
+    alert('บันทึกฉบับร่างแล้ว กลับมาเปิดลิงก์นี้เพื่อกรอกต่อได้');
+  }catch(e){
+    document.getElementById('overlay-upload').classList.remove('show');
+    alert('บันทึกฉบับร่างไม่สำเร็จ: ' + e.message);
+  }finally{
+    document.getElementById('draft-btn').disabled = false;
+    document.getElementById('submit-btn').disabled = false;
+  }
+}
+
+async function submitJob(){
+  // validate text fields
+  const report = collectReportDraft();
+  if(!report.dateIn){ alert('กรุณาเลือกวันที่เข้าจริง'); document.getElementById('f-date-in').focus(); return; }
+  if(!report.timeIn){ alert('กรุณาเลือกเวลาเข้าจริง'); document.getElementById('f-time-in').focus(); return; }
+  if(!report.needQuote && !report.dateDone){ alert('กรุณาเลือกวันที่เสร็จงาน'); document.getElementById('f-date-done').focus(); return; }
+  if(!report.needQuote && !report.timeDone){ alert('กรุณาเลือกเวลาเสร็จงาน'); document.getElementById('f-time-done').focus(); return; }
+  if(!report.cause){ alert('กรุณากรอกสาเหตุ'); document.getElementById('f-cause').focus(); return; }
+  if(!report.fix){ alert('กรุณากรอกวิธีแก้ไข'); document.getElementById('f-fix').focus(); return; }
+  if(!report.noParts && !report.parts){ alert('กรุณากรอกอะไหล่ที่ใช้ หรือติ๊ก "ไม่มีการใช้อะไหล่"'); document.getElementById('f-parts').focus(); return; }
 
   // validate photo minimums
   for(const cat of ['before','during','after']){
-    if(needQuote && cat !== 'before') continue;
+    if(report.needQuote && cat !== 'before') continue;
     if(noPhoto[cat]) continue;
     if(photos[cat].length < PHOTO_MIN[cat]){
       alert(`รูป${CAT_LABEL[cat]} ต้องมีอย่างน้อย ${PHOTO_MIN[cat]} รูป (ตอนนี้มี ${photos[cat].length} รูป)`);
@@ -516,49 +615,14 @@ async function submitJob(){
   if(allPhotos.some(p=>p.status==='compressing')){ alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
 
   document.getElementById('submit-btn').disabled = true;
+  document.getElementById('draft-btn').disabled = true;
+  document.getElementById('upload-status').textContent = 'กำลังส่งงาน...';
+  document.getElementById('upload-detail').textContent = 'กำลังบีบอัดและอัปโหลดรูป';
   document.getElementById('overlay-upload').classList.add('show');
-
-  const report = {
-    dateIn, timeIn, dateDone, timeDone,
-    symptom, cause,
-    fix, parts: noParts ? 'ไม่มีการใช้อะไหล่' : partsVal,
-    note: document.getElementById('f-note').value.trim(),
-    needQuote,
-    noPhoto: { ...noPhoto }
-  };
 
   try{
     // 1. upload photos (ผ่าน Cloudflare Worker → Google Drive)
-    const uploadedImages = [];
-    let done = 0;
-    const uploadQueue = allPhotos.filter(p=>!p.existing);
-    const total = uploadQueue.length;
-    for(const cat of ['before','during','after']){
-      for(const p of photos[cat]){
-        if(p.existing){
-          uploadedImages.push(p.uploadedMeta || {id:p.id,category:cat,label:CAT_LABEL[cat],url:p.url||p.dataUrl||'',uploadedAt:new Date().toISOString(),storage:'external'});
-          continue;
-        }
-        document.getElementById('upload-detail').textContent = `อัปโหลดรูป ${done+1}/${total}`;
-        const uploaded = await uploadPhoto(p.compressed, cat, done, p);
-        uploadedImages.push({
-          id: p.id,
-          category: cat,
-          label: CAT_LABEL[cat],
-          url: uploaded.url,
-          name: p.file?.name || `${cat}_${done+1}.jpg`,
-          size: p.compressed?.size || p.file?.size || 0,
-          width: p.width || 0,
-          height: p.height || 0,
-          orientation: (p.height||0) > (p.width||0) ? 'portrait' : 'landscape',
-          roundType: report.needQuote ? 'survey' : 'repair',
-          roundLabel: report.needQuote ? 'สำรวจ' : 'ซ่อมจริง',
-          uploadedAt: new Date().toISOString(),
-          storage: uploaded.storage
-        });
-        done++;
-      }
-    }
+    const uploadedImages = await collectUploadedImages(report);
 
     // 2. save report + images to Supabase app_state
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
@@ -602,7 +666,7 @@ async function submitJob(){
       reportReviewStatus: nextReview,
       reviewNote: '',
       reportRounds: [...(job.reportRounds||[]), nextRound],
-      technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, rounds:[...(job.technicianReport?.rounds||[]), nextRound], submittedAt, reviewStatus:nextReview, reviewNote:'' }
+      technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, rounds:[...(job.technicianReport?.rounds||[]), nextRound], submittedAt, draftSavedAt:'', isDraft:false, reviewStatus:nextReview, reviewNote:'' }
     });
     if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes(nextStatus)) latestState.J_ST.push(nextStatus);
     if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes(nextStatus)) latestState.A_ST.push(nextStatus);
@@ -627,6 +691,7 @@ async function submitJob(){
   }catch(e){
     document.getElementById('overlay-upload').classList.remove('show');
     document.getElementById('submit-btn').disabled = false;
+    document.getElementById('draft-btn').disabled = false;
     alert('เกิดข้อผิดพลาดในการส่ง: ' + e.message + '\nกรุณาลองใหม่');
   }
 }
