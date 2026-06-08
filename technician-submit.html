@@ -182,7 +182,7 @@ textarea{resize:vertical;min-height:80px;}
         <div class="up-zone" onclick="document.getElementById('inp-before').click()">
           <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูปตรวจเช็คก่อนดำเนินการ</div>
         </div>
-        <input type="file" id="inp-before" accept="image/*" multiple capture="environment" class="hidden" onchange="addPhotos('before',this.files)">
+        <input type="file" id="inp-before" accept="image/*" multiple class="hidden" onchange="addPhotos('before',this.files)">
         <div class="thumbs" id="th-before"></div>
       </div>
 
@@ -196,7 +196,7 @@ textarea{resize:vertical;min-height:80px;}
         <div class="up-zone" onclick="document.getElementById('inp-during').click()">
           <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูประหว่างดำเนินการ</div>
         </div>
-        <input type="file" id="inp-during" accept="image/*" multiple capture="environment" class="hidden" onchange="addPhotos('during',this.files)">
+        <input type="file" id="inp-during" accept="image/*" multiple class="hidden" onchange="addPhotos('during',this.files)">
         <div class="thumbs" id="th-during"></div>
       </div>
 
@@ -210,7 +210,7 @@ textarea{resize:vertical;min-height:80px;}
         <div class="up-zone" onclick="document.getElementById('inp-after').click()">
           <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูปหลังดำเนินการ</div>
         </div>
-        <input type="file" id="inp-after" accept="image/*" multiple capture="environment" class="hidden" onchange="addPhotos('after',this.files)">
+        <input type="file" id="inp-after" accept="image/*" multiple class="hidden" onchange="addPhotos('after',this.files)">
         <div class="thumbs" id="th-after"></div>
       </div>
     </div>
