@@ -440,9 +440,10 @@ select option{background:var(--surface2);}
   <div class="page-header"><div><div class="page-title">เอกสาร</div><div class="page-sub">ใบเสนอราคา, ใบแจ้งหนี้, ใบกำกับภาษี</div></div><button class="btn btn-primary">+ สร้างเอกสาร</button></div>
   <div class="content">
     <div class="tab-bar"><button class="tab-btn active" onclick="switchDoc('qt',this)">ใบเสนอราคา (QT)</button><button class="tab-btn" onclick="switchDoc('iv',this)">ใบแจ้งหนี้ (IV)</button><button class="tab-btn" onclick="switchDoc('tx',this)">ใบกำกับภาษี</button></div>
+    <div class="filter-bar" id="doc-fbar" style="margin-top:14px;border-radius:8px;border:1px solid var(--border);"></div>
     <div style="padding:14px 0;">
-      <div class="tab-panel active" id="doc-qt"><div class="table-wrap"><table><thead><tr><th>เลขที่</th><th>PR</th><th>ลูกค้า</th><th>ยอด</th><th>วันที่</th><th>สถานะ</th><th></th></tr></thead><tbody id="qt-tbody"></tbody></table></div></div>
-      <div class="tab-panel" id="doc-iv"><div class="table-wrap"><table><thead><tr><th>เลขที่</th><th>PR</th><th>ลูกค้า</th><th>ยอด</th><th>ครบกำหนด</th><th>สถานะ</th><th></th></tr></thead><tbody id="iv-tbody"></tbody></table></div></div>
+      <div class="tab-panel active" id="doc-qt"><div class="table-wrap"><table><thead><tr><th style="width:36px;"><input type="checkbox" id="doc-check-all-qt" onchange="toggleAllDocs('qt',this.checked)"></th><th>เลขที่</th><th>PR</th><th>ลูกค้า</th><th>ยอด</th><th>วันที่</th><th>สถานะ</th><th></th></tr></thead><tbody id="qt-tbody"></tbody></table></div></div>
+      <div class="tab-panel" id="doc-iv"><div class="table-wrap"><table><thead><tr><th style="width:36px;"><input type="checkbox" id="doc-check-all-iv" onchange="toggleAllDocs('iv',this.checked)"></th><th>เลขที่</th><th>PR</th><th>ลูกค้า</th><th>ยอด</th><th>ครบกำหนด</th><th>สถานะ</th><th></th></tr></thead><tbody id="iv-tbody"></tbody></table></div></div>
       <div class="tab-panel" id="doc-tx"><div class="empty"><div class="empty-icon">🧾</div><div>สร้างจากใบแจ้งหนี้ที่ชำระแล้ว</div></div></div>
     </div>
   </div>
@@ -794,9 +795,10 @@ let adminTasks = [
 
 let lpHistory=[], aiData=null, lpData=null;
 let jCnt=9, aCnt=4, jobFilter='ทั้งหมด', adminFilter='ทั้งหมด', finFilter='ทั้งหมด';
-let adminDateFilter='', adminMonthFilter='', jobDateFilter='', jobMonthFilter='';
+let adminDateFilter='', adminMonthFilter='', jobDateFilter='', jobMonthFilter='', adminRangeFilter='', jobRangeFilter='', rptRangeFilter='', docRangeFilter='';
 let adminSearch='', jobSearch='', jobTeamFilter='ทั้งหมด', calendarTeamFilter='ทั้งหมด', calendarMonthFilter='', calendarSearch='';
-let financeSearch='', financeDateFilter='', lastDataUpdatedAt='';
+let financeSearch='', financeDateFilter='', lastDataUpdatedAt='', adminSortDir='desc', jobSortDir='desc', rptSortDir='desc', docSortDir='desc', docSearch='', docDateFilter='', activeDocTab='qt';
+let selectedDocs={qt:new Set(),iv:new Set(),tx:new Set()};
 let editJobId=null, editAdminId=null;
 let adminNames=['แอดมิน 1','แอดมิน 2','ทั้งคู่'];
 let adminTypes=['เปิดงานใหม่จากลูกค้า','ทำใบเสนอราคา','ทำใบกำกับภาษี','จัดซื้ออะไหล่','ติดต่อลูกค้า','อื่นๆ'];
@@ -843,6 +845,21 @@ const LS_THEME_KEY='svc_admin_tracker_theme';
 const todayISO=()=>new Date().toISOString().split('T')[0];
 const monthOf=v=>(v||'').slice(0,7);
 const dateLocalISO=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+function itemDateValue(item){return item?.assignedAt||item?.date||item?.due||item?.createdDate||(item?.createdAt?dateLocalISO(new Date(item.createdAt)):'')||'';}
+function isTodayItem(item){return itemDateValue(item)===todayISO();}
+function isThisWeekDate(v){
+  if(!v)return false;
+  const d=new Date(v+'T00:00:00');
+  if(Number.isNaN(d.getTime()))return false;
+  const now=new Date();
+  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const day=(today.getDay()+6)%7;
+  const start=new Date(today);start.setDate(today.getDate()-day);
+  const end=new Date(start);end.setDate(start.getDate()+6);
+  return d>=start&&d<=end;
+}
+function inQuickRange(item,range){const d=itemDateValue(item);if(range==='today')return d===todayISO();if(range==='week')return isThisWeekDate(d);return true;}
+function sortByItemDate(arr,dir){return [...arr].sort((a,b)=>{const av=itemDateValue(a)||'';const bv=itemDateValue(b)||'';const c=av.localeCompare(bv)||(Number(a.createdAt||0)-Number(b.createdAt||0));return dir==='asc'?c:-c;});}
 let saveTimer=null, isHydrated=false, supabaseOnline=false;
 function applyTheme(theme){
   const t=theme==='light'?'light':'dark';
@@ -867,8 +884,8 @@ function ensureMeta(){
 }
 function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,docs,jCnt,aCnt,lastDataUpdatedAt};}
 function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
-function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.rptFilter)rptFilter=ui.rptFilter;if(ui.rptReviewFilter)rptReviewFilter=ui.rptReviewFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;adminMonthFilter='';jobMonthFilter='';if(ui.adminSearch!==undefined)adminSearch=ui.adminSearch;if(ui.jobSearch!==undefined)jobSearch=ui.jobSearch;if(ui.rptSearch!==undefined)rptSearch=ui.rptSearch;if(ui.jobTeamFilter)jobTeamFilter=ui.jobTeamFilter;if(ui.calendarTeamFilter)calendarTeamFilter=ui.calendarTeamFilter;if(ui.calendarMonthFilter!==undefined)calendarMonthFilter=ui.calendarMonthFilter;if(ui.calendarSearch!==undefined)calendarSearch=ui.calendarSearch;if(ui.financeSearch!==undefined)financeSearch=ui.financeSearch;if(ui.financeDateFilter!==undefined)financeDateFilter=ui.financeDateFilter;}catch(e){}}
-function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,rptFilter,rptReviewFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,adminSearch,jobSearch,rptSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch,financeSearch,financeDateFilter}));}catch(e){}}
+function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.rptFilter)rptFilter=ui.rptFilter;if(ui.rptReviewFilter)rptReviewFilter=ui.rptReviewFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;if(ui.rptDateFilter!==undefined)rptDateFilter=ui.rptDateFilter;if(ui.docDateFilter!==undefined)docDateFilter=ui.docDateFilter;adminMonthFilter='';jobMonthFilter='';if(ui.adminRangeFilter!==undefined)adminRangeFilter=ui.adminRangeFilter;if(ui.jobRangeFilter!==undefined)jobRangeFilter=ui.jobRangeFilter;if(ui.rptRangeFilter!==undefined)rptRangeFilter=ui.rptRangeFilter;if(ui.docRangeFilter!==undefined)docRangeFilter=ui.docRangeFilter;if(ui.adminSearch!==undefined)adminSearch=ui.adminSearch;if(ui.jobSearch!==undefined)jobSearch=ui.jobSearch;if(ui.rptSearch!==undefined)rptSearch=ui.rptSearch;if(ui.docSearch!==undefined)docSearch=ui.docSearch;if(ui.jobTeamFilter)jobTeamFilter=ui.jobTeamFilter;if(ui.calendarTeamFilter)calendarTeamFilter=ui.calendarTeamFilter;if(ui.calendarMonthFilter!==undefined)calendarMonthFilter=ui.calendarMonthFilter;if(ui.calendarSearch!==undefined)calendarSearch=ui.calendarSearch;if(ui.financeSearch!==undefined)financeSearch=ui.financeSearch;if(ui.financeDateFilter!==undefined)financeDateFilter=ui.financeDateFilter;if(ui.adminSortDir)adminSortDir=ui.adminSortDir;if(ui.jobSortDir)jobSortDir=ui.jobSortDir;if(ui.rptSortDir)rptSortDir=ui.rptSortDir;if(ui.docSortDir)docSortDir=ui.docSortDir;if(ui.activeDocTab)activeDocTab=ui.activeDocTab;}catch(e){}}
+function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,rptFilter,rptReviewFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,rptDateFilter,docDateFilter,adminRangeFilter,jobRangeFilter,rptRangeFilter,docRangeFilter,adminSearch,jobSearch,rptSearch,docSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch,financeSearch,financeDateFilter,adminSortDir,jobSortDir,rptSortDir,docSortDir,activeDocTab}));}catch(e){}}
 async function loadState(){
   loadUIState();
   try{
@@ -966,10 +983,16 @@ function applyFinanceSearch(){
   financeSearch=el?el.value.trim():financeSearch;
   renderFin();saveUIState();
 }
+function applyDocSearch(){
+  const el=document.getElementById('doc-search-input');
+  docSearch=el?el.value.trim():docSearch;
+  renderDocs();saveUIState();
+}
 function setFinanceDate(value){
   financeDateFilter=value;
   renderFin();saveUIState();
 }
+function setDocDate(value){docDateFilter=value;docRangeFilter='';renderDocs();saveUIState();}
 function fmtUpdated(v){
   if(!v)return'';
   try{return new Date(v).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'});}catch(e){return v;}
@@ -981,12 +1004,14 @@ function buildAdminControls(counts){
   const b=document.getElementById('admin-fbar');if(!b)return;
   b.innerHTML=`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="adminFilter=this.value;renderAdmin();saveUIState();">${statusOptionHtml(A_ST,counts,adminFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="admin-search-input" value="${esc(adminSearch)}" placeholder="Task / PR / ชื่องาน" onkeydown="if(event.key==='Enter')applyAdminSearch()"><button class="btn btn-ghost btn-sm" onclick="applyAdminSearch()">ค้นหา</button>`;
   addDateControls('admin-fbar','admin');
+  addQuickControls('admin-fbar','admin');
 }
 function buildJobControls(counts){
   const b=document.getElementById('job-fbar');if(!b)return;
   const teamOpts=['ทั้งหมด',...teams.map(t=>t.name)].map(t=>`<option value="${esc(t)}"${t===jobTeamFilter?' selected':''}>${esc(t)}</option>`).join('');
   b.innerHTML=`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="jobFilter=this.value;renderJobs();saveUIState();">${statusOptionHtml(J_ST,counts,jobFilter)}</select><span class="filter-label">ทีม:</span><select class="filter-select" onchange="jobTeamFilter=this.value;renderJobs();saveUIState();">${teamOpts}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="job-search-input" value="${esc(jobSearch)}" placeholder="PR / สาขา / ใบงาน" onkeydown="if(event.key==='Enter')applyJobSearch()"><button class="btn btn-ghost btn-sm" onclick="applyJobSearch()">ค้นหา</button>`;
   addDateControls('job-fbar','jobs');
+  addQuickControls('job-fbar','jobs');
 }
 function buildFinanceControls(counts){
   const b=document.getElementById('fin-fbar');if(!b)return;
@@ -998,19 +1023,39 @@ function addDateControls(bid, scope){
   const dateVal=scope==='admin'?adminDateFilter:jobDateFilter;
   b.insertAdjacentHTML('beforeend',`<span class="filter-label">วันที่:</span><input class="filter-input" type="date" value="${esc(dateVal)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setDateFilter('${scope}','date',this.value)"><button class="btn btn-ghost btn-sm" onclick="setDateFilter('${scope}','clear','')">ล้างวันที่</button>`);
 }
+function addQuickControls(bid,scope){
+  const b=document.getElementById(bid);if(!b)return;
+  const range=scope==='admin'?adminRangeFilter:scope==='rpt'?rptRangeFilter:scope==='doc'?docRangeFilter:jobRangeFilter;
+  const dir=scope==='admin'?adminSortDir:scope==='rpt'?rptSortDir:scope==='doc'?docSortDir:jobSortDir;
+  b.insertAdjacentHTML('beforeend',`<button class="btn btn-ghost btn-sm ${range==='today'?'active':''}" onclick="setQuickRange('${scope}','today')">วันนี้</button><button class="btn btn-ghost btn-sm ${range==='week'?'active':''}" onclick="setQuickRange('${scope}','week')">สัปดาห์นี้</button><button class="btn btn-ghost btn-sm" onclick="toggleSortDir('${scope}')">${dir==='desc'?'ใหม่→เก่า':'เก่า→ใหม่'}</button>`);
+}
+function setQuickRange(scope,range){
+  if(scope==='admin'){adminRangeFilter=range;adminDateFilter='';renderAdmin();}
+  else if(scope==='rpt'){rptRangeFilter=range;rptDateFilter='';renderReports();}
+  else if(scope==='doc'){docRangeFilter=range;docDateFilter='';renderDocs();}
+  else{jobRangeFilter=range;jobDateFilter='';renderJobs();}
+  saveUIState();
+}
+function toggleSortDir(scope){
+  if(scope==='admin'){adminSortDir=adminSortDir==='desc'?'asc':'desc';renderAdmin();}
+  else if(scope==='rpt'){rptSortDir=rptSortDir==='desc'?'asc':'desc';renderReports();}
+  else if(scope==='doc'){docSortDir=docSortDir==='desc'?'asc':'desc';renderDocs();}
+  else{jobSortDir=jobSortDir==='desc'?'asc':'desc';renderJobs();}
+  saveUIState();
+}
 function setDateFilter(scope,type,value){
   if(scope==='admin'){
-    if(type==='date'){adminDateFilter=value;adminMonthFilter='';}
+    if(type==='date'){adminDateFilter=value;adminMonthFilter='';adminRangeFilter='';}
     else if(type==='month'){adminMonthFilter=value;adminDateFilter='';}
     else{adminDateFilter='';adminMonthFilter='';}
     renderAdmin();
   }else if(scope==='rpt'){
-    if(type==='date'){rptDateFilter=value;rptMonthFilter='';}
+    if(type==='date'){rptDateFilter=value;rptMonthFilter='';rptRangeFilter='';}
     else if(type==='month'){rptMonthFilter=value;rptDateFilter='';}
     else{rptDateFilter='';rptMonthFilter='';}
     renderReports();
   }else{
-    if(type==='date'){jobDateFilter=value;jobMonthFilter='';}
+    if(type==='date'){jobDateFilter=value;jobMonthFilter='';jobRangeFilter='';}
     else if(type==='month'){jobMonthFilter=value;jobDateFilter='';}
     else{jobDateFilter='';jobMonthFilter='';}
     renderJobs();
@@ -1020,15 +1065,17 @@ function setDateFilter(scope,type,value){
 function inDateScope(item,scope){
   const d=item.assignedAt||item.date||item.due||'';
   if(scope==='admin'){
+    if(adminRangeFilter&&!inQuickRange(item,adminRangeFilter))return false;
     if(adminDateFilter)return d===adminDateFilter;
     if(adminMonthFilter)return monthOf(d)===adminMonthFilter;
-  }else{
-    if(jobDateFilter)return d===jobDateFilter;
-    if(jobMonthFilter)return monthOf(d)===jobMonthFilter;
-  }
-  if(scope==='rpt'){
+  }else if(scope==='rpt'){
+    if(rptRangeFilter&&!inQuickRange(item,rptRangeFilter))return false;
     if(rptDateFilter)return d===rptDateFilter;
     if(rptMonthFilter)return monthOf(d)===rptMonthFilter;
+  }else{
+    if(jobRangeFilter&&!inQuickRange(item,jobRangeFilter))return false;
+    if(jobDateFilter)return d===jobDateFilter;
+    if(jobMonthFilter)return monthOf(d)===jobMonthFilter;
   }
   return true;
 }
@@ -1081,7 +1128,7 @@ function commitListManager(){const key=document.getElementById('lm-key').value;s
 
 // DASHBOARD
 function renderDash(){
-  const nw=jobs.filter(j=>j.isNew||j.status==='รอเปิดงาน').length;
+  const nw=jobs.filter(j=>isTodayItem(j)&&j.status==='รอเปิดงาน').length;
   const rj=jobs.filter(j=>j.status==='Reject'||j.status==='ติดปัญหา').length;
   const cl=jobs.filter(j=>j.status==='ปิดงาน').length;
   document.getElementById('ds-total').textContent=jobs.length;
@@ -1101,8 +1148,8 @@ function renderDash(){
   document.getElementById('nb-new').textContent=nw;
   document.getElementById('nb-admin').textContent=adminTasks.filter(t=>t.status==='รอดำเนินการ'||t.status==='กำลังทำ').length;
   const latest=(arr)=>arr.map((x,i)=>({x,t:x.createdAt??i})).sort((a,b)=>b.t-a.t).slice(0,6).sort((a,b)=>a.t-b.t).map(o=>o.x);
-  document.getElementById('ds-admin-tbody').innerHTML=latest(adminTasks).map(t=>`<tr onclick="goTo('admin-tracker');setTimeout(()=>editAdminTask('${t.id}'),0)" style="cursor:pointer;"><td class="mono ta">${esc(t.id)} ${t.isNew?'<span class="new-pill">NEW</span>':''}${t.pri==='ด่วน'||t.pri==='เร่งด่วนมาก'?'<span class="urgent-pill">URGENT</span>':''}</td><td><span class="chip">${esc(t.type)}</span></td><td>${esc(t.assign)}</td><td class="tm">${esc(t.due)}</td><td><span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status)}</span></td></tr>`).join('');
-  document.getElementById('ds-job-tbody').innerHTML=latest(jobs).map(j=>`<tr onclick="goTo('jobs');setTimeout(()=>openDet('${j.id}'),0)" style="cursor:pointer;"><td class="mono ta">${esc(j.id)} ${j.isNew?'<span class="new-pill">NEW</span>':''}</td><td>${esc(j.branch)}</td><td>${esc(j.team)}</td><td class="tm">${esc(j.date)}</td><td><span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span></td></tr>`).join('');
+  document.getElementById('ds-admin-tbody').innerHTML=latest(adminTasks).map(t=>`<tr onclick="goTo('admin-tracker');setTimeout(()=>editAdminTask('${t.id}'),0)" style="cursor:pointer;"><td class="mono ta">${esc(t.id)} ${isTodayItem(t)?'<span class="new-pill">NEW</span>':''}${t.pri==='ด่วน'||t.pri==='เร่งด่วนมาก'?'<span class="urgent-pill">URGENT</span>':''}</td><td><span class="chip">${esc(t.type)}</span></td><td>${esc(t.assign)}</td><td class="tm">${esc(t.due)}</td><td><span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status)}</span></td></tr>`).join('');
+  document.getElementById('ds-job-tbody').innerHTML=latest(jobs).map(j=>`<tr onclick="goTo('jobs');setTimeout(()=>openDet('${j.id}'),0)" style="cursor:pointer;"><td class="mono ta">${esc(j.id)} ${isTodayItem(j)?'<span class="new-pill">NEW</span>':''}</td><td>${esc(j.branch)}</td><td>${esc(j.team)}</td><td class="tm">${esc(j.date)}</td><td><span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span></td></tr>`).join('');
 }
 
 // ADMIN TRACKER
@@ -1117,7 +1164,7 @@ function renderAdmin(){
   if(rj.length){rb.style.display='block';document.getElementById('admin-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('admin-reject-list').innerHTML=rj.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${esc(t.id)}</span><span>${esc(t.type)}</span><span class="tm">-</span><span>${esc(t.client)}</span><span class="badge ${SB[t.status]||'b-reject'}">${esc(t.status)}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setAS('${t.id}','รอดำเนินการ')">รีเซ็ต</button></div>`).join('');}
   else rb.style.display='none';
   let fil=adminFilter==='ทั้งหมด'?scoped:adminFilter==='ติดปัญหา'?scoped.filter(t=>t.status==='ติดปัญหา'||t.status==='Reject'):scoped.filter(t=>t.status===adminFilter);
-  fil=fil.filter(t=>matchText(t,['id','jobId','type','detail','client','assign','due','status'],adminSearch));
+  fil=sortByItemDate(fil.filter(t=>matchText(t,['id','jobId','type','detail','client','assign','due','status'],adminSearch)),adminSortDir);
   document.getElementById('admin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('admin-tbl-title').textContent='งาน Admin - '+adminFilter+(adminSearch?' / ค้นหา: '+adminSearch:'');
   const tb=document.getElementById('admin-tbody');
@@ -1126,7 +1173,7 @@ function renderAdmin(){
     const pr=t.jobId||'';
     const linked=jobs.find(j=>j.id===pr);
     const mid='am-'+t.id;
-    return `<tr class="task-row" onclick="openAdminDetail('${t.id}')"><td class="mono ta" style="font-size:11px;">${esc(t.id)}${t.isNew?' <span class="new-pill">NEW</span>':''}</td><td class="tm" style="font-size:11px;">${esc(t.assignedAt||'-')}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td class="task-detail" style="max-width:260px;font-size:12px;">${esc(t.detail)}${t.phone?`<span class="task-phone">เบอร์ติดต่อ: ${esc(t.phone)}</span>`:''}</td><td style="font-size:12px;">${esc(t.client)}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${t.status==='เสร็จแล้ว'?'var(--green)':t.status==='กำลังทำ'?'var(--yellow)':t.status==='ติดปัญหา'||t.status==='Reject'?'var(--red)':'var(--text2)'}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td>${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">เปิดคิว</button>`}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
+    return `<tr class="task-row" onclick="openAdminDetail('${t.id}')"><td class="mono ta" style="font-size:11px;">${esc(t.id)}${isTodayItem(t)?' <span class="new-pill">NEW</span>':''}</td><td class="tm" style="font-size:11px;">${esc(t.assignedAt||'-')}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td class="task-detail" style="max-width:260px;font-size:12px;">${esc(t.detail)}${t.phone?`<span class="task-phone">เบอร์ติดต่อ: ${esc(t.phone)}</span>`:''}</td><td style="font-size:12px;">${esc(t.client)}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${t.status==='เสร็จแล้ว'?'var(--green)':t.status==='กำลังทำ'?'var(--yellow)':t.status==='ติดปัญหา'||t.status==='Reject'?'var(--red)':'var(--text2)'}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td>${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">เปิดคิว</button>`}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
   }).join('');
 }
 function setAS(id,s){const t=adminTasks.find(x=>x.id===id);if(t){t.status=s;t.isNew=false;renderAdmin();renderDash();saveState();}}
@@ -1174,12 +1221,12 @@ function renderJobs(){
   else rb.style.display='none';
   let fil=jobFilter==='ทั้งหมด'?scoped:scoped.filter(j=>j.status===jobFilter);
   if(jobTeamFilter!=='ทั้งหมด')fil=fil.filter(j=>j.team===jobTeamFilter);
-  fil=fil.filter(j=>matchText(j,['id','ref','branch','client','type','team','date','status','note'],jobSearch));
+  fil=sortByItemDate(fil.filter(j=>matchText(j,['id','ref','branch','client','type','team','date','status','note'],jobSearch)),jobSortDir);
   document.getElementById('job-cnt').textContent=fil.length+' รายการ';
   document.getElementById('job-tbl-title').textContent='คิวช่าง - '+jobFilter+(jobTeamFilter!=='ทั้งหมด'?' / '+jobTeamFilter:'')+(jobSearch?' / ค้นหา: '+jobSearch:'');
   const tb=document.getElementById('job-tbody');
   if(!fil.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีงาน</div></div></td></tr>';return;}
-  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;return `<tr class="task-row" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${esc(j.id)}${j.isNew?' <span class="new-pill">NEW</span>':''}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="color:${j.status==='เสร็จงาน'||j.status==='ปิดงาน'?'var(--green)':j.status==='ช่างออกงาน'||j.status==='รอเปิดงาน'||j.status==='รอจ่าย'?'var(--yellow)':j.status==='Reject'||j.status==='ติดปัญหา'?'var(--red)':j.status==='รออะไหล่'?'var(--purple)':'var(--text2)'}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
+  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;return `<tr class="task-row" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${esc(j.id)}${isTodayItem(j)?' <span class="new-pill">NEW</span>':''}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="color:${j.status==='เสร็จงาน'||j.status==='ปิดงาน'?'var(--green)':j.status==='ช่างออกงาน'||j.status==='รอเปิดงาน'||j.status==='รอจ่าย'?'var(--yellow)':j.status==='Reject'||j.status==='ติดปัญหา'?'var(--red)':j.status==='รออะไหล่'?'var(--purple)':'var(--text2)'}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
 function setJS(id,s){const j=jobs.find(x=>x.id===id);if(j){j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;if(s==='รอจ่าย'){j.pay=payStatuses[0]||'รอเก็บเงิน';renderJobs();renderCalendar();renderDash();saveState();goFinanceForJob(id);return;}renderJobs();renderCalendar();renderDash();saveState();}}
 function technicianFormUrl(id){return `technician-submit.html?job=${encodeURIComponent(id)}`;}
@@ -1334,10 +1381,45 @@ function resetLP(){lpData=null;document.getElementById('lp-text').value='';docum
 let docs={qt:[{no:'QT-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,date:'2025-06-02',st:'อนุมัติแล้ว'},{no:'QT-2025-002',jid:'PR-006',cl:'บริษัท B',amt:3700,date:'2025-06-01',st:'อนุมัติแล้ว'}],iv:[{no:'IV-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,due:'2025-06-16',st:'ค้างชำระ'},{no:'IV-2025-002',jid:'PR-006',cl:'บริษัท B',amt:3700,due:'2025-06-16',st:'ค้างชำระ'}]};
 let quoteEditNo=null;
 let quoteDraftRows=[];
-function renderDocs(){document.getElementById('qt-tbody').innerHTML=docs.qt.map(d=>`<tr style="cursor:pointer;" onclick="openQuoteModal('${d.no}')"><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.date}</td><td><span class="badge b-done">${d.st}</span></td><td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();printQuoteDoc('${d.no}')">พิมพ์</button></td></tr>`).join('');document.getElementById('iv-tbody').innerHTML=docs.iv.map(d=>`<tr><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${d.amt.toLocaleString()}</td><td class="tm">${d.due}</td><td><span class="badge b-unpaid">${d.st}</span></td><td><button class="btn btn-ghost btn-sm">พิมพ์</button><button class="btn btn-success btn-sm" style="margin-left:4px;" onclick="markIV('${d.no}')">รับเงิน</button></td></tr>`).join('');}
+function docDate(d){return d.date||d.due||'';}
+function filteredDocs(type){
+  const arr=docs[type]||[];
+  const s=docSearch.trim().toLowerCase();
+  return sortByItemDate(arr.filter(d=>{
+    const dateOk=docRangeFilter?inQuickRange({date:docDate(d)},docRangeFilter):(docDateFilter?docDate(d)===docDateFilter:true);
+    if(!dateOk)return false;
+    if(!s)return true;
+    return ['no','jid','cl','st','date','due'].some(k=>String(d[k]??'').toLowerCase().includes(s));
+  }).map(d=>({...d,date:docDate(d)})),docSortDir);
+}
+function buildDocControls(){
+  const b=document.getElementById('doc-fbar');if(!b)return;
+  b.innerHTML=`<span class="filter-label">ค้นหา:</span><input class="search-input" id="doc-search-input" value="${esc(docSearch)}" placeholder="เลขที่ / PR / ลูกค้า" onkeydown="if(event.key==='Enter')applyDocSearch()"><button class="btn btn-ghost btn-sm" onclick="applyDocSearch()">ค้นหา</button><span class="filter-label">วันที่:</span><input class="filter-input" type="date" value="${esc(docDateFilter)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setDocDate(this.value)"><button class="btn btn-ghost btn-sm" onclick="setDocDate('')">ล้างวันที่</button><button class="btn btn-ghost btn-sm" onclick="selectAllVisibleDocs()">เลือกทั้งหมด</button><button class="btn btn-ghost btn-sm" onclick="downloadSelectedDocs()">ดาวน์โหลดที่เลือก</button><button class="btn btn-danger btn-sm" onclick="deleteSelectedDocs()">ลบที่เลือก</button>`;
+  addQuickControls('doc-fbar','doc');
+}
+function renderDocs(){
+  buildDocControls();
+  document.querySelectorAll('#page-documents .tab-btn').forEach((b,i)=>b.classList.toggle('active',(activeDocTab==='qt'&&i===0)||(activeDocTab==='iv'&&i===1)||(activeDocTab==='tx'&&i===2)));
+  document.querySelectorAll('#page-documents .tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('doc-'+activeDocTab)?.classList.add('active');
+  const qt=filteredDocs('qt'), iv=filteredDocs('iv');
+  document.getElementById('qt-tbody').innerHTML=qt.map(d=>{const mid='qtm-'+d.no;return `<tr style="cursor:pointer;" onclick="openQuoteModal('${d.no}')"><td onclick="event.stopPropagation()"><input type="checkbox" ${selectedDocs.qt.has(d.no)?'checked':''} onchange="toggleDocSelect('qt','${d.no}',this.checked)"></td><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.date}</td><td><span class="badge b-done">${d.st}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openQuoteModal('${d.no}')">แก้ไข</button><button onclick="printQuoteDoc('${d.no}')">พิมพ์</button><button onclick="downloadQuoteDoc('${d.no}')">ดาวน์โหลด</button><button onclick="deleteDoc('qt','${d.no}')">ลบเอกสาร</button></div></td></tr>`;}).join('')||'<tr><td colspan="8"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีเอกสาร</div></div></td></tr>';
+  document.getElementById('iv-tbody').innerHTML=iv.map(d=>{const mid='ivm-'+d.no;return `<tr><td><input type="checkbox" ${selectedDocs.iv.has(d.no)?'checked':''} onchange="toggleDocSelect('iv','${d.no}',this.checked)"></td><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.due}</td><td><span class="badge b-unpaid">${d.st}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="markIV('${d.no}')">รับเงิน</button><button onclick="deleteDoc('iv','${d.no}')">ลบเอกสาร</button></div></td></tr>`;}).join('')||'<tr><td colspan="8"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีเอกสาร</div></div></td></tr>';
+  updateDocChecks();
+}
 function printQuoteDoc(no){const d=docs.qt.find(x=>x.no===no);if(!d)return;const j=jobs.find(x=>x.id===d.jid)||{};generateDocWindow(partsQuoteHtml(j,d));}
-function markIV(no){const iv=docs.iv.find(d=>d.no===no);if(iv){iv.st='ชำระแล้ว';renderDocs();}}
-function switchDoc(t,btn){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('doc-'+t).classList.add('active');}
+function markIV(no){const iv=docs.iv.find(d=>d.no===no);if(iv){iv.st='ชำระแล้ว';renderDocs();saveState();}}
+function switchDoc(t,btn){activeDocTab=t;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('doc-'+t).classList.add('active');renderDocs();saveUIState();}
+function visibleDocNos(type){return filteredDocs(type).map(d=>d.no);}
+function toggleDocSelect(type,no,checked){if(checked)selectedDocs[type].add(no);else selectedDocs[type].delete(no);updateDocChecks();}
+function toggleAllDocs(type,checked){visibleDocNos(type).forEach(no=>checked?selectedDocs[type].add(no):selectedDocs[type].delete(no));renderDocs();}
+function selectAllVisibleDocs(){toggleAllDocs(activeDocTab,true);}
+function updateDocChecks(){['qt','iv'].forEach(type=>{const el=document.getElementById('doc-check-all-'+type);if(!el)return;const nos=visibleDocNos(type);el.checked=nos.length>0&&nos.every(no=>selectedDocs[type].has(no));el.indeterminate=nos.some(no=>selectedDocs[type].has(no))&&!el.checked;});}
+function deleteDoc(type,no){if(!confirm('ลบเอกสารนี้?'))return;docs[type]=(docs[type]||[]).filter(d=>d.no!==no);selectedDocs[type].delete(no);renderDocs();saveState();}
+function deleteSelectedDocs(){const type=activeDocTab;const nos=[...selectedDocs[type]];if(!nos.length){alert('ยังไม่ได้เลือกเอกสาร');return;}if(!confirm(`ลบเอกสารที่เลือก ${nos.length} รายการ?`))return;docs[type]=(docs[type]||[]).filter(d=>!selectedDocs[type].has(d.no));selectedDocs[type].clear();renderDocs();saveState();}
+function downloadHtml(filename,html){const blob=new Blob([html],{type:'text/html;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),800);}
+function downloadQuoteDoc(no){const d=docs.qt.find(x=>x.no===no);if(!d)return;const j=jobs.find(x=>x.id===d.jid)||{};downloadHtml(`${no}.html`,partsQuoteHtml(j,d));}
+function downloadSelectedDocs(){const type=activeDocTab;const nos=[...selectedDocs[type]];if(!nos.length){alert('ยังไม่ได้เลือกเอกสาร');return;}if(type!=='qt'){alert('ตอนนี้ดาวน์โหลดรองรับใบเสนอราคา (QT) ก่อน');return;}nos.forEach(no=>downloadQuoteDoc(no));}
 function quoteDocTotal(rows=quoteDraftRows){
   return rows.reduce((s,r)=>s+((Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0))),0);
 }
@@ -1679,11 +1761,13 @@ function buildRptControls(counts){
   REPORT_REVIEW_STATUSES.forEach(s=>reviewCounts[s]=jobs.filter(j=>inDateScope(j,'rpt')&&reportReviewStatus(j)===s).length);
   b.innerHTML=`<span class="filter-label">สถานะงาน:</span><select class="filter-select" onchange="rptFilter=this.value;renderReports();saveUIState();">${statusOptionHtml(J_ST,counts,rptFilter)}</select><span class="filter-label">สถานะรายงาน:</span><select class="filter-select" onchange="rptReviewFilter=this.value;renderReports();saveUIState();">${statusOptionHtml(REPORT_REVIEW_STATUSES,reviewCounts,rptReviewFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="rpt-search-input" value="${esc(rptSearch)}" placeholder="PR / สาขา / ทีม" onkeydown="if(event.key==='Enter')applyRptSearch()"><button class="btn btn-ghost btn-sm" onclick="applyRptSearch()">ค้นหา</button>`;
   addDateControls('rpt-fbar','rpt');
+  addQuickControls('rpt-fbar','rpt');
 }
 function applyRptSearch(){
   const el=document.getElementById('rpt-search-input');
   rptSearch=el?el.value.trim():rptSearch;
   renderReports();
+  saveUIState();
 }
 function formatDateTime(d,t){
   if(!d&&!t)return '—';
@@ -1747,6 +1831,7 @@ function renderReports(){
     const s=rptSearch.toLowerCase();
     fil=fil.filter(j=>(j.id||'').toLowerCase().includes(s)||(j.branch||'').toLowerCase().includes(s)||(j.team||'').toLowerCase().includes(s)||(j.client||'').toLowerCase().includes(s));
   }
+  fil=sortByItemDate(fil,rptSortDir);
   document.getElementById('rpt-cnt').textContent=fil.length+' รายการ';
   document.getElementById('rpt-title').textContent='รายงานช่าง'+(rptFilter&&rptFilter!=='ทั้งหมด'?' — '+rptFilter:'');
   const tb=document.getElementById('rpt-tbody');
