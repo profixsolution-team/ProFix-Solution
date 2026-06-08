@@ -63,10 +63,6 @@ textarea{resize:vertical;min-height:80px;}
 .hidden{display:none!important;}
 .req-star{color:var(--red);}
 .step-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--surface3);color:var(--text2);font-family:var(--mono);font-size:11px;font-weight:700;margin-bottom:10px;}
-.sig-pad{width:100%;height:170px;border:1px dashed var(--border2);border-radius:10px;background:var(--bg);touch-action:none;display:block;cursor:crosshair;}
-.sig-actions{display:flex;gap:8px;margin-top:10px;}
-.sig-actions .btn{width:auto;flex:1;padding:11px 12px;}
-.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
 </style>
 </head>
 <body>
@@ -121,23 +117,10 @@ textarea{resize:vertical;min-height:80px;}
       </div>
     </div>
 
-    <!-- PRE-SIGN -->
-    <div class="card" id="step-before-sign">
-      <div class="step-pill">STEP 1 / ก่อนเริ่มงาน</div>
-      <div class="sec-title">ลงนามรับทราบก่อนเข้าหน้างาน</div>
-      <div class="sec-sub">ให้ผู้แจ้งหรือผู้จัดการสาขาเซ็นก่อนเริ่มซ่อม เพื่อยืนยันการเข้าถึงหน้างาน</div>
-      <label>ลายเซ็นผู้แจ้ง / เจ้าของพื้นที่ <span class="req-star">*</span></label>
-      <canvas class="sig-pad" data-sig="beforeRequester"></canvas>
-      <div class="sig-actions">
-        <button class="btn btn-ghost" type="button" onclick="clearSignature('beforeRequester')">ล้างลายเซ็น</button>
-        <button class="btn btn-primary" type="button" onclick="confirmBeforeSign()">ต่อไปกรอกรายละเอียด</button>
-      </div>
-    </div>
-
     <!-- WORK DETAIL FORM -->
-    <div id="step-work-detail" class="hidden">
+    <div id="step-work-detail">
     <div class="card">
-      <div class="step-pill">STEP 2 / รายละเอียดงาน</div>
+      <div class="step-pill">รายละเอียดงาน</div>
       <div class="sec-title">📝 สรุปงานที่ทำ</div>
       <div class="sec-sub">กรอกรายละเอียดงานที่ออกหน้างาน</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -218,24 +201,9 @@ textarea{resize:vertical;min-height:80px;}
 
     <!-- SUBMIT -->
     <div class="card">
-      <button class="btn btn-primary" id="next-sign-btn" onclick="goAfterSign()">ต่อไปให้ผู้จัดการเซ็นรับงาน</button>
-      <div style="font-size:12px;color:var(--text3);text-align:center;margin-top:10px;">หลังกรอกข้อมูลและอัปโหลดรูปครบ จะไปหน้าลายเซ็นรับงาน</div>
-    </div>
-    </div>
-
-    <!-- POST-SIGN -->
-    <div class="card hidden" id="step-after-sign">
-      <div class="step-pill">STEP 3 / หลังจบงาน</div>
-      <div class="sec-title">ลงนามรับทราบหลังซ่อม</div>
-      <div class="sec-sub">ให้ผู้แจ้งหรือผู้จัดการสาขาเซ็นรับทราบหลังช่างทำงานและอัปโหลดรูปครบแล้ว</div>
-      <label>ลายเซ็นผู้แจ้ง / เจ้าของพื้นที่ <span class="req-star">*</span></label>
-      <canvas class="sig-pad" data-sig="afterRequester"></canvas>
-      <div class="sig-actions">
-        <button class="btn btn-ghost" type="button" onclick="backToWorkDetail()">ย้อนกลับ</button>
-        <button class="btn btn-ghost" type="button" onclick="clearSignature('afterRequester')">ล้างลายเซ็น</button>
-      </div>
-      <button class="btn btn-primary" id="submit-btn" onclick="submitJob()" style="margin-top:12px;">✓ ส่งงาน</button>
+      <button class="btn btn-primary" id="submit-btn" onclick="submitJob()">✓ ส่งงาน</button>
       <div style="font-size:12px;color:var(--text3);text-align:center;margin-top:10px;">เมื่อส่งแล้ว แอดมินจะได้รับแจ้งเตือนทันที</div>
+    </div>
     </div>
   </div>
 </div>
@@ -284,7 +252,6 @@ function openManualJob(){
 let jobData = null;
 let appState = null;
 let photos = { before: [], during: [], after: [] };
-let signatures = { beforeRequester:'', afterRequester:'' };
 const PHOTO_MIN = { before: 2, during: 6, after: 2 };
 const PHOTO_MAX = { before: 10, during: 40, after: 20 };
 const CAT_LABEL = { before: 'ก่อนทำ', during: 'ระหว่างทำ', after: 'หลังทำ' };
@@ -355,122 +322,6 @@ function showForm(){
   document.getElementById('f-fix').value = jobData.fix || jobData.technicianReport?.fix || '';
   document.getElementById('f-parts').value = jobData.partsUsed || jobData.technicianReport?.parts || '';
   document.getElementById('f-note').value = jobData.note2 || jobData.technicianReport?.note || '';
-  signatures = { beforeRequester:'', afterRequester:'', ...(jobData.signatures||{}), ...(jobData.technicianReport?.signatures||{}) };
-  setTimeout(()=>{
-    loadSignaturePads(signatures);
-    if(signatures.beforeRequester) confirmBeforeSign(false);
-  },80);
-}
-
-// ============================================================
-// SIGNATURE FLOW
-// ============================================================
-function signatureCanvas(key){ return document.querySelector(`canvas[data-sig="${key}"]`); }
-function resizeSignatureCanvas(c){
-  if(!c)return;
-  const saved = c.dataset.value || '';
-  const dpr = window.devicePixelRatio || 1;
-  const rect = c.getBoundingClientRect();
-  c.width = Math.max(1, Math.round(rect.width*dpr));
-  c.height = Math.max(1, Math.round(rect.height*dpr));
-  const ctx = c.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.lineWidth = 2.4;
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#e6edf3';
-  if(saved) drawSignatureImage(c, saved);
-}
-function drawSignatureImage(c,data){
-  if(!data)return;
-  const img = new Image();
-  img.onload = ()=>{ const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.clientWidth,c.clientHeight); ctx.drawImage(img,0,0,c.clientWidth,c.clientHeight); };
-  img.src = data;
-}
-function loadSignaturePads(saved={}){
-  ['beforeRequester','afterRequester'].forEach(key=>{
-    const c = signatureCanvas(key); if(!c)return;
-    c.dataset.value = saved[key] || '';
-    resizeSignatureCanvas(c);
-    if(c.dataset.ready)return;
-    c.dataset.ready = '1';
-    let drawing=false,last=null,moved=false;
-    const pos=e=>{const r=c.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};};
-    c.addEventListener('pointerdown',e=>{drawing=true;moved=false;last=pos(e);c.setPointerCapture(e.pointerId);});
-    c.addEventListener('pointermove',e=>{
-      if(!drawing)return;
-      moved=true;
-      const p=pos(e),ctx=c.getContext('2d');
-      ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;
-      c.dataset.value=c.toDataURL('image/png');signatures[key]=c.dataset.value;
-    });
-    const end=()=>{ if(drawing && !moved && last){ const ctx=c.getContext('2d'); ctx.beginPath(); ctx.arc(last.x,last.y,1.2,0,Math.PI*2); ctx.fillStyle='#e6edf3'; ctx.fill(); } drawing=false; c.dataset.value=c.toDataURL('image/png'); signatures[key]=c.dataset.value; };
-    c.addEventListener('pointerup',end);
-    c.addEventListener('pointercancel',()=>{drawing=false;});
-  });
-}
-function clearSignature(key){
-  const c=signatureCanvas(key); if(!c)return;
-  c.getContext('2d').clearRect(0,0,c.clientWidth,c.clientHeight);
-  c.dataset.value=''; signatures[key]='';
-}
-function hasSignature(key){ return !!(signatureCanvas(key)?.dataset.value || signatures[key]); }
-function captureSignature(key){ signatures[key] = signatureCanvas(key)?.dataset.value || signatures[key] || ''; return signatures[key]; }
-async function saveSignatureProgress(){
-  try{
-    const latestState = await loadAppState();
-    const job = latestState?.jobs?.find(j => String(j.id) === String(JOB_ID));
-    if(!job)return;
-    job.signatures = { ...(job.signatures||{}), ...signatures };
-    job.technicianReport = { ...(job.technicianReport||{}), signatures: job.signatures };
-    latestState.lastDataUpdatedAt = new Date().toISOString();
-    await saveAppState(latestState);
-  }catch(e){ console.warn('save signature progress failed', e); }
-}
-async function confirmBeforeSign(shouldSave=true){
-  captureSignature('beforeRequester');
-  if(!signatures.beforeRequester){ alert('กรุณาให้ผู้แจ้งหรือผู้จัดการสาขาเซ็นก่อน'); return; }
-  document.getElementById('step-before-sign').classList.add('hidden');
-  document.getElementById('step-work-detail').classList.remove('hidden');
-  document.getElementById('step-after-sign').classList.add('hidden');
-  if(shouldSave) await saveSignatureProgress();
-}
-function validateWorkBeforeAfterSign(){
-  const dateIn = document.getElementById('f-date-in').value;
-  const timeIn = document.getElementById('f-time-in').value;
-  const dateDone = document.getElementById('f-date-done').value;
-  const timeDone = document.getElementById('f-time-done').value;
-  const symptom = document.getElementById('f-symptom').value.trim();
-  const fix = document.getElementById('f-fix').value.trim();
-  const noParts = document.getElementById('f-noparts').checked;
-  const partsVal = document.getElementById('f-parts').value.trim();
-  if(!dateIn){ alert('กรุณาเลือกวันที่เข้าจริง'); document.getElementById('f-date-in').focus(); return false; }
-  if(!timeIn){ alert('กรุณาเลือกเวลาเข้าจริง'); document.getElementById('f-time-in').focus(); return false; }
-  if(!dateDone){ alert('กรุณาเลือกวันที่เสร็จงาน'); document.getElementById('f-date-done').focus(); return false; }
-  if(!timeDone){ alert('กรุณาเลือกเวลาเสร็จงาน'); document.getElementById('f-time-done').focus(); return false; }
-  if(!symptom){ alert('กรุณากรอกอาการที่พบ / สาเหตุ'); document.getElementById('f-symptom').focus(); return false; }
-  if(!fix){ alert('กรุณากรอกวิธีแก้ไข'); document.getElementById('f-fix').focus(); return false; }
-  if(!noParts && !partsVal){ alert('กรุณากรอกอะไหล่ที่ใช้ หรือติ๊ก "ไม่มีการใช้อะไหล่"'); document.getElementById('f-parts').focus(); return false; }
-  for(const cat of ['before','during','after']){
-    if(photos[cat].length < PHOTO_MIN[cat]){
-      alert(`รูป${CAT_LABEL[cat]} ต้องมีอย่างน้อย ${PHOTO_MIN[cat]} รูป (ตอนนี้มี ${photos[cat].length} รูป)`);
-      return false;
-    }
-  }
-  const allPhotos = [...photos.before, ...photos.during, ...photos.after];
-  if(allPhotos.some(p=>p.status==='compressing')){ alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return false; }
-  return true;
-}
-function goAfterSign(){
-  if(!hasSignature('beforeRequester')){ document.getElementById('step-before-sign').classList.remove('hidden'); document.getElementById('step-work-detail').classList.add('hidden'); alert('กรุณาเซ็นก่อนเริ่มงานก่อน'); return; }
-  if(!validateWorkBeforeAfterSign())return;
-  document.getElementById('step-work-detail').classList.add('hidden');
-  document.getElementById('step-after-sign').classList.remove('hidden');
-  setTimeout(()=>loadSignaturePads(signatures),50);
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-function backToWorkDetail(){
-  document.getElementById('step-after-sign').classList.add('hidden');
-  document.getElementById('step-work-detail').classList.remove('hidden');
 }
 
 // ============================================================
@@ -558,19 +409,6 @@ function removePhoto(cat, id){
 // SUBMIT
 // ============================================================
 async function submitJob(){
-  captureSignature('beforeRequester');
-  captureSignature('afterRequester');
-  if(!signatures.beforeRequester){
-    alert('กรุณาให้ผู้แจ้งหรือผู้จัดการสาขาเซ็นก่อนเริ่มงาน');
-    document.getElementById('step-after-sign').classList.add('hidden');
-    document.getElementById('step-work-detail').classList.add('hidden');
-    document.getElementById('step-before-sign').classList.remove('hidden');
-    return;
-  }
-  if(!signatures.afterRequester){
-    alert('กรุณาให้ผู้แจ้งหรือผู้จัดการสาขาเซ็นรับทราบหลังจบงาน');
-    return;
-  }
   // validate text fields
   const dateIn = document.getElementById('f-date-in').value;
   const timeIn = document.getElementById('f-time-in').value;
@@ -607,8 +445,7 @@ async function submitJob(){
     dateIn, timeIn, dateDone, timeDone,
     symptom, cause: '',
     fix, parts: noParts ? 'ไม่มีการใช้อะไหล่' : partsVal,
-    note: document.getElementById('f-note').value.trim(),
-    signatures: { ...signatures }
+    note: document.getElementById('f-note').value.trim()
   };
 
   try{
@@ -656,11 +493,10 @@ async function submitJob(){
       report: report.fix,
       partsUsed: report.parts,
       note2: report.note,
-      signatures: report.signatures,
       techSubmittedAt: submittedAt,
       reportReviewStatus: 'รอตรวจ',
       reviewNote: '',
-      technicianReport: { ...report, signatures: report.signatures, images: uploadedImages, submittedAt, reviewStatus:'รอตรวจ', reviewNote:'' }
+      technicianReport: { ...report, images: uploadedImages, submittedAt, reviewStatus:'รอตรวจ', reviewNote:'' }
     });
     if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes('ช่างส่งงานแล้ว')) latestState.J_ST.push('ช่างส่งงานแล้ว');
     latestState.lastDataUpdatedAt = submittedAt;
