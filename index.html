@@ -851,8 +851,8 @@ function ensureMeta(){
   jobs.forEach((j,i)=>{if(!j.createdAt)j.createdAt=Date.now()-(jobs.length-i)*86400000;if(!j.assignedAt)j.assignedAt=j.date||todayISO();if(j.pay==='unpaid')j.pay='รอเก็บเงิน';if(j.pay==='paid')j.pay='เก็บแล้ว';if(j.pay==='overdue')j.pay='เกินกำหนด';if(!j.reportReviewStatus)j.reportReviewStatus=reportReviewStatus(j);if(j.technicianReport&&!j.technicianReport.reviewStatus)j.technicianReport.reviewStatus=j.reportReviewStatus;});
   adminTasks.forEach((t,i)=>{if(!t.createdAt)t.createdAt=Date.now()-(adminTasks.length-i)*86400000;if(!t.assignedAt)t.assignedAt=t.due||todayISO();if(t.isNew===undefined)t.isNew=false;});
 }
-function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,jCnt,aCnt,lastDataUpdatedAt};}
-function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
+function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,docs,jCnt,aCnt,lastDataUpdatedAt};}
+function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
 function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.rptFilter)rptFilter=ui.rptFilter;if(ui.rptReviewFilter)rptReviewFilter=ui.rptReviewFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;adminMonthFilter='';jobMonthFilter='';if(ui.adminSearch!==undefined)adminSearch=ui.adminSearch;if(ui.jobSearch!==undefined)jobSearch=ui.jobSearch;if(ui.rptSearch!==undefined)rptSearch=ui.rptSearch;if(ui.jobTeamFilter)jobTeamFilter=ui.jobTeamFilter;if(ui.calendarTeamFilter)calendarTeamFilter=ui.calendarTeamFilter;if(ui.calendarMonthFilter!==undefined)calendarMonthFilter=ui.calendarMonthFilter;if(ui.calendarSearch!==undefined)calendarSearch=ui.calendarSearch;if(ui.financeSearch!==undefined)financeSearch=ui.financeSearch;if(ui.financeDateFilter!==undefined)financeDateFilter=ui.financeDateFilter;}catch(e){}}
 function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,rptFilter,rptReviewFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,adminSearch,jobSearch,rptSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch,financeSearch,financeDateFilter}));}catch(e){}}
 async function loadState(){
@@ -1317,8 +1317,9 @@ function renderLPHist(){const tb=document.getElementById('lp-history');if(!tb)re
 function resetLP(){lpData=null;document.getElementById('lp-text').value='';document.getElementById('lp-res').style.display='none';}
 
 // DOCUMENTS
-const docs={qt:[{no:'QT-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,date:'2025-06-02',st:'อนุมัติแล้ว'},{no:'QT-2025-002',jid:'PR-006',cl:'บริษัท B',amt:3700,date:'2025-06-01',st:'อนุมัติแล้ว'}],iv:[{no:'IV-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,due:'2025-06-16',st:'ค้างชำระ'},{no:'IV-2025-002',jid:'PR-006',cl:'บริษัท B',amt:3700,due:'2025-06-16',st:'ค้างชำระ'}]};
-function renderDocs(){document.getElementById('qt-tbody').innerHTML=docs.qt.map(d=>`<tr><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${d.amt.toLocaleString()}</td><td class="tm">${d.date}</td><td><span class="badge b-done">${d.st}</span></td><td><button class="btn btn-ghost btn-sm">พิมพ์</button></td></tr>`).join('');document.getElementById('iv-tbody').innerHTML=docs.iv.map(d=>`<tr><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${d.amt.toLocaleString()}</td><td class="tm">${d.due}</td><td><span class="badge b-unpaid">${d.st}</span></td><td><button class="btn btn-ghost btn-sm">พิมพ์</button><button class="btn btn-success btn-sm" style="margin-left:4px;" onclick="markIV('${d.no}')">รับเงิน</button></td></tr>`).join('');}
+let docs={qt:[{no:'QT-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,date:'2025-06-02',st:'อนุมัติแล้ว'},{no:'QT-2025-002',jid:'PR-006',cl:'บริษัท B',amt:3700,date:'2025-06-01',st:'อนุมัติแล้ว'}],iv:[{no:'IV-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,due:'2025-06-16',st:'ค้างชำระ'},{no:'IV-2025-002',jid:'PR-006',cl:'บริษัท B',amt:3700,due:'2025-06-16',st:'ค้างชำระ'}]};
+function renderDocs(){document.getElementById('qt-tbody').innerHTML=docs.qt.map(d=>`<tr><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.date}</td><td><span class="badge b-done">${d.st}</span></td><td><button class="btn btn-ghost btn-sm" onclick="printQuoteDoc('${d.no}')">พิมพ์</button></td></tr>`).join('');document.getElementById('iv-tbody').innerHTML=docs.iv.map(d=>`<tr><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${d.amt.toLocaleString()}</td><td class="tm">${d.due}</td><td><span class="badge b-unpaid">${d.st}</span></td><td><button class="btn btn-ghost btn-sm">พิมพ์</button><button class="btn btn-success btn-sm" style="margin-left:4px;" onclick="markIV('${d.no}')">รับเงิน</button></td></tr>`).join('');}
+function printQuoteDoc(no){const d=docs.qt.find(x=>x.no===no);if(!d)return;const j=jobs.find(x=>x.id===d.jid)||{};generateDocWindow(partsQuoteHtml(j,d));}
 function markIV(no){const iv=docs.iv.find(d=>d.no===no);if(iv){iv.st='ชำระแล้ว';renderDocs();}}
 function switchDoc(t,btn){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('doc-'+t).classList.add('active');}
 
@@ -1776,26 +1777,54 @@ function generatePhotoBillingReport(){
   saveState();
   generateDocWindow(photoBillingReportHtml(j));
 }
-function partsQuoteHtml(j){
-  const logo=new URL('assets/profix-logo-dark.svg',location.href).href;
+function quoteRowsFromJob(j){
+  const rows=[];
+  const detail=(j.partsUsed||j.technicianReport?.parts||j.fix||j.report||j.note||'รายการอะไหล่/งานซ่อม').split('\n').map(x=>x.trim()).filter(Boolean);
+  const labor=Number(j.pt)||0;
+  const parts=Number(j.partR)||Number(j.partC)||0;
+  if(parts>0)rows.push({cat:'อะไหล่',code:'',desc:detail.join(', '),unit:'ชุด',qty:1,mat:parts,labor:0});
+  if(labor>0)rows.push({cat:'งานบริการ',code:'',desc:j.fix||j.report||j.type||'ค่าแรงดำเนินการ',unit:'งาน',qty:1,mat:0,labor:labor});
+  if(!rows.length)rows.push({cat:'งานบริการ',code:'',desc:detail.join(', ')||j.type||'รายการงาน',unit:'งาน',qty:1,mat:0,labor:0});
+  return rows;
+}
+function partsQuoteHtml(j,doc={}){
   const generatedAt=new Date().toLocaleString('th-TH');
-  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบเสนอราคาอะไหล่ ${esc(j.id)}</title><style>
-  *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111827;font-family:Arial,"Noto Sans Thai",sans-serif}.toolbar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#175fff;color:#fff}.page{width:210mm;min-height:297mm;margin:18px auto;padding:16mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16)}.head{display:flex;justify-content:space-between;gap:18px;border-bottom:3px solid #175fff;padding-bottom:14px}.head img{width:150px;object-fit:contain}.title{text-align:right}.title h1{margin:0 0 8px;font-size:26px}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}.cell{border:1px solid #d7e0ea;padding:10px}.label{font-weight:800;color:#536173}.box{border:1px solid #d7e0ea;padding:12px;min-height:70px;margin-top:8px;white-space:pre-wrap}.section{margin-top:16px}.section h2{font-size:17px;margin:0}.sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:48px}.line{border-top:1px solid #111;text-align:center;padding-top:8px;font-weight:800}@media print{body{background:#fff}.toolbar{display:none}.page{margin:0;box-shadow:none}}@page{size:A4;margin:10mm}</style></head><body><div class="toolbar"><b>ใบเสนอราคาอะไหล่ ${esc(j.id)}</b><button onclick="window.print()">พิมพ์ / Save PDF</button></div><main class="page">
-  <header class="head"><img src="${logo}" alt="ProFix"><div class="title"><h1>ใบเสนอราคาอะไหล่</h1><div>${generatedAt}</div><div style="font-family:monospace;font-weight:800;color:#175fff;">${esc(j.id)}</div></div></header>
-  <div class="meta"><div class="cell"><span class="label">ลูกค้า:</span> ${esc(j.client||'—')}</div><div class="cell"><span class="label">สาขา:</span> ${esc(j.branch||'—')}</div><div class="cell"><span class="label">ประเภทงาน:</span> ${esc(j.type||'—')}</div><div class="cell"><span class="label">ทีมช่าง:</span> ${esc(j.team||'—')}</div></div>
-  <section class="section"><h2>อาการที่พบ</h2><div class="box">${reportDocText(j.symptom||j.note||j.technicianReport?.symptom)}</div></section>
-  <section class="section"><h2>สาเหตุจากการสำรวจ</h2><div class="box">${reportDocText(j.cause||j.technicianReport?.cause)}</div></section>
-  <section class="section"><h2>แนวทางการแก้ไข / อะไหล่ที่ต้องเสนอราคา</h2><div class="box">${reportDocText((j.fix||j.report||'')+'\\n\\nอะไหล่: '+(j.partsUsed||j.technicianReport?.parts||'—'))}</div></section>
-  <section class="section"><h2>หมายเหตุ</h2><div class="box">${reportDocText(j.note2||j.technicianReport?.note)}</div></section>
-  <div class="sign"><div class="line">ผู้เสนอราคา</div><div class="line">ผู้อนุมัติ</div></div>
+  const no=doc.no||`QT-${new Date().getFullYear()}-${String((docs.qt||[]).length+1).padStart(3,'0')}`;
+  const rows=doc.rows||quoteRowsFromJob(j);
+  const subtotal=rows.reduce((s,r)=>s+((Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0))),0);
+  const overhead=doc.overhead??10;
+  const overheadAmt=subtotal*overhead/100;
+  const travel=Number(doc.travel ?? j.fuel ?? 0);
+  const preVat=subtotal+overheadAmt+travel;
+  const vat=preVat*.07;
+  const grand=preVat+vat;
+  const blankRows=Math.max(0,10-rows.length);
+  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(no)}</title><style>
+  *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111;font-family:"Times New Roman",Arial,"Noto Sans Thai",sans-serif;font-size:12px}.toolbar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff;font-family:Arial,"Noto Sans Thai",sans-serif}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#175fff;color:#fff}.page{width:297mm;min-height:210mm;margin:18px auto;padding:10mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16)}table{width:100%;border-collapse:collapse}td,th{border:1px solid #333;padding:4px 6px;vertical-align:middle}.company{text-align:center;font-weight:800;line-height:1.7}.small{font-size:11px}.center{text-align:center}.right{text-align:right}.bold{font-weight:800}.detail{height:38px}.boq th{font-weight:800;text-align:center}.boq td{height:22px}.summary td{height:22px}.note{border-right:0}.sum-label{font-weight:800}.foot{text-align:center;font-weight:800;padding-top:12px}@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;box-shadow:none;padding:8mm}}@page{size:A4 landscape;margin:7mm}</style></head><body><div class="toolbar"><b>${esc(no)}</b><button onclick="window.print()">พิมพ์ / Save PDF</button></div><main class="page">
+  <table><tr><td rowspan="4" style="width:34px;"></td><td rowspan="4" class="company">บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด (สำนักงานใหญ่)<br><span class="small">88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120</span><br><span class="small">โทร 098-6266622 เลขประจำตัวผู้เสียภาษี 0245557002535</span></td><td class="center bold">Work Order NO.</td><td class="center">${esc(j.ref||'')}</td></tr><tr><td class="center bold">เลขที่ใบแจ้งซ่อม</td><td></td></tr><tr><td class="center bold">Quotation NO.</td><td class="center">${esc(no)}</td></tr><tr><td class="center bold">Date Issued</td><td class="center">${esc(doc.date||todayISO())}</td></tr>
+  <tr><td colspan="2" class="detail"><span class="bold">รายละเอียดงาน :</span> ${esc(j.fix||j.report||j.partsUsed||j.type||'')}</td><td class="center bold">สาขา : ${esc(j.branch||'')}</td><td class="center bold">จังหวัด : </td></tr>
+  <tr><td colspan="2"></td><td class="center bold">ศูนย์ที่ ${esc(j.team||'')}</td><td class="center bold">จังหวัด : </td></tr></table>
+  <table class="boq"><thead><tr><th style="width:36px;">NO.</th><th style="width:70px;">หมวด</th><th style="width:70px;">ลำดับ<br>ราคากลาง</th><th>Bill Of Quantities</th><th style="width:70px;">หน่วย</th><th style="width:90px;">ปริมาณ</th><th style="width:90px;">ค่าของ</th><th style="width:90px;">ค่าแรง</th><th style="width:90px;">รวม</th></tr></thead><tbody>${rows.map((r,i)=>{
+    const total=(Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0));
+    return `<tr><td class="center">${i+1}</td><td class="center">${esc(r.cat||'')}</td><td class="center">${esc(r.code||'')}</td><td>${esc(r.desc||'')}</td><td class="center">${esc(r.unit||'')}</td><td class="center">${esc(r.qty||'')}</td><td class="right">${r.mat?Number(r.mat).toLocaleString(): '-'}</td><td class="right">${r.labor?Number(r.labor).toLocaleString(): '-'}</td><td class="right">${total?total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}): '-'}</td></tr>`;
+  }).join('')}${Array.from({length:blankRows}).map(()=>'<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="right">-</td></tr>').join('')}</tbody></table>
+  <table class="summary"><tr><td rowspan="8" class="note" style="width:62%;vertical-align:top;"><span class="bold">หมายเหตุ :</span><br><br><span class="bold">ผู้จัดทำ RM</span><br><br><br>ค่าเดินทาง : ${esc(j.branch||'')}</td><td class="sum-label">รวม</td><td class="right">${subtotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">Overhead ${overhead}%</td><td class="right">${overheadAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">ราคารวม Overhead</td><td class="right">${(subtotal+overheadAmt).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>ค่าดำเนินการปกติ</td><td class="right">0.00</td></tr><tr><td>ค่าดำเนินการเร่งด่วน</td><td class="right">0.00</td></tr><tr><td class="sum-label">ค่าเดินทาง</td><td class="right">${travel.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">รวมทั้งหมด</td><td class="right">${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">VAT 7%</td><td class="right">${vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="foot" colspan="2">หากหนี้สินตามมาตามสัญญาตกลง</td><td class="sum-label">รวมราคาทั้งสิ้น</td><td class="right bold">${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table>
   </main></body></html>`;
 }
 function generatePartsQuote(){
   const j=syncReportFormToJob();if(!j)return;
   const now=new Date().toISOString();
-  j.generatedReports=[...(j.generatedReports||[]),{type:'parts-quote',generatedAt:now}];
+  const no=`QT-${new Date().getFullYear()}-${String((docs.qt||[]).length+1).padStart(3,'0')}`;
+  const rows=quoteRowsFromJob(j);
+  const amt=rows.reduce((s,r)=>s+((Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0))),0);
+  if(!docs.qt.some(d=>d.jid===j.id&&d.type==='parts-boq')){
+    docs.qt.unshift({no,jid:j.id,cl:j.client||'',amt,date:todayISO(),st:'ร่าง',type:'parts-boq',rows});
+  }
+  j.generatedReports=[...(j.generatedReports||[]),{type:'parts-quote',generatedAt:now,no}];
   saveState();
-  generateDocWindow(partsQuoteHtml(j));
+  closeM('m-report');
+  goTo('documents');
+  renderDocs();
 }
 async function approvePartsRepair(){
   const id=document.getElementById('mrpt-jobid').value;
@@ -1942,9 +1971,7 @@ initApp();
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeM('m-report')">ปิด</button>
-      <button class="btn btn-ghost" onclick="generatePartsQuote()">ใบเสนอราคาอะไหล่</button>
-      <button class="btn btn-ghost" onclick="approvePartsRepair()">อนุมัติซ่อมต่อ</button>
-      <button class="btn btn-ghost" onclick="closeSurveyJob()">ปิดงานสำรวจ</button>
+      <button class="btn btn-ghost" onclick="generatePartsQuote()">ทำใบเสนอราคา</button>
       <button class="btn btn-ghost" onclick="generateAcceptanceReport()">ใบตรวจรับ</button>
       <button class="btn btn-ghost" onclick="generatePhotoBillingReport()">ใบงานรูปภาพ</button>
       <button class="btn btn-ghost" onclick="returnReportForFix()">ส่งกลับแก้ไข</button>
