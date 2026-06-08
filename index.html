@@ -86,6 +86,12 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .task-row{cursor:pointer;}
 .task-detail{white-space:pre-line;line-height:1.35;}
 .task-phone{display:block;margin-top:6px;color:var(--text2);font-size:11px;line-height:1.35;}
+.mobile-card{display:none;}
+.mobile-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.mobile-card-pr{font-family:var(--mono);font-size:15px;font-weight:900;color:var(--accent);}
+.mobile-card-type{font-size:12px;font-weight:800;color:var(--text);line-height:1.35;}
+.mobile-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:11px;color:var(--text2);}
+.mobile-card-meta b{display:block;color:var(--text3);font-size:9px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
 .text-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;color:var(--text2);white-space:pre-line;line-height:1.55;}
 .report-gallery{display:grid;gap:14px;margin-top:12px;}
 .report-gallery-section{border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--bg);}
@@ -259,6 +265,17 @@ select option{background:var(--surface2);}
   .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;}
   table{min-width:760px;}
   th,td{padding:8px 10px;font-size:12px;white-space:nowrap;}
+  .table-wrap.mobile-list{overflow:visible;border:0;background:transparent;border-radius:0;}
+  .table-wrap.mobile-list table{min-width:0;width:100%;display:block;border-collapse:separate;}
+  .table-wrap.mobile-list .table-scroll{overflow:visible;}
+  .table-wrap.mobile-list thead{display:none;}
+  .table-wrap.mobile-list tbody{display:grid;gap:10px;}
+  .table-wrap.mobile-list tr{display:block;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 0 rgba(16,24,40,.04);}
+  .table-wrap.mobile-list td{display:none;padding:0;border:0;white-space:normal;}
+  .table-wrap.mobile-list td:has(.mobile-card){display:block;}
+  .mobile-card{display:block;padding:12px 13px;}
+  .mobile-card .badge{font-size:10px;}
+  .table-wrap.mobile-list tr:hover td{background:transparent;}
   .table-header{position:sticky;left:0;min-width:100%;gap:8px;padding:10px 12px;}
   .table-title{font-size:13px;}
   .modal{width:calc(100vw - 20px);max-height:88vh;border-radius:10px;}
@@ -356,7 +373,7 @@ select option{background:var(--surface2);}
       <div class="reject-hdr">⚠️ ติดปัญหา/Reject <span id="admin-reject-c" class="mono"></span></div>
       <div id="admin-reject-list"></div>
     </div>
-    <div class="table-wrap">
+    <div class="table-wrap mobile-list">
       <div class="table-header"><div class="table-title" id="admin-tbl-title">งาน Admin</div><span class="mono tm" style="font-size:11px;" id="admin-cnt"></span></div>
       <table><thead><tr><th>Task ID</th><th>วันที่ Assign</th><th>ประเภท</th><th>รายละเอียด</th><th>ลูกค้า/สาขา</th><th>Assign</th><th>กำหนด</th><th>สถานะ</th><th>PR</th><th></th></tr></thead><tbody id="admin-tbody"></tbody></table>
     </div>
@@ -375,7 +392,7 @@ select option{background:var(--surface2);}
       <div class="reject-hdr">⚠️ ติดปัญหา/Reject <span id="job-reject-c" class="mono"></span></div>
       <div id="job-reject-list"></div>
     </div>
-    <div class="table-wrap">
+    <div class="table-wrap mobile-list">
       <div class="table-header"><div class="table-title" id="job-tbl-title">คิวช่าง</div><span class="mono tm" style="font-size:11px;" id="job-cnt"></span></div>
       <table><thead><tr><th>PR</th><th>วันที่ Assign</th><th>สถานะ</th><th>ลูกค้า</th><th>สาขา</th><th>ประเภท</th><th>ทีม</th><th>วันนัด</th><th></th></tr></thead><tbody id="job-tbody"></tbody></table>
     </div>
@@ -416,7 +433,7 @@ select option{background:var(--surface2);}
       <div class="fin-card"><div class="fin-label">ลูกหนี้ค้างรับ</div><div class="fin-value ty" id="fin-ar">—</div><div class="fin-meta" id="fin-ar-m">—</div></div>
     </div>
     <div class="filter-bar" id="fin-fbar" style="margin-bottom:16px;border-radius:8px;border:1px solid var(--border);"></div>
-    <div class="table-wrap mb16">
+    <div class="table-wrap mobile-list mb16">
       <div class="table-header"><div class="table-title" id="fin-tbl-title">P&L ต่องาน</div><span class="mono tm" style="font-size:11px;" id="fin-cnt"></span></div>
       <table><thead><tr><th>PR</th><th>สาขา</th><th>ทีม</th><th>รายรับ</th><th>จ่ายช่าง</th><th>ต้นทุนอะไหล่</th><th>กำไร</th><th>สถานะเงิน</th><th></th></tr></thead><tbody id="fin-tbody"></tbody></table>
     </div>
@@ -442,8 +459,8 @@ select option{background:var(--surface2);}
     <div class="tab-bar"><button class="tab-btn active" onclick="switchDoc('qt',this)">ใบเสนอราคา (QT)</button><button class="tab-btn" onclick="switchDoc('iv',this)">ใบแจ้งหนี้ (IV)</button><button class="tab-btn" onclick="switchDoc('tx',this)">ใบกำกับภาษี</button></div>
     <div class="filter-bar" id="doc-fbar" style="margin-top:14px;border-radius:8px;border:1px solid var(--border);"></div>
     <div style="padding:14px 0;">
-      <div class="tab-panel active" id="doc-qt"><div class="table-wrap"><table><thead><tr><th style="width:36px;"><input type="checkbox" id="doc-check-all-qt" onchange="toggleAllDocs('qt',this.checked)"></th><th>เลขที่</th><th>PR</th><th>ลูกค้า</th><th>ยอด</th><th>วันที่</th><th>สถานะ</th><th></th></tr></thead><tbody id="qt-tbody"></tbody></table></div></div>
-      <div class="tab-panel" id="doc-iv"><div class="table-wrap"><table><thead><tr><th style="width:36px;"><input type="checkbox" id="doc-check-all-iv" onchange="toggleAllDocs('iv',this.checked)"></th><th>เลขที่</th><th>PR</th><th>ลูกค้า</th><th>ยอด</th><th>ครบกำหนด</th><th>สถานะ</th><th></th></tr></thead><tbody id="iv-tbody"></tbody></table></div></div>
+      <div class="tab-panel active" id="doc-qt"><div class="table-wrap mobile-list"><table><thead><tr><th style="width:36px;"><input type="checkbox" id="doc-check-all-qt" onchange="toggleAllDocs('qt',this.checked)"></th><th>เลขที่</th><th>PR</th><th>ลูกค้า</th><th>ยอด</th><th>วันที่</th><th>สถานะ</th><th></th></tr></thead><tbody id="qt-tbody"></tbody></table></div></div>
+      <div class="tab-panel" id="doc-iv"><div class="table-wrap mobile-list"><table><thead><tr><th style="width:36px;"><input type="checkbox" id="doc-check-all-iv" onchange="toggleAllDocs('iv',this.checked)"></th><th>เลขที่</th><th>PR</th><th>ลูกค้า</th><th>ยอด</th><th>ครบกำหนด</th><th>สถานะ</th><th></th></tr></thead><tbody id="iv-tbody"></tbody></table></div></div>
       <div class="tab-panel" id="doc-tx"><div class="empty"><div class="empty-icon">🧾</div><div>สร้างจากใบแจ้งหนี้ที่ชำระแล้ว</div></div></div>
     </div>
   </div>
@@ -648,7 +665,7 @@ select option{background:var(--surface2);}
   </div>
   <div class="filter-bar" id="rpt-fbar"></div>
   <div class="content" style="padding-top:16px;">
-    <div class="table-wrap">
+    <div class="table-wrap mobile-list">
       <div class="table-header">
         <div class="table-title" id="rpt-title">รายงานช่างทั้งหมด</div>
         <span class="mono tm" style="font-size:11px;" id="rpt-cnt"></span>
@@ -1084,6 +1101,9 @@ function matchText(item, fields, q){
   if(!s)return true;
   return fields.some(f=>String(item[f]??'').toLowerCase().includes(s));
 }
+function mobileCard(pr,type,team,date,status,extra=''){
+  return `<div class="mobile-card"><div class="mobile-card-top"><div><div class="mobile-card-pr">${esc(pr||'-')}</div><div class="mobile-card-type">${esc(type||'-')}</div></div><div>${status||''}</div></div><div class="mobile-card-meta"><div><b>ทีมซ่อม</b>${esc(team||'-')}</div><div><b>วันนัด</b>${esc(date||'-')}</div>${extra}</div></div>`;
+}
 function listRef(key){
   const refs={
     jobStatuses:{title:'สถานะคิวช่าง',get:()=>J_ST,set:v=>J_ST=v},
@@ -1173,7 +1193,8 @@ function renderAdmin(){
     const pr=t.jobId||'';
     const linked=jobs.find(j=>j.id===pr);
     const mid='am-'+t.id;
-    return `<tr class="task-row" onclick="openAdminDetail('${t.id}')"><td class="mono ta" style="font-size:11px;">${esc(t.id)}${isTodayItem(t)?' <span class="new-pill">NEW</span>':''}</td><td class="tm" style="font-size:11px;">${esc(t.assignedAt||'-')}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td class="task-detail" style="max-width:260px;font-size:12px;">${esc(t.detail)}${t.phone?`<span class="task-phone">เบอร์ติดต่อ: ${esc(t.phone)}</span>`:''}</td><td style="font-size:12px;">${esc(t.client)}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${t.status==='เสร็จแล้ว'?'var(--green)':t.status==='กำลังทำ'?'var(--yellow)':t.status==='ติดปัญหา'||t.status==='Reject'?'var(--red)':'var(--text2)'}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td>${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">เปิดคิว</button>`}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
+    const stBadge=`<span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status||'-')}</span>`;
+    return `<tr class="task-row" onclick="openAdminDetail('${t.id}')"><td class="mono ta" style="font-size:11px;">${mobileCard(pr||t.jobId||'ยังไม่เปิด PR',t.type,t.assign,t.due,stBadge)}${esc(t.id)}${isTodayItem(t)?' <span class="new-pill">NEW</span>':''}</td><td class="tm" style="font-size:11px;">${esc(t.assignedAt||'-')}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td class="task-detail" style="max-width:260px;font-size:12px;">${esc(t.detail)}${t.phone?`<span class="task-phone">เบอร์ติดต่อ: ${esc(t.phone)}</span>`:''}</td><td style="font-size:12px;">${esc(t.client)}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${t.status==='เสร็จแล้ว'?'var(--green)':t.status==='กำลังทำ'?'var(--yellow)':t.status==='ติดปัญหา'||t.status==='Reject'?'var(--red)':'var(--text2)'}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td>${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">เปิดคิว</button>`}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
   }).join('');
 }
 function setAS(id,s){const t=adminTasks.find(x=>x.id===id);if(t){t.status=s;t.isNew=false;renderAdmin();renderDash();saveState();}}
@@ -1226,7 +1247,7 @@ function renderJobs(){
   document.getElementById('job-tbl-title').textContent='คิวช่าง - '+jobFilter+(jobTeamFilter!=='ทั้งหมด'?' / '+jobTeamFilter:'')+(jobSearch?' / ค้นหา: '+jobSearch:'');
   const tb=document.getElementById('job-tbody');
   if(!fil.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีงาน</div></div></td></tr>';return;}
-  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;return `<tr class="task-row" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${esc(j.id)}${isTodayItem(j)?' <span class="new-pill">NEW</span>':''}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="color:${j.status==='เสร็จงาน'||j.status==='ปิดงาน'?'var(--green)':j.status==='ช่างออกงาน'||j.status==='รอเปิดงาน'||j.status==='รอจ่าย'?'var(--yellow)':j.status==='Reject'||j.status==='ติดปัญหา'?'var(--red)':j.status==='รออะไหล่'?'var(--purple)':'var(--text2)'}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
+  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=`<span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status||'-')}</span>`;return `<tr class="task-row" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}${esc(j.id)}${isTodayItem(j)?' <span class="new-pill">NEW</span>':''}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="color:${j.status==='เสร็จงาน'||j.status==='ปิดงาน'?'var(--green)':j.status==='ช่างออกงาน'||j.status==='รอเปิดงาน'||j.status==='รอจ่าย'?'var(--yellow)':j.status==='Reject'||j.status==='ติดปัญหา'?'var(--red)':j.status==='รออะไหล่'?'var(--purple)':'var(--text2)'}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
 function setJS(id,s){const j=jobs.find(x=>x.id===id);if(j){j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;if(s==='รอจ่าย'){j.pay=payStatuses[0]||'รอเก็บเงิน';renderJobs();renderCalendar();renderDash();saveState();goFinanceForJob(id);return;}renderJobs();renderCalendar();renderDash();saveState();}}
 function technicianFormUrl(id){return `technician-submit.html?job=${encodeURIComponent(id)}`;}
@@ -1302,7 +1323,7 @@ function renderFin(){
   fil=fil.filter(j=>matchText(j,['id','ref','branch','client','team','type','date','status','pay','financeNote'],financeSearch));
   document.getElementById('fin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('fin-tbl-title').textContent='P&L ต่องาน - '+finFilter+(financeDateFilter?' / '+financeDateFilter:'')+(financeSearch?' / ค้นหา: '+financeSearch:'');
-  document.getElementById('fin-tbody').innerHTML=fil.map(j=>`<tr><td class="mono ta" style="font-size:11px;"><button class="link-btn" onclick="openFinanceEdit('${j.id}')">${esc(j.id)}</button></td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${j.pc+j.partR}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button></div></td></tr>`).join('');
+  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openFinanceEdit('${j.id}')">${esc(j.id)}</button></td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${j.pc+j.partR}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button></div></td></tr>`;}).join('');
   renderFixedExpenses();
 }
 function setPay(id,s){const j=jobs.find(x=>x.id===id);if(j){j.pay=s;renderFin();renderDash();saveState();}}
@@ -1403,8 +1424,8 @@ function renderDocs(){
   document.querySelectorAll('#page-documents .tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('doc-'+activeDocTab)?.classList.add('active');
   const qt=filteredDocs('qt'), iv=filteredDocs('iv');
-  document.getElementById('qt-tbody').innerHTML=qt.map(d=>{const mid='qtm-'+d.no;return `<tr style="cursor:pointer;" onclick="openQuoteModal('${d.no}')"><td onclick="event.stopPropagation()"><input type="checkbox" ${selectedDocs.qt.has(d.no)?'checked':''} onchange="toggleDocSelect('qt','${d.no}',this.checked)"></td><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.date}</td><td><span class="badge b-done">${d.st}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openQuoteModal('${d.no}')">แก้ไข</button><button onclick="printQuoteDoc('${d.no}')">พิมพ์</button><button onclick="downloadQuoteDoc('${d.no}')">ดาวน์โหลด</button><button onclick="deleteDoc('qt','${d.no}')">ลบเอกสาร</button></div></td></tr>`;}).join('')||'<tr><td colspan="8"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีเอกสาร</div></div></td></tr>';
-  document.getElementById('iv-tbody').innerHTML=iv.map(d=>{const mid='ivm-'+d.no;return `<tr><td><input type="checkbox" ${selectedDocs.iv.has(d.no)?'checked':''} onchange="toggleDocSelect('iv','${d.no}',this.checked)"></td><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.due}</td><td><span class="badge b-unpaid">${d.st}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="markIV('${d.no}')">รับเงิน</button><button onclick="deleteDoc('iv','${d.no}')">ลบเอกสาร</button></div></td></tr>`;}).join('')||'<tr><td colspan="8"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีเอกสาร</div></div></td></tr>';
+  document.getElementById('qt-tbody').innerHTML=qt.map(d=>{const mid='qtm-'+d.no;return `<tr style="cursor:pointer;" onclick="openQuoteModal('${d.no}')"><td onclick="event.stopPropagation()">${mobileCard(d.jid||d.no,'ใบเสนอราคา','-',d.date,`<span class="badge b-done">${esc(d.st)}</span>`,`<div><b>เลขที่</b>${esc(d.no)}</div><div><b>ยอด</b>฿${(d.amt||0).toLocaleString()}</div>`)}<input type="checkbox" ${selectedDocs.qt.has(d.no)?'checked':''} onchange="toggleDocSelect('qt','${d.no}',this.checked)"></td><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.date}</td><td><span class="badge b-done">${d.st}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openQuoteModal('${d.no}')">แก้ไข</button><button onclick="printQuoteDoc('${d.no}')">พิมพ์</button><button onclick="downloadQuoteDoc('${d.no}')">ดาวน์โหลด</button><button onclick="deleteDoc('qt','${d.no}')">ลบเอกสาร</button></div></td></tr>`;}).join('')||'<tr><td colspan="8"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีเอกสาร</div></div></td></tr>';
+  document.getElementById('iv-tbody').innerHTML=iv.map(d=>{const mid='ivm-'+d.no;return `<tr><td>${mobileCard(d.jid||d.no,'ใบแจ้งหนี้','-',d.due,`<span class="badge b-unpaid">${esc(d.st)}</span>`,`<div><b>เลขที่</b>${esc(d.no)}</div><div><b>ยอด</b>฿${(d.amt||0).toLocaleString()}</div>`)}<input type="checkbox" ${selectedDocs.iv.has(d.no)?'checked':''} onchange="toggleDocSelect('iv','${d.no}',this.checked)"></td><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.due}</td><td><span class="badge b-unpaid">${d.st}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="markIV('${d.no}')">รับเงิน</button><button onclick="deleteDoc('iv','${d.no}')">ลบเอกสาร</button></div></td></tr>`;}).join('')||'<tr><td colspan="8"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีเอกสาร</div></div></td></tr>';
   updateDocChecks();
 }
 function printQuoteDoc(no){const d=docs.qt.find(x=>x.no===no);if(!d)return;const j=jobs.find(x=>x.id===d.jid)||{};generateDocWindow(partsQuoteHtml(j,d));}
@@ -1840,7 +1861,7 @@ function renderReports(){
     const hasReport=j.symptom||j.fix||j.report;
     const review=reportReviewStatus(j);
     return `<tr onclick="openReportModal('${j.id}')" style="cursor:pointer;">
-      <td class="mono ta fw7" style="font-size:11px;">${j.id}</td>
+      <td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,`<span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span>`)}${j.id}</td>
       <td style="font-size:12px;">${j.branch}</td>
       <td><span class="chip">${j.type}</span></td>
       <td style="font-size:12px;">${j.team}</td>
