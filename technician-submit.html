@@ -227,7 +227,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const STATE_KEY = 'service_management_tracker';
 // Cloudflare Worker endpoint สำหรับอัปรูปเข้า Google Drive
 // ตัวอย่าง: https://profix-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload
-const UPLOAD_ENDPOINT = 'YOUR_CLOUDFLARE_WORKER_URL/upload';
+const UPLOAD_ENDPOINT = 'https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
 
 let supa = null;
 try { if(SUPABASE_URL.startsWith('http')) supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){ console.error(e); }
