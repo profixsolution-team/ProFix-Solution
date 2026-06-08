@@ -166,8 +166,8 @@ body[data-theme="light"] .cal-day.muted{background:#eef3f8;}
 .modal-title{font-size:16px;font-weight:700;}
 .modal-body{padding:18px 22px;}
 .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
-.quote-line{display:grid;grid-template-columns:190px 90px 78px minmax(260px,1fr) 70px 82px 92px 92px 54px;gap:8px;align-items:start;margin-bottom:8px;}
-.quote-line textarea{min-height:42px;padding:8px 10px;}
+.quote-line{display:grid;grid-template-columns:120px minmax(360px,1fr) 76px 82px 96px 96px 58px;gap:8px;align-items:start;margin-bottom:8px;}
+.quote-line input[readonly]{background:var(--surface2);color:var(--text2);}
 .quote-total{margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);font-weight:700;text-align:right;}
 @media(max-width:900px){.quote-line{grid-template-columns:1fr 1fr;}.quote-line textarea{grid-column:1/-1;}.modal-footer{flex-wrap:wrap;}.modal-footer .btn{flex:1;min-width:120px;}}
 .close-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px;padding:0 4px;line-height:1;}
@@ -1345,6 +1345,9 @@ function quotePartLabel(p,i){
   const code=p.code||p.sku||p.brand||`P-${String(i+1).padStart(3,'0')}`;
   return `${code} | ${p.name}${p.brand?' / '+p.brand:''} | ฿${Number(p.sell||p.cost||0).toLocaleString()}`;
 }
+function quotePartSearchValue(p){
+  return `${p.name||''}${p.brand?` / ${p.brand}`:''}${p.unit?` (${p.unit})`:''}`.trim();
+}
 function applyQuotePart(rowIndex,partIndex){
   const p=parts[Number(partIndex)];
   if(!p||!quoteDraftRows[rowIndex])return;
@@ -1361,6 +1364,16 @@ function applyQuotePart(rowIndex,partIndex){
     labor:Number(p.labor||p.service||0)
   };
   renderQuoteModalRows();
+}
+function applyQuotePartByText(rowIndex,value,force=false){
+  const text=String(value||'').trim();
+  quoteDraftRows[rowIndex].desc=text;
+  const exact=parts.findIndex(p=>quotePartSearchValue(p)===text||quotePartLabel(p,parts.indexOf(p))===text);
+  if(exact>=0){applyQuotePart(rowIndex,exact);return;}
+  if(force){
+    const hit=parts.findIndex(p=>quotePartSearchValue(p).toLowerCase().includes(text.toLowerCase())||String(p.name||'').toLowerCase().includes(text.toLowerCase()));
+    if(hit>=0)applyQuotePart(rowIndex,hit);
+  }
 }
 function openQuoteModal(no){
   const d=docs.qt.find(x=>x.no===no);if(!d)return;
@@ -1387,12 +1400,11 @@ function openQuoteModal(no){
 }
 function renderQuoteModalRows(){
   const box=document.getElementById('q-rows');
-  const partOptions=`<option value="">เลือกจากข้อมูลอะไหล่</option>${parts.map((p,pi)=>`<option value="${pi}">${esc(quotePartLabel(p,pi))}</option>`).join('')}`;
+  const dl=document.getElementById('quote-part-list');
+  if(dl)dl.innerHTML=parts.map((p,pi)=>`<option value="${esc(quotePartSearchValue(p))}" label="${esc(quotePartLabel(p,pi))}"></option>`).join('');
   box.innerHTML=quoteDraftRows.map((r,i)=>`<div class="quote-line">
-    <select onchange="applyQuotePart(${i},this.value)">${partOptions}</select>
-    <input value="${esc(r.cat||'')}" oninput="quoteDraftRows[${i}].cat=this.value" placeholder="หมวด">
-    <input value="${esc(r.code||'')}" oninput="quoteDraftRows[${i}].code=this.value" placeholder="ลำดับ">
-    <textarea oninput="quoteDraftRows[${i}].desc=this.value" placeholder="รายละเอียด BOQ">${esc(r.desc||'')}</textarea>
+    <input value="${esc(r.cat||'')}" readonly placeholder="หมวดหมู่">
+    <input list="quote-part-list" value="${esc(r.desc||'')}" oninput="applyQuotePartByText(${i},this.value,false)" onchange="applyQuotePartByText(${i},this.value,true)" placeholder="พิมพ์ค้นหารายการอะไหล่ / รายละเอียด BOQ">
     <input value="${esc(r.unit||'')}" oninput="quoteDraftRows[${i}].unit=this.value" placeholder="หน่วย">
     <input type="number" min="0" step="0.01" value="${esc(r.qty??1)}" oninput="quoteDraftRows[${i}].qty=this.value;renderQuoteTotalPreview()" placeholder="จำนวน">
     <input type="number" min="0" step="0.01" value="${esc(r.mat??0)}" oninput="quoteDraftRows[${i}].mat=this.value;renderQuoteTotalPreview()" placeholder="ค่าของ">
@@ -2006,10 +2018,10 @@ function partsQuoteHtml(j,doc={}){
   <table><tr><td rowspan="5" style="width:34px;"></td><td rowspan="5" class="company"><div class="doc-title">ใบเสนอราคา / BOQ</div>บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด (สำนักงานใหญ่)<br><span class="small">88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120</span><br><span class="small">โทร 098-6266622 เลขประจำตัวผู้เสียภาษี 0245557002535</span></td><td class="center bold">Work Order NO.</td><td class="center">${esc(ref)}</td></tr><tr><td class="center bold">JOB / PR</td><td class="center">${esc(j.id||doc.jid||'')}</td></tr><tr><td class="center bold">Quotation NO.</td><td class="center">${esc(no)}</td></tr><tr><td class="center bold">Date Issued</td><td class="center">${esc(doc.date||todayISO())}</td></tr><tr><td class="center bold">Customer</td><td class="center">${esc(client)}</td></tr>
   <tr><td colspan="2" class="detail"><span class="bold">รายละเอียดงาน :</span> ${esc(workDetail)}</td><td class="center bold">สาขา : ${esc(branch)}</td><td class="center bold">จังหวัด : ${esc(province)}</td></tr>
   <tr><td colspan="2"><span class="bold">ผู้จัดทำ :</span> ${esc(preparedBy)} <span class="muted">| Generated ${esc(generatedAt)}</span></td><td class="center bold">ทีม/ศูนย์ : ${esc(team)}</td><td class="center bold">สถานะ : ${esc(doc.st||'ร่าง')}</td></tr></table>
-  <table class="boq"><thead><tr><th style="width:36px;">NO.</th><th style="width:70px;">หมวด</th><th style="width:70px;">ลำดับ<br>ราคากลาง</th><th>Bill Of Quantities</th><th style="width:70px;">หน่วย</th><th style="width:90px;">ปริมาณ</th><th style="width:90px;">ค่าของ</th><th style="width:90px;">ค่าแรง</th><th style="width:90px;">รวม</th></tr></thead><tbody>${rows.map((r,i)=>{
+  <table class="boq"><thead><tr><th style="width:36px;">NO.</th><th style="width:80px;">หมวด</th><th>Bill Of Quantities</th><th style="width:70px;">หน่วย</th><th style="width:90px;">ปริมาณ</th><th style="width:90px;">ค่าของ</th><th style="width:90px;">ค่าแรง</th><th style="width:90px;">รวม</th></tr></thead><tbody>${rows.map((r,i)=>{
     const total=(Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0));
-    return `<tr><td class="center">${i+1}</td><td class="center">${esc(r.cat||'')}</td><td class="center">${esc(r.code||'')}</td><td>${esc(r.desc||'')}</td><td class="center">${esc(r.unit||'')}</td><td class="center">${esc(r.qty||'')}</td><td class="right">${r.mat?Number(r.mat).toLocaleString(): '-'}</td><td class="right">${r.labor?Number(r.labor).toLocaleString(): '-'}</td><td class="right">${total?total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}): '-'}</td></tr>`;
-  }).join('')}${Array.from({length:blankRows}).map(()=>'<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="right">-</td></tr>').join('')}</tbody></table>
+    return `<tr><td class="center">${i+1}</td><td class="center">${esc(r.cat||'')}</td><td>${esc(r.desc||'')}</td><td class="center">${esc(r.unit||'')}</td><td class="center">${esc(r.qty||'')}</td><td class="right">${r.mat?Number(r.mat).toLocaleString(): '-'}</td><td class="right">${r.labor?Number(r.labor).toLocaleString(): '-'}</td><td class="right">${total?total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}): '-'}</td></tr>`;
+  }).join('')}${Array.from({length:blankRows}).map(()=>'<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="right">-</td></tr>').join('')}</tbody></table>
   <table class="summary"><tr><td rowspan="8" class="note-box" style="width:62%;"><span class="bold">หมายเหตุ :</span><br>${esc(note)}<br><br><span class="bold">เงื่อนไข :</span><br>${esc(term)}<br><br><span class="bold">ค่าเดินทาง :</span> ${esc(branch)}</td><td class="sum-label">รวม</td><td class="right">${subtotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">Overhead ${overhead}%</td><td class="right">${overheadAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">ราคารวม Overhead</td><td class="right">${(subtotal+overheadAmt).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>ค่าดำเนินการปกติ</td><td class="right">0.00</td></tr><tr><td>ค่าดำเนินการเร่งด่วน</td><td class="right">0.00</td></tr><tr><td class="sum-label">ค่าเดินทาง</td><td class="right">${travel.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">รวมทั้งหมด</td><td class="right">${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">VAT 7%</td><td class="right">${vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td colspan="2" class="center bold">เอกสารนี้สร้างจากระบบ ProFix Service Console</td><td class="sum-label">รวมราคาทั้งสิ้น</td><td class="right bold">${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table>
   <table class="signs"><tr><td>ผู้จัดทำ<br><br>${esc(preparedBy)}</td><td>ผู้ตรวจสอบ</td><td>ผู้อนุมัติ</td><td>ลูกค้า / ผู้รับเอกสาร</td></tr></table>
   </main></body></html>`;
@@ -2273,6 +2285,7 @@ initApp();
       </div>
       <div class="form-group">
         <label>รายการ BOQ</label>
+        <datalist id="quote-part-list"></datalist>
         <div id="q-rows"></div>
         <button class="btn btn-ghost btn-sm" onclick="addQuoteLine()">+ เพิ่มรายการ</button>
         <div class="quote-total" id="q-total-preview">รวมสุทธิ: ฿0.00</div>
