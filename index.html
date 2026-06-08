@@ -96,10 +96,6 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .report-thumb:hover{border-color:var(--accent);}
 .report-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 .report-thumb-badge{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.72);color:#fff;font-family:var(--mono);font-size:9px;border-radius:999px;padding:2px 5px;}
-.sig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
-.sig-card{border:1px solid var(--border);border-radius:8px;background:var(--bg);padding:8px;}
-.sig-title{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:800;color:var(--text2);margin-bottom:6px;}
-.sig-pad{width:100%;height:92px;border:1px dashed var(--border2);border-radius:7px;background:var(--surface);touch-action:none;display:block;cursor:crosshair;}
 .image-preview{max-width:min(92vw,980px);max-height:78vh;display:block;border-radius:10px;border:1px solid var(--border);background:var(--bg);}
 .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:var(--mono);white-space:nowrap;}
 .b-new{background:#1a2a1a;color:#56d364;border:1px solid #2a4a2a;}
@@ -260,7 +256,6 @@ select option{background:var(--surface2);}
   .modal{width:calc(100vw - 20px);max-height:88vh;border-radius:10px;}
   .modal-header,.modal-body,.modal-footer{padding-left:14px;padding-right:14px;}
   .modal-footer{position:sticky;bottom:0;background:var(--surface);flex-wrap:wrap;}
-  .sig-grid{grid-template-columns:1fr;}
   .select-tools,.combo-row{align-items:stretch;}
   .select-tools .btn,.combo-row .btn{padding-left:10px;padding-right:10px;}
   .calendar-toolbar{gap:6px;}
@@ -1618,7 +1613,7 @@ function syncReportFormToJob(){
   j.reviewNote=document.getElementById('mrpt-review-note').value;
   j.report=j.fix;
   j.reportReviewStatus=j.reportReviewStatus||reportReviewStatus(j);
-  j.technicianReport={...(j.technicianReport||{}),dateIn:j.dateIn,timeIn:j.timeIn,dateDone:j.dateDone,timeDone:j.timeDone,symptom:j.symptom,cause:j.cause,fix:j.fix,parts:j.partsUsed,recommendation:j.recommendation,note:j.note2,signatures:j.signatures,reviewStatus:j.reportReviewStatus,reviewNote:j.reviewNote,reviewedAt:j.technicianReport?.reviewedAt||''};
+  j.technicianReport={...(j.technicianReport||{}),dateIn:j.dateIn,timeIn:j.timeIn,dateDone:j.dateDone,timeDone:j.timeDone,symptom:j.symptom,cause:j.cause,fix:j.fix,parts:j.partsUsed,recommendation:j.recommendation,note:j.note2,reviewStatus:j.reportReviewStatus,reviewNote:j.reviewNote,reviewedAt:j.technicianReport?.reviewedAt||''};
   return j;
 }
 async function saveReport(){
@@ -1632,60 +1627,6 @@ async function saveReport(){
 function reportDocText(v){
   const s=esc(v||'—');
   return s.replace(/\n/g,'<br>');
-}
-const SIGNATURE_KEYS=['repairer','inspector','requester'];
-function signatureCanvas(key){return document.querySelector(`canvas[data-sig="${key}"]`);}
-function resizeSignatureCanvas(c){
-  if(!c)return;
-  const saved=c.dataset.value||'';
-  const dpr=window.devicePixelRatio||1;
-  const rect=c.getBoundingClientRect();
-  c.width=Math.max(1,Math.round(rect.width*dpr));
-  c.height=Math.max(1,Math.round(rect.height*dpr));
-  const ctx=c.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.lineWidth=2;
-  ctx.lineCap='round';
-  ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--text')||'#111';
-  if(saved)drawSignatureImage(c,saved);
-}
-function drawSignatureImage(c,data){
-  if(!data)return;
-  const img=new Image();
-  img.onload=()=>{const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.clientWidth,c.clientHeight);};
-  img.src=data;
-}
-function loadSignaturePads(signatures={}){
-  SIGNATURE_KEYS.forEach(key=>{
-    const c=signatureCanvas(key);if(!c)return;
-    c.dataset.value=signatures[key]||'';
-    resizeSignatureCanvas(c);
-    if(c.dataset.ready)return;
-    c.dataset.ready='1';
-    let drawing=false,last=null;
-    const pos=e=>{const r=c.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};};
-    c.addEventListener('pointerdown',e=>{drawing=true;last=pos(e);c.setPointerCapture(e.pointerId);});
-    c.addEventListener('pointermove',e=>{
-      if(!drawing)return;
-      const p=pos(e),ctx=c.getContext('2d');
-      ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;
-      c.dataset.value=c.toDataURL('image/png');
-    });
-    c.addEventListener('pointerup',()=>{drawing=false;c.dataset.value=c.toDataURL('image/png');});
-    c.addEventListener('pointercancel',()=>{drawing=false;});
-  });
-}
-function clearSignature(key){
-  const c=signatureCanvas(key);if(!c)return;
-  c.getContext('2d').clearRect(0,0,c.width,c.height);
-  c.dataset.value='';
-}
-function getSignatureData(key){
-  const c=signatureCanvas(key);
-  return c?.dataset.value||'';
-}
-function signatureImg(data){
-  return data?`<img class="signature-img" src="${esc(data)}" alt="signature">`:'';
 }
 function imageChunks(items,size){
   const chunks=[];
@@ -1701,11 +1642,10 @@ function generateDocWindow(html){
 }
 function acceptanceReportHtml(j){
   const logo=new URL('assets/profix-logo-dark.svg',location.href).href;
-  const sig=j.signatures||j.technicianReport?.signatures||{};
   const generatedAt=new Date().toLocaleString('th-TH');
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ใบตรวจรับงาน ${esc(j.id)}</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111827;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:14px;line-height:1.45}.toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}.page{width:210mm;min-height:297mm;margin:18px auto;padding:14mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);border:1px solid #111}.head{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:12px}.head img{width:150px;max-height:54px;object-fit:contain}.title{text-align:center}.title h1{font-size:22px;margin:0 0 6px}.title .sub{font-size:13px;color:#4b5563}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.cell{border:1px solid #111;padding:8px;min-height:38px}.label{font-weight:800}.section{margin-top:10px}.section h2{font-size:15px;margin:0;background:#e5e7eb;border:1px solid #111;padding:6px 8px}.box{border:1px solid #111;border-top:0;min-height:64px;padding:9px;white-space:normal}.sign-block{border:1px solid #111;border-top:0;padding:10px;display:grid;grid-template-columns:1fr 230px;gap:12px;align-items:center;min-height:92px}.sign-box{height:76px;text-align:center;position:relative}.sig-line{position:absolute;left:12px;right:12px;bottom:22px;border-top:1px solid #111}.sig-label{position:absolute;left:8px;right:8px;bottom:0;font-weight:800;font-size:12px}.signature-img{max-width:88%;max-height:50px;object-fit:contain}.foot{font-size:11px;color:#6b7280;text-align:right;margin-top:12px}@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;padding:12mm;box-shadow:none}}@page{size:A4;margin:10mm}
+    *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111827;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:14px;line-height:1.45}.toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}.page{width:210mm;min-height:297mm;margin:18px auto;padding:14mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);border:1px solid #111}.head{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:12px}.head img{width:150px;max-height:54px;object-fit:contain}.title{text-align:center}.title h1{font-size:22px;margin:0 0 6px}.title .sub{font-size:13px;color:#4b5563}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.cell{border:1px solid #111;padding:8px;min-height:38px}.label{font-weight:800}.section{margin-top:10px}.section h2{font-size:15px;margin:0;background:#e5e7eb;border:1px solid #111;padding:6px 8px}.box{border:1px solid #111;border-top:0;min-height:64px;padding:9px;white-space:normal}.sign-block{border:1px solid #111;border-top:0;padding:10px;display:grid;grid-template-columns:1fr 230px;gap:12px;align-items:center;min-height:92px}.sign-box{height:76px;text-align:center;position:relative}.sig-line{position:absolute;left:12px;right:12px;bottom:22px;border-top:1px solid #111}.sig-label{position:absolute;left:8px;right:8px;bottom:0;font-weight:800;font-size:12px}.foot{font-size:11px;color:#6b7280;text-align:right;margin-top:12px}@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;padding:12mm;box-shadow:none}}@page{size:A4;margin:10mm}
   </style></head><body>
   <div class="toolbar"><div><b>ใบตรวจรับงานซ่อมแซมและปรับปรุง ${esc(j.id)}</b><div style="font-size:12px;color:#cbd5e1;">สร้างเมื่อ ${generatedAt}</div></div><button onclick="window.print()">พิมพ์ / Save PDF</button></div>
   <main class="page">
@@ -1716,12 +1656,12 @@ function acceptanceReportHtml(j){
       <div class="cell"><span class="label">ประเภทงาน:</span> ${esc(j.type||'—')}</div>
       <div class="cell"><span class="label">ทีมช่าง:</span> ${esc(j.team||'—')}</div>
     </div>
-    <section class="section"><h2>การเข้าถึงหน้างาน</h2><div class="sign-block"><div><span class="label">วันที่เข้า:</span> ${esc(j.dateIn||'—')} &nbsp; <span class="label">เวลา:</span> ${esc(j.timeIn||'—')}<br><span class="label">รับทราบก่อนเริ่มดำเนินการซ่อมแซมหรือปรับปรุง</span></div><div class="sign-box">${signatureImg(sig.beforeRequester)}<div class="sig-line"></div><div class="sig-label">ผู้แจ้ง/เจ้าของพื้นที่</div></div></div></section>
+    <section class="section"><h2>การเข้าถึงหน้างาน</h2><div class="sign-block"><div><span class="label">วันที่เข้า:</span> ${esc(j.dateIn||'—')} &nbsp; <span class="label">เวลา:</span> ${esc(j.timeIn||'—')}<br><span class="label">รับทราบก่อนเริ่มดำเนินการซ่อมแซมหรือปรับปรุง</span></div><div class="sign-box"><div class="sig-line"></div><div class="sig-label">ผู้แจ้ง/เจ้าของพื้นที่</div></div></div></section>
     <section class="section"><h2>รายการซ่อม</h2><div class="box">${reportDocText(j.symptom||j.note||j.technicianReport?.symptom)}</div></section>
     <section class="section"><h2>สาเหตุ</h2><div class="box">${reportDocText(j.cause||j.technicianReport?.cause)}</div></section>
     <section class="section"><h2>การแก้ไข</h2><div class="box">${reportDocText(j.fix||j.report||j.technicianReport?.fix)}</div></section>
     <section class="section"><h2>ข้อเสนอแนะ</h2><div class="box">${reportDocText(j.recommendation||j.technicianReport?.recommendation||j.note2||j.technicianReport?.note)}</div></section>
-    <section class="section"><h2>การดำเนินการซ่อมแซมหรือปรับปรุง</h2><div class="sign-block"><div><span class="label">วันที่ทำเสร็จ:</span> ${esc(j.dateDone||'—')} &nbsp; <span class="label">เวลา:</span> ${esc(j.timeDone||'—')}<br><span class="label">รับทราบหลังดำเนินการแล้วเสร็จ</span></div><div class="sign-box">${signatureImg(sig.afterRequester)}<div class="sig-line"></div><div class="sig-label">ผู้แจ้ง/เจ้าของพื้นที่</div></div></div></section>
+    <section class="section"><h2>การดำเนินการซ่อมแซมหรือปรับปรุง</h2><div class="sign-block"><div><span class="label">วันที่ทำเสร็จ:</span> ${esc(j.dateDone||'—')} &nbsp; <span class="label">เวลา:</span> ${esc(j.timeDone||'—')}<br><span class="label">รับทราบหลังดำเนินการแล้วเสร็จ</span></div><div class="sign-box"><div class="sig-line"></div><div class="sig-label">ผู้แจ้ง/เจ้าของพื้นที่</div></div></div></section>
     <div class="foot">Generated by ProFix Service Console</div>
   </main></body></html>`;
 }
