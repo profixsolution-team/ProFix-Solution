@@ -142,8 +142,12 @@ textarea{resize:vertical;min-height:80px;}
         </div>
       </div>
       <div class="form-group">
-        <label>อาการที่พบ / สาเหตุ <span class="req-star">*</span></label>
-        <textarea id="f-symptom" placeholder="เช่น แอร์ไม่เย็น น้ำยาหมด / คอมเพรสเซอร์เสีย / แผงตัน..."></textarea>
+        <label>อาการที่พบ</label>
+        <textarea id="f-symptom" placeholder="อาการที่ลูกค้าแจ้งไว้จากแอดมิน" readonly style="background:var(--surface2);color:var(--text2);"></textarea>
+      </div>
+      <div class="form-group">
+        <label>สาเหตุ <span class="req-star">*</span></label>
+        <textarea id="f-cause" placeholder="เช่น แผงคอยล์ตัน น้ำยารั่วจากข้อต่อ อุปกรณ์เสื่อมสภาพ..."></textarea>
       </div>
       <div class="form-group">
         <label>วิธีแก้ไข <span class="req-star">*</span></label>
@@ -161,6 +165,10 @@ textarea{resize:vertical;min-height:80px;}
         <label>หมายเหตุเพิ่มเติม</label>
         <textarea id="f-note" placeholder="ข้อควรระวัง นัดติดตามผล อื่นๆ..." style="min-height:60px;"></textarea>
       </div>
+      <label style="display:flex;align-items:flex-start;gap:8px;margin-top:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
+        <input type="checkbox" id="f-need-quote" onchange="toggleQuoteMode()" style="width:18px;height:18px;flex:0 0 auto;margin-top:2px;">
+        สำรวจแล้วต้องเสนอราคาอะไหล่ก่อน ยังไม่สามารถซ่อมได้
+      </label>
     </div>
 
     <!-- PHOTO UPLOAD -->
@@ -169,30 +177,38 @@ textarea{resize:vertical;min-height:80px;}
       <div class="sec-sub">ถ่ายหรือเลือกรูป — ระบบจะบีบอัดให้อัตโนมัติ</div>
 
       <div class="up-group">
-        <div class="up-head"><div class="up-label color-before">📸 ก่อนทำ <span class="req-star">*</span></div><div class="up-count" id="cnt-before">0 รูป</div></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 10 รูป</div>
+        <div class="up-head"><div class="up-label color-before">📸 ตรวจเช็คก่อนดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-before">0 รูป</div></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 20 รูป · ระบบจะข้ามรูปที่ซ้ำ</div>
         <div class="up-zone" onclick="document.getElementById('inp-before').click()">
-          <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูปก่อนทำงาน</div>
+          <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูปตรวจเช็คก่อนดำเนินการ</div>
         </div>
         <input type="file" id="inp-before" accept="image/*" multiple capture="environment" class="hidden" onchange="addPhotos('before',this.files)">
         <div class="thumbs" id="th-before"></div>
       </div>
 
       <div class="up-group">
-        <div class="up-head"><div class="up-label color-during">🔧 ระหว่างทำ <span class="req-star">*</span></div><div class="up-count" id="cnt-during">0 รูป</div></div>
+        <div class="up-head"><div class="up-label color-during">🔧 ระหว่างดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-during">0 รูป</div></div>
         <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 6 รูป · สูงสุด 40 รูป</div>
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
+          <input type="checkbox" id="f-no-during" onchange="toggleNoPhotos('during')" style="width:18px;height:18px;flex:0 0 auto;">
+          ไม่มีรูปภาพระหว่างดำเนินการ
+        </label>
         <div class="up-zone" onclick="document.getElementById('inp-during').click()">
-          <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูประหว่างทำงาน</div>
+          <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูประหว่างดำเนินการ</div>
         </div>
         <input type="file" id="inp-during" accept="image/*" multiple capture="environment" class="hidden" onchange="addPhotos('during',this.files)">
         <div class="thumbs" id="th-during"></div>
       </div>
 
       <div class="up-group">
-        <div class="up-head"><div class="up-label color-after">✅ หลังทำ <span class="req-star">*</span></div><div class="up-count" id="cnt-after">0 รูป</div></div>
+        <div class="up-head"><div class="up-label color-after">✅ หลังดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-after">0 รูป</div></div>
         <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 20 รูป</div>
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
+          <input type="checkbox" id="f-no-after" onchange="toggleNoPhotos('after')" style="width:18px;height:18px;flex:0 0 auto;">
+          ไม่มีรูปภาพหลังดำเนินการ
+        </label>
         <div class="up-zone" onclick="document.getElementById('inp-after').click()">
-          <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูปหลังทำงานเสร็จ</div>
+          <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูปหลังดำเนินการ</div>
         </div>
         <input type="file" id="inp-after" accept="image/*" multiple capture="environment" class="hidden" onchange="addPhotos('after',this.files)">
         <div class="thumbs" id="th-after"></div>
@@ -252,9 +268,10 @@ function openManualJob(){
 let jobData = null;
 let appState = null;
 let photos = { before: [], during: [], after: [] };
+let noPhoto = { during: false, after: false };
 const PHOTO_MIN = { before: 2, during: 6, after: 2 };
-const PHOTO_MAX = { before: 10, during: 40, after: 20 };
-const CAT_LABEL = { before: 'ก่อนทำ', during: 'ระหว่างทำ', after: 'หลังทำ' };
+const PHOTO_MAX = { before: 20, during: 40, after: 20 };
+const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนินการ', during: 'ระหว่างดำเนินการ', after: 'หลังดำเนินการ' };
 
 // ============================================================
 // LOAD JOB
@@ -267,7 +284,7 @@ async function loadJob(){
     const job = (appState.jobs || []).find(j => String(j.id) === String(JOB_ID));
     if(!job){ showError('ไม่พบงานนี้','ลิงก์อาจหมดอายุ หรือยังไม่มีงานนี้ในระบบหลัก'); return; }
     // ถ้าส่งแล้ว
-    if(job.status === 'ช่างส่งงานแล้ว' || job.status === 'แอดมินตรวจแล้ว' || job.status === 'ปิดงาน'){
+    if(job.status === 'ช่างส่งงานแล้ว' || job.status === 'แอดมินตรวจแล้ว' || job.status === 'ปิดงานสมบูรณ์' || job.status === 'ปิดงาน'){
       document.getElementById('state-loading').classList.add('hidden');
       document.getElementById('state-done').classList.remove('hidden');
       return;
@@ -316,12 +333,24 @@ function showForm(){
   const time = `${String(now.getHours()).padStart(2,'0')}:${String(Math.floor(now.getMinutes()/5)*5).padStart(2,'0')}`;
   document.getElementById('f-date-in').value = jobData.dateIn || today;
   document.getElementById('f-time-in').value = jobData.timeIn || time;
-  document.getElementById('f-date-done').value = jobData.dateDone || today;
-  document.getElementById('f-time-done').value = jobData.timeDone || time;
-  document.getElementById('f-symptom').value = jobData.symptom || jobData.technicianReport?.symptom || '';
+  document.getElementById('f-date-done').value = jobData.dateDone || '';
+  document.getElementById('f-time-done').value = jobData.timeDone || '';
+  document.getElementById('f-symptom').value = jobData.symptom || jobData.note || jobData.technicianReport?.symptom || '';
+  document.getElementById('f-cause').value = jobData.cause || jobData.technicianReport?.cause || '';
   document.getElementById('f-fix').value = jobData.fix || jobData.technicianReport?.fix || '';
   document.getElementById('f-parts').value = jobData.partsUsed || jobData.technicianReport?.parts || '';
   document.getElementById('f-note').value = jobData.note2 || jobData.technicianReport?.note || '';
+  document.getElementById('f-need-quote').checked = !!jobData.technicianReport?.needQuote || jobData.status === 'รออนุมัติอะไหล่';
+  noPhoto = { during: !!jobData.technicianReport?.noPhoto?.during, after: !!jobData.technicianReport?.noPhoto?.after };
+  document.getElementById('f-no-during').checked = noPhoto.during;
+  document.getElementById('f-no-after').checked = noPhoto.after;
+  const oldImages = Array.isArray(jobData.technicianReport?.images) ? jobData.technicianReport.images : [];
+  oldImages.forEach(im=>{
+    if(!photos[im.category])return;
+    photos[im.category].push({id:im.id||('old-'+Math.random().toString(36).slice(2)),existing:true,uploadedMeta:im,dataUrl:im.url,url:im.url,status:'ready',width:im.width||0,height:im.height||0,fileKey:im.name||im.url});
+  });
+  ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
+  toggleQuoteMode();
 }
 
 // ============================================================
@@ -336,12 +365,18 @@ async function addPhotos(cat, files){
     return;
   }
   let skipped = 0;
+  let duplicated = 0;
   for(const file of files){
     if(!file.type.startsWith('image/')) continue;
     if(remaining <= 0){ skipped++; continue; }
+    const fileKey = `${file.name}|${file.size}|${file.lastModified}`;
+    if(photos[cat].some(p=>p.fileKey===fileKey)){
+      duplicated++;
+      continue;
+    }
     remaining--;
     const id = Date.now() + '-' + Math.random().toString(36).slice(2,7);
-    const entry = { id, file, compressed:null, dataUrl:null, status:'compressing' };
+    const entry = { id, file, fileKey, compressed:null, dataUrl:null, status:'compressing' };
     photos[cat].push(entry);
     renderThumbs(cat);
     // compress async
@@ -355,6 +390,7 @@ async function addPhotos(cat, files){
     }).catch(()=>{ entry.status='error'; renderThumbs(cat); });
   }
   if(skipped > 0) alert(`เพิ่มได้สูงสุด ${PHOTO_MAX[cat]} รูป — ข้ามไป ${skipped} รูปที่เกิน`);
+  if(duplicated > 0) alert(`ข้ามรูปซ้ำ ${duplicated} รูป`);
   // reset input
   document.getElementById('inp-'+cat).value = '';
 }
@@ -365,6 +401,43 @@ function toggleNoParts(){
   const ta = document.getElementById('f-parts');
   if(cb.checked){ ta.value=''; ta.disabled=true; ta.style.opacity='.4'; }
   else { ta.disabled=false; ta.style.opacity='1'; }
+}
+
+function toggleNoPhotos(cat, clear=true){
+  if(!(cat in noPhoto))return;
+  const cb = document.getElementById('f-no-'+cat);
+  noPhoto[cat] = !!cb?.checked;
+  const input = document.getElementById('inp-'+cat);
+  const zone = input?.previousElementSibling;
+  if(input) input.disabled = noPhoto[cat];
+  if(zone){
+    zone.style.opacity = noPhoto[cat] ? '.35' : '1';
+    zone.style.pointerEvents = noPhoto[cat] ? 'none' : 'auto';
+  }
+  if(clear && noPhoto[cat] && photos[cat].length){
+    if(confirm(`ล้างรูป${CAT_LABEL[cat]}ทั้งหมดหรือไม่?`)){
+      photos[cat] = [];
+      renderThumbs(cat);
+    }
+  }
+}
+
+function toggleQuoteMode(){
+  const needQuote = document.getElementById('f-need-quote').checked;
+  const dateDone = document.getElementById('f-date-done');
+  const timeDone = document.getElementById('f-time-done');
+  dateDone.disabled = needQuote;
+  timeDone.disabled = needQuote;
+  dateDone.style.opacity = needQuote ? '.45' : '1';
+  timeDone.style.opacity = needQuote ? '.45' : '1';
+  if(needQuote){
+    dateDone.value = '';
+    timeDone.value = '';
+    document.getElementById('f-no-during').checked = true;
+    document.getElementById('f-no-after').checked = true;
+    toggleNoPhotos('during',false);
+    toggleNoPhotos('after',false);
+  }
 }
 
 function compressImage(file, maxW=1100, quality=0.68){
@@ -415,19 +488,23 @@ async function submitJob(){
   const dateDone = document.getElementById('f-date-done').value;
   const timeDone = document.getElementById('f-time-done').value;
   const symptom = document.getElementById('f-symptom').value.trim();
+  const cause = document.getElementById('f-cause').value.trim();
   const fix = document.getElementById('f-fix').value.trim();
   const noParts = document.getElementById('f-noparts').checked;
   const partsVal = document.getElementById('f-parts').value.trim();
+  const needQuote = document.getElementById('f-need-quote').checked;
   if(!dateIn){ alert('กรุณาเลือกวันที่เข้าจริง'); document.getElementById('f-date-in').focus(); return; }
   if(!timeIn){ alert('กรุณาเลือกเวลาเข้าจริง'); document.getElementById('f-time-in').focus(); return; }
-  if(!dateDone){ alert('กรุณาเลือกวันที่เสร็จงาน'); document.getElementById('f-date-done').focus(); return; }
-  if(!timeDone){ alert('กรุณาเลือกเวลาเสร็จงาน'); document.getElementById('f-time-done').focus(); return; }
-  if(!symptom){ alert('กรุณากรอกอาการที่พบ / สาเหตุ'); document.getElementById('f-symptom').focus(); return; }
+  if(!needQuote && !dateDone){ alert('กรุณาเลือกวันที่เสร็จงาน'); document.getElementById('f-date-done').focus(); return; }
+  if(!needQuote && !timeDone){ alert('กรุณาเลือกเวลาเสร็จงาน'); document.getElementById('f-time-done').focus(); return; }
+  if(!cause){ alert('กรุณากรอกสาเหตุ'); document.getElementById('f-cause').focus(); return; }
   if(!fix){ alert('กรุณากรอกวิธีแก้ไข'); document.getElementById('f-fix').focus(); return; }
   if(!noParts && !partsVal){ alert('กรุณากรอกอะไหล่ที่ใช้ หรือติ๊ก "ไม่มีการใช้อะไหล่"'); document.getElementById('f-parts').focus(); return; }
 
   // validate photo minimums
   for(const cat of ['before','during','after']){
+    if(needQuote && cat !== 'before') continue;
+    if(noPhoto[cat]) continue;
     if(photos[cat].length < PHOTO_MIN[cat]){
       alert(`รูป${CAT_LABEL[cat]} ต้องมีอย่างน้อย ${PHOTO_MIN[cat]} รูป (ตอนนี้มี ${photos[cat].length} รูป)`);
       return;
@@ -443,18 +520,25 @@ async function submitJob(){
 
   const report = {
     dateIn, timeIn, dateDone, timeDone,
-    symptom, cause: '',
+    symptom, cause,
     fix, parts: noParts ? 'ไม่มีการใช้อะไหล่' : partsVal,
-    note: document.getElementById('f-note').value.trim()
+    note: document.getElementById('f-note').value.trim(),
+    needQuote,
+    noPhoto: { ...noPhoto }
   };
 
   try{
     // 1. upload photos (ผ่าน Cloudflare Worker → Google Drive)
     const uploadedImages = [];
     let done = 0;
-    const total = allPhotos.length;
+    const uploadQueue = allPhotos.filter(p=>!p.existing);
+    const total = uploadQueue.length;
     for(const cat of ['before','during','after']){
       for(const p of photos[cat]){
+        if(p.existing){
+          uploadedImages.push(p.uploadedMeta || {id:p.id,category:cat,label:CAT_LABEL[cat],url:p.url||p.dataUrl||'',uploadedAt:new Date().toISOString(),storage:'external'});
+          continue;
+        }
         document.getElementById('upload-detail').textContent = `อัปโหลดรูป ${done+1}/${total}`;
         const uploaded = await uploadPhoto(p.compressed, cat, done, p);
         uploadedImages.push({
@@ -467,6 +551,8 @@ async function submitJob(){
           width: p.width || 0,
           height: p.height || 0,
           orientation: (p.height||0) > (p.width||0) ? 'portrait' : 'landscape',
+          roundType: report.needQuote ? 'survey' : 'repair',
+          roundLabel: report.needQuote ? 'สำรวจ' : 'ซ่อมจริง',
           uploadedAt: new Date().toISOString(),
           storage: uploaded.storage
         });
@@ -482,23 +568,53 @@ async function submitJob(){
     const job = latestState.jobs.find(j => String(j.id) === String(JOB_ID));
     if(!job) throw new Error('ไม่พบงานนี้ในระบบหลัก');
     const submittedAt = new Date().toISOString();
+    const nextStatus = report.needQuote ? 'รออนุมัติอะไหล่' : 'ช่างส่งงานแล้ว';
+    const nextReview = report.needQuote ? 'รออนุมัติอะไหล่' : 'รอตรวจ';
+    const nextRound = {
+      id: `${report.needQuote ? 'survey' : 'repair'}-${Date.now()}`,
+      type: report.needQuote ? 'survey' : 'repair',
+      label: report.needQuote ? 'สำรวจ' : 'ซ่อมจริง',
+      submittedAt,
+      status: nextStatus,
+      dateIn: report.dateIn,
+      timeIn: report.timeIn,
+      dateDone: report.dateDone,
+      timeDone: report.timeDone,
+      cause: report.cause,
+      fix: report.fix,
+      parts: report.parts,
+      note: report.note,
+      imageIds: uploadedImages.map(im=>im.id)
+    };
     Object.assign(job, {
-      status: 'ช่างส่งงานแล้ว',
+      status: nextStatus,
       dateIn: report.dateIn,
       timeIn: report.timeIn,
       dateDone: report.dateDone,
       timeDone: report.timeDone,
       symptom: report.symptom,
+      cause: report.cause,
       fix: report.fix,
       report: report.fix,
       partsUsed: report.parts,
       note2: report.note,
       techSubmittedAt: submittedAt,
-      reportReviewStatus: 'รอตรวจ',
+      reportReviewStatus: nextReview,
       reviewNote: '',
-      technicianReport: { ...report, images: uploadedImages, submittedAt, reviewStatus:'รอตรวจ', reviewNote:'' }
+      reportRounds: [...(job.reportRounds||[]), nextRound],
+      technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, rounds:[...(job.technicianReport?.rounds||[]), nextRound], submittedAt, reviewStatus:nextReview, reviewNote:'' }
     });
-    if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes('ช่างส่งงานแล้ว')) latestState.J_ST.push('ช่างส่งงานแล้ว');
+    if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes(nextStatus)) latestState.J_ST.push(nextStatus);
+    if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes(nextStatus)) latestState.A_ST.push(nextStatus);
+    if(Array.isArray(latestState.adminTasks)){
+      latestState.adminTasks.forEach(t=>{
+        if(String(t.jobId) === String(JOB_ID)){
+          t.status = nextStatus;
+          t.reportReviewNote = report.needQuote ? 'ช่างสำรวจแล้ว ต้องเสนอราคาอะไหล่ก่อนซ่อม' : 'ช่างส่งงานแล้ว';
+          t.reportReviewedAt = submittedAt;
+        }
+      });
+    }
     latestState.lastDataUpdatedAt = submittedAt;
     await saveAppState(latestState);
 
