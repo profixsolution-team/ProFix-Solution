@@ -158,10 +158,18 @@ body[data-theme="light"] .cal-day.muted{background:#eef3f8;}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:90%;max-width:640px;max-height:90vh;overflow-y:auto;}
+#m-quote{align-items:stretch;justify-content:stretch;padding:0;}
+#m-quote .modal{width:100vw;max-width:none;height:100vh;max-height:none;border-radius:0;border:0;display:flex;flex-direction:column;}
+#m-quote .modal-body{flex:1;overflow:auto;}
+#m-quote .modal-footer{position:sticky;bottom:0;background:var(--surface);z-index:2;}
 .modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .modal-title{font-size:16px;font-weight:700;}
 .modal-body{padding:18px 22px;}
 .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+.quote-line{display:grid;grid-template-columns:190px 90px 78px minmax(260px,1fr) 70px 82px 92px 92px 54px;gap:8px;align-items:start;margin-bottom:8px;}
+.quote-line textarea{min-height:42px;padding:8px 10px;}
+.quote-total{margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);font-weight:700;text-align:right;}
+@media(max-width:900px){.quote-line{grid-template-columns:1fr 1fr;}.quote-line textarea{grid-column:1/-1;}.modal-footer{flex-wrap:wrap;}.modal-footer .btn{flex:1;min-width:120px;}}
 .close-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px;padding:0 4px;line-height:1;}
 .form-group{margin-bottom:14px;}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -1318,10 +1326,116 @@ function resetLP(){lpData=null;document.getElementById('lp-text').value='';docum
 
 // DOCUMENTS
 let docs={qt:[{no:'QT-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,date:'2025-06-02',st:'อนุมัติแล้ว'},{no:'QT-2025-002',jid:'PR-006',cl:'บริษัท B',amt:3700,date:'2025-06-01',st:'อนุมัติแล้ว'}],iv:[{no:'IV-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,due:'2025-06-16',st:'ค้างชำระ'},{no:'IV-2025-002',jid:'PR-006',cl:'บริษัท B',amt:3700,due:'2025-06-16',st:'ค้างชำระ'}]};
-function renderDocs(){document.getElementById('qt-tbody').innerHTML=docs.qt.map(d=>`<tr><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.date}</td><td><span class="badge b-done">${d.st}</span></td><td><button class="btn btn-ghost btn-sm" onclick="printQuoteDoc('${d.no}')">พิมพ์</button></td></tr>`).join('');document.getElementById('iv-tbody').innerHTML=docs.iv.map(d=>`<tr><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${d.amt.toLocaleString()}</td><td class="tm">${d.due}</td><td><span class="badge b-unpaid">${d.st}</span></td><td><button class="btn btn-ghost btn-sm">พิมพ์</button><button class="btn btn-success btn-sm" style="margin-left:4px;" onclick="markIV('${d.no}')">รับเงิน</button></td></tr>`).join('');}
+let quoteEditNo=null;
+let quoteDraftRows=[];
+function renderDocs(){document.getElementById('qt-tbody').innerHTML=docs.qt.map(d=>`<tr style="cursor:pointer;" onclick="openQuoteModal('${d.no}')"><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.date}</td><td><span class="badge b-done">${d.st}</span></td><td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();printQuoteDoc('${d.no}')">พิมพ์</button></td></tr>`).join('');document.getElementById('iv-tbody').innerHTML=docs.iv.map(d=>`<tr><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${d.amt.toLocaleString()}</td><td class="tm">${d.due}</td><td><span class="badge b-unpaid">${d.st}</span></td><td><button class="btn btn-ghost btn-sm">พิมพ์</button><button class="btn btn-success btn-sm" style="margin-left:4px;" onclick="markIV('${d.no}')">รับเงิน</button></td></tr>`).join('');}
 function printQuoteDoc(no){const d=docs.qt.find(x=>x.no===no);if(!d)return;const j=jobs.find(x=>x.id===d.jid)||{};generateDocWindow(partsQuoteHtml(j,d));}
 function markIV(no){const iv=docs.iv.find(d=>d.no===no);if(iv){iv.st='ชำระแล้ว';renderDocs();}}
 function switchDoc(t,btn){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('doc-'+t).classList.add('active');}
+function quoteDocTotal(rows=quoteDraftRows){
+  return rows.reduce((s,r)=>s+((Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0))),0);
+}
+function quotePartLabel(p,i){
+  const code=p.code||p.sku||p.brand||`P-${String(i+1).padStart(3,'0')}`;
+  return `${code} | ${p.name}${p.brand?' / '+p.brand:''} | ฿${Number(p.sell||p.cost||0).toLocaleString()}`;
+}
+function applyQuotePart(rowIndex,partIndex){
+  const p=parts[Number(partIndex)];
+  if(!p||!quoteDraftRows[rowIndex])return;
+  quoteDraftRows[rowIndex]={
+    ...quoteDraftRows[rowIndex],
+    partId:p.id||p.code||p.name,
+    partIndex:Number(partIndex),
+    cat:p.cat||p.category||p.type||'อะไหล่',
+    code:p.code||p.sku||p.brand||'',
+    desc:p.name+(p.brand?` / ${p.brand}`:''),
+    unit:p.unit||'ชุด',
+    qty:quoteDraftRows[rowIndex].qty||1,
+    mat:Number(p.sell||p.price||p.cost||0),
+    labor:Number(p.labor||p.service||0)
+  };
+  renderQuoteModalRows();
+}
+function openQuoteModal(no){
+  const d=docs.qt.find(x=>x.no===no);if(!d)return;
+  const j=jobs.find(x=>x.id===d.jid)||{};
+  quoteEditNo=no;
+  quoteDraftRows=(d.rows&&d.rows.length?d.rows:quoteRowsFromJob(j)).map(r=>({...r}));
+  document.getElementById('q-no').value=d.no||'';
+  document.getElementById('q-jid').value=d.jid||'';
+  document.getElementById('q-client').value=d.cl||j.client||'';
+  document.getElementById('q-branch').value=d.branch||j.branch||'';
+  document.getElementById('q-province').value=d.province||j.province||'';
+  document.getElementById('q-team').value=d.team||j.team||'';
+  document.getElementById('q-ref').value=d.ref||j.ref||'';
+  document.getElementById('q-date').value=d.date||todayISO();
+  document.getElementById('q-status').value=d.st||'ร่าง';
+  document.getElementById('q-work').value=d.workDetail||j.fix||j.report||j.partsUsed||j.type||'';
+  document.getElementById('q-note').value=d.note||'';
+  document.getElementById('q-term').value=d.term||'ราคานี้ยังไม่รวมเงื่อนไขพิเศษอื่น ๆ และสามารถปรับเปลี่ยนได้ตามหน้างานจริง';
+  document.getElementById('q-prepared').value=d.preparedBy||j.pic||'';
+  document.getElementById('q-overhead').value=d.overhead??10;
+  document.getElementById('q-travel').value=d.travel??j.fuel??0;
+  renderQuoteModalRows();
+  openM('m-quote');
+}
+function renderQuoteModalRows(){
+  const box=document.getElementById('q-rows');
+  const partOptions=`<option value="">เลือกจากข้อมูลอะไหล่</option>${parts.map((p,pi)=>`<option value="${pi}">${esc(quotePartLabel(p,pi))}</option>`).join('')}`;
+  box.innerHTML=quoteDraftRows.map((r,i)=>`<div class="quote-line">
+    <select onchange="applyQuotePart(${i},this.value)">${partOptions}</select>
+    <input value="${esc(r.cat||'')}" oninput="quoteDraftRows[${i}].cat=this.value" placeholder="หมวด">
+    <input value="${esc(r.code||'')}" oninput="quoteDraftRows[${i}].code=this.value" placeholder="ลำดับ">
+    <textarea oninput="quoteDraftRows[${i}].desc=this.value" placeholder="รายละเอียด BOQ">${esc(r.desc||'')}</textarea>
+    <input value="${esc(r.unit||'')}" oninput="quoteDraftRows[${i}].unit=this.value" placeholder="หน่วย">
+    <input type="number" min="0" step="0.01" value="${esc(r.qty??1)}" oninput="quoteDraftRows[${i}].qty=this.value;renderQuoteTotalPreview()" placeholder="จำนวน">
+    <input type="number" min="0" step="0.01" value="${esc(r.mat??0)}" oninput="quoteDraftRows[${i}].mat=this.value;renderQuoteTotalPreview()" placeholder="ค่าของ">
+    <input type="number" min="0" step="0.01" value="${esc(r.labor??0)}" oninput="quoteDraftRows[${i}].labor=this.value;renderQuoteTotalPreview()" placeholder="ค่าแรง">
+    <button class="btn btn-danger btn-sm" onclick="removeQuoteLine(${i})">ลบ</button>
+  </div>`).join('');
+  renderQuoteTotalPreview();
+}
+function renderQuoteTotalPreview(){
+  const subtotal=quoteDocTotal();
+  const overhead=Number(document.getElementById('q-overhead')?.value||0);
+  const travel=Number(document.getElementById('q-travel')?.value||0);
+  const preVat=subtotal+(subtotal*overhead/100)+travel;
+  const grand=preVat+(preVat*.07);
+  const el=document.getElementById('q-total-preview');
+  if(el)el.textContent=`รวมก่อน VAT: ฿${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} | รวมสุทธิ: ฿${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+}
+function addQuoteLine(){
+  quoteDraftRows.push({cat:'',code:'',desc:'',unit:'งาน',qty:1,mat:0,labor:0});
+  renderQuoteModalRows();
+}
+function removeQuoteLine(i){
+  quoteDraftRows.splice(i,1);
+  renderQuoteModalRows();
+}
+function saveQuoteDoc(printAfter=false){
+  const d=docs.qt.find(x=>x.no===quoteEditNo);if(!d)return;
+  d.no=document.getElementById('q-no').value.trim()||d.no;
+  d.jid=document.getElementById('q-jid').value.trim()||d.jid;
+  d.cl=document.getElementById('q-client').value.trim();
+  d.branch=document.getElementById('q-branch').value.trim();
+  d.province=document.getElementById('q-province').value.trim();
+  d.team=document.getElementById('q-team').value.trim();
+  d.ref=document.getElementById('q-ref').value.trim();
+  d.date=document.getElementById('q-date').value||todayISO();
+  d.st=document.getElementById('q-status').value.trim()||'ร่าง';
+  d.workDetail=document.getElementById('q-work').value;
+  d.note=document.getElementById('q-note').value;
+  d.term=document.getElementById('q-term').value;
+  d.preparedBy=document.getElementById('q-prepared').value;
+  d.overhead=Number(document.getElementById('q-overhead').value)||0;
+  d.travel=Number(document.getElementById('q-travel').value)||0;
+  d.rows=quoteDraftRows.map(r=>({partId:r.partId||'',cat:r.cat||'',code:r.code||'',desc:r.desc||'',unit:r.unit||'',qty:Number(r.qty)||0,mat:Number(r.mat)||0,labor:Number(r.labor)||0}));
+  d.amt=quoteDocTotal(d.rows);
+  quoteEditNo=d.no;
+  saveState();
+  renderDocs();
+  if(printAfter)printQuoteDoc(d.no);
+}
 
 // MODAL
 function openM(id){document.getElementById(id).classList.add('open');}
@@ -1676,43 +1790,47 @@ function acceptanceReportHtml(j){
 function photoBillingReportHtml(j){
   const imgs=reportImages(j);
   const essLogo=new URL('assets/ess-logo.jpg',location.href).href;
-  const imageClass=im=>((im.orientation==='portrait') || (Number(im.height)>Number(im.width)))?'portrait':'landscape';
+  const imageRatio=im=>{
+    const w=Number(im.width)||0;
+    const h=Number(im.height)||0;
+    if(w>0&&h>0)return h/w;
+    return ((im.orientation==='portrait')||h>w)?1.45:.72;
+  };
+  const estimateImageHeight=im=>{
+    const colW=87;
+    return Math.min(112,Math.max(42,colW*imageRatio(im)));
+  };
   const paginatePhotoGroup=(cat,group)=>{
-    const pages=[];let current=[];let rowSlots=0;let rows=1;
-    const maxRows=3;
-    group.forEach(im=>{
-      const cls=imageClass(im);
-      const slots=cls==='portrait'?2:3;
-      const needsNewRow=rowSlots>0 && rowSlots+slots>6;
-      if(current.length && needsNewRow && rows>=maxRows){
-        pages.push({cat,group:current});
-        current=[];rowSlots=0;rows=1;
+    const pages=[];let rows=[];let used=0;
+    const maxHeight=202;
+    for(let i=0;i<group.length;i+=2){
+      const row=group.slice(i,i+2);
+      const rowHeight=Math.max(...row.map(estimateImageHeight))+7;
+      if(rows.length&&used+rowHeight>maxHeight){
+        pages.push({cat,rows});
+        rows=[];used=0;
       }
-      if(rowSlots+slots>6){
-        rowSlots=0;
-        rows++;
-      }
-      current.push(im);
-      rowSlots+=slots;
-    });
-    if(current.length)pages.push({cat,group:current});
+      rows.push(row);
+      used+=rowHeight;
+    }
+    if(rows.length)pages.push({cat,rows});
     return pages;
   };
   const pages=['before','during','after'].flatMap(cat=>paginatePhotoGroup(cat,imgs.filter(im=>im.category===cat)));
-  if(!pages.length)pages.push({cat:'before',group:[]});
+  if(!pages.length)pages.push({cat:'before',rows:[]});
   const total=Math.max(1,pages.length);
   const project=j.type||'งานซ่อมแซมและปรับปรุง';
   const station=j.branch||'—';
   const workDetail=j.fix||j.report||j.note||'รูปการทำงาน';
-  const pageHtml=(page,pageIndex)=>`<main class="photo-page count-${page.group.length}">
+  const pageHtml=(page,pageIndex)=>`<main class="photo-page">
     <table class="doc-head"><tr><td rowspan="3" class="logo-cell"><img src="${essLogo}" alt="ESS"></td><td>Project : ${esc(project)}</td><td>Page</td><td>${pageIndex+1} of ${total}</td></tr><tr><td>Station Name : ${esc(station)}</td><td>ID</td><td></td></tr><tr><td>Class of Trade : </td><td>Job No.</td><td>${esc(j.id)}</td></tr></table>
     <div class="work-detail">Work Detail : ${esc(workDetail)}</div>
     <div class="photo-title">${esc(REPORT_DOC_IMAGE_TITLES[page.cat]||'รูปการปฏิบัติงาน')}</div>
-    ${page.group.length?`<div class="billing-grid">${page.group.map(im=>`<figure class="${imageClass(im)}"><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน')}"></figure>`).join('')}</div>`:'<div class="billing-empty">ยังไม่มีรูปจากช่าง</div>'}
+    ${page.rows.length?`<div class="billing-rows">${page.rows.map(row=>`<div class="billing-row ${row.length===1?'single':''}">${row.map(im=>`<figure><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน')}"></figure>`).join('')}</div>`).join('')}</div>`:'<div class="billing-empty">ยังไม่มีรูปจากช่าง</div>'}
   </main>`;
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ใบงานรูปภาพ ${esc(j.id)}</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#e8edf3;color:#111;font-family:"Times New Roman",Arial,"Noto Sans Thai",sans-serif}.toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff;font-family:Arial,"Noto Sans Thai",sans-serif}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}.photo-page{width:210mm;height:297mm;margin:18px auto;padding:9mm;background:#fff;border:2px solid #111;box-shadow:0 12px 34px rgba(16,24,40,.16);page-break-after:always;break-after:page;break-inside:avoid;page-break-inside:avoid;overflow:hidden}.doc-head{width:100%;border-collapse:collapse;font-size:14px}.doc-head td{border:2px solid #111;padding:5px 8px;height:28px}.logo-cell{width:38%;text-align:center}.logo-cell img{width:94%;max-height:58px;object-fit:contain}.work-detail{border:2px solid #111;border-top:0;padding:8px;font-size:16px;font-weight:700}.photo-title{width:52%;margin:12px auto 12px;border:3px solid #222;text-align:center;font-size:23px;font-weight:800;padding:5px}.billing-grid{display:grid;grid-template-columns:repeat(6,1fr);grid-auto-flow:dense;grid-auto-rows:1fr;gap:8px;align-items:stretch;height:204mm}.billing-grid figure{margin:0;break-inside:avoid;page-break-inside:avoid;height:100%;overflow:hidden}.billing-grid figure.landscape{grid-column:span 3}.billing-grid figure.portrait{grid-column:span 2}.billing-grid img{width:100%;height:100%;object-fit:cover;display:block}.billing-empty{text-align:center;padding:90px 0;color:#666;font-size:18px}@media print{body{background:#fff}.toolbar{display:none}.photo-page{width:210mm;height:297mm;margin:0;padding:9mm;box-shadow:none}.billing-grid{height:204mm;gap:7px}}@page{size:A4;margin:0}
+    *{box-sizing:border-box}body{margin:0;background:#e8edf3;color:#111;font-family:"Times New Roman",Arial,"Noto Sans Thai",sans-serif}.toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff;font-family:Arial,"Noto Sans Thai",sans-serif}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}.photo-page{width:210mm;height:297mm;margin:18px auto;padding:9mm;background:#fff;border:2px solid #111;box-shadow:0 12px 34px rgba(16,24,40,.16);page-break-after:always;break-after:page;break-inside:avoid;page-break-inside:avoid;overflow:hidden}.doc-head{width:100%;border-collapse:collapse;font-size:14px}.doc-head td{border:2px solid #111;padding:5px 8px;height:28px}.logo-cell{width:38%;text-align:center}.logo-cell img{width:94%;max-height:58px;object-fit:contain}.work-detail{border:2px solid #111;border-top:0;padding:8px;font-size:16px;font-weight:700}.photo-title{width:52%;margin:12px auto 12px;border:3px solid #222;text-align:center;font-size:23px;font-weight:800;padding:5px}.billing-rows{display:flex;flex-direction:column;gap:7mm}.billing-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7mm;align-items:start;break-inside:avoid;page-break-inside:avoid}.billing-row.single{grid-template-columns:1fr}.billing-row figure{margin:0;text-align:center;break-inside:avoid;page-break-inside:avoid}.billing-row img{display:block;max-width:100%;height:auto;max-height:112mm;margin:0 auto;object-fit:contain}.billing-row.single img{max-height:202mm}.billing-empty{text-align:center;padding:90px 0;color:#666;font-size:18px}@media print{body{background:#fff}.toolbar{display:none}.photo-page{width:210mm;height:297mm;margin:0;padding:9mm;box-shadow:none}.billing-row img{max-height:112mm}.billing-row.single img{max-height:202mm}}@page{size:A4;margin:0}
   </style></head><body><div class="toolbar"><div><b>ใบงานรูปภาพสำหรับวางบิล ${esc(j.id)}</b><div style="font-size:12px;color:#cbd5e1;">รูปทั้งหมด ${imgs.length} รูป</div></div><button onclick="window.print()">พิมพ์ / Save PDF</button></div>${pages.map(pageHtml).join('')}</body></html>`;
 }
 function serviceReportHtml(j){
@@ -1799,16 +1917,26 @@ function partsQuoteHtml(j,doc={}){
   const vat=preVat*.07;
   const grand=preVat+vat;
   const blankRows=Math.max(0,10-rows.length);
+  const branch=doc.branch||j.branch||'';
+  const province=doc.province||j.province||'';
+  const team=doc.team||j.team||'';
+  const ref=doc.ref||j.ref||'';
+  const client=doc.cl||j.client||'';
+  const workDetail=doc.workDetail||j.fix||j.report||j.partsUsed||j.type||'';
+  const note=doc.note||'';
+  const term=doc.term||'';
+  const preparedBy=doc.preparedBy||j.pic||'';
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(no)}</title><style>
-  *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111;font-family:"Times New Roman",Arial,"Noto Sans Thai",sans-serif;font-size:12px}.toolbar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff;font-family:Arial,"Noto Sans Thai",sans-serif}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#175fff;color:#fff}.page{width:297mm;min-height:210mm;margin:18px auto;padding:10mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16)}table{width:100%;border-collapse:collapse}td,th{border:1px solid #333;padding:4px 6px;vertical-align:middle}.company{text-align:center;font-weight:800;line-height:1.7}.small{font-size:11px}.center{text-align:center}.right{text-align:right}.bold{font-weight:800}.detail{height:38px}.boq th{font-weight:800;text-align:center}.boq td{height:22px}.summary td{height:22px}.note{border-right:0}.sum-label{font-weight:800}.foot{text-align:center;font-weight:800;padding-top:12px}@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;box-shadow:none;padding:8mm}}@page{size:A4 landscape;margin:7mm}</style></head><body><div class="toolbar"><b>${esc(no)}</b><button onclick="window.print()">พิมพ์ / Save PDF</button></div><main class="page">
-  <table><tr><td rowspan="4" style="width:34px;"></td><td rowspan="4" class="company">บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด (สำนักงานใหญ่)<br><span class="small">88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120</span><br><span class="small">โทร 098-6266622 เลขประจำตัวผู้เสียภาษี 0245557002535</span></td><td class="center bold">Work Order NO.</td><td class="center">${esc(j.ref||'')}</td></tr><tr><td class="center bold">เลขที่ใบแจ้งซ่อม</td><td></td></tr><tr><td class="center bold">Quotation NO.</td><td class="center">${esc(no)}</td></tr><tr><td class="center bold">Date Issued</td><td class="center">${esc(doc.date||todayISO())}</td></tr>
-  <tr><td colspan="2" class="detail"><span class="bold">รายละเอียดงาน :</span> ${esc(j.fix||j.report||j.partsUsed||j.type||'')}</td><td class="center bold">สาขา : ${esc(j.branch||'')}</td><td class="center bold">จังหวัด : </td></tr>
-  <tr><td colspan="2"></td><td class="center bold">ศูนย์ที่ ${esc(j.team||'')}</td><td class="center bold">จังหวัด : </td></tr></table>
+  *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:12px;line-height:1.35}.toolbar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#175fff;color:#fff}.page{width:297mm;min-height:210mm;margin:18px auto;padding:9mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16)}table{width:100%;border-collapse:collapse}td,th{border:1px solid #333;padding:4px 6px;vertical-align:middle}.company{text-align:center;font-weight:800;line-height:1.65}.doc-title{font-size:20px;font-weight:900;text-align:center}.small{font-size:11px}.center{text-align:center}.right{text-align:right}.bold{font-weight:800}.detail{height:34px}.boq{margin-top:6px}.boq th{font-weight:800;text-align:center;background:#f1f5f9}.boq td{height:22px}.summary{margin-top:6px}.summary td{height:22px}.note-box{height:78px;vertical-align:top;white-space:pre-wrap}.sum-label{font-weight:800}.signs{margin-top:10px}.signs td{height:54px;text-align:center;vertical-align:bottom}.muted{color:#64748b}.nowrap{white-space:nowrap}@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;box-shadow:none;padding:8mm}}@page{size:A4 landscape;margin:7mm}</style></head><body><div class="toolbar"><b>${esc(no)}</b><button onclick="window.print()">พิมพ์ / Save PDF</button></div><main class="page">
+  <table><tr><td rowspan="5" style="width:34px;"></td><td rowspan="5" class="company"><div class="doc-title">ใบเสนอราคา / BOQ</div>บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด (สำนักงานใหญ่)<br><span class="small">88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120</span><br><span class="small">โทร 098-6266622 เลขประจำตัวผู้เสียภาษี 0245557002535</span></td><td class="center bold">Work Order NO.</td><td class="center">${esc(ref)}</td></tr><tr><td class="center bold">JOB / PR</td><td class="center">${esc(j.id||doc.jid||'')}</td></tr><tr><td class="center bold">Quotation NO.</td><td class="center">${esc(no)}</td></tr><tr><td class="center bold">Date Issued</td><td class="center">${esc(doc.date||todayISO())}</td></tr><tr><td class="center bold">Customer</td><td class="center">${esc(client)}</td></tr>
+  <tr><td colspan="2" class="detail"><span class="bold">รายละเอียดงาน :</span> ${esc(workDetail)}</td><td class="center bold">สาขา : ${esc(branch)}</td><td class="center bold">จังหวัด : ${esc(province)}</td></tr>
+  <tr><td colspan="2"><span class="bold">ผู้จัดทำ :</span> ${esc(preparedBy)} <span class="muted">| Generated ${esc(generatedAt)}</span></td><td class="center bold">ทีม/ศูนย์ : ${esc(team)}</td><td class="center bold">สถานะ : ${esc(doc.st||'ร่าง')}</td></tr></table>
   <table class="boq"><thead><tr><th style="width:36px;">NO.</th><th style="width:70px;">หมวด</th><th style="width:70px;">ลำดับ<br>ราคากลาง</th><th>Bill Of Quantities</th><th style="width:70px;">หน่วย</th><th style="width:90px;">ปริมาณ</th><th style="width:90px;">ค่าของ</th><th style="width:90px;">ค่าแรง</th><th style="width:90px;">รวม</th></tr></thead><tbody>${rows.map((r,i)=>{
     const total=(Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0));
     return `<tr><td class="center">${i+1}</td><td class="center">${esc(r.cat||'')}</td><td class="center">${esc(r.code||'')}</td><td>${esc(r.desc||'')}</td><td class="center">${esc(r.unit||'')}</td><td class="center">${esc(r.qty||'')}</td><td class="right">${r.mat?Number(r.mat).toLocaleString(): '-'}</td><td class="right">${r.labor?Number(r.labor).toLocaleString(): '-'}</td><td class="right">${total?total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}): '-'}</td></tr>`;
   }).join('')}${Array.from({length:blankRows}).map(()=>'<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="right">-</td></tr>').join('')}</tbody></table>
-  <table class="summary"><tr><td rowspan="8" class="note" style="width:62%;vertical-align:top;"><span class="bold">หมายเหตุ :</span><br><br><span class="bold">ผู้จัดทำ RM</span><br><br><br>ค่าเดินทาง : ${esc(j.branch||'')}</td><td class="sum-label">รวม</td><td class="right">${subtotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">Overhead ${overhead}%</td><td class="right">${overheadAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">ราคารวม Overhead</td><td class="right">${(subtotal+overheadAmt).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>ค่าดำเนินการปกติ</td><td class="right">0.00</td></tr><tr><td>ค่าดำเนินการเร่งด่วน</td><td class="right">0.00</td></tr><tr><td class="sum-label">ค่าเดินทาง</td><td class="right">${travel.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">รวมทั้งหมด</td><td class="right">${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">VAT 7%</td><td class="right">${vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="foot" colspan="2">หากหนี้สินตามมาตามสัญญาตกลง</td><td class="sum-label">รวมราคาทั้งสิ้น</td><td class="right bold">${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table>
+  <table class="summary"><tr><td rowspan="8" class="note-box" style="width:62%;"><span class="bold">หมายเหตุ :</span><br>${esc(note)}<br><br><span class="bold">เงื่อนไข :</span><br>${esc(term)}<br><br><span class="bold">ค่าเดินทาง :</span> ${esc(branch)}</td><td class="sum-label">รวม</td><td class="right">${subtotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">Overhead ${overhead}%</td><td class="right">${overheadAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">ราคารวม Overhead</td><td class="right">${(subtotal+overheadAmt).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>ค่าดำเนินการปกติ</td><td class="right">0.00</td></tr><tr><td>ค่าดำเนินการเร่งด่วน</td><td class="right">0.00</td></tr><tr><td class="sum-label">ค่าเดินทาง</td><td class="right">${travel.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">รวมทั้งหมด</td><td class="right">${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">VAT 7%</td><td class="right">${vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td colspan="2" class="center bold">เอกสารนี้สร้างจากระบบ ProFix Service Console</td><td class="sum-label">รวมราคาทั้งสิ้น</td><td class="right bold">${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table>
+  <table class="signs"><tr><td>ผู้จัดทำ<br><br>${esc(preparedBy)}</td><td>ผู้ตรวจสอบ</td><td>ผู้อนุมัติ</td><td>ลูกค้า / ผู้รับเอกสาร</td></tr></table>
   </main></body></html>`;
 }
 function generatePartsQuote(){
@@ -1817,14 +1945,17 @@ function generatePartsQuote(){
   const no=`QT-${new Date().getFullYear()}-${String((docs.qt||[]).length+1).padStart(3,'0')}`;
   const rows=quoteRowsFromJob(j);
   const amt=rows.reduce((s,r)=>s+((Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0))),0);
-  if(!docs.qt.some(d=>d.jid===j.id&&d.type==='parts-boq')){
-    docs.qt.unshift({no,jid:j.id,cl:j.client||'',amt,date:todayISO(),st:'ร่าง',type:'parts-boq',rows});
+  let q=docs.qt.find(d=>d.jid===j.id&&d.type==='parts-boq');
+  if(!q){
+    q={no,jid:j.id,cl:j.client||'',branch:j.branch||'',province:j.province||'',team:j.team||'',ref:j.ref||'',amt,date:todayISO(),st:'ร่าง',type:'parts-boq',rows,workDetail:j.fix||j.report||j.partsUsed||j.type||'',note:'',term:'ราคานี้ยังไม่รวมเงื่อนไขพิเศษอื่น ๆ และสามารถปรับเปลี่ยนได้ตามหน้างานจริง',preparedBy:j.pic||'',overhead:10,travel:Number(j.fuel||0)};
+    docs.qt.unshift(q);
   }
-  j.generatedReports=[...(j.generatedReports||[]),{type:'parts-quote',generatedAt:now,no}];
+  j.generatedReports=[...(j.generatedReports||[]),{type:'parts-quote',generatedAt:now,no:q.no}];
   saveState();
   closeM('m-report');
   goTo('documents');
   renderDocs();
+  setTimeout(()=>openQuoteModal(q.no),0);
 }
 async function approvePartsRepair(){
   const id=document.getElementById('mrpt-jobid').value;
@@ -1977,6 +2108,105 @@ initApp();
       <button class="btn btn-ghost" onclick="returnReportForFix()">ส่งกลับแก้ไข</button>
       <button class="btn btn-success" onclick="approveReport()">อนุมัติรายงาน</button>
       <button class="btn btn-primary" onclick="saveReport()">✓ บันทึกรายงาน</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="m-quote">
+  <div class="modal" style="max-width:1180px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">แก้ไขใบเสนอราคา</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;">คลิกแถวในหน้าเอกสารเพื่อแก้รายละเอียด BOQ ก่อนพิมพ์</div>
+      </div>
+      <button class="close-btn" onclick="closeM('m-quote')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>เลขที่ใบเสนอราคา</label>
+          <input id="q-no">
+        </div>
+        <div class="form-group">
+          <label>PR / JOB ID</label>
+          <input id="q-jid">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ลูกค้า</label>
+          <input id="q-client">
+        </div>
+        <div class="form-group">
+          <label>เลขอ้างอิงลูกค้า / Work Order</label>
+          <input id="q-ref">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>สาขา</label>
+          <input id="q-branch">
+        </div>
+        <div class="form-group">
+          <label>จังหวัด</label>
+          <input id="q-province">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ทีม / ศูนย์</label>
+          <input id="q-team">
+        </div>
+        <div class="form-group">
+          <label>วันที่</label>
+          <input type="date" id="q-date" onclick="openDatePicker(this)" onfocus="openDatePicker(this)">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>สถานะ</label>
+          <input id="q-status" placeholder="ร่าง / ส่งแล้ว / อนุมัติแล้ว">
+        </div>
+        <div class="form-group">
+          <label>ผู้จัดทำ</label>
+          <input id="q-prepared">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>รายละเอียดงาน</label>
+        <textarea id="q-work" style="min-height:64px;"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>หมายเหตุ</label>
+          <textarea id="q-note" style="min-height:70px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>เงื่อนไข</label>
+          <textarea id="q-term" style="min-height:70px;"></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Overhead (%)</label>
+          <input type="number" min="0" step="0.01" id="q-overhead" oninput="renderQuoteTotalPreview()">
+        </div>
+        <div class="form-group">
+          <label>ค่าเดินทาง</label>
+          <input type="number" min="0" step="0.01" id="q-travel" oninput="renderQuoteTotalPreview()">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>รายการ BOQ</label>
+        <div id="q-rows"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addQuoteLine()">+ เพิ่มรายการ</button>
+        <div class="quote-total" id="q-total-preview">รวมสุทธิ: ฿0.00</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeM('m-quote')">ปิด</button>
+      <button class="btn btn-primary" onclick="saveQuoteDoc(false)">บันทึก</button>
+      <button class="btn btn-success" onclick="saveQuoteDoc(true)">บันทึกและพิมพ์</button>
     </div>
   </div>
 </div>
