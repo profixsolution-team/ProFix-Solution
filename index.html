@@ -1728,13 +1728,42 @@ function acceptanceReportHtml(j){
 function photoBillingReportHtml(j){
   const imgs=reportImages(j);
   const essLogo=new URL('assets/ess-logo.jpg',location.href).href;
-  const pages=['before','during','after'].map(cat=>({cat,group:imgs.filter(im=>im.category===cat)})).filter(page=>page.group.length);
+  const imageClass=im=>((im.orientation==='portrait') || (Number(im.height)>Number(im.width)))?'portrait':'landscape';
+  const paginatePhotoGroup=(cat,group)=>{
+    const pages=[];let current=[];let rowUsed=0;let rowSlots=0;let rowHeight=0;
+    const maxHeight=4.9;
+    group.forEach(im=>{
+      const cls=imageClass(im);
+      const slots=cls==='portrait'?2:3;
+      const height=cls==='portrait'?1.25:1;
+      let nextRowUsed=rowUsed,nextRowSlots=rowSlots,nextRowHeight=rowHeight;
+      if(nextRowSlots+slots>6){
+        nextRowUsed+=nextRowHeight;
+        nextRowSlots=0;
+        nextRowHeight=0;
+      }
+      if(current.length && nextRowUsed+Math.max(nextRowHeight,height)>maxHeight){
+        pages.push({cat,group:current});
+        current=[];rowUsed=0;rowSlots=0;rowHeight=0;
+      }
+      if(rowSlots+slots>6){
+        rowUsed+=rowHeight;
+        rowSlots=0;
+        rowHeight=0;
+      }
+      current.push(im);
+      rowSlots+=slots;
+      rowHeight=Math.max(rowHeight,height);
+    });
+    if(current.length)pages.push({cat,group:current});
+    return pages;
+  };
+  const pages=['before','during','after'].flatMap(cat=>paginatePhotoGroup(cat,imgs.filter(im=>im.category===cat)));
   if(!pages.length)pages.push({cat:'before',group:[]});
   const total=Math.max(1,pages.length);
   const project=j.type||'งานซ่อมแซมและปรับปรุง';
   const station=j.branch||'—';
   const workDetail=j.fix||j.report||j.note||'รูปการทำงาน';
-  const imageClass=im=>((im.orientation==='portrait') || (Number(im.height)>Number(im.width)))?'portrait':'landscape';
   const pageHtml=(page,pageIndex)=>`<main class="photo-page">
     <table class="doc-head"><tr><td rowspan="3" class="logo-cell"><img src="${essLogo}" alt="ESS"></td><td>Project : ${esc(project)}</td><td>Page</td><td>${pageIndex+1} of ${total}</td></tr><tr><td>Station Name : ${esc(station)}</td><td>ID</td><td></td></tr><tr><td>Class of Trade : </td><td>Job No.</td><td>${esc(j.id)}</td></tr></table>
     <div class="work-detail">Work Detail : ${esc(workDetail)}</div>
