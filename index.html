@@ -96,6 +96,10 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .report-thumb:hover{border-color:var(--accent);}
 .report-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 .report-thumb-badge{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.72);color:#fff;font-family:var(--mono);font-size:9px;border-radius:999px;padding:2px 5px;}
+.sig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.sig-card{border:1px solid var(--border);border-radius:8px;background:var(--bg);padding:8px;}
+.sig-title{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:800;color:var(--text2);margin-bottom:6px;}
+.sig-pad{width:100%;height:92px;border:1px dashed var(--border2);border-radius:7px;background:var(--surface);touch-action:none;display:block;cursor:crosshair;}
 .image-preview{max-width:min(92vw,980px);max-height:78vh;display:block;border-radius:10px;border:1px solid var(--border);background:var(--bg);}
 .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:var(--mono);white-space:nowrap;}
 .b-new{background:#1a2a1a;color:#56d364;border:1px solid #2a4a2a;}
@@ -256,6 +260,7 @@ select option{background:var(--surface2);}
   .modal{width:calc(100vw - 20px);max-height:88vh;border-radius:10px;}
   .modal-header,.modal-body,.modal-footer{padding-left:14px;padding-right:14px;}
   .modal-footer{position:sticky;bottom:0;background:var(--surface);flex-wrap:wrap;}
+  .sig-grid{grid-template-columns:1fr;}
   .select-tools,.combo-row{align-items:stretch;}
   .select-tools .btn,.combo-row .btn{padding-left:10px;padding-right:10px;}
   .calendar-toolbar{gap:6px;}
@@ -1584,16 +1589,19 @@ function openReportModal(id){
   document.getElementById('mrpt-date-done').value=j.dateDone||tr.dateDone||'';
   document.getElementById('mrpt-time-done').value=j.timeDone||tr.timeDone||'';
   document.getElementById('mrpt-symptom').value=j.symptom||tr.symptom||j.note||'';
+  document.getElementById('mrpt-cause').value=j.cause||tr.cause||'';
   document.getElementById('mrpt-fix').value=j.fix||tr.fix||j.report||'';
   document.getElementById('mrpt-parts').value=j.partsUsed||tr.parts||'';
+  document.getElementById('mrpt-recommendation').value=j.recommendation||tr.recommendation||'';
   document.getElementById('mrpt-note2').value=j.note2||tr.note||'';
   document.getElementById('mrpt-review-note').value=j.reviewNote||tr.reviewNote||'';
   document.getElementById('mrpt-images').innerHTML=renderReportImages(j);
   const picSel=document.getElementById('mrpt-pic');
   picSel.innerHTML=['— ไม่ระบุ —',...(adminNames||[])].map(a=>`<option${a===j.pic?' selected':''}>${a}</option>`).join('');
   openM('m-report');
+  setTimeout(()=>loadSignaturePads(j.signatures||tr.signatures||{}),60);
 }
-async function saveReport(){
+function syncReportFormToJob(){
   const id=document.getElementById('mrpt-jobid').value;
   const j=jobs.find(x=>x.id===id);if(!j)return;
   j.dateIn=document.getElementById('mrpt-date-in').value;
@@ -1602,18 +1610,202 @@ async function saveReport(){
   j.timeDone=document.getElementById('mrpt-time-done').value;
   j.pic=document.getElementById('mrpt-pic').value;
   j.symptom=document.getElementById('mrpt-symptom').value;
+  j.cause=document.getElementById('mrpt-cause')?.value||'';
   j.fix=document.getElementById('mrpt-fix').value;
   j.partsUsed=document.getElementById('mrpt-parts').value;
+  j.recommendation=document.getElementById('mrpt-recommendation')?.value||'';
   j.note2=document.getElementById('mrpt-note2').value;
   j.reviewNote=document.getElementById('mrpt-review-note').value;
+  j.signatures={...(j.signatures||{}),repairer:getSignatureData('repairer'),inspector:getSignatureData('inspector'),requester:getSignatureData('requester')};
   j.report=j.fix;
   j.reportReviewStatus=j.reportReviewStatus||reportReviewStatus(j);
-  j.technicianReport={...(j.technicianReport||{}),dateIn:j.dateIn,timeIn:j.timeIn,dateDone:j.dateDone,timeDone:j.timeDone,symptom:j.symptom,fix:j.fix,parts:j.partsUsed,note:j.note2,reviewStatus:j.reportReviewStatus,reviewNote:j.reviewNote,reviewedAt:j.technicianReport?.reviewedAt||''};
+  j.technicianReport={...(j.technicianReport||{}),dateIn:j.dateIn,timeIn:j.timeIn,dateDone:j.dateDone,timeDone:j.timeDone,symptom:j.symptom,cause:j.cause,fix:j.fix,parts:j.partsUsed,recommendation:j.recommendation,note:j.note2,signatures:j.signatures,reviewStatus:j.reportReviewStatus,reviewNote:j.reviewNote,reviewedAt:j.technicianReport?.reviewedAt||''};
+  return j;
+}
+async function saveReport(){
+  const j=syncReportFormToJob();if(!j)return;
   closeM('m-report');
   renderReports();
   renderJobs();
   renderDash();
   saveState();
+}
+function reportDocText(v){
+  const s=esc(v||'—');
+  return s.replace(/\n/g,'<br>');
+}
+const SIGNATURE_KEYS=['repairer','inspector','requester'];
+function signatureCanvas(key){return document.querySelector(`canvas[data-sig="${key}"]`);}
+function resizeSignatureCanvas(c){
+  if(!c)return;
+  const saved=c.dataset.value||'';
+  const dpr=window.devicePixelRatio||1;
+  const rect=c.getBoundingClientRect();
+  c.width=Math.max(1,Math.round(rect.width*dpr));
+  c.height=Math.max(1,Math.round(rect.height*dpr));
+  const ctx=c.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.lineWidth=2;
+  ctx.lineCap='round';
+  ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--text')||'#111';
+  if(saved)drawSignatureImage(c,saved);
+}
+function drawSignatureImage(c,data){
+  if(!data)return;
+  const img=new Image();
+  img.onload=()=>{const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.drawImage(img,0,0,c.clientWidth,c.clientHeight);};
+  img.src=data;
+}
+function loadSignaturePads(signatures={}){
+  SIGNATURE_KEYS.forEach(key=>{
+    const c=signatureCanvas(key);if(!c)return;
+    c.dataset.value=signatures[key]||'';
+    resizeSignatureCanvas(c);
+    if(c.dataset.ready)return;
+    c.dataset.ready='1';
+    let drawing=false,last=null;
+    const pos=e=>{const r=c.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};};
+    c.addEventListener('pointerdown',e=>{drawing=true;last=pos(e);c.setPointerCapture(e.pointerId);});
+    c.addEventListener('pointermove',e=>{
+      if(!drawing)return;
+      const p=pos(e),ctx=c.getContext('2d');
+      ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;
+      c.dataset.value=c.toDataURL('image/png');
+    });
+    c.addEventListener('pointerup',()=>{drawing=false;c.dataset.value=c.toDataURL('image/png');});
+    c.addEventListener('pointercancel',()=>{drawing=false;});
+  });
+}
+function clearSignature(key){
+  const c=signatureCanvas(key);if(!c)return;
+  c.getContext('2d').clearRect(0,0,c.width,c.height);
+  c.dataset.value='';
+}
+function getSignatureData(key){
+  const c=signatureCanvas(key);
+  return c?.dataset.value||'';
+}
+function signatureImg(data){
+  return data?`<img class="signature-img" src="${esc(data)}" alt="signature">`:'';
+}
+function imageChunks(items,size){
+  const chunks=[];
+  for(let i=0;i<items.length;i+=size)chunks.push(items.slice(i,i+size));
+  return chunks;
+}
+function generateDocWindow(html){
+  const w=window.open('','_blank');
+  if(!w){alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+function acceptanceReportHtml(j){
+  const logo=new URL('assets/profix-logo-dark.svg',location.href).href;
+  const sig=j.signatures||j.technicianReport?.signatures||{};
+  const generatedAt=new Date().toLocaleString('th-TH');
+  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ใบตรวจรับงาน ${esc(j.id)}</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111827;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:14px;line-height:1.45}.toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}.page{width:210mm;min-height:297mm;margin:18px auto;padding:14mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);border:1px solid #111}.head{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:12px}.head img{width:150px;max-height:54px;object-fit:contain}.title{text-align:center}.title h1{font-size:22px;margin:0 0 6px}.title .sub{font-size:13px;color:#4b5563}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.cell{border:1px solid #111;padding:8px;min-height:38px}.label{font-weight:800}.section{margin-top:10px}.section h2{font-size:15px;margin:0;background:#e5e7eb;border:1px solid #111;padding:6px 8px}.box{border:1px solid #111;border-top:0;min-height:64px;padding:9px;white-space:normal}.access-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px}.sig-grid-doc{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}.sig-box{height:104px;border:1px solid #111;padding:8px;text-align:center;position:relative}.sig-line{position:absolute;left:12px;right:12px;bottom:34px;border-top:1px solid #111}.sig-label{position:absolute;left:8px;right:8px;bottom:10px;font-weight:800}.signature-img{max-width:86%;max-height:58px;object-fit:contain;margin-top:6px}.foot{font-size:11px;color:#6b7280;text-align:right;margin-top:12px}@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;padding:12mm;box-shadow:none}}@page{size:A4;margin:10mm}
+  </style></head><body>
+  <div class="toolbar"><div><b>ใบตรวจรับงานซ่อมแซมและปรับปรุง ${esc(j.id)}</b><div style="font-size:12px;color:#cbd5e1;">สร้างเมื่อ ${generatedAt}</div></div><button onclick="window.print()">พิมพ์ / Save PDF</button></div>
+  <main class="page">
+    <header class="head"><img src="${logo}" alt="ProFix Solution"><div class="title"><h1>ใบตรวจรับงานซ่อมแซมและปรับปรุง</h1><div class="sub">Repair / Improvement Acceptance Form</div></div></header>
+    <div class="meta">
+      <div class="cell"><span class="label">หมายเลขงาน:</span> ${esc(j.id)}</div>
+      <div class="cell"><span class="label">ลูกค้า / สาขา:</span> ${esc(j.client||'—')} / ${esc(j.branch||'—')}</div>
+      <div class="cell"><span class="label">ประเภทงาน:</span> ${esc(j.type||'—')}</div>
+      <div class="cell"><span class="label">ทีมช่าง:</span> ${esc(j.team||'—')}</div>
+    </div>
+    <section class="section"><h2>การเข้าถึงหน้างาน</h2><div class="box access-grid"><div><span class="label">วันที่เข้า:</span> ${esc(j.dateIn||'—')} &nbsp; <span class="label">เวลา:</span> ${esc(j.timeIn||'—')}</div><div><span class="label">ลงนามผู้ซ่อมแซม</span><br>${signatureImg(sig.repairer)}</div><div><span class="label">ผู้แจ้ง/เจ้าของพื้นที่</span><br>${signatureImg(sig.requester)}</div></div></section>
+    <section class="section"><h2>รายการซ่อม</h2><div class="box">${reportDocText(j.symptom||j.note||j.technicianReport?.symptom)}</div></section>
+    <section class="section"><h2>สาเหตุ</h2><div class="box">${reportDocText(j.cause||j.technicianReport?.cause)}</div></section>
+    <section class="section"><h2>การแก้ไข</h2><div class="box">${reportDocText(j.fix||j.report||j.technicianReport?.fix)}</div></section>
+    <section class="section"><h2>ข้อเสนอแนะ</h2><div class="box">${reportDocText(j.recommendation||j.technicianReport?.recommendation||j.note2||j.technicianReport?.note)}</div></section>
+    <section class="section"><h2>การดำเนินการซ่อมแซมหรือปรับปรุง</h2><div class="box"><span class="label">วันที่ทำเสร็จ:</span> ${esc(j.dateDone||'—')} &nbsp; <span class="label">เวลา:</span> ${esc(j.timeDone||'—')}</div></section>
+    <section class="sig-grid-doc"><div class="sig-box">${signatureImg(sig.repairer)}<div class="sig-line"></div><div class="sig-label">ผู้ซ่อมแซม</div></div><div class="sig-box">${signatureImg(sig.inspector)}<div class="sig-line"></div><div class="sig-label">ผู้ตรวจสอบ</div></div><div class="sig-box">${signatureImg(sig.requester)}<div class="sig-line"></div><div class="sig-label">ผู้แจ้ง/เจ้าของพื้นที่</div></div></section>
+    <div class="foot">Generated by ProFix Service Console</div>
+  </main></body></html>`;
+}
+function photoBillingReportHtml(j){
+  const imgs=reportImages(j);
+  const pages=imageChunks(imgs,6);
+  const essLogo=new URL('assets/ess-logo.jpg',location.href).href;
+  const total=Math.max(1,pages.length);
+  const project=j.type||'งานซ่อมแซมและปรับปรุง';
+  const station=j.branch||'—';
+  const workDetail=j.fix||j.report||j.note||'รูปการทำงาน';
+  const pageHtml=(group,pageIndex)=>`<main class="photo-page">
+    <table class="doc-head"><tr><td rowspan="3" class="logo-cell"><img src="${essLogo}" alt="ESS"></td><td>Project : ${esc(project)}</td><td>Page</td><td>${pageIndex+1} of ${total}</td></tr><tr><td>Station Name : ${esc(station)}</td><td>ID</td><td>${esc(j.ref||'')}</td></tr><tr><td>Class of Trade : ${esc(j.client||'')}</td><td>Job No.</td><td>${esc(j.id)}</td></tr></table>
+    <div class="work-detail">Work Detail : ${esc(workDetail)}</div>
+    <div class="photo-title">${pageIndex===0?'รูปการปฏิบัติงาน':'รูปการปฏิบัติงาน (ต่อ)'}</div>
+    ${group.length?`<div class="billing-grid">${group.map((im,i)=>`<figure><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน')}"><figcaption>${pageIndex*6+i+1}. ${esc(REPORT_IMAGE_LABELS[im.category]||im.category||'รูปงาน')}</figcaption></figure>`).join('')}</div>`:'<div class="billing-empty">ยังไม่มีรูปจากช่าง</div>'}
+  </main>`;
+  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ใบงานรูปภาพ ${esc(j.id)}</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#e8edf3;color:#111;font-family:"Times New Roman",Arial,"Noto Sans Thai",sans-serif}.toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff;font-family:Arial,"Noto Sans Thai",sans-serif}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}.photo-page{width:210mm;min-height:297mm;margin:18px auto;padding:10mm;background:#fff;border:2px solid #111;box-shadow:0 12px 34px rgba(16,24,40,.16);page-break-after:always}.doc-head{width:100%;border-collapse:collapse;font-size:14px}.doc-head td{border:2px solid #111;padding:5px 8px;height:28px}.logo-cell{width:38%;text-align:center}.logo-cell img{width:94%;max-height:58px;object-fit:contain}.work-detail{border:2px solid #111;border-top:0;padding:8px;font-size:16px;font-weight:700}.photo-title{width:52%;margin:18px auto 22px;border:3px solid #222;text-align:center;font-size:24px;font-weight:800;padding:6px}.billing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 14px}.billing-grid figure{margin:0;break-inside:avoid}.billing-grid img{width:100%;height:170px;object-fit:cover;display:block}.billing-grid figcaption{text-align:center;font-size:11px;margin-top:4px;color:#333}.billing-empty{text-align:center;padding:90px 0;color:#666;font-size:18px}@media print{body{background:#fff}.toolbar{display:none}.photo-page{width:auto;min-height:277mm;margin:0;padding:8mm;box-shadow:none}.billing-grid img{height:165px}}@page{size:A4;margin:8mm}
+  </style></head><body><div class="toolbar"><div><b>ใบงานรูปภาพสำหรับวางบิล ${esc(j.id)}</b><div style="font-size:12px;color:#cbd5e1;">รูปทั้งหมด ${imgs.length} รูป</div></div><button onclick="window.print()">พิมพ์ / Save PDF</button></div>${(pages.length?pages:[[]]).map(pageHtml).join('')}</body></html>`;
+}
+function serviceReportHtml(j){
+  const imgs=reportImages(j);
+  const logo=new URL('assets/profix-logo-dark.svg',location.href).href;
+  const review=reportReviewStatus(j);
+  const generatedAt=new Date().toLocaleString('th-TH');
+  const groupHtml=['before','during','after'].map(cat=>{
+    const group=imgs.filter(im=>im.category===cat);
+    return `<section class="image-section">
+      <div class="section-head"><h2>${REPORT_IMAGE_LABELS[cat]}</h2><span>${group.length} รูป</span></div>
+      ${group.length?`<div class="photo-grid">${group.map((im,i)=>`<figure><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat])}"><figcaption>${i+1}. ${esc(im.name||im.label||REPORT_IMAGE_LABELS[cat])}</figcaption></figure>`).join('')}</div>`:'<div class="empty-doc">ยังไม่มีรูปในหมวดนี้</div>'}
+    </section>`;
+  }).join('');
+  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>รายงานช่าง ${esc(j.id)}</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#e8edf3;color:#16202d;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:14px;line-height:1.55}.toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 20px;background:#111820;color:#fff;box-shadow:0 2px 12px rgba(16,24,40,.18)}.toolbar-title{font-weight:800}.toolbar-actions{display:flex;gap:8px}.btn-print{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}.btn-ghost{border:1px solid #354052;background:transparent;color:#fff}.page{width:210mm;min-height:297mm;margin:18px auto;padding:18mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16)}.doc-header{display:flex;justify-content:space-between;gap:20px;border-bottom:3px solid #175fff;padding-bottom:16px;margin-bottom:16px}.brand img{width:170px;max-height:64px;object-fit:contain}.brand-sub{margin-top:6px;color:#536173;font-weight:700}.doc-title{text-align:right}.doc-title h1{font-size:26px;margin:0 0 8px}.doc-title .pr{font-family:ui-monospace,Menlo,monospace;font-size:18px;font-weight:800;color:#175fff}.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #d7e0ea;border-radius:10px;overflow:hidden;margin:14px 0}.meta{padding:10px 12px;border-right:1px solid #d7e0ea;border-bottom:1px solid #d7e0ea;min-height:62px}.meta:nth-child(4n){border-right:0}.meta-label{font-size:11px;font-weight:800;color:#536173;text-transform:uppercase;letter-spacing:.04em}.meta-val{font-size:14px;font-weight:800;margin-top:4px;white-space:pre-wrap}.section{margin-top:16px}.section h2,.image-section h2{font-size:16px;margin:0;color:#16202d}.box{border:1px solid #d7e0ea;border-radius:10px;padding:12px;margin-top:8px;min-height:52px;white-space:normal}.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid #d7e0ea}.section-head span{color:#536173;font-weight:800}.photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.photo-grid figure{margin:0;border:1px solid #d7e0ea;border-radius:10px;overflow:hidden;break-inside:avoid;background:#f8fafc}.photo-grid img{display:block;width:100%;height:220px;object-fit:cover;background:#eef3f8}.photo-grid figcaption{font-size:11px;color:#536173;padding:7px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.empty-doc{border:1px dashed #bac8d8;border-radius:10px;padding:18px;color:#7b8795;text-align:center}.sign-row{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:36px}.sign-box{height:92px;border-bottom:1px solid #8a96a5;text-align:center;padding-top:62px;color:#536173}.footer-note{margin-top:22px;color:#7b8795;font-size:11px;text-align:right}@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;padding:12mm;box-shadow:none}.photo-grid img{height:185px}.image-section{break-inside:avoid}}@page{size:A4;margin:10mm}
+  </style></head><body>
+    <div class="toolbar"><div><div class="toolbar-title">เอกสารรายงานช่าง ${esc(j.id)}</div><div style="font-size:12px;color:#cbd5e1;">ตรวจดูรูปและข้อมูลก่อน Save as PDF</div></div><div class="toolbar-actions"><button class="btn-print btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
+    <main class="page">
+      <header class="doc-header"><div class="brand"><img src="${logo}" alt="ProFix Solution"><div class="brand-sub">Service Report</div></div><div class="doc-title"><h1>รายงานการปฏิบัติงานช่าง</h1><div class="pr">${esc(j.id)}</div><div style="color:#536173;">สร้างเอกสาร: ${generatedAt}</div></div></header>
+      <section class="meta-grid">
+        <div class="meta"><div class="meta-label">ลูกค้า</div><div class="meta-val">${esc(j.client||'—')}</div></div>
+        <div class="meta"><div class="meta-label">สาขา</div><div class="meta-val">${esc(j.branch||'—')}</div></div>
+        <div class="meta"><div class="meta-label">ประเภทงาน</div><div class="meta-val">${esc(j.type||'—')}</div></div>
+        <div class="meta"><div class="meta-label">ทีมช่าง</div><div class="meta-val">${esc(j.team||'—')}</div></div>
+        <div class="meta"><div class="meta-label">เลขงานลูกค้า</div><div class="meta-val">${esc(j.ref||'—')}</div></div>
+        <div class="meta"><div class="meta-label">วันนัด</div><div class="meta-val">${esc(j.date||'—')}</div></div>
+        <div class="meta"><div class="meta-label">เข้าจริง</div><div class="meta-val">${esc(formatDateTime(j.dateIn,j.timeIn))}</div></div>
+        <div class="meta"><div class="meta-label">เสร็จงาน</div><div class="meta-val">${esc(formatDateTime(j.dateDone,j.timeDone))}</div></div>
+        <div class="meta"><div class="meta-label">สถานะงาน</div><div class="meta-val">${esc(j.status||'—')}</div></div>
+        <div class="meta"><div class="meta-label">สถานะรายงาน</div><div class="meta-val">${esc(review)}</div></div>
+        <div class="meta"><div class="meta-label">ผู้รับผิดชอบ</div><div class="meta-val">${esc(j.pic||'—')}</div></div>
+        <div class="meta"><div class="meta-label">ส่งรายงานเมื่อ</div><div class="meta-val">${j.techSubmittedAt?esc(new Date(j.techSubmittedAt).toLocaleString('th-TH')):'—'}</div></div>
+      </section>
+      <section class="section"><h2>รายละเอียดงานเดิม</h2><div class="box">${reportDocText(j.note)}</div></section>
+      <section class="section"><h2>อาการที่พบ / สาเหตุ</h2><div class="box">${reportDocText(j.symptom||j.technicianReport?.symptom)}</div></section>
+      <section class="section"><h2>การแก้ไข / วิธีซ่อม</h2><div class="box">${reportDocText(j.fix||j.report||j.technicianReport?.fix)}</div></section>
+      <section class="section"><h2>อะไหล่ที่ใช้</h2><div class="box">${reportDocText(j.partsUsed||j.technicianReport?.parts)}</div></section>
+      <section class="section"><h2>หมายเหตุเพิ่มเติม</h2><div class="box">${reportDocText(j.note2||j.technicianReport?.note)}</div></section>
+      ${groupHtml}
+      <section class="sign-row"><div class="sign-box">ผู้ปฏิบัติงาน / ทีมช่าง</div><div class="sign-box">ผู้ตรวจงาน / ลูกค้า</div></section>
+      <div class="footer-note">Generated by ProFix Service Console</div>
+    </main>
+  </body></html>`;
+}
+function generateServiceReport(){
+  generateAcceptanceReport();
+}
+function generateAcceptanceReport(){
+  const j=syncReportFormToJob();if(!j)return;
+  const now=new Date().toISOString();
+  j.generatedReports=[...(j.generatedReports||[]),{type:'acceptance-report',generatedAt:now,imageCount:reportImages(j).length}];
+  saveState();
+  generateDocWindow(acceptanceReportHtml(j));
+}
+function generatePhotoBillingReport(){
+  const j=syncReportFormToJob();if(!j)return;
+  const now=new Date().toISOString();
+  j.generatedReports=[...(j.generatedReports||[]),{type:'photo-billing-report',generatedAt:now,imageCount:reportImages(j).length}];
+  saveState();
+  generateDocWindow(photoBillingReportHtml(j));
 }
 async function approveReport(){
   const id=document.getElementById('mrpt-jobid').value;
@@ -1705,12 +1897,20 @@ initApp();
           <textarea id="mrpt-symptom" placeholder="เช่น แอร์ไม่เย็น น้ำยาหมด คอมเพรสเซอร์เสีย..." style="min-height:70px;"></textarea>
         </div>
         <div class="form-group">
+          <label>สาเหตุ</label>
+          <textarea id="mrpt-cause" placeholder="เช่น แผงคอยล์ตัน น้ำยารั่วจากข้อต่อ อุปกรณ์เสื่อมสภาพ..." style="min-height:60px;"></textarea>
+        </div>
+        <div class="form-group">
           <label>การแก้ไข / วิธีซ่อม</label>
           <textarea id="mrpt-fix" placeholder="เช่น เติมน้ำยา R22 จำนวน 2 ปอนด์ เปลี่ยนแผงคอยล์..." style="min-height:70px;"></textarea>
         </div>
         <div class="form-group">
           <label>อะไหล่ที่ใช้</label>
           <textarea id="mrpt-parts" placeholder="เช่น น้ำยา R22 x2, แผงคอยล์เย็น x1 หรือ ไม่มีการใช้อะไหล่" style="min-height:60px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>ข้อเสนอแนะ</label>
+          <textarea id="mrpt-recommendation" placeholder="เช่น ควรล้างแผงคอยล์ทุก 3 เดือน / นัดตรวจซ้ำ..." style="min-height:60px;"></textarea>
         </div>
         <div class="form-group">
           <label>หมายเหตุเพิ่มเติม</label>
@@ -1724,10 +1924,20 @@ initApp();
           <label>รูปจากช่าง</label>
           <div id="mrpt-images"></div>
         </div>
+        <div class="form-group">
+          <label>ลายเซ็นออนไลน์</label>
+          <div class="sig-grid">
+            <div class="sig-card"><div class="sig-title"><span>ผู้ซ่อมแซม</span><button class="btn btn-ghost btn-sm" type="button" onclick="clearSignature('repairer')">ล้าง</button></div><canvas class="sig-pad" data-sig="repairer"></canvas></div>
+            <div class="sig-card"><div class="sig-title"><span>ผู้ตรวจสอบ</span><button class="btn btn-ghost btn-sm" type="button" onclick="clearSignature('inspector')">ล้าง</button></div><canvas class="sig-pad" data-sig="inspector"></canvas></div>
+            <div class="sig-card"><div class="sig-title"><span>ผู้แจ้ง/เจ้าของพื้นที่</span><button class="btn btn-ghost btn-sm" type="button" onclick="clearSignature('requester')">ล้าง</button></div><canvas class="sig-pad" data-sig="requester"></canvas></div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeM('m-report')">ปิด</button>
+      <button class="btn btn-ghost" onclick="generateAcceptanceReport()">ใบตรวจรับ</button>
+      <button class="btn btn-ghost" onclick="generatePhotoBillingReport()">ใบงานรูปภาพ</button>
       <button class="btn btn-ghost" onclick="returnReportForFix()">ส่งกลับแก้ไข</button>
       <button class="btn btn-success" onclick="approveReport()">อนุมัติรายงาน</button>
       <button class="btn btn-primary" onclick="saveReport()">✓ บันทึกรายงาน</button>
