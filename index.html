@@ -531,10 +531,12 @@ select option{background:var(--surface2);}
         <div class="table-title">รายการอะไหล่ & ราคา</div>
         <div class="flex g8">
           <input type="text" id="part-search" placeholder="ค้นหาอะไหล่..." style="width:200px;" oninput="renderParts()">
+          <input type="file" id="part-import-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importPartsFile(this)">
+          <button class="btn btn-ghost btn-sm" onclick="triggerPartImport()">นำเข้า Excel</button>
           <button class="btn btn-ghost btn-sm" onclick="openPartModal()">+ เพิ่มอะไหล่</button>
         </div>
       </div>
-      <table><thead><tr><th>ชื่ออะไหล่</th><th>ยี่ห้อ/รุ่น</th><th>ซัพพลายเออร์</th><th>ราคาต้นทุน</th><th>ราคาขาย</th><th>Margin</th><th>หมายเหตุ</th><th></th></tr></thead>
+      <table><thead><tr><th>ลำดับ</th><th>หมวดหมู่</th><th>ชื่ออะไหล่</th><th>รายละเอียด/สเปค</th><th>หน่วย</th><th>ค่าของ</th><th>ค่าแรง</th><th>ราคาขาย</th><th></th></tr></thead>
       <tbody id="part-tbody"></tbody></table>
     </div>
   </div>
@@ -625,8 +627,10 @@ select option{background:var(--surface2);}
   <div class="modal">
     <div class="modal-header"><div class="modal-title">เพิ่ม/แก้ไขอะไหล่</div><button class="close-btn" onclick="closeM('m-part')">×</button></div>
     <div class="modal-body">
-      <div class="form-row"><div class="form-group"><label>ชื่ออะไหล่</label><input type="text" id="fpa-name" placeholder="เช่น คอมเพรสเซอร์ตู้แช่"></div><div class="form-group"><label>ยี่ห้อ/รุ่น</label><input type="text" id="fpa-brand" placeholder="เช่น Danfoss SC15G"></div></div>
-      <div class="form-row"><div class="form-group"><label>ซัพพลายเออร์</label><select id="fpa-sup"></select></div><div class="form-group"><label>ราคาต้นทุน (฿)</label><input type="number" id="fpa-cost" placeholder="0" oninput="calcPartMargin()"></div></div>
+      <div class="form-row"><div class="form-group"><label>ลำดับ / รหัส</label><input type="text" id="fpa-code" placeholder="เช่น 1 หรือ PCB-001"></div><div class="form-group"><label>หมวดหมู่</label><input type="text" id="fpa-cat" placeholder="เช่น สารเคมี/น้ำยา"></div></div>
+      <div class="form-row"><div class="form-group"><label>ชื่ออะไหล่</label><input type="text" id="fpa-name" placeholder="เช่น คอมเพรสเซอร์ตู้แช่"></div><div class="form-group"><label>รายละเอียด/สเปค</label><input type="text" id="fpa-brand" placeholder="เช่น Danfoss SC15G"></div></div>
+      <div class="form-row"><div class="form-group"><label>หน่วย</label><input type="text" id="fpa-unit" placeholder="เช่น ชุด / กิโลกรัม"></div><div class="form-group"><label>ซัพพลายเออร์</label><select id="fpa-sup"></select></div></div>
+      <div class="form-row"><div class="form-group"><label>ค่าของ (฿)</label><input type="number" id="fpa-cost" placeholder="0" oninput="calcPartMargin()"></div><div class="form-group"><label>ค่าแรง (฿)</label><input type="number" id="fpa-labor" placeholder="0" oninput="calcPartMargin()"></div></div>
       <div class="form-row"><div class="form-group"><label>ราคาขายลูกค้า (฿)</label><input type="number" id="fpa-sell" placeholder="0" oninput="calcPartMargin()"></div><div class="form-group"><label>Margin</label><input type="text" id="fpa-margin" placeholder="—" readonly style="background:var(--surface2);color:var(--green);font-family:var(--mono);"></div></div>
       <div class="form-group"><label>หมายเหตุ</label><input type="text" id="fpa-note" placeholder="ใช้กับงานประเภท..."></div>
     </div>
@@ -1511,7 +1515,7 @@ function openClientModal(i=''){editClientIndex=i;if(i===''){['fc-id','fc-name','
 function openTeamModal(i=''){editTeamIndex=i;if(i===''){['ft-name','ft-lead','ft-phone','ft-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('ft-skill').value='แอร์';}else{const t=teams[i];document.getElementById('ft-name').value=t.name;document.getElementById('ft-lead').value=t.lead;document.getElementById('ft-phone').value=t.phone;document.getElementById('ft-skill').value=t.skill;document.getElementById('ft-note').value=t.note||'';}openM('m-team');}
 function openBranchModal(i=''){editBranchIndex=i;renderClients();if(i===''){['fb-name','fb-mgr','fb-phone','fb-hours','fb-addr'].forEach(id=>document.getElementById(id).value='');document.getElementById('fb-id').value='BRN-'+String(branches.length+1).padStart(3,'0');}else{const b=branches[i];document.getElementById('fb-id').value=b.id;document.getElementById('fb-name').value=b.name;document.getElementById('fb-client').value=b.client;document.getElementById('fb-mgr').value=b.mgr;document.getElementById('fb-phone').value=b.phone;document.getElementById('fb-hours').value=b.hours;document.getElementById('fb-addr').value=b.addr;}openM('m-branch');}
 function openSupplierModal(i=''){editSupplierIndex=i;if(i===''){['fs-name','fs-contact','fs-phone','fs-terms','fs-lead','fs-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fs-type').value='อะไหล่แอร์';}else{const x=suppliers[i];document.getElementById('fs-name').value=x.name;document.getElementById('fs-type').value=x.type;document.getElementById('fs-contact').value=x.contact;document.getElementById('fs-phone').value=x.phone;document.getElementById('fs-terms').value=x.terms;document.getElementById('fs-lead').value=x.lead;document.getElementById('fs-note').value=x.note||'';}openM('m-supplier');}
-function openPartModal(i=''){editPartIndex=i;renderSuppliers();if(i===''){['fpa-name','fpa-brand','fpa-cost','fpa-sell','fpa-margin','fpa-note'].forEach(id=>document.getElementById(id).value='');}else{const x=parts[i];document.getElementById('fpa-name').value=x.name;document.getElementById('fpa-brand').value=x.brand;document.getElementById('fpa-sup').value=x.sup;document.getElementById('fpa-cost').value=x.cost;document.getElementById('fpa-sell').value=x.sell;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
+function openPartModal(i=''){editPartIndex=i;renderSuppliers();if(i===''){['fpa-code','fpa-cat','fpa-name','fpa-brand','fpa-unit','fpa-cost','fpa-labor','fpa-sell','fpa-margin','fpa-note'].forEach(id=>document.getElementById(id).value='');}else{const x=parts[i];document.getElementById('fpa-code').value=x.code||'';document.getElementById('fpa-cat').value=x.cat||x.category||'';document.getElementById('fpa-name').value=x.name||'';document.getElementById('fpa-brand').value=x.brand||x.spec||'';document.getElementById('fpa-unit').value=x.unit||'';document.getElementById('fpa-sup').value=x.sup||'';document.getElementById('fpa-cost').value=x.cost||0;document.getElementById('fpa-labor').value=x.labor||0;document.getElementById('fpa-sell').value=x.sell||x.price||0;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
 
 function renderClients() {
   updateSystemUpdated();
@@ -1550,10 +1554,60 @@ function saveBranch(){const data={id:document.getElementById('fb-id').value,name
 function delBranch(i){if(confirm('ลบสาขานี้?')){branches.splice(i,1);renderBranches();saveState();}}
 
 function renderSuppliers(){updateSystemUpdated();document.getElementById('sup-tbody').innerHTML=suppliers.map((x,i)=>`<tr><td style="font-weight:600;">${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td>${esc(x.contact)}</td><td class="mono" style="font-size:12px;">${esc(x.phone)}</td><td style="font-size:12px;">${esc(x.terms)}</td><td class="tm" style="font-size:12px;">${esc(x.note||'-')}</td>${actionCell('spm',i,`<button onclick="alert(detailText(suppliers[${i}]))">ดูดีเทล</button><button onclick="openSupplierModal(${i})">แก้ไข</button><button onclick="delSupplier(${i})">ลบ</button>`)}</tr>`).join('');const supOpts=suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');const fpaS=document.getElementById('fpa-sup');if(fpaS)fpaS.innerHTML=supOpts;renderParts();}
-function renderParts(){const q=document.getElementById('part-search')?.value?.toLowerCase()||'';const fil=q?parts.filter(p=>p.name.toLowerCase().includes(q)||p.brand.toLowerCase().includes(q)):parts;document.getElementById('part-tbody').innerHTML=fil.map(x=>{const i=parts.indexOf(x),m=x.sell>0?Math.round((x.sell-x.cost)/x.sell*100):0;return `<tr><td style="font-weight:600;">${esc(x.name)}</td><td class="tm" style="font-size:12px;">${esc(x.brand||'-')}</td><td style="font-size:12px;">${esc(x.sup)}</td><td class="mono tr">฿${x.cost.toLocaleString()}</td><td class="mono tg">฿${x.sell.toLocaleString()}</td><td class="mono fw7" style="color:${m>=30?'var(--green)':m>=15?'var(--yellow)':'var(--red)'};">${m}%</td><td class="tm" style="font-size:12px;">${esc(x.note||'-')}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');}
-function calcPartMargin(){const c=parseFloat(document.getElementById('fpa-cost').value)||0,s=parseFloat(document.getElementById('fpa-sell').value)||0;if(s>0){const m=Math.round((s-c)/s*100);document.getElementById('fpa-margin').value=m+'% (฿'+(s-c).toLocaleString()+')';}}
-function savePart(){const data={name:document.getElementById('fpa-name').value,brand:document.getElementById('fpa-brand').value,sup:document.getElementById('fpa-sup').value,cost:parseFloat(document.getElementById('fpa-cost').value)||0,sell:parseFloat(document.getElementById('fpa-sell').value)||0,note:document.getElementById('fpa-note').value};if(editPartIndex==='')parts.push(data);else parts[+editPartIndex]=data;closeM('m-part');renderParts();saveState();}
+function renderParts(){const q=document.getElementById('part-search')?.value?.toLowerCase()||'';const fil=q?parts.filter(p=>String(p.name||'').toLowerCase().includes(q)||String(p.brand||p.spec||'').toLowerCase().includes(q)||String(p.cat||p.category||'').toLowerCase().includes(q)||String(p.code||'').toLowerCase().includes(q)):parts;document.getElementById('part-tbody').innerHTML=fil.map(x=>{const i=parts.indexOf(x);return `<tr><td class="mono ta" style="font-size:11px;">${esc(x.code||'-')}</td><td><span class="chip">${esc(x.cat||x.category||'-')}</span></td><td style="font-weight:600;">${esc(x.name||'-')}</td><td class="tm" style="font-size:12px;">${esc(x.brand||x.spec||'-')}</td><td>${esc(x.unit||'-')}</td><td class="mono tr">฿${Number(x.cost||0).toLocaleString()}</td><td class="mono tr">฿${Number(x.labor||0).toLocaleString()}</td><td class="mono tg">฿${Number(x.sell||x.price||0).toLocaleString()}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');}
+function calcPartMargin(){const c=parseFloat(document.getElementById('fpa-cost').value)||0,l=parseFloat(document.getElementById('fpa-labor').value)||0,s=parseFloat(document.getElementById('fpa-sell').value)||0;if(s>0){const m=Math.round((s-c-l)/s*100);document.getElementById('fpa-margin').value=m+'% (฿'+(s-c-l).toLocaleString()+')';}}
+function savePart(){const cost=parseFloat(document.getElementById('fpa-cost').value)||0,labor=parseFloat(document.getElementById('fpa-labor').value)||0,sell=parseFloat(document.getElementById('fpa-sell').value)||cost;const data={code:document.getElementById('fpa-code').value,cat:document.getElementById('fpa-cat').value,name:document.getElementById('fpa-name').value,brand:document.getElementById('fpa-brand').value,unit:document.getElementById('fpa-unit').value,sup:document.getElementById('fpa-sup').value,cost,labor,sell,note:document.getElementById('fpa-note').value};if(editPartIndex==='')parts.push(data);else parts[+editPartIndex]=data;closeM('m-part');renderParts();saveState();}
 function delPart(i){if(confirm('ลบอะไหล่นี้?')){parts.splice(i,1);renderParts();saveState();}}
+function triggerPartImport(){document.getElementById('part-import-file').click();}
+function normalizePartNumber(v){if(v===null||v===undefined||v==='')return 0;const n=Number(String(v).replace(/,/g,'').trim());return Number.isFinite(n)?n:0;}
+function normalizeImportedPart(row){
+  const code=row['ลำดับ']??row['รหัส']??row['code']??row['Code']??'';
+  const cat=row['หมวดหมู่']??row['หมวด']??row['category']??row['Category']??'';
+  const name=row['รายการสินค้า']??row['ชื่ออะไหล่']??row['รายการ']??row['name']??row['Name']??'';
+  const brand=row['รายละเอียด/สเปค']??row['รายละเอียด']??row['สเปค']??row['brand']??row['Brand']??'';
+  const unit=row['หน่วย']??row['unit']??row['Unit']??'';
+  const cost=normalizePartNumber(row['ค่าของ']??row['ราคาของ']??row['ต้นทุน']??row['cost']??row['Cost']);
+  const labor=normalizePartNumber(row['ค่าแรง']??row['labor']??row['Labor']);
+  const sell=normalizePartNumber(row['ราคาขาย']??row['sell']??row['Sell'])||cost;
+  return {code:String(code||''),cat:String(cat||''),name:String(name||'').trim(),brand:String(brand||'').trim(),unit:String(unit||''),sup:'ราคากลาง PCB',cost,labor,sell,note:'นำเข้าจากไฟล์ราคา'};
+}
+function mergeImportedParts(imported){
+  const existing=new Map(parts.map((p,i)=>[`${p.code||''}|${p.name||''}|${p.brand||''}|${p.unit||''}`,i]));
+  let added=0,updated=0;
+  imported.forEach(p=>{
+    if(!p.name)return;
+    const key=`${p.code||''}|${p.name||''}|${p.brand||''}|${p.unit||''}`;
+    if(existing.has(key)){parts[existing.get(key)]={...parts[existing.get(key)],...p};updated++;}
+    else{parts.push(p);added++;}
+  });
+  return {added,updated};
+}
+function ensureXlsxLib(){
+  if(window.XLSX)return Promise.resolve();
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload=resolve;
+    s.onerror=()=>reject(new Error('โหลดตัวอ่าน Excel ไม่สำเร็จ'));
+    document.head.appendChild(s);
+  });
+}
+async function importPartsFile(input){
+  const file=input.files?.[0];if(!file)return;
+  try{
+    await ensureXlsxLib();
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    const imported=rows.map(normalizeImportedPart).filter(p=>p.name);
+    const result=mergeImportedParts(imported);
+    if(!suppliers.some(s=>s.name==='ราคากลาง PCB'))suppliers.push({name:'ราคากลาง PCB',type:'ราคากลาง',contact:'',phone:'',terms:'',lead:'',note:'นำเข้าจากไฟล์ Excel'});
+    renderSuppliers();renderParts();saveState();
+    alert(`นำเข้าอะไหล่สำเร็จ ${imported.length.toLocaleString()} รายการ\\nเพิ่มใหม่ ${result.added.toLocaleString()} | อัปเดต ${result.updated.toLocaleString()}`);
+  }catch(e){alert('นำเข้าไฟล์ไม่สำเร็จ: '+(e.message||e));}
+  input.value='';
+}
 function saveSupplier(){const data={name:document.getElementById('fs-name').value,type:document.getElementById('fs-type').value,contact:document.getElementById('fs-contact').value,phone:document.getElementById('fs-phone').value,terms:document.getElementById('fs-terms').value,lead:document.getElementById('fs-lead').value,note:document.getElementById('fs-note').value};if(editSupplierIndex==='')suppliers.push(data);else suppliers[+editSupplierIndex]=data;closeM('m-supplier');renderSuppliers();saveState();}
 function delSupplier(i){if(confirm('ลบซัพพลายเออร์นี้?')){suppliers.splice(i,1);renderSuppliers();saveState();}}
 
