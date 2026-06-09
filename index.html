@@ -920,6 +920,8 @@ document.addEventListener('click', closeMenus);
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
 const STATE_KEY='service_management_tracker';
+// ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
+const WORKORDER_UPLOAD_ENDPOINT='https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload-workorder';
 const LS_UI_KEY='svc_admin_tracker_ui_v1';
 const LS_THEME_KEY='svc_admin_tracker_theme';
 const todayISO=()=>new Date().toISOString().split('T')[0];
@@ -1359,6 +1361,19 @@ function applyAdminPdfData(data){
   if(data.type&&adminTypes.includes(data.type))document.getElementById('fa-type').value=data.type;
   if(data.pr&&!prValues.includes(data.pr)){prValues.push(data.pr);fillSelects();document.getElementById('fa-job').value=data.pr;}
 }
+function canUploadWorkOrderToR2(){
+  return /^https?:\/\//.test(WORKORDER_UPLOAD_ENDPOINT)&&!WORKORDER_UPLOAD_ENDPOINT.includes('YOUR_CLOUDFLARE_WORKER_URL');
+}
+async function uploadWorkOrderPdfToR2(file,pr,sourceTaskId='manual-upload'){
+  const fd=new FormData();
+  fd.append('file',file,file.name||'workorder.pdf');
+  fd.append('job_id',pr);
+  fd.append('doc_type','workorder');
+  fd.append('source',sourceTaskId);
+  const res=await fetch(WORKORDER_UPLOAD_ENDPOINT,{method:'POST',body:fd});
+  if(!res.ok)throw new Error(await res.text());
+  return res.json();
+}
 function storeWorkOrderPdfData(pr,pdfData,sourceTaskId='manual-upload'){
   ensureDocsShape();
   const cleanPr=(pr||'').trim();
@@ -1368,43 +1383,55 @@ function storeWorkOrderPdfData(pr,pdfData,sourceTaskId='manual-upload'){
   if(!prValues.includes(cleanPr)){prValues.push(cleanPr);fillSelects();}
   return true;
 }
-async function buildPdfData(file){
-  return {id:'WOD-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),fileName:file.name,size:file.size,type:file.type||'application/pdf',dataUrl:await fileToDataUrl(file),uploadedAt:new Date().toISOString()};
+async function buildPdfData(file,pr='',sourceTaskId='manual-upload'){
+  const base={id:'WOD-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),fileName:file.name,size:file.size,type:file.type||'application/pdf',uploadedAt:new Date().toISOString()};
+  if(canUploadWorkOrderToR2()&&pr){
+    const uploaded=await uploadWorkOrderPdfToR2(file,pr,sourceTaskId);
+    return {...base,url:uploaded.url||uploaded.fileUrl||'',fileUrl:uploaded.fileUrl||uploaded.url||'',key:uploaded.key||'',storage:'r2'};
+  }
+  return {...base,dataUrl:await fileToDataUrl(file),storage:'app_state'};
 }
-function tryAutoSavePendingAdminPdf(){
+async function resolvePendingAdminPdfData(pr,sourceTaskId){
+  if(!pendingAdminPdfFile)return null;
+  if(pendingAdminPdfFile.file)return buildPdfData(pendingAdminPdfFile.file,pr,sourceTaskId);
+  return pendingAdminPdfFile;
+}
+async function tryAutoSavePendingAdminPdf(){
   if(!pendingAdminPdfFile)return false;
   const pr=currentAdminPdfPR();
   if(!pr)return false;
   const sourceTaskId=editAdminId||'admin-modal';
-  storeWorkOrderPdfData(pr,pendingAdminPdfFile,sourceTaskId);
-  pendingAdminPdfFile=null;
-  setPdfStatus(`บันทึกใบงาน PDF เข้าแฟ้ม ${pr} แล้ว`,'ok');
-  renderWorkOrders();
-  saveState();
-  return true;
+  try{
+    setPdfStatus(canUploadWorkOrderToR2()?'กำลังอัปโหลดใบงาน PDF ไป R2...':'กำลังบันทึกใบงาน PDF...','warn');
+    const pdfData=await resolvePendingAdminPdfData(pr,sourceTaskId);
+    storeWorkOrderPdfData(pr,pdfData,sourceTaskId);
+    pendingAdminPdfFile=null;
+    setPdfStatus(`บันทึกใบงาน PDF เข้าแฟ้ม ${pr} แล้ว${pdfData.storage==='r2'?' (R2)':''}`,'ok');
+    renderWorkOrders();
+    saveState();
+    return true;
+  }catch(err){
+    console.error(err);
+    setPdfStatus('อัปโหลดใบงานไป R2 ไม่สำเร็จ กรุณาลองใหม่หรือตรวจ Worker URL','err');
+    return false;
+  }
 }
 async function handleAdminPdfUpload(file){
   if(!file)return;
   if(file.type&&file.type!=='application/pdf'&&!file.name.toLowerCase().endsWith('.pdf')){setPdfStatus('รองรับเฉพาะไฟล์ PDF เท่านั้น','err');return;}
-  setPdfStatus('กำลังเก็บไฟล์และอ่านข้อความจาก PDF...','warn');
-  try{
-    pendingAdminPdfFile=await buildPdfData(file);
-  }catch(err){
-    console.error(err);
-    setPdfStatus('เก็บไฟล์ PDF ไม่สำเร็จ กรุณาลองใหม่','err');
-    return;
-  }
+  pendingAdminPdfFile={id:'WOD-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),fileName:file.name,size:file.size,type:file.type||'application/pdf',uploadedAt:new Date().toISOString(),file};
+  setPdfStatus('กำลังอ่านข้อความจาก PDF...','warn');
   try{
     const text=await extractPdfText(file);
     if(!text||text.length<20){setPdfStatus('เก็บไฟล์แล้ว แต่อ่านตัวหนังสือไม่ได้ ไฟล์นี้อาจเป็น PDF แบบสแกนรูป ต้องใช้ OCR เพิ่ม','warn');return;}
     const parsed=parseAdminPdfText(text);
     applyAdminPdfData(parsed);
     const found=[parsed.pr?'PR/เลขใบงาน':'',parsed.client?'ลูกค้า/สาขา':'',parsed.phone?'เบอร์':'',parsed.due?'วันที่':''].filter(Boolean).join(', ');
-    if(tryAutoSavePendingAdminPdf())return;
+    if(await tryAutoSavePendingAdminPdf())return;
     setPdfStatus(`เก็บไฟล์รอบันทึกแล้ว และอ่านสำเร็จ${found?' พบ: '+found:''} — ใส่ PR เพื่อให้ระบบบันทึกอัตโนมัติ`,'warn');
   }catch(err){
     console.error(err);
-    if(tryAutoSavePendingAdminPdf())return;
+    if(await tryAutoSavePendingAdminPdf())return;
     setPdfStatus('เก็บไฟล์รอบันทึกแล้ว แต่อ่าน PDF ไม่สำเร็จ ใส่ PR เพื่อให้ระบบบันทึกอัตโนมัติ','warn');
   }
 }
@@ -1414,11 +1441,12 @@ function clearAdminPdfImport(){
   pendingAdminPdfFile=null;
   setPdfStatus('ยังไม่ได้เลือกไฟล์','');
 }
-function savePendingAdminPdf(pr,taskId){
+async function savePendingAdminPdf(pr,taskId){
   if(!pendingAdminPdfFile)return;
   ensureDocsShape();
   if(!pr){alert('อัปโหลดใบงานแล้ว กรุณาใส่ PR ก่อนบันทึก เพื่อให้ระบบเก็บไฟล์เข้าแฟ้ม PR');return false;}
-  storeWorkOrderPdfData(pr,pendingAdminPdfFile,taskId);
+  const pdfData=await resolvePendingAdminPdfData(pr,taskId);
+  storeWorkOrderPdfData(pr,pdfData,taskId);
   pendingAdminPdfFile=null;
   return true;
 }
@@ -1435,14 +1463,14 @@ function openAdminModal(){
   clearAdminPdfImport();
   openM('m-admin');
 }
-function saveAdminTask(){
+async function saveAdminTask(){
   const data={type:document.getElementById('fa-type').value,client:document.getElementById('fa-client').value,phone:document.getElementById('fa-phone').value,detail:document.getElementById('fa-detail').value,assign:document.getElementById('fa-assign').value,due:document.getElementById('fa-due').value,jobId:document.getElementById('fa-job').value,pri:document.getElementById('fa-pri').value,status:document.getElementById('fa-status').value};
   if(pendingAdminPdfFile&&!data.jobId){alert('อัปโหลดใบงานแล้ว กรุณาใส่ PR ก่อนบันทึก เพื่อให้ระบบเก็บไฟล์เข้าแฟ้ม PR');return;}
   if(data.assign&&!adminNames.includes(data.assign))adminNames.push(data.assign);
   if(data.jobId&&!prValues.includes(data.jobId))prValues.push(data.jobId);
   let taskId=editAdminId;
   if(editAdminId){Object.assign(adminTasks.find(t=>t.id===editAdminId),data);}else{taskId='TASK-'+String(aCnt++).padStart(3,'0');adminTasks.unshift({id:taskId,...data,assignedAt:todayISO(),isNew:true,createdAt:Date.now()});}
-  savePendingAdminPdf(data.jobId,taskId);
+  await savePendingAdminPdf(data.jobId,taskId);
   closeM('m-admin');renderAdmin();renderDash();fillSelects();saveState();
 }
 function editAdminTask(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;closeM('m-detail');editAdminId=id;fillSelects();document.querySelector('#m-admin .modal-title').textContent='แก้ไขงาน Admin';document.getElementById('fa-type').value=t.type;document.getElementById('fa-client').value=t.client;document.getElementById('fa-phone').value=t.phone||'';document.getElementById('fa-detail').value=t.detail;document.getElementById('fa-assign').value=t.assign;document.getElementById('fa-due').value=t.due;document.getElementById('fa-job').value=t.jobId||'';document.getElementById('fa-pri').value=t.pri;document.getElementById('fa-status').value=t.status||A_ST[0]||'';clearAdminPdfImport();openM('m-admin');}
@@ -1678,8 +1706,9 @@ function workOrderPrimaryData(pr){
 function openStoredWorkOrderDoc(id){
   ensureDocsShape();
   const d=docs.workOrders.find(x=>x.id===id);
-  if(!d||!d.dataUrl){alert('ไม่พบไฟล์ PDF ที่บันทึกไว้');return;}
-  if(!window.open(d.dataUrl,'_blank'))alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');
+  const href=d?.url||d?.fileUrl||d?.dataUrl;
+  if(!href){alert('ไม่พบไฟล์ PDF ที่บันทึกไว้');return;}
+  if(!window.open(href,'_blank'))alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');
 }
 async function handleWorkOrderPdfUpload(file){
   if(!file)return;
@@ -1689,7 +1718,7 @@ async function handleWorkOrderPdfUpload(file){
   if(!pr){alert('เลือกหรือพิมพ์ PR ก่อนอัปโหลดใบงาน');return;}
   if(file.type&&file.type!=='application/pdf'&&!file.name.toLowerCase().endsWith('.pdf')){alert('รองรับเฉพาะไฟล์ PDF เท่านั้น');return;}
   try{
-    const pdfData=await buildPdfData(file);
+    const pdfData=await buildPdfData(file,pr,'manual-upload');
     storeWorkOrderPdfData(pr,pdfData,'manual-upload');
     workOrderPrFilter=pr;
     renderWorkOrders();
