@@ -794,7 +794,7 @@ select option{background:var(--surface2);}
       <div class="form-row"><div class="form-group"><label>PR</label><div class="combo-row"><input list="pr-list" id="fa-job" placeholder="เช่น PR-2025-001" oninput="tryAutoSavePendingAdminPdf()"><datalist id="pr-list"></datalist><button class="btn btn-ghost btn-sm" onclick="addPRValue()" type="button">+ PR</button></div></div><div class="form-group"><label>ความสำคัญ</label><div class="select-tools"><select id="fa-pri"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('priorities')" type="button">จัดการ</button></div></div></div>
       <div class="form-row"><div class="form-group"><label>สถานะ</label><div class="select-tools"><select id="fa-status"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('adminStatuses')" type="button">จัดการ</button></div></div><div></div></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-admin')">ยกเลิก</button><button class="btn btn-primary" onclick="saveAdminTask()">✓ บันทึก</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-admin')">ยกเลิก</button><button class="btn btn-ghost" onclick="saveAdminTask(true)">ถัดไป: เปิดคิวช่าง</button><button class="btn btn-primary" onclick="saveAdminTask()">✓ บันทึก</button></div>
   </div>
 </div>
 
@@ -1461,8 +1461,26 @@ async function extractPdfText(file){
     });
     pages.push(lines.sort((a,b)=>b.y-a.y).map(line=>line.items.sort((a,b)=>(a.transform?.[4]||0)-(b.transform?.[4]||0)).map(item=>item.str).join(' ')).join('\n'));
   }
-  return pages.join('\n').replace(/[ \t]+/g,' ').normalize('NFKC').trim();
+  return normalizePdfText(pages.join('\n').replace(/[ \t]+/g,' ').normalize('NFKC')).trim();
 }
+function normalizePdfText(v){
+  return String(v||'')
+    .replace(/\uf701/g,'ิ')
+    .replace(/\uf702/g,'ี')
+    .replace(/\uf703/g,'ึ')
+    .replace(/\uf704/g,'ื')
+    .replace(/\uf705/g,'ุ')
+    .replace(/\uf706/g,'ู')
+    .replace(/\uf707/g,'็')
+    .replace(/\uf708/g,'่')
+    .replace(/\uf709/g,'้')
+    .replace(/\uf70a/g,'่')
+    .replace(/\uf70b/g,'้')
+    .replace(/\uf70c/g,'๊')
+    .replace(/\uf70d/g,'๋')
+    .replace(/\uf70e/g,'์');
+}
+function pdfLines(text){return String(text||'').split(/\n+/).map(cleanPdfValue).filter(Boolean);}
 function thaiDateToISO(d,m,y){
   let yy=parseInt(y,10);
   if(yy<100)yy+=2000;
@@ -1485,7 +1503,12 @@ function findKnownName(text,list){
   return (list||[]).find(v=>v&&clean.includes(String(v).toLowerCase().replace(/\s+/g,' ')))||'';
 }
 function cleanPdfValue(v){
-  return String(v||'').replace(/[□�]+/g,'').replace(/\s+/g,' ').replace(/^[:#\-\s]+|[:#\-\s]+$/g,'').trim();
+  return normalizePdfText(v)
+    .replace(/[\u25A0-\u25FF\uFFFD\uE000-\uF8FF]/g,'')
+    .replace(/[□�]+/g,'')
+    .replace(/\s+/g,' ')
+    .replace(/^[:#\-\s]+|[:#\-\s]+$/g,'')
+    .trim();
 }
 function pickPdfField(flat,labels,stops){
   const low=flat.toLowerCase();
@@ -1509,22 +1532,59 @@ function extractWorkOrderDescription(flat,pr){
   }
   return '';
 }
-function extractSiteName(flat){
+function trimSiteKeyword(v){
+  let s=cleanPdfValue(v).replace(/\b(?:Branch|สาขา|Site Name)\b[:\s-]*/ig,'');
+  s=s.replace(/\s+(?:Tel\.?|โทร\.?|Phone|Fax)\b[\s\S]*$/i,'');
+  s=s.replace(/\s+\d+[\/\d\-\s]*(?:หมู่|ม\.|ตำบล|ต\.|อำเภอ|อ\.|จังหวัด|จ\.|แขวง|เขต|ถนน|ถ\.|ซอย|หมู่บ้าน|ประเทศไทย|รหัส|[0-9]{5})[\s\S]*$/i,'');
+  s=s.replace(/\s+(?:ตำบล|ต\.|อำเภอ|อ\.|จังหวัด|จ\.|แขวง|เขต|ถนน|ถ\.|ซอย|หมู่|ม\.)[\s\S]*$/i,'');
+  return cleanPdfValue(s).slice(0,90);
+}
+function extractSiteName(text,flat){
+  const lines=pdfLines(text);
+  const idx=lines.findIndex(l=>/site\s*name/i.test(l));
+  if(idx>=0){
+    const candidates=lines.slice(idx+1,idx+12).filter(l=>!/^บริษัท\b/.test(l)&&!/^(tel|phone|fax|job owner|time assign|work order|tax id)/i.test(l)&&!/(จำกัด|มหาชน|คอร์ปอเรชั่น|อาคาร|ชั้น|รัชดาภิเษก|ห้วยขวาง|กรุงเทพ|phone number|tax id)/i.test(l));
+    const preferred=candidates.find(l=>/[A-Za-zก-๙]/.test(l)&&!/(^บริษัท\b|จำกัด|มหาชน)/.test(l));
+    const site=trimSiteKeyword(preferred||candidates[0]||'');
+    if(site)return site;
+  }
+  const ownerIdx=lines.findIndex(l=>/(job owner|ชื่อผู้แจ้ง)/i.test(l));
+  if(ownerIdx>=0){
+    const ownerText=lines.slice(ownerIdx,ownerIdx+12).join(' ');
+    const after=ownerText.replace(/[\s\S]*?(?:ชื่อผู้แจ้ง|job owner)\s*:?\s*/i,'').replace(/(?:เบอร์โทร|Reporter Detail|Note|Phone|Tel)[\s\S]*$/i,'');
+    const site=trimSiteKeyword(after);
+    if(site)return site;
+  }
   const site=pickPdfField(flat,['Site Name','Site name','Site'],['Site Address','Address','Contact','Tel','Phone','Work Order','Time Assign','วันรับแจ้ง','Job Type']);
   if(site){
-    const first=site.split(/\n| {2,}/).map(cleanPdfValue).find(Boolean)||site;
-    return first.replace(/\b(?:Branch|สาขา)\b[:\s-]*/i,'').slice(0,90);
+    const chunks=site.split(/\n| {2,}/).map(trimSiteKeyword).filter(Boolean).filter(x=>!/^บริษัท\b/.test(x));
+    return (chunks[0]||trimSiteKeyword(site)).slice(0,90);
   }
   return '';
 }
-function extractAssignDate(flat){
-  const part=pickPdfField(flat,['วันรับแจ้ง','Time Assign','Assign Time','วันที่รับแจ้ง'],['Work Order Description','Site Name','Job Type','Contracter Name','Serial No']);
-  const source=part||flat;
+function extractDateFromText(source){
   const isoMatch=source.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
   const dateMatch=source.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/);
   if(isoMatch)return `${isoMatch[1]}-${String(+isoMatch[2]).padStart(2,'0')}-${String(+isoMatch[3]).padStart(2,'0')}`;
   if(dateMatch)return thaiDateToISO(dateMatch[1],dateMatch[2],dateMatch[3]);
   return '';
+}
+function extractAssignDate(text,flat){
+  const lines=pdfLines(text);
+  const line=lines.find(l=>/(วันรับแจ้ง|date\s*assign|time\s*assign)/i.test(l)&&/\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}/.test(l));
+  if(line){
+    const date=extractDateFromText(line.replace(/กำหนดเข้าบริการ[\s\S]*$/,''));
+    if(date)return date;
+  }
+  const dateLabelIdx=lines.findIndex(l=>/(วันรับแจ้ง|วันรับแจง|time assign)/i.test(l));
+  if(dateLabelIdx>=0){
+    const nearby=lines.slice(dateLabelIdx,dateLabelIdx+18).join(' ');
+    const date=extractDateFromText(nearby);
+    if(date)return date;
+  }
+  const part=pickPdfField(flat,['วันรับแจ้ง','Time Assign','Assign Time','วันที่รับแจ้ง'],['Work Order Description','Site Name','Job Type','Contracter Name','Serial No']);
+  const source=part||flat;
+  return extractDateFromText(source);
 }
 function extractJobType(flat){
   const jt=pickPdfField(flat,['Job Type','Level'],['Structure','Charge Work Order Type','Contracter Name','Contractor Name','Serial No','Model','Tag','Code']);
@@ -1532,19 +1592,20 @@ function extractJobType(flat){
   return cleanPdfValue(m?m[0]:jt).slice(0,60);
 }
 function parseAdminPdfText(text){
+  text=normalizePdfText(text);
   const flat=text.replace(/\s+/g,' ').trim();
   const result={};
   const prMatch=flat.match(/\b(?:PR|P\/R|JOB|WO|WORK\s*ORDER)\s*[-:#]?\s*([A-Z]*\d[\w-]*)/i)||flat.match(/(?:เลข(?:ที่)?(?:ใบงาน|งาน|แจ้งซ่อม)?|หมายเลขงาน)\s*[:#-]?\s*([A-Z]{0,4}[-]?\d{3,}[\w-]*)/i);
   if(prMatch)result.pr=(prMatch[0].match(/^(PR|JOB|WO|P\/R)/i)?prMatch[0]:prMatch[1]).replace(/P\/R/i,'PR').replace(/\s+/g,'').replace(/:|#/g,'');
   const phoneMatch=flat.match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{3,4}/);
   if(phoneMatch)result.phone=phoneMatch[0].replace(/\s+/g,'-');
-  result.due=extractAssignDate(flat);
+  result.due=extractAssignDate(text,flat);
   result.priority=extractJobType(flat);
   const type=findKnownName(flat,adminTypes)||findKnownName(flat,jobTypes);
   if(type)result.type=type;
   const branch=findKnownName(flat,branches.map(b=>b.name));
   const client=findKnownName(flat,clients.map(c=>c.name));
-  result.client=branch||extractSiteName(flat)||client;
+  result.client=branch||extractSiteName(text,flat)||client;
   result.detail=extractWorkOrderDescription(flat,result.pr);
   return result;
 }
@@ -1664,7 +1725,7 @@ function openAdminModal(){
   clearAdminPdfImport();
   openM('m-admin');
 }
-async function saveAdminTask(){
+async function saveAdminTask(openQueueAfter=false){
   const data={type:document.getElementById('fa-type').value,client:document.getElementById('fa-client').value,phone:document.getElementById('fa-phone').value,detail:document.getElementById('fa-detail').value,assign:document.getElementById('fa-assign').value,due:document.getElementById('fa-due').value,jobId:document.getElementById('fa-job').value,pri:document.getElementById('fa-pri').value,status:document.getElementById('fa-status').value};
   if(pendingAdminPdfFile&&!data.jobId){alert('อัปโหลดใบงานแล้ว กรุณาใส่ PR ก่อนบันทึก เพื่อให้ระบบเก็บไฟล์เข้าแฟ้ม PR');return;}
   if(data.assign&&!adminNames.includes(data.assign))adminNames.push(data.assign);
@@ -1673,6 +1734,8 @@ async function saveAdminTask(){
   if(editAdminId){Object.assign(adminTasks.find(t=>t.id===editAdminId),data);}else{taskId='TASK-'+String(aCnt++).padStart(3,'0');adminTasks.unshift({id:taskId,...data,assignedAt:todayISO(),isNew:true,createdAt:Date.now()});}
   await savePendingAdminPdf(data.jobId,taskId);
   closeM('m-admin');renderAdmin();renderDash();fillSelects();saveState();
+  if(openQueueAfter)setTimeout(()=>openJobFromAdmin(taskId),0);
+  return taskId;
 }
 function editAdminTask(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;closeM('m-detail');editAdminId=id;fillSelects();document.querySelector('#m-admin .modal-title').textContent='แก้ไขงาน Admin';document.getElementById('fa-type').value=t.type;document.getElementById('fa-client').value=t.client;document.getElementById('fa-phone').value=t.phone||'';document.getElementById('fa-detail').value=t.detail;document.getElementById('fa-assign').value=t.assign;document.getElementById('fa-due').value=t.due;document.getElementById('fa-job').value=t.jobId||'';document.getElementById('fa-pri').value=t.pri;document.getElementById('fa-status').value=t.status||A_ST[0]||'';clearAdminPdfImport();openM('m-admin');}
 function deleteAdminTask(id){if(confirm('ลบงาน Admin นี้?')){adminTasks=adminTasks.filter(t=>t.id!==id);renderAdmin();renderDash();saveState();}}
@@ -1689,7 +1752,7 @@ function openJobFromAdmin(id){
   const t=adminTasks.find(x=>x.id===id);if(!t)return;
   pendingJobFromAdminId=id;
   closeM('m-detail');
-  openJobModal({id:t.jobId||'',client:t.client,branch:t.client,ref:t.jobId||'',note:t.detail,type:t.type,fromAdmin:true});
+  openJobModal({id:t.jobId||'',client:t.client,branch:t.client,ref:t.jobId||'',note:t.detail,type:t.type,date:t.due||t.assignedAt||'',fromAdmin:true});
 }
 
 // JOB QUEUE
@@ -1722,7 +1785,7 @@ function openDet(id){
   document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span></div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div class="form-row"><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
   openM('m-detail');
 }
-function openJobModal(pref={}){if(!pref.fromAdmin)pendingJobFromAdminId=null;editJobId=null;fillSelects();document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';document.getElementById('fj-type').value=jobTypes[0]||'';document.getElementById('fj-status').value=J_ST[0]||'รอเปิดงาน';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
+function openJobModal(pref={}){if(!pref.fromAdmin)pendingJobFromAdminId=null;editJobId=null;fillSelects();document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=pref.date||new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';document.getElementById('fj-type').value=jobTypes[0]||'';document.getElementById('fj-status').value=J_ST[0]||'รอเปิดงาน';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
 function calcM(){const c=parseFloat(document.getElementById('fj-pc').value)||0,t=parseFloat(document.getElementById('fj-pt').value)||0;if(c>0||t>0){document.getElementById('m-profit').style.display='flex';document.getElementById('m-profit-v').textContent='฿'+(c-t).toLocaleString();}}
 function saveJob(){
   const data={client:document.getElementById('fj-client').value,ref:document.getElementById('fj-ref').value||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,status:document.getElementById('fj-status').value,pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value};
