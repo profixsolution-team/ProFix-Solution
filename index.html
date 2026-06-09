@@ -928,6 +928,7 @@ const SPLIT_TABLES_ENABLED=true;
 const WORKORDER_UPLOAD_ENDPOINT='https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload-workorder';
 const LS_UI_KEY='svc_admin_tracker_ui_v1';
 const LS_THEME_KEY='svc_admin_tracker_theme';
+const LS_FAST_STATE_KEY='svc_admin_tracker_fast_state_v2';
 const todayISO=()=>new Date().toISOString().split('T')[0];
 const monthOf=v=>(v||'').slice(0,7);
 const dateLocalISO=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -947,7 +948,7 @@ function isThisWeekDate(v){
 function inQuickRange(item,range){const d=itemDateValue(item);if(range==='today')return d===todayISO();if(range==='week')return isThisWeekDate(d);return true;}
 function sortByItemDate(arr,dir){return [...arr].sort((a,b)=>{const av=itemDateValue(a)||'';const bv=itemDateValue(b)||'';const c=av.localeCompare(bv)||(Number(a.createdAt||0)-Number(b.createdAt||0));return dir==='asc'?c:-c;});}
 function adminNeedsQueueBadge(t){return !t?.jobId||!jobs.some(j=>j.id===t.jobId);}
-let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, partsLoadingPromise=null;
+let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, partsLoadingPromise=null, hasUnsyncedLocalChanges=false;
 let splitSaveHashes={};
 function applyTheme(theme){
   const t=theme==='light'?'light':'dark';
@@ -979,6 +980,10 @@ function ensurePersistentIds(){
 }
 function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,docs,jCnt,aCnt,lastDataUpdatedAt};}
 function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
+function collectFastState(){const st=collectState();st.parts=[];st._partsOmitted=true;return st;}
+function cacheFastState(){try{localStorage.setItem(LS_FAST_STATE_KEY,JSON.stringify(collectFastState()));}catch(e){console.warn('Fast cache save failed',e);}}
+function loadFastState(){try{const st=JSON.parse(localStorage.getItem(LS_FAST_STATE_KEY)||'null');if(!st)return false;if(st._partsOmitted)delete st.parts;applyState(st);return true;}catch(e){console.warn('Fast cache load failed',e);return false;}}
+function renderCurrentPage(){let ui={};try{ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');}catch(e){}goTo(ui.lastPage||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard');}
 function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.rptFilter)rptFilter=ui.rptFilter;if(ui.rptReviewFilter)rptReviewFilter=ui.rptReviewFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;if(ui.rptDateFilter!==undefined)rptDateFilter=ui.rptDateFilter;if(ui.docDateFilter!==undefined)docDateFilter=ui.docDateFilter;adminMonthFilter='';jobMonthFilter='';if(ui.adminRangeFilter!==undefined)adminRangeFilter=ui.adminRangeFilter;if(ui.jobRangeFilter!==undefined)jobRangeFilter=ui.jobRangeFilter;if(ui.rptRangeFilter!==undefined)rptRangeFilter=ui.rptRangeFilter;if(ui.docRangeFilter!==undefined)docRangeFilter=ui.docRangeFilter;if(ui.adminSearch!==undefined)adminSearch=ui.adminSearch;if(ui.jobSearch!==undefined)jobSearch=ui.jobSearch;if(ui.rptSearch!==undefined)rptSearch=ui.rptSearch;if(ui.docSearch!==undefined)docSearch=ui.docSearch;if(ui.jobTeamFilter)jobTeamFilter=ui.jobTeamFilter;if(ui.calendarTeamFilter)calendarTeamFilter=ui.calendarTeamFilter;if(ui.calendarMonthFilter!==undefined)calendarMonthFilter=ui.calendarMonthFilter;if(ui.calendarSearch!==undefined)calendarSearch=ui.calendarSearch;if(ui.financeSearch!==undefined)financeSearch=ui.financeSearch;if(ui.financeDateFilter!==undefined)financeDateFilter=ui.financeDateFilter;if(ui.adminSortDir)adminSortDir=ui.adminSortDir;if(ui.jobSortDir)jobSortDir=ui.jobSortDir;if(ui.rptSortDir)rptSortDir=ui.rptSortDir;if(ui.docSortDir)docSortDir=ui.docSortDir;if(ui.activeDocTab)activeDocTab=ui.activeDocTab;if(ui.workOrderPrFilter!==undefined)workOrderPrFilter=ui.workOrderPrFilter;if(ui.workOrderSortDir)workOrderSortDir=ui.workOrderSortDir;}catch(e){}}
 function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,rptFilter,rptReviewFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,rptDateFilter,docDateFilter,adminRangeFilter,jobRangeFilter,rptRangeFilter,docRangeFilter,adminSearch,jobSearch,rptSearch,docSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch,financeSearch,financeDateFilter,adminSortDir,jobSortDir,rptSortDir,docSortDir,activeDocTab,workOrderPrFilter,workOrderSortDir}));}catch(e){}}
 function stableJson(v){return JSON.stringify(v||null);}
@@ -1092,7 +1097,8 @@ async function saveSplitStateNow(force=false){
   if(force||splitSaveHashes.meta!==metaHash){await upsertSystemData(snap.meta);splitSaveHashes.meta=metaHash;}
   splitTablesOnline=true;loadedFromSplitTables=true;supabaseOnline=true;
 }
-async function loadState(){
+async function loadState(opts={}){
+  const silent=!!opts.silent;
   loadUIState();
   try{
     if(await loadSplitState())return;
@@ -1111,13 +1117,15 @@ async function loadState(){
   }catch(e){
     supabaseOnline=false;
     console.warn('Supabase load failed. Check app_state table/RLS.',e);
-    alert('ยังโหลดข้อมูลจาก Supabase ไม่ได้ กรุณาตรวจว่ามีตารางใหม่หรือ app_state และ policy แล้ว');
+    if(!silent)alert('ยังโหลดข้อมูลจาก Supabase ไม่ได้ กรุณาตรวจว่ามีตารางใหม่หรือ app_state และ policy แล้ว');
   }
 }
 async function saveState(){
   if(!isHydrated)return;
   lastDataUpdatedAt=new Date().toISOString();
   updateSystemUpdated();
+  hasUnsyncedLocalChanges=true;
+  cacheFastState();
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     try{
@@ -1129,6 +1137,8 @@ async function saveState(){
         if(!r.ok)throw new Error(await r.text());
         supabaseOnline=true;
       }
+      hasUnsyncedLocalChanges=false;
+      cacheFastState();
     }catch(e){supabaseOnline=false;console.warn('Supabase save failed',e);alert('บันทึก Supabase ไม่สำเร็จ กรุณาเช็คตาราง/policy หรืออินเทอร์เน็ต');}
   },250);
 }
@@ -2791,13 +2801,21 @@ async function returnReportForFix(){
 function clearRptFilter(){rptSearch='';rptDateFilter='';rptMonthFilter='';rptFilter='ทั้งหมด';rptReviewFilter='ทั้งหมด';renderReports();saveUIState();}
 async function initApp(){
   applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
-  await loadState();
+  loadUIState();
+  const hadFastCache=loadFastState();
   ensureMeta();
   isHydrated=true;
   fillSelects();
   renderLPHist();
-  let ui={};try{ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');}catch(e){}
-  goTo(ui.lastPage||'dashboard');
+  renderCurrentPage();
+  loadState({silent:hadFastCache}).then(()=>{
+    if(hasUnsyncedLocalChanges)return;
+    ensureMeta();
+    cacheFastState();
+    fillSelects();
+    renderLPHist();
+    renderCurrentPage();
+  }).catch(e=>console.warn('Background sync failed',e));
 }
 initApp();
 </script>
