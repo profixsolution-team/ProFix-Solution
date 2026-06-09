@@ -1573,6 +1573,7 @@ function trimSiteKeyword(v){
   let s=cleanPdfValue(v).replace(/\b(?:Branch|สาขา|Site Name)\b[:\s-]*/ig,'');
   s=s.replace(/\s+(?:Tel\.?|โทร\.?|Phone|Fax)\b[\s\S]*$/i,'');
   s=s.replace(/\s+\d+[\/\d\-\s]*(?:หมู่|ม\.|ตำบล|ต\.|อำเภอ|อ\.|จังหวัด|จ\.|แขวง|เขต|ถนน|ถ\.|ซอย|หมู่บ้าน|ประเทศไทย|รหัส|[0-9]{5})[\s\S]*$/i,'');
+  s=s.replace(/\s+\d{1,5}(?:\/\d+)?(?:\s|$)[\s\S]*$/i,'');
   s=s.replace(/\s+(?:ตำบล|ต\.|อำเภอ|อ\.|จังหวัด|จ\.|แขวง|เขต|ถนน|ถ\.|ซอย|หมู่|ม\.)[\s\S]*$/i,'');
   return cleanPdfValue(s).slice(0,90);
 }
@@ -1580,7 +1581,17 @@ function extractSiteName(text,flat){
   const lines=pdfLines(text);
   const idx=lines.findIndex(l=>/site\s*name/i.test(l));
   if(idx>=0){
-    const candidates=lines.slice(idx+1,idx+12).filter(l=>!/^บริษัท\b/.test(l)&&!/^(tel|phone|fax|job owner|time assign|work order|tax id)/i.test(l)&&!/(จำกัด|มหาชน|คอร์ปอเรชั่น|อาคาร|ชั้น|รัชดาภิเษก|ห้วยขวาง|กรุงเทพ|phone number|tax id)/i.test(l));
+    const block=lines.slice(idx+1,idx+14);
+    const joined=block.join(' ');
+    const branchLine=block.find(l=>/[A-Za-zก-๙]/.test(l)&&/\d{1,5}(?:\/\d+)?/.test(l)&&!/(^บริษัท\b|จำกัด|มหาชน|คอร์ปอเรชั่น|อาคาร|ชั้น|phone|tel|fax|tax)/i.test(l));
+    if(branchLine){
+      const site=trimSiteKeyword(branchLine);
+      if(site)return site;
+    }
+    const joinedBeforeTel=joined.replace(/(?:Tel\.?|โทร\.?|Phone|Fax|Job Owner|Time Assign|Work Order|Tax ID)[\s\S]*$/i,'');
+    const joinedSite=trimSiteKeyword(joinedBeforeTel.replace(/^บริษัท[\s\S]*?(?:จำกัด|มหาชน)\s*/i,''));
+    if(joinedSite&&!/(^บริษัท\b|จำกัด|มหาชน|คอร์ปอเรชั่น|อาคาร|ชั้น)/i.test(joinedSite))return joinedSite;
+    const candidates=block.filter(l=>!/^บริษัท\b/.test(l)&&!/^(tel|phone|fax|job owner|time assign|work order|tax id)/i.test(l)&&!/(จำกัด|มหาชน|คอร์ปอเรชั่น|อาคาร|ชั้น|รัชดาภิเษก|ห้วยขวาง|กรุงเทพ|phone number|tax id)/i.test(l));
     const preferred=candidates.find(l=>/[A-Za-zก-๙]/.test(l)&&!/(^บริษัท\b|จำกัด|มหาชน)/.test(l));
     const site=trimSiteKeyword(preferred||candidates[0]||'');
     if(site)return site;
@@ -1642,17 +1653,17 @@ function parseAdminPdfText(text){
   if(type)result.type=type;
   const branch=findKnownName(flat,branches.map(b=>b.name));
   const client=findKnownName(flat,clients.map(c=>c.name));
-  result.client=branch||extractSiteName(text,flat)||client;
+  result.client=extractSiteName(text,flat)||branch||client;
   result.detail=extractWorkOrderDescription(flat,result.pr);
   return result;
 }
 function applyAdminPdfData(data){
-  const setIf=(id,val)=>{if(val){const el=document.getElementById(id);if(el&&!el.value)el.value=val;}};
-  setIf('fa-client',data.client);
+  const setIf=(id,val,overwrite=false)=>{if(val){const el=document.getElementById(id);if(el&&(overwrite||!el.value))el.value=val;}};
+  setIf('fa-client',data.client,true);
   setIf('fa-phone',data.phone);
-  setIf('fa-detail',data.detail);
-  setIf('fa-job',data.pr);
-  setIf('fa-due',data.due);
+  setIf('fa-detail',data.detail,true);
+  setIf('fa-job',data.pr,true);
+  setIf('fa-due',data.due,true);
   if(data.type&&adminTypes.includes(data.type))document.getElementById('fa-type').value=data.type;
   if(data.priority){
     if(!priorities.includes(data.priority)){priorities.push(data.priority);fillSelects();}
