@@ -921,7 +921,7 @@ const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
 const STATE_KEY='service_management_tracker';
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
-const WORKORDER_UPLOAD_ENDPOINT='https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload-workorder';
+const WORKORDER_UPLOAD_ENDPOINT='YOUR_CLOUDFLARE_WORKER_URL/upload-workorder';
 const LS_UI_KEY='svc_admin_tracker_ui_v1';
 const LS_THEME_KEY='svc_admin_tracker_theme';
 const todayISO=()=>new Date().toISOString().split('T')[0];
@@ -1362,7 +1362,7 @@ function applyAdminPdfData(data){
   if(data.pr&&!prValues.includes(data.pr)){prValues.push(data.pr);fillSelects();document.getElementById('fa-job').value=data.pr;}
 }
 function canUploadWorkOrderToR2(){
-  return /^https?:\/\//.test(WORKORDER_UPLOAD_ENDPOINT)&&!WORKORDER_UPLOAD_ENDPOINT.includes('https://profix-r2-upload-worker.profixsolution-team.workers.dev');
+  return /^https?:\/\//.test(WORKORDER_UPLOAD_ENDPOINT)&&!WORKORDER_UPLOAD_ENDPOINT.includes('YOUR_CLOUDFLARE_WORKER_URL');
 }
 async function uploadWorkOrderPdfToR2(file,pr,sourceTaskId='manual-upload'){
   const fd=new FormData();
