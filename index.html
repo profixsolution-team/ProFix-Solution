@@ -1204,7 +1204,7 @@ async function saveState(){
         setPdfStatus?.('บันทึก Supabase ไม่สำเร็จชั่วคราว แต่เก็บข้อมูลไว้ในเครื่องแล้ว ระบบจะลองซิงก์ใหม่เมื่อมีการบันทึกครั้งถัดไป','warn');
       }
     }
-  },250);
+  },1500);
 }
 function resetSavedData(){alert('ระบบนี้เก็บข้อมูลใน Supabase แล้ว ถ้าต้องการล้างข้อมูลให้ลบ row key service_management_tracker ในตาราง app_state');}
 window.addEventListener('beforeunload',()=>{saveUIState();});
