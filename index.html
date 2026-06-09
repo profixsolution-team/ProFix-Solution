@@ -947,7 +947,7 @@ function isThisWeekDate(v){
 function inQuickRange(item,range){const d=itemDateValue(item);if(range==='today')return d===todayISO();if(range==='week')return isThisWeekDate(d);return true;}
 function sortByItemDate(arr,dir){return [...arr].sort((a,b)=>{const av=itemDateValue(a)||'';const bv=itemDateValue(b)||'';const c=av.localeCompare(bv)||(Number(a.createdAt||0)-Number(b.createdAt||0));return dir==='asc'?c:-c;});}
 function adminNeedsQueueBadge(t){return !t?.jobId||!jobs.some(j=>j.id===t.jobId);}
-let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false;
+let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, partsLoadingPromise=null;
 let splitSaveHashes={};
 function applyTheme(theme){
   const t=theme==='light'?'light':'dark';
@@ -1016,37 +1016,55 @@ function splitStateSnapshot(){
     meta:splitMetaData()
   };
 }
-function splitApplyRows({jobRows=[],adminRows=[],partRows=[],workOrderRows=[],documentRows=[],metaRows=[]}={}){
+function splitApplyRows({jobRows=[],adminRows=[],partRows=null,workOrderRows=[],documentRows=[],metaRows=[]}={}){
   const qt=[],iv=[];
   documentRows.forEach(r=>{const d={...(r.data||{})};const t=r.doc_type||d.docType;if(t==='qt'){delete d.docType;qt.push(d);}else if(t==='iv'){delete d.docType;iv.push(d);}});
   const st={
     ...(metaRows[0]?.data||{}),
     jobs:jobRows.map(r=>r.data).filter(Boolean),
     adminTasks:adminRows.map(r=>r.data).filter(Boolean),
-    parts:partRows.map(r=>r.data).filter(Boolean),
     docs:{qt,iv,workOrders:workOrderRows.map(r=>r.data).filter(Boolean)}
   };
+  if(Array.isArray(partRows))st.parts=partRows.map(r=>r.data).filter(Boolean);
   applyState(st);
 }
 async function loadSplitState(){
   if(!SPLIT_TABLES_ENABLED)return false;
-  const [jobRows,adminRows,partRows,workOrderRows,documentRows,metaRows]=await Promise.all([
+  const [jobRows,adminRows,workOrderRows,documentRows,metaRows]=await Promise.all([
     sbFetchAll('jobs','?select=id,data,updated_at&order=updated_at.desc'),
     sbFetchAll('admin_tasks','?select=id,data,updated_at&order=updated_at.desc'),
-    sbFetchAll('parts','?select=id,data,updated_at&order=updated_at.desc'),
     sbFetchAll('work_orders','?select=id,data,updated_at&order=updated_at.desc'),
     sbFetchAll('documents','?select=id,doc_type,data,updated_at&order=updated_at.desc'),
     sbFetchJson('system_data','?id=eq.main&select=id,data,updated_at')
   ]);
   splitTablesOnline=true;
-  const hasData=jobRows.length||adminRows.length||partRows.length||workOrderRows.length||documentRows.length||metaRows.length;
+  const hasData=jobRows.length||adminRows.length||workOrderRows.length||documentRows.length||metaRows.length;
   if(!hasData)return false;
-  splitApplyRows({jobRows,adminRows,partRows,workOrderRows,documentRows,metaRows});
+  splitApplyRows({jobRows,adminRows,workOrderRows,documentRows,metaRows});
   loadedFromSplitTables=true;
   supabaseOnline=true;
   const snap=splitStateSnapshot();
-  splitSaveHashes={jobs:stableJson(snap.jobs),adminTasks:stableJson(snap.adminTasks),parts:stableJson(snap.parts),workOrders:stableJson(snap.workOrders),documents:stableJson(snap.documents),meta:stableJson(snap.meta)};
+  splitSaveHashes={jobs:stableJson(snap.jobs),adminTasks:stableJson(snap.adminTasks),workOrders:stableJson(snap.workOrders),documents:stableJson(snap.documents),meta:stableJson(snap.meta)};
   return true;
+}
+async function ensurePartsLoaded(){
+  if(partsLoaded)return parts;
+  if(partsLoadingPromise)return partsLoadingPromise;
+  if(!splitTablesOnline&&!loadedFromSplitTables){partsLoaded=true;return parts;}
+  partsLoadingPromise=(async()=>{
+    const rows=await sbFetchAll('parts','?select=id,data,updated_at&order=updated_at.desc');
+    if(rows.length)parts=rows.map(r=>r.data).filter(Boolean);
+    ensurePersistentIds();
+    partsLoaded=true;
+    const snap=splitStateSnapshot();
+    splitSaveHashes.parts=stableJson(snap.parts);
+    return parts;
+  })().catch(e=>{
+    console.warn('Parts lazy load failed',e);
+    partsLoaded=true;
+    return parts;
+  }).finally(()=>{partsLoadingPromise=null;});
+  return partsLoadingPromise;
 }
 async function replaceSplitTable(table,rows,mapRow){
   const del=await fetch(splitUrl(table,'?id=not.is.null'),{method:'DELETE',headers:sbHeaders()});
@@ -1070,7 +1088,7 @@ async function saveSplitStateNow(force=false){
   if(force||splitSaveHashes.adminTasks!==adminHash){await replaceSplitTable('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}));splitSaveHashes.adminTasks=adminHash;}
   if(force||splitSaveHashes.workOrders!==woHash){await replaceSplitTable('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}));splitSaveHashes.workOrders=woHash;}
   if(force||splitSaveHashes.documents!==docHash){await replaceSplitTable('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||Date.now()),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}));splitSaveHashes.documents=docHash;}
-  if(force||splitSaveHashes.parts!==partsHash){await replaceSplitTable('parts',snap.parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}));splitSaveHashes.parts=partsHash;}
+  if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await replaceSplitTable('parts',snap.parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}));splitSaveHashes.parts=partsHash;}
   if(force||splitSaveHashes.meta!==metaHash){await upsertSystemData(snap.meta);splitSaveHashes.meta=metaHash;}
   splitTablesOnline=true;loadedFromSplitTables=true;supabaseOnline=true;
 }
@@ -1087,7 +1105,7 @@ async function loadState(){
     if(!r.ok)throw new Error(await r.text());
     const rows=await r.json();
     if(rows?.[0]?.data){
-      applyState(rows[0].data);supabaseOnline=true;
+      applyState(rows[0].data);supabaseOnline=true;if(Array.isArray(rows[0].data.parts))partsLoaded=true;
       if(splitTablesOnline){try{await saveSplitStateNow(true);}catch(migErr){console.warn('Auto migration to split tables failed',migErr);}}
     }
   }catch(e){
@@ -1125,7 +1143,7 @@ function goTo(id, el){
   document.getElementById('page-'+id).classList.add('active');
   if(el) el.classList.add('active');
   else { const b=document.querySelector('[data-page="'+id+'"]'); if(b) b.classList.add('active'); }
-  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, 'job-calendar':renderCalendar, finance:renderFin, 'tech-pay':renderTP, workorders:renderWorkOrders, documents:renderDocs, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':renderSuppliers,'reports':renderReports};
+  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, 'job-calendar':renderCalendar, finance:renderFin, 'tech-pay':renderTP, workorders:renderWorkOrders, documents:renderDocs, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':()=>{renderSuppliers();ensurePartsLoaded().then(renderParts);},'reports':renderReports};
   if(m[id]) m[id]();
   closeSidebar();
 }
@@ -2040,7 +2058,8 @@ function applyQuotePartByText(rowIndex,value,force=false){
     if(hit>=0)applyQuotePart(rowIndex,hit);
   }
 }
-function openQuoteModal(no){
+async function openQuoteModal(no){
+  await ensurePartsLoaded();
   const d=docs.qt.find(x=>x.no===no);if(!d)return;
   const j=jobs.find(x=>x.id===d.jid)||{};
   quoteEditNo=no;
@@ -2195,7 +2214,7 @@ function openClientModal(i=''){editClientIndex=i;if(i===''){['fc-id','fc-name','
 function openTeamModal(i=''){editTeamIndex=i;if(i===''){['ft-name','ft-lead','ft-phone','ft-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('ft-skill').value='แอร์';}else{const t=teams[i];document.getElementById('ft-name').value=t.name;document.getElementById('ft-lead').value=t.lead;document.getElementById('ft-phone').value=t.phone;document.getElementById('ft-skill').value=t.skill;document.getElementById('ft-note').value=t.note||'';}openM('m-team');}
 function openBranchModal(i=''){editBranchIndex=i;renderClients();if(i===''){['fb-name','fb-mgr','fb-phone','fb-hours','fb-addr'].forEach(id=>document.getElementById(id).value='');document.getElementById('fb-id').value='BRN-'+String(branches.length+1).padStart(3,'0');}else{const b=branches[i];document.getElementById('fb-id').value=b.id;document.getElementById('fb-name').value=b.name;document.getElementById('fb-client').value=b.client;document.getElementById('fb-mgr').value=b.mgr;document.getElementById('fb-phone').value=b.phone;document.getElementById('fb-hours').value=b.hours;document.getElementById('fb-addr').value=b.addr;}openM('m-branch');}
 function openSupplierModal(i=''){editSupplierIndex=i;if(i===''){['fs-name','fs-contact','fs-phone','fs-terms','fs-lead','fs-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fs-type').value='อะไหล่แอร์';}else{const x=suppliers[i];document.getElementById('fs-name').value=x.name;document.getElementById('fs-type').value=x.type;document.getElementById('fs-contact').value=x.contact;document.getElementById('fs-phone').value=x.phone;document.getElementById('fs-terms').value=x.terms;document.getElementById('fs-lead').value=x.lead;document.getElementById('fs-note').value=x.note||'';}openM('m-supplier');}
-function openPartModal(i=''){editPartIndex=i;renderSuppliers();if(i===''){['fpa-code','fpa-cat','fpa-name','fpa-brand','fpa-unit','fpa-cost','fpa-labor','fpa-sell','fpa-margin','fpa-note'].forEach(id=>document.getElementById(id).value='');}else{const x=parts[i];document.getElementById('fpa-code').value=x.code||'';document.getElementById('fpa-cat').value=x.cat||x.category||'';document.getElementById('fpa-name').value=x.name||'';document.getElementById('fpa-brand').value=x.brand||x.spec||'';document.getElementById('fpa-unit').value=x.unit||'';document.getElementById('fpa-sup').value=x.sup||'';document.getElementById('fpa-cost').value=x.cost||0;document.getElementById('fpa-labor').value=x.labor||0;document.getElementById('fpa-sell').value=x.sell||x.price||0;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
+async function openPartModal(i=''){await ensurePartsLoaded();editPartIndex=i;renderSuppliers();if(i===''){['fpa-code','fpa-cat','fpa-name','fpa-brand','fpa-unit','fpa-cost','fpa-labor','fpa-sell','fpa-margin','fpa-note'].forEach(id=>document.getElementById(id).value='');}else{const x=parts[i];document.getElementById('fpa-code').value=x.code||'';document.getElementById('fpa-cat').value=x.cat||x.category||'';document.getElementById('fpa-name').value=x.name||'';document.getElementById('fpa-brand').value=x.brand||x.spec||'';document.getElementById('fpa-unit').value=x.unit||'';document.getElementById('fpa-sup').value=x.sup||'';document.getElementById('fpa-cost').value=x.cost||0;document.getElementById('fpa-labor').value=x.labor||0;document.getElementById('fpa-sell').value=x.sell||x.price||0;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
 
 function renderClients() {
   updateSystemUpdated();
@@ -2235,7 +2254,10 @@ function delBranch(i){if(confirm('ลบสาขานี้?')){branches.splic
 
 function renderSuppliers(){updateSystemUpdated();document.getElementById('sup-tbody').innerHTML=suppliers.map((x,i)=>`<tr><td style="font-weight:600;">${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td>${esc(x.contact)}</td><td class="mono" style="font-size:12px;">${esc(x.phone)}</td><td style="font-size:12px;">${esc(x.terms)}</td><td class="tm" style="font-size:12px;">${esc(x.note||'-')}</td>${actionCell('spm',i,`<button onclick="alert(detailText(suppliers[${i}]))">ดูดีเทล</button><button onclick="openSupplierModal(${i})">แก้ไข</button><button onclick="delSupplier(${i})">ลบ</button>`)}</tr>`).join('');const supOpts=suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');const fpaS=document.getElementById('fpa-sup');if(fpaS)fpaS.innerHTML=supOpts;renderParts();}
 function filteredPartIndexes(){const q=document.getElementById('part-search')?.value?.toLowerCase()||'';return parts.map((p,i)=>({p,i})).filter(({p})=>!q||String(p.name||'').toLowerCase().includes(q)||String(p.brand||p.spec||'').toLowerCase().includes(q)||String(p.cat||p.category||'').toLowerCase().includes(q)||String(p.code||'').toLowerCase().includes(q)).map(x=>x.i);}
-function renderParts(){const idxs=filteredPartIndexes();document.getElementById('part-tbody').innerHTML=idxs.map(i=>{const x=parts[i];return `<tr><td><input type="checkbox" ${selectedParts.has(i)?'checked':''} onchange="togglePartSelect(${i},this.checked)"></td><td class="mono ta" style="font-size:11px;">${esc(x.code||'-')}</td><td><span class="chip">${esc(x.cat||x.category||'-')}</span></td><td style="font-weight:600;">${esc(x.name||'-')}</td><td class="tm" style="font-size:12px;">${esc(x.brand||x.spec||'-')}</td><td>${esc(x.unit||'-')}</td><td class="mono tr">฿${Number(x.cost||0).toLocaleString()}</td><td class="mono tr">฿${Number(x.labor||0).toLocaleString()}</td><td class="mono tg">฿${Number(x.sell||x.price||0).toLocaleString()}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(i=>selectedParts.has(i));all.indeterminate=idxs.some(i=>selectedParts.has(i))&&!all.checked;}}
+function renderParts(){
+  const tb=document.getElementById('part-tbody');if(!tb)return;
+  if(!partsLoaded&&splitTablesOnline){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดข้อมูลอะไหล่</div></div></td></tr>';ensurePartsLoaded().then(renderParts);return;}
+  const idxs=filteredPartIndexes();tb.innerHTML=idxs.map(i=>{const x=parts[i];return `<tr><td><input type="checkbox" ${selectedParts.has(i)?'checked':''} onchange="togglePartSelect(${i},this.checked)"></td><td class="mono ta" style="font-size:11px;">${esc(x.code||'-')}</td><td><span class="chip">${esc(x.cat||x.category||'-')}</span></td><td style="font-weight:600;">${esc(x.name||'-')}</td><td class="tm" style="font-size:12px;">${esc(x.brand||x.spec||'-')}</td><td>${esc(x.unit||'-')}</td><td class="mono tr">฿${Number(x.cost||0).toLocaleString()}</td><td class="mono tr">฿${Number(x.labor||0).toLocaleString()}</td><td class="mono tg">฿${Number(x.sell||x.price||0).toLocaleString()}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(i=>selectedParts.has(i));all.indeterminate=idxs.some(i=>selectedParts.has(i))&&!all.checked;}}
 function togglePartSelect(i,checked){if(checked)selectedParts.add(i);else selectedParts.delete(i);const idxs=filteredPartIndexes();const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(x=>selectedParts.has(x));all.indeterminate=idxs.some(x=>selectedParts.has(x))&&!all.checked;}}
 function toggleAllVisibleParts(checked){filteredPartIndexes().forEach(i=>checked?selectedParts.add(i):selectedParts.delete(i));renderParts();}
 function selectAllVisibleParts(){toggleAllVisibleParts(true);}
