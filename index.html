@@ -49,6 +49,14 @@ body[data-theme="light"] .logo-light{display:block;}
 .nav-icon{font-size:15px;width:18px;text-align:center;}
 .nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;font-family:var(--mono);}
 .nav-badge-y{margin-left:auto;background:var(--yellow);color:#0d1117;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;font-family:var(--mono);}
+.app-loader{position:fixed;inset:0;z-index:3000;display:none;align-items:center;justify-content:center;background:rgba(13,17,23,.72);backdrop-filter:blur(8px);}
+body[data-theme="light"] .app-loader{background:rgba(245,247,251,.72);}
+.app-loader.show{display:flex;}
+.loader-card{display:flex;align-items:center;gap:14px;border:1px solid var(--border);background:var(--surface);box-shadow:0 18px 45px rgba(0,0,0,.22);border-radius:14px;padding:16px 20px;color:var(--text);font-weight:800;}
+.loader-card img{width:42px;height:42px;object-fit:contain;border-radius:10px;animation:loaderPulse 1.1s ease-in-out infinite;}
+.loader-text{display:grid;gap:2px;}
+.loader-sub{font-size:11px;color:var(--text2);font-weight:600;}
+@keyframes loaderPulse{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.08);opacity:1}}
 .page-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
 .page-title{font-size:18px;font-weight:700;}
 .page-sub{font-size:12px;color:var(--text2);margin-top:2px;}
@@ -315,6 +323,13 @@ select option{background:var(--surface2);}
 </style>
 </head>
 <body>
+<div class="app-loader" id="app-loader" aria-live="polite" aria-label="กำลังโหลด">
+  <div class="loader-card">
+    <img class="logo-dark" src="assets/profix-icon.svg" alt="ProFix">
+    <img class="logo-light" src="assets/profix-icon.svg" alt="ProFix">
+    <div class="loader-text"><div>กำลังโหลด...</div><div class="loader-sub">กำลังซิงก์ข้อมูลล่าสุด</div></div>
+  </div>
+</div>
 <div class="mobile-topbar">
   <button class="hamburger" onclick="toggleSidebar()" aria-label="เปิดเมนู">☰</button>
   <button class="brand-home brand-lockup" onclick="goTo('dashboard')" type="button" aria-label="กลับหน้า Dashboard"><div><img class="brand-logo logo-dark" src="assets/profix-logo.svg" alt="ProFix Solution"><img class="brand-logo logo-light" src="assets/profix-logo-dark.svg" alt="ProFix Solution"><div class="mobile-sub">Service Console</div></div></button>
@@ -948,6 +963,22 @@ function isThisWeekDate(v){
 function inQuickRange(item,range){const d=itemDateValue(item);if(range==='today')return d===todayISO();if(range==='week')return isThisWeekDate(d);return true;}
 function sortByItemDate(arr,dir){return [...arr].sort((a,b)=>{const av=itemDateValue(a)||'';const bv=itemDateValue(b)||'';const c=av.localeCompare(bv)||(Number(a.createdAt||0)-Number(b.createdAt||0));return dir==='asc'?c:-c;});}
 function adminNeedsQueueBadge(t){return !t?.jobId||!jobs.some(j=>j.id===t.jobId);}
+function isClosedAdminTask(t){return ['เสร็จแล้ว','ปิดงาน','Reject'].includes(t?.status);}
+function isClosedJob(j){return ['ปิดงาน','Reject','ปิดงานสำรวจ'].includes(j?.status);}
+function activeAdminCount(){return adminTasks.filter(t=>!isClosedAdminTask(t)).length;}
+function activeJobCount(){return jobs.filter(j=>!isClosedJob(j)).length;}
+function updateNavBadges(){
+  const admin=document.getElementById('nb-admin'),job=document.getElementById('nb-new');
+  if(admin)admin.textContent=activeAdminCount();
+  if(job)job.textContent=activeJobCount();
+}
+function setAppLoading(on,msg='กำลังโหลด...',sub='กำลังซิงก์ข้อมูลล่าสุด'){
+  const el=document.getElementById('app-loader');if(!el)return;
+  el.classList.toggle('show',!!on);
+  const main=el.querySelector('.loader-text>div:first-child'),small=el.querySelector('.loader-sub');
+  if(main)main.textContent=msg;
+  if(small)small.textContent=sub;
+}
 let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, partsLoadingPromise=null, hasUnsyncedLocalChanges=false;
 let splitSaveHashes={};
 function applyTheme(theme){
@@ -983,7 +1014,13 @@ function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)a
 function collectFastState(){const st=collectState();st.parts=[];st._partsOmitted=true;return st;}
 function cacheFastState(){try{localStorage.setItem(LS_FAST_STATE_KEY,JSON.stringify(collectFastState()));}catch(e){console.warn('Fast cache save failed',e);}}
 function loadFastState(){try{const st=JSON.parse(localStorage.getItem(LS_FAST_STATE_KEY)||'null');if(!st)return false;if(st._partsOmitted)delete st.parts;applyState(st);return true;}catch(e){console.warn('Fast cache load failed',e);return false;}}
-function renderCurrentPage(){let ui={};try{ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');}catch(e){}goTo(ui.lastPage||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard');}
+function renderCurrentPage(){let ui={};try{ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');}catch(e){}goTo(ui.lastPage||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard');updateNavBadges();}
+function refreshAfterDataChange(){
+  updateNavBadges();
+  renderDash();
+  const active=document.querySelector('.page.active')?.id?.replace('page-','');
+  if(active&&active!=='dashboard')renderCurrentPage();
+}
 function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.rptFilter)rptFilter=ui.rptFilter;if(ui.rptReviewFilter)rptReviewFilter=ui.rptReviewFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;if(ui.rptDateFilter!==undefined)rptDateFilter=ui.rptDateFilter;if(ui.docDateFilter!==undefined)docDateFilter=ui.docDateFilter;adminMonthFilter='';jobMonthFilter='';if(ui.adminRangeFilter!==undefined)adminRangeFilter=ui.adminRangeFilter;if(ui.jobRangeFilter!==undefined)jobRangeFilter=ui.jobRangeFilter;if(ui.rptRangeFilter!==undefined)rptRangeFilter=ui.rptRangeFilter;if(ui.docRangeFilter!==undefined)docRangeFilter=ui.docRangeFilter;if(ui.adminSearch!==undefined)adminSearch=ui.adminSearch;if(ui.jobSearch!==undefined)jobSearch=ui.jobSearch;if(ui.rptSearch!==undefined)rptSearch=ui.rptSearch;if(ui.docSearch!==undefined)docSearch=ui.docSearch;if(ui.jobTeamFilter)jobTeamFilter=ui.jobTeamFilter;if(ui.calendarTeamFilter)calendarTeamFilter=ui.calendarTeamFilter;if(ui.calendarMonthFilter!==undefined)calendarMonthFilter=ui.calendarMonthFilter;if(ui.calendarSearch!==undefined)calendarSearch=ui.calendarSearch;if(ui.financeSearch!==undefined)financeSearch=ui.financeSearch;if(ui.financeDateFilter!==undefined)financeDateFilter=ui.financeDateFilter;if(ui.adminSortDir)adminSortDir=ui.adminSortDir;if(ui.jobSortDir)jobSortDir=ui.jobSortDir;if(ui.rptSortDir)rptSortDir=ui.rptSortDir;if(ui.docSortDir)docSortDir=ui.docSortDir;if(ui.activeDocTab)activeDocTab=ui.activeDocTab;if(ui.workOrderPrFilter!==undefined)workOrderPrFilter=ui.workOrderPrFilter;if(ui.workOrderSortDir)workOrderSortDir=ui.workOrderSortDir;}catch(e){}}
 function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,rptFilter,rptReviewFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,rptDateFilter,docDateFilter,adminRangeFilter,jobRangeFilter,rptRangeFilter,docRangeFilter,adminSearch,jobSearch,rptSearch,docSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch,financeSearch,financeDateFilter,adminSortDir,jobSortDir,rptSortDir,docSortDir,activeDocTab,workOrderPrFilter,workOrderSortDir}));}catch(e){}}
 function stableJson(v){return JSON.stringify(v||null);}
@@ -1360,6 +1397,7 @@ function commitListManager(){const key=document.getElementById('lm-key').value;s
 
 // DASHBOARD
 function renderDash(){
+  updateNavBadges();
   const nw=jobs.filter(j=>isTodayItem(j)&&j.status==='รอเปิดงาน').length;
   const rj=jobs.filter(j=>j.status==='Reject'||j.status==='ติดปัญหา').length;
   const cl=jobs.filter(j=>j.status==='ปิดงาน').length;
@@ -1377,8 +1415,7 @@ function renderDash(){
   document.getElementById('ds-paid').textContent='฿'+pa.toLocaleString();
   document.getElementById('ds-paid-c').textContent=pd.length+' รายการ';
   document.getElementById('ds-owe').textContent='฿'+ow.toLocaleString();
-  document.getElementById('nb-new').textContent=nw;
-  document.getElementById('nb-admin').textContent=adminTasks.filter(t=>t.status==='รอดำเนินการ'||t.status==='กำลังทำ').length;
+  updateNavBadges();
   const latest=(arr)=>arr.map((x,i)=>({x,t:x.createdAt??i})).sort((a,b)=>b.t-a.t).slice(0,6).sort((a,b)=>a.t-b.t).map(o=>o.x);
   document.getElementById('ds-admin-tbody').innerHTML=latest(adminTasks).map(t=>`<tr onclick="goTo('admin-tracker');setTimeout(()=>editAdminTask('${t.id}'),0)" style="cursor:pointer;"><td class="mono ta">${esc(t.id)} ${isTodayItem(t)?'<span class="new-pill">NEW</span>':''}${t.pri==='ด่วน'||t.pri==='เร่งด่วนมาก'?'<span class="urgent-pill">URGENT</span>':''}</td><td><span class="chip">${esc(t.type)}</span></td><td>${esc(t.assign)}</td><td class="tm">${esc(t.due)}</td><td><span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status)}</span></td></tr>`).join('');
   document.getElementById('ds-job-tbody').innerHTML=latest(jobs).map(j=>`<tr onclick="goTo('jobs');setTimeout(()=>openDet('${j.id}'),0)" style="cursor:pointer;"><td class="mono ta">${esc(j.id)} ${isTodayItem(j)?'<span class="new-pill">NEW</span>':''}</td><td>${esc(j.branch)}</td><td>${esc(j.team)}</td><td class="tm">${esc(j.date)}</td><td><span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span></td></tr>`).join('');
@@ -2866,6 +2903,7 @@ async function initApp(){
   applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
   loadUIState();
   const hadFastCache=loadFastState();
+  setAppLoading(true,'กำลังโหลด...',hadFastCache?'กำลังซิงก์ข้อมูลล่าสุด':'กำลังโหลดข้อมูลจาก Supabase');
   ensureMeta();
   isHydrated=true;
   fillSelects();
@@ -2877,8 +2915,8 @@ async function initApp(){
     cacheFastState();
     fillSelects();
     renderLPHist();
-    renderCurrentPage();
-  }).catch(e=>console.warn('Background sync failed',e));
+    refreshAfterDataChange();
+  }).catch(e=>console.warn('Background sync failed',e)).finally(()=>setAppLoading(false));
 }
 initApp();
 </script>
