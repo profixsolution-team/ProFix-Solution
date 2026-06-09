@@ -1362,7 +1362,7 @@ function applyAdminPdfData(data){
   if(data.pr&&!prValues.includes(data.pr)){prValues.push(data.pr);fillSelects();document.getElementById('fa-job').value=data.pr;}
 }
 function canUploadWorkOrderToR2(){
-  return /^https?:\/\//.test(WORKORDER_UPLOAD_ENDPOINT)&&!WORKORDER_UPLOAD_ENDPOINT.includes('YOUR_CLOUDFLARE_WORKER_URL');
+  return /^https?:\/\//.test(WORKORDER_UPLOAD_ENDPOINT)&&!WORKORDER_UPLOAD_ENDPOINT.includes('https://profix-r2-upload-worker.profixsolution-team.workers.dev');
 }
 async function uploadWorkOrderPdfToR2(file,pr,sourceTaskId='manual-upload'){
   const fd=new FormData();
