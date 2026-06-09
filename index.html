@@ -979,8 +979,9 @@ function setAppLoading(on,msg='กำลังโหลด...',sub='กำลั
   if(main)main.textContent=msg;
   if(small)small.textContent=sub;
 }
-let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, partsLoadingPromise=null, hasUnsyncedLocalChanges=false;
+let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, partsLoadingPromise=null, hasUnsyncedLocalChanges=false, lastSaveErrorAt=0;
 let splitSaveHashes={};
+let splitKnownIds={jobs:new Set(),adminTasks:new Set(),workOrders:new Set(),documents:new Set(),parts:new Set()};
 function applyTheme(theme){
   const t=theme==='light'?'light':'dark';
   document.body.dataset.theme=t;
@@ -1086,6 +1087,10 @@ async function loadSplitState(){
   loadedFromSplitTables=true;
   supabaseOnline=true;
   const snap=splitStateSnapshot();
+  splitKnownIds.jobs=new Set(jobRows.map(r=>r.id));
+  splitKnownIds.adminTasks=new Set(adminRows.map(r=>r.id));
+  splitKnownIds.workOrders=new Set(workOrderRows.map(r=>r.id));
+  splitKnownIds.documents=new Set(documentRows.map(r=>r.id));
   splitSaveHashes={jobs:stableJson(snap.jobs),adminTasks:stableJson(snap.adminTasks),workOrders:stableJson(snap.workOrders),documents:stableJson(snap.documents),meta:stableJson(snap.meta)};
   return true;
 }
@@ -1099,6 +1104,7 @@ async function ensurePartsLoaded(){
     ensurePersistentIds();
     partsLoaded=true;
     const snap=splitStateSnapshot();
+    splitKnownIds.parts=new Set(rows.map(r=>r.id));
     splitSaveHashes.parts=stableJson(snap.parts);
     return parts;
   })().catch(e=>{
@@ -1108,15 +1114,26 @@ async function ensurePartsLoaded(){
   }).finally(()=>{partsLoadingPromise=null;});
   return partsLoadingPromise;
 }
-async function replaceSplitTable(table,rows,mapRow){
-  const del=await fetch(splitUrl(table,'?id=not.is.null'),{method:'DELETE',headers:sbHeaders()});
-  if(!del.ok)throw new Error(await del.text());
+async function upsertSplitRows(table,rows,mapRow){
   if(!rows.length)return;
   for(let i=0;i<rows.length;i+=400){
     const body=JSON.stringify(rows.slice(i,i+400).map(mapRow));
     const r=await fetch(splitUrl(table),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body});
     if(!r.ok)throw new Error(await r.text());
   }
+}
+async function deleteSplitRows(table,ids){
+  for(const id of ids){
+    const r=await fetch(splitUrl(table,`?id=eq.${encodeURIComponent(id)}`),{method:'DELETE',headers:sbHeaders()});
+    if(!r.ok)console.warn('Supabase delete failed',table,id,await r.text());
+  }
+}
+async function syncSplitRows(table,rows,mapRow,knownKey,idOf){
+  await upsertSplitRows(table,rows,mapRow);
+  const current=new Set(rows.map(idOf));
+  const missing=[...(splitKnownIds[knownKey]||new Set())].filter(id=>!current.has(id));
+  if(missing.length)await deleteSplitRows(table,missing);
+  splitKnownIds[knownKey]=current;
 }
 async function upsertSystemData(data){
   const r=await fetch(splitUrl('system_data'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({id:'main',data,updated_at:new Date().toISOString()})});
@@ -1126,11 +1143,11 @@ async function saveSplitStateNow(force=false){
   const snap=splitStateSnapshot();
   const now=new Date().toISOString();
   const jobsHash=stableJson(snap.jobs), adminHash=stableJson(snap.adminTasks), partsHash=stableJson(snap.parts), woHash=stableJson(snap.workOrders), docHash=stableJson(snap.documents), metaHash=stableJson(snap.meta);
-  if(force||splitSaveHashes.jobs!==jobsHash){await replaceSplitTable('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}));splitSaveHashes.jobs=jobsHash;}
-  if(force||splitSaveHashes.adminTasks!==adminHash){await replaceSplitTable('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}));splitSaveHashes.adminTasks=adminHash;}
-  if(force||splitSaveHashes.workOrders!==woHash){await replaceSplitTable('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}));splitSaveHashes.workOrders=woHash;}
-  if(force||splitSaveHashes.documents!==docHash){await replaceSplitTable('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||Date.now()),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}));splitSaveHashes.documents=docHash;}
-  if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await replaceSplitTable('parts',snap.parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}));splitSaveHashes.parts=partsHash;}
+  if(force||splitSaveHashes.jobs!==jobsHash){await syncSplitRows('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}),'jobs',j=>j.id);splitSaveHashes.jobs=jobsHash;}
+  if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRows('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id);splitSaveHashes.adminTasks=adminHash;}
+  if(force||splitSaveHashes.workOrders!==woHash){await syncSplitRows('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id);splitSaveHashes.workOrders=woHash;}
+  if(force||splitSaveHashes.documents!==docHash){await syncSplitRows('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||Date.now()),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||Date.now()));splitSaveHashes.documents=docHash;}
+  if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await syncSplitRows('parts',snap.parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}),'parts',p=>p._id);splitSaveHashes.parts=partsHash;}
   if(force||splitSaveHashes.meta!==metaHash){await upsertSystemData(snap.meta);splitSaveHashes.meta=metaHash;}
   splitTablesOnline=true;loadedFromSplitTables=true;supabaseOnline=true;
 }
@@ -1176,7 +1193,17 @@ async function saveState(){
       }
       hasUnsyncedLocalChanges=false;
       cacheFastState();
-    }catch(e){supabaseOnline=false;console.warn('Supabase save failed',e);alert('บันทึก Supabase ไม่สำเร็จ กรุณาเช็คตาราง/policy หรืออินเทอร์เน็ต');}
+    }catch(e){
+      supabaseOnline=false;
+      hasUnsyncedLocalChanges=true;
+      cacheFastState();
+      console.warn('Supabase save failed; kept local cache for retry.',e);
+      const now=Date.now();
+      if(now-lastSaveErrorAt>60000){
+        lastSaveErrorAt=now;
+        setPdfStatus?.('บันทึก Supabase ไม่สำเร็จชั่วคราว แต่เก็บข้อมูลไว้ในเครื่องแล้ว ระบบจะลองซิงก์ใหม่เมื่อมีการบันทึกครั้งถัดไป','warn');
+      }
+    }
   },250);
 }
 function resetSavedData(){alert('ระบบนี้เก็บข้อมูลใน Supabase แล้ว ถ้าต้องการล้างข้อมูลให้ลบ row key service_management_tracker ในตาราง app_state');}
@@ -1572,16 +1599,29 @@ function extractWorkOrderDescription(flat,pr){
 function trimSiteKeyword(v){
   let s=cleanPdfValue(v).replace(/\b(?:Branch|สาขา|Site Name)\b[:\s-]*/ig,'');
   s=s.replace(/\s+(?:Tel\.?|โทร\.?|Phone|Fax)\b[\s\S]*$/i,'');
-  s=s.replace(/\s+\d+[\/\d\-\s]*(?:หมู่|ม\.|ตำบล|ต\.|อำเภอ|อ\.|จังหวัด|จ\.|แขวง|เขต|ถนน|ถ\.|ซอย|หมู่บ้าน|ประเทศไทย|รหัส|[0-9]{5})[\s\S]*$/i,'');
   s=s.replace(/\s+\d{1,5}(?:\/\d+)?(?:\s|$)[\s\S]*$/i,'');
+  s=s.replace(/\s+\d+[\/\d\-\s]*(?:หมู่|ม\.|ตำบล|ต\.|อำเภอ|อ\.|จังหวัด|จ\.|แขวง|เขต|ถนน|ถ\.|ซอย|หมู่บ้าน|ประเทศไทย|รหัส|[0-9]{5})[\s\S]*$/i,'');
   s=s.replace(/\s+(?:ตำบล|ต\.|อำเภอ|อ\.|จังหวัด|จ\.|แขวง|เขต|ถนน|ถ\.|ซอย|หมู่|ม\.)[\s\S]*$/i,'');
   return cleanPdfValue(s).slice(0,90);
+}
+function compactPdfPieces(lines){
+  const out=[];
+  let cur='';
+  lines.forEach(l=>{
+    const s=cleanPdfValue(l);
+    if(!s)return;
+    const startsNew=/^(site name|time assign|job owner|work order|reporter detail|note|tel|phone|fax|tax id|วันรับแจ้ง|กำหนด|เวลา)/i.test(s)||/^บริษัท\b/.test(s)||/^[A-Za-zก-๙].*\d{1,5}(?:\/\d+)?/.test(s);
+    if(startsNew&&cur){out.push(cur);cur=s;}
+    else cur=cur?`${cur} ${s}`:s;
+  });
+  if(cur)out.push(cur);
+  return out;
 }
 function extractSiteName(text,flat){
   const lines=pdfLines(text);
   const idx=lines.findIndex(l=>/site\s*name/i.test(l));
   if(idx>=0){
-    const block=lines.slice(idx+1,idx+14);
+    const block=compactPdfPieces(lines.slice(idx+1,idx+18));
     const joined=block.join(' ');
     const branchLine=block.find(l=>/[A-Za-zก-๙]/.test(l)&&/\d{1,5}(?:\/\d+)?/.test(l)&&!/(^บริษัท\b|จำกัด|มหาชน|คอร์ปอเรชั่น|อาคาร|ชั้น|phone|tel|fax|tax)/i.test(l));
     if(branchLine){
@@ -1857,9 +1897,9 @@ function saveJob(){
   fillSelects();
   renderJobs();renderCalendar();renderDash();renderAdmin();
   if(openedFromAdminId){
-    jobFilter='ทั้งหมด';jobTeamFilter='ทั้งหมด';jobSearch='';jobDateFilter='';jobMonthFilter='';jobRangeFilter='';
     pendingJobFromAdminId=null;
-    goTo('jobs');
+    saveUIState('admin-tracker');
+    goTo('admin-tracker');
   }else{
     saveUIState();
   }
