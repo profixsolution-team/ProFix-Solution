@@ -882,7 +882,7 @@ let adminDateFilter='', adminMonthFilter='', jobDateFilter='', jobMonthFilter=''
 let adminSearch='', jobSearch='', jobTeamFilter='ทั้งหมด', calendarTeamFilter='ทั้งหมด', calendarMonthFilter='', calendarSearch='';
 let financeSearch='', financeDateFilter='', lastDataUpdatedAt='', adminSortDir='desc', jobSortDir='desc', rptSortDir='desc', docSortDir='desc', docSearch='', docDateFilter='', activeDocTab='qt';
 let selectedDocs={qt:new Set(),iv:new Set(),tx:new Set()};
-let editJobId=null, editAdminId=null;
+let editJobId=null, editAdminId=null, pendingJobFromAdminId=null;
 let adminNames=['แอดมิน 1','แอดมิน 2','ทั้งคู่'];
 let adminTypes=['เปิดงานใหม่จากลูกค้า','ทำใบเสนอราคา','ทำใบกำกับภาษี','จัดซื้ออะไหล่','ติดต่อลูกค้า','อื่นๆ'];
 let jobTypes=['ซ่อมแอร์','ซ่อมตู้แช่','PM แอร์','PM ตู้แช่','ติดตั้ง'];
@@ -1542,7 +1542,12 @@ function openAdminDetail(id){
 }
 function addAdminName(){const v=document.getElementById('fa-assign').value.trim();if(v&&!adminNames.includes(v)){adminNames.push(v);fillSelects();alert('เพิ่มชื่อแอดมินแล้ว');}}
 function addPRValue(){const v=document.getElementById('fa-job').value.trim();if(v&&!prValues.includes(v)){prValues.push(v);fillSelects();alert('เพิ่ม PR แล้ว');}}
-function openJobFromAdmin(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;openJobModal({id:t.jobId||'',client:t.client,branch:t.client,ref:t.jobId||'',note:t.detail,type:t.type});}
+function openJobFromAdmin(id){
+  const t=adminTasks.find(x=>x.id===id);if(!t)return;
+  pendingJobFromAdminId=id;
+  closeM('m-detail');
+  openJobModal({id:t.jobId||'',client:t.client,branch:t.client,ref:t.jobId||'',note:t.detail,type:t.type,fromAdmin:true});
+}
 
 // JOB QUEUE
 function renderJobs(){
@@ -1574,12 +1579,37 @@ function openDet(id){
   document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span></div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div class="form-row"><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
   openM('m-detail');
 }
-function openJobModal(pref={}){editJobId=null;fillSelects();document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';document.getElementById('fj-type').value=jobTypes[0]||'';document.getElementById('fj-status').value=J_ST[0]||'รอเปิดงาน';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
+function openJobModal(pref={}){if(!pref.fromAdmin)pendingJobFromAdminId=null;editJobId=null;fillSelects();document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';document.getElementById('fj-type').value=jobTypes[0]||'';document.getElementById('fj-status').value=J_ST[0]||'รอเปิดงาน';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
 function calcM(){const c=parseFloat(document.getElementById('fj-pc').value)||0,t=parseFloat(document.getElementById('fj-pt').value)||0;if(c>0||t>0){document.getElementById('m-profit').style.display='flex';document.getElementById('m-profit-v').textContent='฿'+(c-t).toLocaleString();}}
 function saveJob(){
   const data={client:document.getElementById('fj-client').value,ref:document.getElementById('fj-ref').value||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,status:document.getElementById('fj-status').value,pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value};
-  if(editJobId){Object.assign(jobs.find(j=>j.id===editJobId),data);}else{const id=data.ref&&data.ref!=='N/A'?data.ref:'PR-'+String(jCnt++).padStart(3,'0');jobs.unshift({id,...data,assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()});if(id&&!prValues.includes(id))prValues.push(id);}
-  closeM('m-job');renderJobs();renderCalendar();renderDash();fillSelects();saveState();
+  let savedJobId=editJobId;
+  if(editJobId){
+    Object.assign(jobs.find(j=>j.id===editJobId),data);
+  }else{
+    const id=data.ref&&data.ref!=='N/A'?data.ref:'PR-'+String(jCnt++).padStart(3,'0');
+    const existing=jobs.find(j=>j.id===id);
+    savedJobId=id;
+    if(existing)Object.assign(existing,data,{assignedAt:existing.assignedAt||todayISO(),createdAt:existing.createdAt||Date.now()});
+    else jobs.unshift({id,...data,assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()});
+    if(id&&!prValues.includes(id))prValues.push(id);
+  }
+  const openedFromAdminId=pendingJobFromAdminId;
+  if(openedFromAdminId&&savedJobId){
+    const source=adminTasks.find(t=>t.id===openedFromAdminId);
+    if(source)source.jobId=savedJobId;
+  }
+  closeM('m-job');
+  fillSelects();
+  renderJobs();renderCalendar();renderDash();renderAdmin();
+  if(openedFromAdminId){
+    jobFilter='ทั้งหมด';jobTeamFilter='ทั้งหมด';jobSearch='';jobDateFilter='';jobMonthFilter='';jobRangeFilter='';
+    pendingJobFromAdminId=null;
+    goTo('jobs');
+  }else{
+    saveUIState();
+  }
+  saveState();
 }
 function editJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;closeM('m-detail');fillSelects();editJobId=id;document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
 function deleteJob(id){if(confirm('ลบงานคิวช่างนี้?')){jobs=jobs.filter(j=>j.id!==id);renderJobs();renderCalendar();renderDash();fillSelects();saveState();}}
@@ -1977,7 +2007,7 @@ function saveQuoteDoc(printAfter=false){
 
 // MODAL
 function openM(id){document.getElementById(id).classList.add('open');}
-function closeM(id){document.getElementById(id).classList.remove('open');}
+function closeM(id){document.getElementById(id).classList.remove('open');if(id==='m-job')pendingJobFromAdminId=null;}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 
 
