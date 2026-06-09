@@ -134,6 +134,7 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .b-paid{background:var(--green-dim);color:var(--green);}
 .b-unpaid{background:var(--yellow-dim);color:var(--yellow);}
 .new-pill{display:inline-flex;align-items:center;background:linear-gradient(135deg,#1a4a1a,#0f2a1f);border:1px solid #3fb950;color:#3fb950;font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;animation:np 2s infinite;}
+.queue-pill{display:inline-flex;align-items:center;background:var(--yellow-dim);border:1px solid var(--yellow);color:var(--yellow);font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.3px;margin-left:4px;}
 .urgent-pill{display:inline-flex;align-items:center;background:var(--red-dim);border:1px solid var(--red);color:var(--red);font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;margin-left:4px;}
 body[data-theme="light"] .badge,body[data-theme="light"] .chip{background:#fff;border:1px solid currentColor;box-shadow:0 1px 0 rgba(16,24,40,.04);}
 body[data-theme="light"] .chip{color:#536173;}
@@ -146,6 +147,7 @@ body[data-theme="light"] .b-done,body[data-theme="light"] .b-paid{color:#138a3d;
 body[data-theme="light"] .b-reject{color:#cf222e;}
 body[data-theme="light"] .b-hold{color:#bc4c00;}
 body[data-theme="light"] .new-pill{background:#fff;border-color:#067a2d;color:#067a2d;box-shadow:none;}
+body[data-theme="light"] .queue-pill{background:#fff;border-color:#9a6700;color:#9a6700;box-shadow:none;}
 body[data-theme="light"] .urgent-pill{background:#fff;border-color:#cf222e;color:#cf222e;}
 @keyframes np{0%,100%{border-color:#3fb950}50%{border-color:#56d364;box-shadow:0 0 6px rgba(63,185,80,.3)}}
 .status-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 6px;cursor:pointer;outline:none;transition:all .15s;}
@@ -487,6 +489,7 @@ select option{background:var(--surface2);}
       <datalist id="workorder-pr-list"></datalist>
       <button class="btn btn-ghost btn-sm" onclick="selectWorkOrderPR(document.getElementById('workorder-pr-input').value)">เปิดแฟ้ม</button>
       <button class="btn btn-ghost btn-sm" onclick="selectLatestWorkOrder()">ล่าสุด</button>
+      <button class="btn btn-ghost btn-sm" id="workorder-sort-btn" onclick="toggleWorkOrderSort()">ล่าสุดก่อน</button>
       <input type="file" id="workorder-pdf-upload" accept="application/pdf,.pdf" style="display:none" onchange="handleWorkOrderPdfUpload(this.files[0])">
       <button class="btn btn-primary btn-sm" onclick="document.getElementById('workorder-pdf-upload').click()">อัปโหลดใบงาน PDF</button>
     </div>
@@ -942,7 +945,7 @@ function isThisWeekDate(v){
 }
 function inQuickRange(item,range){const d=itemDateValue(item);if(range==='today')return d===todayISO();if(range==='week')return isThisWeekDate(d);return true;}
 function sortByItemDate(arr,dir){return [...arr].sort((a,b)=>{const av=itemDateValue(a)||'';const bv=itemDateValue(b)||'';const c=av.localeCompare(bv)||(Number(a.createdAt||0)-Number(b.createdAt||0));return dir==='asc'?c:-c;});}
-function adminTrackerNewBadge(t){return isTodayItem(t)&&(!t?.jobId||!jobs.some(j=>j.id===t.jobId));}
+function adminNeedsQueueBadge(t){return !t?.jobId||!jobs.some(j=>j.id===t.jobId);}
 let saveTimer=null, isHydrated=false, supabaseOnline=false;
 function applyTheme(theme){
   const t=theme==='light'?'light':'dark';
@@ -967,8 +970,8 @@ function ensureMeta(){
 }
 function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,docs,jCnt,aCnt,lastDataUpdatedAt};}
 function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
-function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.rptFilter)rptFilter=ui.rptFilter;if(ui.rptReviewFilter)rptReviewFilter=ui.rptReviewFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;if(ui.rptDateFilter!==undefined)rptDateFilter=ui.rptDateFilter;if(ui.docDateFilter!==undefined)docDateFilter=ui.docDateFilter;adminMonthFilter='';jobMonthFilter='';if(ui.adminRangeFilter!==undefined)adminRangeFilter=ui.adminRangeFilter;if(ui.jobRangeFilter!==undefined)jobRangeFilter=ui.jobRangeFilter;if(ui.rptRangeFilter!==undefined)rptRangeFilter=ui.rptRangeFilter;if(ui.docRangeFilter!==undefined)docRangeFilter=ui.docRangeFilter;if(ui.adminSearch!==undefined)adminSearch=ui.adminSearch;if(ui.jobSearch!==undefined)jobSearch=ui.jobSearch;if(ui.rptSearch!==undefined)rptSearch=ui.rptSearch;if(ui.docSearch!==undefined)docSearch=ui.docSearch;if(ui.jobTeamFilter)jobTeamFilter=ui.jobTeamFilter;if(ui.calendarTeamFilter)calendarTeamFilter=ui.calendarTeamFilter;if(ui.calendarMonthFilter!==undefined)calendarMonthFilter=ui.calendarMonthFilter;if(ui.calendarSearch!==undefined)calendarSearch=ui.calendarSearch;if(ui.financeSearch!==undefined)financeSearch=ui.financeSearch;if(ui.financeDateFilter!==undefined)financeDateFilter=ui.financeDateFilter;if(ui.adminSortDir)adminSortDir=ui.adminSortDir;if(ui.jobSortDir)jobSortDir=ui.jobSortDir;if(ui.rptSortDir)rptSortDir=ui.rptSortDir;if(ui.docSortDir)docSortDir=ui.docSortDir;if(ui.activeDocTab)activeDocTab=ui.activeDocTab;if(ui.workOrderPrFilter!==undefined)workOrderPrFilter=ui.workOrderPrFilter;}catch(e){}}
-function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,rptFilter,rptReviewFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,rptDateFilter,docDateFilter,adminRangeFilter,jobRangeFilter,rptRangeFilter,docRangeFilter,adminSearch,jobSearch,rptSearch,docSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch,financeSearch,financeDateFilter,adminSortDir,jobSortDir,rptSortDir,docSortDir,activeDocTab,workOrderPrFilter}));}catch(e){}}
+function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.rptFilter)rptFilter=ui.rptFilter;if(ui.rptReviewFilter)rptReviewFilter=ui.rptReviewFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;if(ui.rptDateFilter!==undefined)rptDateFilter=ui.rptDateFilter;if(ui.docDateFilter!==undefined)docDateFilter=ui.docDateFilter;adminMonthFilter='';jobMonthFilter='';if(ui.adminRangeFilter!==undefined)adminRangeFilter=ui.adminRangeFilter;if(ui.jobRangeFilter!==undefined)jobRangeFilter=ui.jobRangeFilter;if(ui.rptRangeFilter!==undefined)rptRangeFilter=ui.rptRangeFilter;if(ui.docRangeFilter!==undefined)docRangeFilter=ui.docRangeFilter;if(ui.adminSearch!==undefined)adminSearch=ui.adminSearch;if(ui.jobSearch!==undefined)jobSearch=ui.jobSearch;if(ui.rptSearch!==undefined)rptSearch=ui.rptSearch;if(ui.docSearch!==undefined)docSearch=ui.docSearch;if(ui.jobTeamFilter)jobTeamFilter=ui.jobTeamFilter;if(ui.calendarTeamFilter)calendarTeamFilter=ui.calendarTeamFilter;if(ui.calendarMonthFilter!==undefined)calendarMonthFilter=ui.calendarMonthFilter;if(ui.calendarSearch!==undefined)calendarSearch=ui.calendarSearch;if(ui.financeSearch!==undefined)financeSearch=ui.financeSearch;if(ui.financeDateFilter!==undefined)financeDateFilter=ui.financeDateFilter;if(ui.adminSortDir)adminSortDir=ui.adminSortDir;if(ui.jobSortDir)jobSortDir=ui.jobSortDir;if(ui.rptSortDir)rptSortDir=ui.rptSortDir;if(ui.docSortDir)docSortDir=ui.docSortDir;if(ui.activeDocTab)activeDocTab=ui.activeDocTab;if(ui.workOrderPrFilter!==undefined)workOrderPrFilter=ui.workOrderPrFilter;if(ui.workOrderSortDir)workOrderSortDir=ui.workOrderSortDir;}catch(e){}}
+function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,rptFilter,rptReviewFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,rptDateFilter,docDateFilter,adminRangeFilter,jobRangeFilter,rptRangeFilter,docRangeFilter,adminSearch,jobSearch,rptSearch,docSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch,financeSearch,financeDateFilter,adminSortDir,jobSortDir,rptSortDir,docSortDir,activeDocTab,workOrderPrFilter,workOrderSortDir}));}catch(e){}}
 async function loadState(){
   loadUIState();
   try{
@@ -1260,7 +1263,7 @@ function renderAdmin(){
     const linked=jobs.find(j=>j.id===pr);
     const mid='am-'+t.id;
     const stBadge=`<span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status||'-')}</span>`;
-    return `<tr class="task-row" onclick="openAdminDetail('${t.id}')"><td class="mono ta" style="font-size:11px;">${mobileCard(pr||'ยังไม่เปิด PR',t.type,t.assign,t.due,stBadge)}${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">เปิดคิว</button>`}${adminTrackerNewBadge(t)?' <span class="new-pill">NEW</span>':''}</td><td class="tm" style="font-size:11px;">${esc(t.assignedAt||'-')}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td class="task-detail" style="max-width:260px;font-size:12px;">${esc(t.detail)}${t.phone?`<span class="task-phone">เบอร์ติดต่อ: ${esc(t.phone)}</span>`:''}</td><td style="font-size:12px;">${esc(t.client)}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${t.status==='เสร็จแล้ว'?'var(--green)':t.status==='กำลังทำ'?'var(--yellow)':t.status==='ติดปัญหา'||t.status==='Reject'?'var(--red)':'var(--text2)'}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="mono ta" style="font-size:11px;">${esc(t.id)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
+    return `<tr class="task-row" onclick="openAdminDetail('${t.id}')"><td class="mono ta" style="font-size:11px;">${mobileCard(pr||'ยังไม่เปิด PR',t.type,t.assign,t.due,stBadge)}${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">เปิดคิว</button>`}${adminNeedsQueueBadge(t)?' <span class="queue-pill">รอจัดคิวช่าง</span>':''}</td><td class="tm" style="font-size:11px;">${esc(t.assignedAt||'-')}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td class="task-detail" style="max-width:260px;font-size:12px;">${esc(t.detail)}${t.phone?`<span class="task-phone">เบอร์ติดต่อ: ${esc(t.phone)}</span>`:''}</td><td style="font-size:12px;">${esc(t.client)}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${t.status==='เสร็จแล้ว'?'var(--green)':t.status==='กำลังทำ'?'var(--yellow)':t.status==='ติดปัญหา'||t.status==='Reject'?'var(--red)':'var(--text2)'}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="mono ta" style="font-size:11px;">${esc(t.id)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
   }).join('');
 }
 function setAS(id,s){const t=adminTasks.find(x=>x.id===id);if(t){t.status=s;t.isNew=false;renderAdmin();renderDash();saveState();}}
@@ -1306,9 +1309,16 @@ async function extractPdfText(file){
   for(let i=1;i<=maxPages;i++){
     const page=await pdf.getPage(i);
     const content=await page.getTextContent();
-    pages.push(content.items.map(item=>item.str).join(' '));
+    const lines=[];
+    content.items.forEach(item=>{
+      const y=Math.round(item.transform?.[5]||0);
+      let line=lines.find(l=>Math.abs(l.y-y)<3);
+      if(!line){line={y,items:[]};lines.push(line);}
+      line.items.push(item);
+    });
+    pages.push(lines.sort((a,b)=>b.y-a.y).map(line=>line.items.sort((a,b)=>(a.transform?.[4]||0)-(b.transform?.[4]||0)).map(item=>item.str).join(' ')).join('\n'));
   }
-  return pages.join('\n').replace(/[ \t]+/g,' ').trim();
+  return pages.join('\n').replace(/[ \t]+/g,' ').normalize('NFKC').trim();
 }
 function thaiDateToISO(d,m,y){
   let yy=parseInt(y,10);
@@ -1331,6 +1341,53 @@ function findKnownName(text,list){
   const clean=text.toLowerCase().replace(/\s+/g,' ');
   return (list||[]).find(v=>v&&clean.includes(String(v).toLowerCase().replace(/\s+/g,' ')))||'';
 }
+function cleanPdfValue(v){
+  return String(v||'').replace(/[□�]+/g,'').replace(/\s+/g,' ').replace(/^[:#\-\s]+|[:#\-\s]+$/g,'').trim();
+}
+function pickPdfField(flat,labels,stops){
+  const low=flat.toLowerCase();
+  for(const label of labels){
+    const p=low.indexOf(label.toLowerCase());
+    if(p<0)continue;
+    let start=p+label.length;
+    let end=flat.length;
+    stops.forEach(s=>{const sp=low.indexOf(s.toLowerCase(),start);if(sp>=0&&sp<end)end=sp;});
+    const value=cleanPdfValue(flat.slice(start,end));
+    if(value)return value;
+  }
+  return '';
+}
+function extractWorkOrderDescription(flat,pr){
+  let value=pickPdfField(flat,['Work Order Description','WO Description','Description'],['Level 1','Structure','Job Type','Charge Work Order Type','Contracter Name','Contractor Name','Serial No','Model','Tag','Code สาเหตุ','Code อุปกรณ์','วันรับแจ้ง','Time Assign']);
+  if(value&&value.length>3)return value.slice(0,500);
+  if(pr){
+    const m=flat.match(new RegExp(pr.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s+([\\s\\S]{3,220}?)(?:Work Order Description|Level 1|Structure|Job Type|Charge Work Order Type|Contracter Name|Contractor Name)','i'));
+    if(m)return cleanPdfValue(m[1]).slice(0,500);
+  }
+  return '';
+}
+function extractSiteName(flat){
+  const site=pickPdfField(flat,['Site Name','Site name','Site'],['Site Address','Address','Contact','Tel','Phone','Work Order','Time Assign','วันรับแจ้ง','Job Type']);
+  if(site){
+    const first=site.split(/\n| {2,}/).map(cleanPdfValue).find(Boolean)||site;
+    return first.replace(/\b(?:Branch|สาขา)\b[:\s-]*/i,'').slice(0,90);
+  }
+  return '';
+}
+function extractAssignDate(flat){
+  const part=pickPdfField(flat,['วันรับแจ้ง','Time Assign','Assign Time','วันที่รับแจ้ง'],['Work Order Description','Site Name','Job Type','Contracter Name','Serial No']);
+  const source=part||flat;
+  const isoMatch=source.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+  const dateMatch=source.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/);
+  if(isoMatch)return `${isoMatch[1]}-${String(+isoMatch[2]).padStart(2,'0')}-${String(+isoMatch[3]).padStart(2,'0')}`;
+  if(dateMatch)return thaiDateToISO(dateMatch[1],dateMatch[2],dateMatch[3]);
+  return '';
+}
+function extractJobType(flat){
+  const jt=pickPdfField(flat,['Job Type','Level'],['Structure','Charge Work Order Type','Contracter Name','Contractor Name','Serial No','Model','Tag','Code']);
+  const m=(jt||flat).match(/\bLevel\s*[0-9A-Za-z]+\b/i);
+  return cleanPdfValue(m?m[0]:jt).slice(0,60);
+}
 function parseAdminPdfText(text){
   const flat=text.replace(/\s+/g,' ').trim();
   const result={};
@@ -1338,17 +1395,14 @@ function parseAdminPdfText(text){
   if(prMatch)result.pr=(prMatch[0].match(/^(PR|JOB|WO|P\/R)/i)?prMatch[0]:prMatch[1]).replace(/P\/R/i,'PR').replace(/\s+/g,'').replace(/:|#/g,'');
   const phoneMatch=flat.match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{3,4}/);
   if(phoneMatch)result.phone=phoneMatch[0].replace(/\s+/g,'-');
-  const isoMatch=flat.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
-  const dateMatch=flat.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/);
-  if(isoMatch)result.due=`${isoMatch[1]}-${String(+isoMatch[2]).padStart(2,'0')}-${String(+isoMatch[3]).padStart(2,'0')}`;
-  else if(dateMatch)result.due=thaiDateToISO(dateMatch[1],dateMatch[2],dateMatch[3]);
+  result.due=extractAssignDate(flat);
+  result.priority=extractJobType(flat);
   const type=findKnownName(flat,adminTypes)||findKnownName(flat,jobTypes);
   if(type)result.type=type;
   const branch=findKnownName(flat,branches.map(b=>b.name));
   const client=findKnownName(flat,clients.map(c=>c.name));
-  result.client=branch||client||pickBetween(flat,['ลูกค้า/สาขา','ลูกค้า','สาขา','สถานที่'],['เบอร์','โทร','รายละเอียด','อาการ','รายการ','วันที่','กำหนด']).slice(0,120);
-  const detail=pickBetween(flat,['รายละเอียดงาน','รายละเอียด','อาการที่พบ','อาการ','รายการซ่อม','ปัญหา'],['สาเหตุ','การแก้ไข','ข้อเสนอแนะ','เบอร์','โทร','วันที่','ลงนาม','ผู้แจ้ง']);
-  result.detail=(detail||flat).replace(/\s{2,}/g,' ').slice(0,1200);
+  result.client=branch||extractSiteName(flat)||client;
+  result.detail=extractWorkOrderDescription(flat,result.pr);
   return result;
 }
 function applyAdminPdfData(data){
@@ -1359,6 +1413,10 @@ function applyAdminPdfData(data){
   setIf('fa-job',data.pr);
   setIf('fa-due',data.due);
   if(data.type&&adminTypes.includes(data.type))document.getElementById('fa-type').value=data.type;
+  if(data.priority){
+    if(!priorities.includes(data.priority)){priorities.push(data.priority);fillSelects();}
+    document.getElementById('fa-pri').value=data.priority;
+  }
   if(data.pr&&!prValues.includes(data.pr)){prValues.push(data.pr);fillSelects();document.getElementById('fa-job').value=data.pr;}
 }
 function canUploadWorkOrderToR2(){
@@ -1659,6 +1717,7 @@ let docs={qt:[{no:'QT-2025-001',jid:'PR-005',cl:'บริษัท C',amt:4850,
 let quoteEditNo=null;
 let quoteDraftRows=[];
 let workOrderPrFilter='';
+let workOrderSortDir='desc';
 function ensureDocsShape(){
   if(!docs||typeof docs!=='object')docs={qt:[],iv:[],workOrders:[]};
   docs.qt=Array.isArray(docs.qt)?docs.qt:[];
@@ -1685,7 +1744,8 @@ function buildDocControls(){
 }
 function allWorkOrderPRs(){
   ensureDocsShape();
-  return [...new Set([...jobs.map(j=>j.id),...adminTasks.map(t=>t.jobId).filter(Boolean),...docs.workOrders.map(d=>d.pr).filter(Boolean),...docs.qt.map(d=>d.jid).filter(Boolean),...docs.iv.map(d=>d.jid).filter(Boolean),...prValues.filter(Boolean)])].filter(Boolean).sort((a,b)=>String(b).localeCompare(String(a),'th'));
+  const prs=[...new Set([...jobs.map(j=>j.id),...adminTasks.map(t=>t.jobId).filter(Boolean),...docs.workOrders.map(d=>d.pr).filter(Boolean),...docs.qt.map(d=>d.jid).filter(Boolean),...docs.iv.map(d=>d.jid).filter(Boolean),...prValues.filter(Boolean)])].filter(Boolean);
+  return prs.sort((a,b)=>workOrderSortDir==='asc'?String(a).localeCompare(String(b),'th'):String(b).localeCompare(String(a),'th'));
 }
 function workOrderBundle(pr){
   ensureDocsShape();
@@ -1699,6 +1759,7 @@ function workOrderBundle(pr){
 }
 function selectWorkOrderPR(pr){const v=(pr||'').trim();if(!v){alert('กรุณาเลือก PR');return;}workOrderPrFilter=v;renderWorkOrders();saveUIState();}
 function selectLatestWorkOrder(){const prs=allWorkOrderPRs();if(prs.length)selectWorkOrderPR(prs[0]);}
+function toggleWorkOrderSort(){workOrderSortDir=workOrderSortDir==='desc'?'asc':'desc';renderWorkOrders();saveUIState();}
 function workOrderPrimaryData(pr){
   const b=workOrderBundle(pr),j=b.job||{},a=b.admin[0]||{};
   return {pr,client:j.client||a.client||'—',branch:j.branch||a.client||'—',type:j.type||a.type||'—',team:j.team||'—',date:j.date||a.due||'—',status:j.status||a.status||'—',detail:j.note||a.detail||'—',phone:a.phone||'—',assignedAt:j.assignedAt||a.assignedAt||'—'};
@@ -1744,6 +1805,8 @@ function renderWorkOrders(){
   const input=document.getElementById('workorder-pr-input'),dl=document.getElementById('workorder-pr-list');
   if(input)input.value=workOrderPrFilter||'';
   if(dl)dl.innerHTML=prs.map(pr=>`<option value="${esc(pr)}"></option>`).join('');
+  const sortBtn=document.getElementById('workorder-sort-btn');
+  if(sortBtn)sortBtn.textContent=workOrderSortDir==='desc'?'ล่าสุดก่อน':'เก่าสุดก่อน';
   document.getElementById('workorder-count').textContent=prs.length+' PR';
   document.getElementById('workorder-pr-list-panel').innerHTML=prs.length?`<div class="workorder-doc-list">${prs.map(pr=>{const d=workOrderPrimaryData(pr),active=pr===workOrderPrFilter;return `<button class="filter-tab ${active?'active':''}" style="width:100%;justify-content:space-between;border-radius:8px;padding:10px 12px;" onclick="selectWorkOrderPR('${esc(pr)}')"><span class="mono">${esc(pr)}</span><span>${esc(d.status)}</span></button>`;}).join('')}</div>`:'<div class="empty"><div class="empty-icon">-</div><div>ยังไม่มี PR</div></div>';
   const detail=document.getElementById('workorder-detail');
