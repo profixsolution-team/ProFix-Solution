@@ -86,6 +86,14 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .task-row{cursor:pointer;}
 .task-detail{white-space:pre-line;line-height:1.35;}
 .task-phone{display:block;margin-top:6px;color:var(--text2);font-size:11px;line-height:1.35;}
+.pdf-import-box{border:1px dashed var(--border2);background:var(--bg);border-radius:8px;padding:12px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.pdf-import-title{font-weight:800;font-size:13px;color:var(--text);}
+.pdf-import-sub{font-size:11px;color:var(--text2);margin-top:2px;line-height:1.4;}
+.pdf-import-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.pdf-status{font-size:11px;color:var(--text3);line-height:1.4;width:100%;}
+.pdf-status.ok{color:var(--green);}
+.pdf-status.warn{color:var(--yellow);}
+.pdf-status.err{color:var(--red);}
 .mobile-card{display:none;}
 .mobile-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;}
 .mobile-card-pr{font-family:var(--mono);font-size:15px;font-weight:900;color:var(--accent);}
@@ -721,6 +729,18 @@ select option{background:var(--surface2);}
   <div class="modal">
     <div class="modal-header"><div class="modal-title">เพิ่มงาน Admin</div><button class="close-btn" onclick="closeM('m-admin')">×</button></div>
     <div class="modal-body">
+      <div class="pdf-import-box">
+        <div>
+          <div class="pdf-import-title">อัปโหลดใบงาน PDF</div>
+          <div class="pdf-import-sub">ระบบจะอ่านข้อความใน PDF แล้วช่วยเติม PR, ลูกค้า/สาขา, เบอร์, วันที่ และรายละเอียดงาน</div>
+        </div>
+        <div class="pdf-import-actions">
+          <input type="file" id="fa-pdf" accept="application/pdf,.pdf" style="display:none" onchange="handleAdminPdfUpload(this.files[0])">
+          <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('fa-pdf').click()">อัปโหลด PDF</button>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="clearAdminPdfImport()">ล้างไฟล์</button>
+        </div>
+        <div class="pdf-status" id="fa-pdf-status">ยังไม่ได้เลือกไฟล์</div>
+      </div>
       <div class="form-row"><div class="form-group"><label>ประเภทงาน</label><div class="select-tools"><select id="fa-type"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('adminTypes')" type="button">จัดการ</button></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><input type="text" id="fa-client" placeholder="ชื่อลูกค้า หรือสาขา"></div></div>
       <div class="form-group"><label>เบอร์ติดต่อ</label><input type="text" id="fa-phone" placeholder="เช่น 081-234-5678"></div>
       <div class="form-group"><label>รายละเอียด</label><textarea id="fa-detail" placeholder="รายละเอียดงาน..."></textarea></div>
@@ -1198,6 +1218,112 @@ function renderAdmin(){
   }).join('');
 }
 function setAS(id,s){const t=adminTasks.find(x=>x.id===id);if(t){t.status=s;t.isNew=false;renderAdmin();renderDash();saveState();}}
+let pdfJsLoading=null;
+function setPdfStatus(msg,type=''){
+  const el=document.getElementById('fa-pdf-status');
+  if(el){el.textContent=msg;el.className='pdf-status '+type;}
+}
+function ensurePdfJs(){
+  if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
+  if(pdfJsLoading)return pdfJsLoading;
+  pdfJsLoading=new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+    s.onload=()=>{
+      if(!window.pdfjsLib){reject(new Error('PDF reader not loaded'));return;}
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+      resolve(window.pdfjsLib);
+    };
+    s.onerror=()=>reject(new Error('โหลดตัวอ่าน PDF ไม่สำเร็จ'));
+    document.head.appendChild(s);
+  });
+  return pdfJsLoading;
+}
+async function extractPdfText(file){
+  const lib=await ensurePdfJs();
+  const buf=await file.arrayBuffer();
+  const pdf=await lib.getDocument({data:buf}).promise;
+  const pages=[];
+  const maxPages=Math.min(pdf.numPages,6);
+  for(let i=1;i<=maxPages;i++){
+    const page=await pdf.getPage(i);
+    const content=await page.getTextContent();
+    pages.push(content.items.map(item=>item.str).join(' '));
+  }
+  return pages.join('\n').replace(/[ \t]+/g,' ').trim();
+}
+function thaiDateToISO(d,m,y){
+  let yy=parseInt(y,10);
+  if(yy<100)yy+=2000;
+  if(yy>2400)yy-=543;
+  const mm=String(parseInt(m,10)).padStart(2,'0');
+  const dd=String(parseInt(d,10)).padStart(2,'0');
+  return `${yy}-${mm}-${dd}`;
+}
+function pickBetween(text,starts,stops){
+  const low=text.toLowerCase();
+  let pos=-1,found='';
+  starts.some(k=>{const p=low.indexOf(k.toLowerCase());if(p>=0){pos=p+k.length;found=k;return true;}return false;});
+  if(pos<0)return '';
+  let end=text.length;
+  stops.forEach(k=>{const p=low.indexOf(k.toLowerCase(),pos);if(p>=0&&p<end)end=p;});
+  return text.slice(pos,end).replace(/^[:\s-]+/,'').trim();
+}
+function findKnownName(text,list){
+  const clean=text.toLowerCase().replace(/\s+/g,' ');
+  return (list||[]).find(v=>v&&clean.includes(String(v).toLowerCase().replace(/\s+/g,' ')))||'';
+}
+function parseAdminPdfText(text){
+  const flat=text.replace(/\s+/g,' ').trim();
+  const result={};
+  const prMatch=flat.match(/\b(?:PR|P\/R|JOB|WO|WORK\s*ORDER)\s*[-:#]?\s*([A-Z]*\d[\w-]*)/i)||flat.match(/(?:เลข(?:ที่)?(?:ใบงาน|งาน|แจ้งซ่อม)?|หมายเลขงาน)\s*[:#-]?\s*([A-Z]{0,4}[-]?\d{3,}[\w-]*)/i);
+  if(prMatch)result.pr=(prMatch[0].match(/^(PR|JOB|WO|P\/R)/i)?prMatch[0]:prMatch[1]).replace(/P\/R/i,'PR').replace(/\s+/g,'').replace(/:|#/g,'');
+  const phoneMatch=flat.match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{3,4}/);
+  if(phoneMatch)result.phone=phoneMatch[0].replace(/\s+/g,'-');
+  const isoMatch=flat.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+  const dateMatch=flat.match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})\b/);
+  if(isoMatch)result.due=`${isoMatch[1]}-${String(+isoMatch[2]).padStart(2,'0')}-${String(+isoMatch[3]).padStart(2,'0')}`;
+  else if(dateMatch)result.due=thaiDateToISO(dateMatch[1],dateMatch[2],dateMatch[3]);
+  const type=findKnownName(flat,adminTypes)||findKnownName(flat,jobTypes);
+  if(type)result.type=type;
+  const branch=findKnownName(flat,branches.map(b=>b.name));
+  const client=findKnownName(flat,clients.map(c=>c.name));
+  result.client=branch||client||pickBetween(flat,['ลูกค้า/สาขา','ลูกค้า','สาขา','สถานที่'],['เบอร์','โทร','รายละเอียด','อาการ','รายการ','วันที่','กำหนด']).slice(0,120);
+  const detail=pickBetween(flat,['รายละเอียดงาน','รายละเอียด','อาการที่พบ','อาการ','รายการซ่อม','ปัญหา'],['สาเหตุ','การแก้ไข','ข้อเสนอแนะ','เบอร์','โทร','วันที่','ลงนาม','ผู้แจ้ง']);
+  result.detail=(detail||flat).replace(/\s{2,}/g,' ').slice(0,1200);
+  return result;
+}
+function applyAdminPdfData(data){
+  const setIf=(id,val)=>{if(val){const el=document.getElementById(id);if(el&&!el.value)el.value=val;}};
+  setIf('fa-client',data.client);
+  setIf('fa-phone',data.phone);
+  setIf('fa-detail',data.detail);
+  setIf('fa-job',data.pr);
+  setIf('fa-due',data.due);
+  if(data.type&&adminTypes.includes(data.type))document.getElementById('fa-type').value=data.type;
+  if(data.pr&&!prValues.includes(data.pr)){prValues.push(data.pr);fillSelects();document.getElementById('fa-job').value=data.pr;}
+}
+async function handleAdminPdfUpload(file){
+  if(!file)return;
+  if(file.type&&file.type!=='application/pdf'&&!file.name.toLowerCase().endsWith('.pdf')){setPdfStatus('รองรับเฉพาะไฟล์ PDF เท่านั้น','err');return;}
+  setPdfStatus('กำลังอ่านข้อความจาก PDF...','warn');
+  try{
+    const text=await extractPdfText(file);
+    if(!text||text.length<20){setPdfStatus('อ่านตัวหนังสือไม่ได้ ไฟล์นี้อาจเป็น PDF แบบสแกนรูป ต้องใช้ OCR เพิ่ม','warn');return;}
+    const parsed=parseAdminPdfText(text);
+    applyAdminPdfData(parsed);
+    const found=[parsed.pr?'PR/เลขใบงาน':'',parsed.client?'ลูกค้า/สาขา':'',parsed.phone?'เบอร์':'',parsed.due?'วันที่':''].filter(Boolean).join(', ');
+    setPdfStatus(`อ่านสำเร็จ${found?' พบ: '+found:''}`,'ok');
+  }catch(err){
+    console.error(err);
+    setPdfStatus('อ่าน PDF ไม่สำเร็จ ลองเช็คอินเทอร์เน็ตหรือกรอกข้อมูลเองก่อน','err');
+  }
+}
+function clearAdminPdfImport(){
+  const input=document.getElementById('fa-pdf');
+  if(input)input.value='';
+  setPdfStatus('ยังไม่ได้เลือกไฟล์','');
+}
 function openAdminModal(){
   editAdminId=null;
   fillSelects();
@@ -1208,6 +1334,7 @@ function openAdminModal(){
   document.getElementById('fa-due').value=new Date().toISOString().split('T')[0];
   document.getElementById('fa-pri').value=priorities[0]||'';
   document.getElementById('fa-status').value=A_ST[0]||'รอดำเนินการ';
+  clearAdminPdfImport();
   openM('m-admin');
 }
 function saveAdminTask(){
@@ -1217,7 +1344,7 @@ function saveAdminTask(){
   if(editAdminId){Object.assign(adminTasks.find(t=>t.id===editAdminId),data);}else{adminTasks.unshift({id:'TASK-'+String(aCnt++).padStart(3,'0'),...data,assignedAt:todayISO(),isNew:true,createdAt:Date.now()});}
   closeM('m-admin');renderAdmin();renderDash();fillSelects();saveState();
 }
-function editAdminTask(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;closeM('m-detail');editAdminId=id;fillSelects();document.querySelector('#m-admin .modal-title').textContent='แก้ไขงาน Admin';document.getElementById('fa-type').value=t.type;document.getElementById('fa-client').value=t.client;document.getElementById('fa-phone').value=t.phone||'';document.getElementById('fa-detail').value=t.detail;document.getElementById('fa-assign').value=t.assign;document.getElementById('fa-due').value=t.due;document.getElementById('fa-job').value=t.jobId||'';document.getElementById('fa-pri').value=t.pri;document.getElementById('fa-status').value=t.status||A_ST[0]||'';openM('m-admin');}
+function editAdminTask(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;closeM('m-detail');editAdminId=id;fillSelects();document.querySelector('#m-admin .modal-title').textContent='แก้ไขงาน Admin';document.getElementById('fa-type').value=t.type;document.getElementById('fa-client').value=t.client;document.getElementById('fa-phone').value=t.phone||'';document.getElementById('fa-detail').value=t.detail;document.getElementById('fa-assign').value=t.assign;document.getElementById('fa-due').value=t.due;document.getElementById('fa-job').value=t.jobId||'';document.getElementById('fa-pri').value=t.pri;document.getElementById('fa-status').value=t.status||A_ST[0]||'';clearAdminPdfImport();openM('m-admin');}
 function deleteAdminTask(id){if(confirm('ลบงาน Admin นี้?')){adminTasks=adminTasks.filter(t=>t.id!==id);renderAdmin();renderDash();saveState();}}
 function openAdminDetail(id){
   const t=adminTasks.find(x=>x.id===id);if(!t)return;
