@@ -280,10 +280,10 @@ const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนิ
 async function loadJob(){
   if(!JOB_ID){ showError('ไม่พบเลขงาน','ลิงก์ไม่ถูกต้อง กรุณาติดต่อแอดมิน'); return; }
   try{
-    // โหลดเฉพาะ job row นี้ — เร็วกว่าโหลดทั้ง app_state
     const job = await fetchJobRow(JOB_ID);
     if(!job){ showError('ไม่พบงานนี้','ลิงก์อาจหมดอายุ หรือยังไม่มีงานนี้ในระบบหลัก'); return; }
-    if(job.status === 'ช่างส่งงานแล้ว' || job.status === 'แอดมินตรวจแล้ว' || job.status === 'ปิดงานสมบูรณ์' || job.status === 'ปิดงาน'){
+    const doneStatuses = ['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','ปิดงานสมบูรณ์','ปิดงาน','รออนุมัติอะไหล่'];
+    if(doneStatuses.includes(job.status)){
       document.getElementById('state-loading').classList.add('hidden');
       document.getElementById('state-done').classList.remove('hidden');
       return;
@@ -293,277 +293,6 @@ async function loadJob(){
   }catch(e){ showError('เกิดข้อผิดพลาด', e.message); }
 }
 
-async function loadAppState(){
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/app_state?key=eq.${encodeURIComponent(STATE_KEY)}&select=data`, { headers: sbHeaders() });
-  if(!r.ok) throw new Error(await r.text());
-  const rows = await r.json();
-  return rows?.[0]?.data || null;
-}
-
-async function saveAppState(data){
-  const body = JSON.stringify({ key: STATE_KEY, data, updated_at: new Date().toISOString() });
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/app_state`, {
-    method: 'POST',
-    headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-    body
-  });
-  if(!r.ok) throw new Error(await r.text());
-}
-
-function showError(title, msg){
-  document.getElementById('state-loading').classList.add('hidden');
-  document.getElementById('state-error').classList.remove('hidden');
-  document.getElementById('error-title').textContent = title;
-  document.getElementById('error-msg').textContent = msg;
-}
-
-function showForm(){
-  document.getElementById('state-loading').classList.add('hidden');
-  document.getElementById('state-form').classList.remove('hidden');
-  document.getElementById('j-id').textContent = jobData.id;
-  document.getElementById('j-client').textContent = jobData.client || '—';
-  document.getElementById('j-branch').textContent = jobData.branch || '—';
-  document.getElementById('j-type').textContent = jobData.job_type || jobData.type || '—';
-  document.getElementById('j-team').textContent = jobData.team || '—';
-  document.getElementById('j-date').textContent = jobData.scheduled_date || jobData.date || '—';
-  document.getElementById('j-ref').textContent = jobData.client_ref || jobData.ref || '—';
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  const time = `${String(now.getHours()).padStart(2,'0')}:${String(Math.floor(now.getMinutes()/5)*5).padStart(2,'0')}`;
-  document.getElementById('f-date-in').value = jobData.dateIn || today;
-  document.getElementById('f-time-in').value = jobData.timeIn || time;
-  document.getElementById('f-date-done').value = jobData.dateDone || '';
-  document.getElementById('f-time-done').value = jobData.timeDone || '';
-  document.getElementById('f-symptom').value = jobData.symptom || jobData.note || jobData.technicianReport?.symptom || '';
-  document.getElementById('f-cause').value = jobData.cause || jobData.technicianReport?.cause || '';
-  document.getElementById('f-fix').value = jobData.fix || jobData.technicianReport?.fix || '';
-  document.getElementById('f-parts').value = jobData.partsUsed || jobData.technicianReport?.parts || '';
-  document.getElementById('f-note').value = jobData.note2 || jobData.technicianReport?.note || '';
-  document.getElementById('f-need-quote').checked = !!jobData.technicianReport?.needQuote || jobData.status === 'รออนุมัติอะไหล่';
-  noPhoto = { during: !!jobData.technicianReport?.noPhoto?.during, after: !!jobData.technicianReport?.noPhoto?.after };
-  document.getElementById('f-no-during').checked = noPhoto.during;
-  document.getElementById('f-no-after').checked = noPhoto.after;
-  const oldImages = Array.isArray(jobData.technicianReport?.images) ? jobData.technicianReport.images : [];
-  oldImages.forEach(im=>{
-    if(!photos[im.category])return;
-    photos[im.category].push({id:im.id||('old-'+Math.random().toString(36).slice(2)),existing:true,uploadedMeta:im,dataUrl:im.url,url:im.url,status:'ready',width:im.width||0,height:im.height||0,fileKey:im.name||im.url});
-  });
-  ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
-  toggleQuoteMode();
-}
-
-// ============================================================
-// PHOTO HANDLING + COMPRESSION
-// ============================================================
-async function addPhotos(cat, files){
-  const max = PHOTO_MAX[cat];
-  let remaining = max - photos[cat].length;
-  if(remaining <= 0){
-    alert(`รูป${CAT_LABEL[cat]}อัปได้สูงสุด ${max} รูปแล้ว`);
-    document.getElementById('inp-'+cat).value = '';
-    return;
-  }
-  let skipped = 0;
-  let duplicated = 0;
-  for(const file of files){
-    if(!file.type.startsWith('image/')) continue;
-    if(remaining <= 0){ skipped++; continue; }
-    const fileKey = `${file.name}|${file.size}|${file.lastModified}`;
-    if(photos[cat].some(p=>p.fileKey===fileKey)){
-      duplicated++;
-      continue;
-    }
-    remaining--;
-    const id = Date.now() + '-' + Math.random().toString(36).slice(2,7);
-    const entry = { id, file, fileKey, compressed:null, dataUrl:null, status:'compressing' };
-    photos[cat].push(entry);
-    renderThumbs(cat);
-    // compress async
-    compressImage(file).then(({blob, dataUrl, width, height})=>{
-      entry.compressed = blob;
-      entry.dataUrl = dataUrl;
-      entry.width = width;
-      entry.height = height;
-      entry.status = 'ready';
-      renderThumbs(cat);
-    }).catch(()=>{ entry.status='error'; renderThumbs(cat); });
-  }
-  if(skipped > 0) alert(`เพิ่มได้สูงสุด ${PHOTO_MAX[cat]} รูป — ข้ามไป ${skipped} รูปที่เกิน`);
-  if(duplicated > 0) alert(`ข้ามรูปซ้ำ ${duplicated} รูป`);
-  // reset input
-  document.getElementById('inp-'+cat).value = '';
-}
-
-// no-parts checkbox toggle
-function toggleNoParts(){
-  const cb = document.getElementById('f-noparts');
-  const ta = document.getElementById('f-parts');
-  if(cb.checked){ ta.value=''; ta.disabled=true; ta.style.opacity='.4'; }
-  else { ta.disabled=false; ta.style.opacity='1'; }
-}
-
-function toggleNoPhotos(cat, clear=true){
-  if(!(cat in noPhoto))return;
-  const cb = document.getElementById('f-no-'+cat);
-  noPhoto[cat] = !!cb?.checked;
-  const input = document.getElementById('inp-'+cat);
-  const zone = input?.previousElementSibling;
-  if(input) input.disabled = noPhoto[cat];
-  if(zone){
-    zone.style.opacity = noPhoto[cat] ? '.35' : '1';
-    zone.style.pointerEvents = noPhoto[cat] ? 'none' : 'auto';
-  }
-  if(clear && noPhoto[cat] && photos[cat].length){
-    if(confirm(`ล้างรูป${CAT_LABEL[cat]}ทั้งหมดหรือไม่?`)){
-      photos[cat] = [];
-      renderThumbs(cat);
-    }
-  }
-}
-
-function toggleQuoteMode(){
-  const needQuote = document.getElementById('f-need-quote').checked;
-  const dateDone = document.getElementById('f-date-done');
-  const timeDone = document.getElementById('f-time-done');
-  dateDone.disabled = needQuote;
-  timeDone.disabled = needQuote;
-  dateDone.style.opacity = needQuote ? '.45' : '1';
-  timeDone.style.opacity = needQuote ? '.45' : '1';
-  if(needQuote){
-    dateDone.value = '';
-    timeDone.value = '';
-    document.getElementById('f-no-during').checked = true;
-    document.getElementById('f-no-after').checked = true;
-    toggleNoPhotos('during',false);
-    toggleNoPhotos('after',false);
-  }
-}
-
-function compressImage(file, maxW=1100, quality=0.68){
-  return new Promise((resolve, reject)=>{
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = e => { img.src = e.target.result; };
-    reader.onerror = reject;
-    img.onload = ()=>{
-      let { width, height } = img;
-      if(width > maxW){ height = Math.round(height * maxW / width); width = maxW; }
-      const canvas = document.createElement('canvas');
-      canvas.width = width; canvas.height = height;
-      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-      canvas.toBlob(blob=>{
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve({ blob, dataUrl, width, height });
-      }, 'image/jpeg', quality);
-    };
-    img.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-function renderThumbs(cat){
-  const el = document.getElementById('th-'+cat);
-  el.innerHTML = photos[cat].map(p=>`
-    <div class="thumb">
-      ${p.dataUrl ? `<img src="${p.dataUrl}">` : ''}
-      ${p.status==='compressing' ? '<div class="pct">...</div>' : ''}
-      <button class="rm" onclick="removePhoto('${cat}','${p.id}')">×</button>
-    </div>`).join('');
-  document.getElementById('cnt-'+cat).textContent = photos[cat].length + ' รูป';
-}
-
-function removePhoto(cat, id){
-  photos[cat] = photos[cat].filter(p=>p.id!==id);
-  renderThumbs(cat);
-}
-
-// ============================================================
-// SUBMIT
-// ============================================================
-function collectReportDraft(){
-  const noParts = document.getElementById('f-noparts').checked;
-  const partsVal = document.getElementById('f-parts').value.trim();
-  return {
-    dateIn: document.getElementById('f-date-in').value,
-    timeIn: document.getElementById('f-time-in').value,
-    dateDone: document.getElementById('f-date-done').value,
-    timeDone: document.getElementById('f-time-done').value,
-    symptom: document.getElementById('f-symptom').value.trim(),
-    cause: document.getElementById('f-cause').value.trim(),
-    fix: document.getElementById('f-fix').value.trim(),
-    parts: noParts ? 'ไม่มีการใช้อะไหล่' : partsVal,
-    noParts,
-    note: document.getElementById('f-note').value.trim(),
-    needQuote: document.getElementById('f-need-quote').checked,
-    noPhoto: { ...noPhoto }
-  };
-}
-
-async function collectUploadedImages(report){
-  const allPhotos = [...photos.before, ...photos.during, ...photos.after];
-  if(allPhotos.some(p=>p.status==='compressing')) throw new Error('กรุณารอรูปบีบอัดเสร็จก่อน');
-  const uploadedImages = [];
-  let done = 0;
-  const uploadQueue = allPhotos.filter(p=>!p.existing);
-  const total = uploadQueue.length;
-  for(const cat of ['before','during','after']){
-    for(const p of photos[cat]){
-      if(p.existing){
-        uploadedImages.push(p.uploadedMeta || {id:p.id,category:cat,label:CAT_LABEL[cat],url:p.url||p.dataUrl||'',uploadedAt:new Date().toISOString(),storage:'external'});
-        continue;
-      }
-      document.getElementById('upload-detail').textContent = total ? `อัปโหลดรูป ${done+1}/${total}` : '';
-      const uploaded = await uploadPhoto(p.compressed, cat, done, p);
-      const meta = {
-        id: p.id,
-        category: cat,
-        label: CAT_LABEL[cat],
-        url: uploaded.url,
-        name: p.file?.name || `${cat}_${done+1}.jpg`,
-        size: p.compressed?.size || p.file?.size || 0,
-        width: p.width || 0,
-        height: p.height || 0,
-        orientation: (p.height||0) > (p.width||0) ? 'portrait' : 'landscape',
-        roundType: report.needQuote ? 'survey' : 'repair',
-        roundLabel: report.needQuote ? 'สำรวจ' : 'ซ่อมจริง',
-        uploadedAt: new Date().toISOString(),
-        storage: uploaded.storage
-      };
-      p.existing = true;
-      p.uploadedMeta = meta;
-      p.url = meta.url;
-      p.dataUrl = meta.url || p.dataUrl;
-      uploadedImages.push(meta);
-      done++;
-    }
-  }
-  return uploadedImages;
-}
-
-
-// เขียนตรงไป split table — ไม่โหลด app_state ทั้งก้อน
-async function patchJobRow(jobId, updates){
-  // PATCH split table jobs row
-  const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(String(jobId))}`,
-    { method:'PATCH',
-      headers: sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
-      body: JSON.stringify({ data: updates, updated_at: new Date().toISOString() })
-    }
-  );
-  if(!r.ok){ const t=await r.text(); throw new Error(t); }
-}
-
-// อ่านเฉพาะ job row เดียว
-async function fetchJobRow(jobId){
-  const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(String(jobId))}&select=id,data`,
-    { headers: sbHeaders() }
-  );
-  if(!r.ok) throw new Error(await r.text());
-  const rows = await r.json();
-  return rows?.[0]?.data || null;
-}
 
 async function saveDraft(){
   const report = collectReportDraft();
@@ -578,26 +307,21 @@ async function saveDraft(){
     const uploadedImages = await collectUploadedImages(report);
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
     document.getElementById('upload-detail').textContent = '';
-    // โหลดเฉพาะ job row นี้ (ไม่โหลด app_state ทั้งก้อน)
     const jobCurrent = await fetchJobRow(JOB_ID);
     if(!jobCurrent) throw new Error('ไม่พบงานนี้ในระบบ กรุณาติดต่อแอดมิน');
     const savedAt = new Date().toISOString();
     const jobUpdated = {
       ...jobCurrent,
-      dateIn: report.dateIn,
-      timeIn: report.timeIn,
-      dateDone: report.dateDone,
-      timeDone: report.timeDone,
-      symptom: report.symptom,
-      cause: report.cause,
-      fix: report.fix,
-      report: report.fix,
-      partsUsed: report.parts,
+      dateIn: report.dateIn, timeIn: report.timeIn,
+      dateDone: report.dateDone, timeDone: report.timeDone,
+      symptom: (report.symptom||'') + (report.cause ? ' / '+(report.cause||'') : ''),
+      fix: report.fix, report: report.fix,
       note2: report.note,
       technicianReport: { ...(jobCurrent.technicianReport||{}), ...report, images: uploadedImages, draftSavedAt:savedAt, isDraft:true, reviewStatus:'ฉบับร่าง' }
     };
     await patchJobRow(JOB_ID, jobUpdated);
     jobData = jobUpdated;
+    jobData = job;
     document.getElementById('overlay-upload').classList.remove('show');
     alert('บันทึกฉบับร่างแล้ว กลับมาเปิดลิงก์นี้เพื่อกรอกต่อได้');
   }catch(e){
@@ -647,68 +371,44 @@ async function submitJob(){
     // 2. save report + images to Supabase app_state
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
     document.getElementById('upload-detail').textContent = '';
-    // โหลดเฉพาะ job row นี้
     const jobCurrent = await fetchJobRow(JOB_ID);
     if(!jobCurrent) throw new Error('ไม่พบงานนี้ในระบบ กรุณาติดต่อแอดมิน');
     const submittedAt = new Date().toISOString();
     const nextStatus = report.needQuote ? 'รออนุมัติอะไหล่' : 'ช่างส่งงานแล้ว';
-    const nextReview = report.needQuote ? 'รออนุมัติอะไหล่' : 'รอตรวจ';
+    const nextReview  = report.needQuote ? 'รออนุมัติอะไหล่' : 'รอตรวจ';
     const nextRound = {
-      id: `${report.needQuote ? 'survey' : 'repair'}-${Date.now()}`,
-      type: report.needQuote ? 'survey' : 'repair',
-      label: report.needQuote ? 'สำรวจ' : 'ซ่อมจริง',
-      submittedAt,
-      status: nextStatus,
-      dateIn: report.dateIn, timeIn: report.timeIn,
-      dateDone: report.dateDone, timeDone: report.timeDone,
-      cause: report.cause, fix: report.fix,
-      parts: report.parts, note: report.note,
-      imageIds: uploadedImages.map(im=>im.id)
+      id:`${report.needQuote?'survey':'repair'}-${Date.now()}`,
+      type:report.needQuote?'survey':'repair',
+      label:report.needQuote?'สำรวจ':'ซ่อมจริง',
+      submittedAt, status:nextStatus,
+      dateIn:report.dateIn, timeIn:report.timeIn,
+      dateDone:report.dateDone, timeDone:report.timeDone,
+      cause:report.cause, fix:report.fix,
+      parts:report.parts, note:report.note,
+      imageIds:uploadedImages.map(im=>im.id)
     };
     const jobUpdated = {
-      ...jobCurrent,
-      status: nextStatus,
-      dateIn: report.dateIn, timeIn: report.timeIn,
-      dateDone: report.dateDone, timeDone: report.timeDone,
-      symptom: report.symptom, cause: report.cause,
-      fix: report.fix, report: report.fix,
-      partsUsed: report.parts, note2: report.note,
-      techSubmittedAt: submittedAt,
-      reportReviewStatus: nextReview, reviewNote: '',
-      reportRounds: [...(jobCurrent.reportRounds||[]), nextRound],
-      technicianReport: {
+      ...jobCurrent, status: nextStatus,
+      dateIn:report.dateIn, timeIn:report.timeIn,
+      dateDone:report.dateDone, timeDone:report.timeDone,
+      symptom:(report.symptom||'')+(report.cause?' / '+(report.cause||''):''),
+      fix:report.fix, report:report.fix,
+      note2:report.note, techSubmittedAt:submittedAt,
+      reportReviewStatus:nextReview, reviewNote:'',
+      reportRounds:[...(jobCurrent.reportRounds||[]), nextRound],
+      technicianReport:{
         ...(jobCurrent.technicianReport||{}), ...report,
-        images: uploadedImages,
-        rounds: [...(jobCurrent.technicianReport?.rounds||[]), nextRound],
-        submittedAt, draftSavedAt: '', isDraft: false,
-        reviewStatus: nextReview, reviewNote: ''
+        images:uploadedImages,
+        rounds:[...(jobCurrent.technicianReport?.rounds||[]), nextRound],
+        submittedAt, draftSavedAt:'', isDraft:false,
+        reviewStatus:nextReview, reviewNote:''
       }
     };
-    // บันทึกแบบ parallel — jobs + admin_tasks พร้อมกัน
-    const saves = [patchJobRow(JOB_ID, jobUpdated)];
-    // หา admin_tasks ที่ผูกกับงานนี้แล้ว patch
-    try{
-      const atRows = await fetch(
-        `${SUPABASE_URL}/rest/v1/admin_tasks?select=id,data`,
-        { headers: sbHeaders() }
-      ).then(r=>r.json());
-      for(const row of (atRows||[])){
-        if(String(row.data?.jobId) === String(JOB_ID)){
-          const updated = {...row.data, status:nextStatus,
-            reportReviewNote: report.needQuote?'ช่างสำรวจแล้ว':'ช่างส่งงานแล้ว',
-            reportReviewedAt: submittedAt};
-          saves.push(
-            fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?id=eq.${encodeURIComponent(String(row.id))}`,{
-              method:'PATCH',
-              headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
-              body:JSON.stringify({data:updated,updated_at:submittedAt})
-            })
-          );
-        }
-      }
-    }catch(e){ console.warn('admin_tasks patch skipped',e); }
-    await Promise.all(saves);
-    // 3. notify LINE (ผ่าน Worker)
+    await Promise.all([
+      patchJobRow(JOB_ID, jobUpdated),
+      patchAdminTasks(JOB_ID, nextStatus, report.needQuote?'ช่างสำรวจแล้ว':'ช่างส่งงานแล้ว')
+    ]);
+        // 3. notify LINE (ผ่าน Worker)
     notifyLine(report, { before:photos.before.length, during:photos.during.length, after:photos.after.length });
 
     // success
