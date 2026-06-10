@@ -2733,21 +2733,25 @@ function syncAdminTasksFromReport(jobId,status,note=''){
     }
   });
 }
-const REPORT_IMAGE_LABELS={before:'ตรวจเช็คก่อนดำเนินการ',during:'ระหว่างดำเนินการ',after:'หลังดำเนินการ'};
+const REPORT_IMAGE_LABELS={before:'ตรวจเช็คก่อนดำเนินการ',during:'ระหว่างดำเนินการ',after:'หลังดำเนินการ',documents:'ใบงาน/เอกสาร'};
 const REPORT_DOC_IMAGE_TITLES={before:'รูปก่อนดำเนินการ',during:'รูประหว่างดำเนินการ',after:'รูปหลังดำเนินการ'};
 function reportImages(j){
   return Array.isArray(j?.technicianReport?.images)?j.technicianReport.images:[];
 }
+function reportDocumentImages(j){
+  return Array.isArray(j?.technicianReport?.documentImages)?j.technicianReport.documentImages:[];
+}
 function renderReportImages(j){
   const imgs=reportImages(j);
-  if(!imgs.length)return '<div class="text-box">ยังไม่มีรูปจากช่าง</div>';
+  const docs=reportDocumentImages(j);
+  if(!imgs.length&&!docs.length)return '<div class="text-box">ยังไม่มีรูปจากช่าง</div>';
   return `<div class="report-gallery">${['before','during','after'].map(cat=>{
     const group=imgs.filter(im=>im.category===cat);
     return `<div class="report-gallery-section"><div class="report-gallery-title"><span>${REPORT_IMAGE_LABELS[cat]}</span><span class="report-gallery-count">${group.length} รูป</span></div>${group.length?`<div class="report-thumbs">${group.map(im=>{
       const idx=imgs.indexOf(im);
       return `<button class="report-thumb" type="button" onclick="openReportImage('${esc(j.id)}',${idx})"><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat])}"><span class="report-thumb-badge">${idx+1}</span></button>`;
     }).join('')}</div>`:'<div class="tm" style="font-size:12px;">ไม่มีรูปในหมวดนี้</div>'}</div>`;
-  }).join('')}</div>`;
+  }).join('')}${docs.length?`<div class="report-gallery-section"><div class="report-gallery-title"><span>${REPORT_IMAGE_LABELS.documents}</span><span class="report-gallery-count">${docs.length} รูป</span></div><div class="report-thumbs">${docs.map((im,idx)=>`<button class="report-thumb" type="button" onclick="openReportDocumentImage('${esc(j.id)}',${idx})"><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS.documents)}"><span class="report-thumb-badge">DOC</span></button>`).join('')}</div></div>`:''}</div>`;
 }
 function renderReportRounds(j){
   const rounds=j.reportRounds||j.technicianReport?.rounds||[];
@@ -2758,6 +2762,14 @@ function openReportImage(jobId,index){
   const j=jobs.find(x=>x.id===jobId);if(!j)return;
   const im=reportImages(j)[index];if(!im||!im.url)return;
   document.getElementById('img-prev-title').textContent=`${j.id} - ${im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน'}`;
+  document.getElementById('img-prev-sub').textContent=`${im.name||''}${im.uploadedAt?' | '+new Date(im.uploadedAt).toLocaleString('th-TH'):''}`;
+  document.getElementById('img-prev').src=im.url;
+  openM('m-image-preview');
+}
+function openReportDocumentImage(jobId,index){
+  const j=jobs.find(x=>x.id===jobId);if(!j)return;
+  const im=reportDocumentImages(j)[index];if(!im||!im.url)return;
+  document.getElementById('img-prev-title').textContent=`${j.id} - ${im.label||REPORT_IMAGE_LABELS.documents}`;
   document.getElementById('img-prev-sub').textContent=`${im.name||''}${im.uploadedAt?' | '+new Date(im.uploadedAt).toLocaleString('th-TH'):''}`;
   document.getElementById('img-prev').src=im.url;
   openM('m-image-preview');
