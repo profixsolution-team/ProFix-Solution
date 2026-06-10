@@ -280,11 +280,9 @@ const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนิ
 async function loadJob(){
   if(!JOB_ID){ showError('ไม่พบเลขงาน','ลิงก์ไม่ถูกต้อง กรุณาติดต่อแอดมิน'); return; }
   try{
-    const data = await loadAppState();
-    appState = data || {};
-    const job = (appState.jobs || []).find(j => String(j.id) === String(JOB_ID));
+    // โหลดเฉพาะ job row นี้ — เร็วกว่าโหลดทั้ง app_state
+    const job = await fetchJobRow(JOB_ID);
     if(!job){ showError('ไม่พบงานนี้','ลิงก์อาจหมดอายุ หรือยังไม่มีงานนี้ในระบบหลัก'); return; }
-    // ถ้าส่งแล้ว
     if(job.status === 'ช่างส่งงานแล้ว' || job.status === 'แอดมินตรวจแล้ว' || job.status === 'ปิดงานสมบูรณ์' || job.status === 'ปิดงาน'){
       document.getElementById('state-loading').classList.add('hidden');
       document.getElementById('state-done').classList.remove('hidden');
@@ -542,6 +540,31 @@ async function collectUploadedImages(report){
   return uploadedImages;
 }
 
+
+// เขียนตรงไป split table — ไม่โหลด app_state ทั้งก้อน
+async function patchJobRow(jobId, updates){
+  // PATCH split table jobs row
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(String(jobId))}`,
+    { method:'PATCH',
+      headers: sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+      body: JSON.stringify({ data: updates, updated_at: new Date().toISOString() })
+    }
+  );
+  if(!r.ok){ const t=await r.text(); throw new Error(t); }
+}
+
+// อ่านเฉพาะ job row เดียว
+async function fetchJobRow(jobId){
+  const r = await fetch(
+    `${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(String(jobId))}&select=id,data`,
+    { headers: sbHeaders() }
+  );
+  if(!r.ok) throw new Error(await r.text());
+  const rows = await r.json();
+  return rows?.[0]?.data || null;
+}
+
 async function saveDraft(){
   const report = collectReportDraft();
   const allPhotos = [...photos.before, ...photos.during, ...photos.after];
@@ -555,12 +578,12 @@ async function saveDraft(){
     const uploadedImages = await collectUploadedImages(report);
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
     document.getElementById('upload-detail').textContent = '';
-    const latestState = await loadAppState();
-    if(!latestState || !Array.isArray(latestState.jobs)) throw new Error('ไม่พบข้อมูลระบบหลักใน Supabase');
-    const job = latestState.jobs.find(j => String(j.id) === String(JOB_ID));
-    if(!job) throw new Error('ไม่พบงานนี้ในระบบหลัก');
+    // โหลดเฉพาะ job row นี้ (ไม่โหลด app_state ทั้งก้อน)
+    const jobCurrent = await fetchJobRow(JOB_ID);
+    if(!jobCurrent) throw new Error('ไม่พบงานนี้ในระบบ กรุณาติดต่อแอดมิน');
     const savedAt = new Date().toISOString();
-    Object.assign(job, {
+    const jobUpdated = {
+      ...jobCurrent,
       dateIn: report.dateIn,
       timeIn: report.timeIn,
       dateDone: report.dateDone,
@@ -571,13 +594,10 @@ async function saveDraft(){
       report: report.fix,
       partsUsed: report.parts,
       note2: report.note,
-      technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, draftSavedAt:savedAt, isDraft:true, reviewStatus:'ฉบับร่าง' }
-    });
-    if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes('ฉบับร่าง')) latestState.J_ST.push('ฉบับร่าง');
-    if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes('ฉบับร่าง')) latestState.A_ST.push('ฉบับร่าง');
-    latestState.lastDataUpdatedAt = savedAt;
-    await saveAppState(latestState);
-    jobData = job;
+      technicianReport: { ...(jobCurrent.technicianReport||{}), ...report, images: uploadedImages, draftSavedAt:savedAt, isDraft:true, reviewStatus:'ฉบับร่าง' }
+    };
+    await patchJobRow(JOB_ID, jobUpdated);
+    jobData = jobUpdated;
     document.getElementById('overlay-upload').classList.remove('show');
     alert('บันทึกฉบับร่างแล้ว กลับมาเปิดลิงก์นี้เพื่อกรอกต่อได้');
   }catch(e){
@@ -627,9 +647,9 @@ async function submitJob(){
     // 2. save report + images to Supabase app_state
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
     document.getElementById('upload-detail').textContent = '';
-    // โหลดเฉพาะ job ที่ต้องการ (เร็วกว่าโหลดทั้งหมด)
-    const { source, job, state: latestState } = await loadJobOnly(JOB_ID);
-    if(!job) throw new Error('ไม่พบงานนี้ในระบบ กรุณาติดต่อแอดมิน');
+    // โหลดเฉพาะ job row นี้
+    const jobCurrent = await fetchJobRow(JOB_ID);
+    if(!jobCurrent) throw new Error('ไม่พบงานนี้ในระบบ กรุณาติดต่อแอดมิน');
     const submittedAt = new Date().toISOString();
     const nextStatus = report.needQuote ? 'รออนุมัติอะไหล่' : 'ช่างส่งงานแล้ว';
     const nextReview = report.needQuote ? 'รออนุมัติอะไหล่' : 'รอตรวจ';
@@ -639,75 +659,55 @@ async function submitJob(){
       label: report.needQuote ? 'สำรวจ' : 'ซ่อมจริง',
       submittedAt,
       status: nextStatus,
-      dateIn: report.dateIn,
-      timeIn: report.timeIn,
-      dateDone: report.dateDone,
-      timeDone: report.timeDone,
-      cause: report.cause,
-      fix: report.fix,
-      parts: report.parts,
-      note: report.note,
+      dateIn: report.dateIn, timeIn: report.timeIn,
+      dateDone: report.dateDone, timeDone: report.timeDone,
+      cause: report.cause, fix: report.fix,
+      parts: report.parts, note: report.note,
       imageIds: uploadedImages.map(im=>im.id)
     };
-    Object.assign(job, {
+    const jobUpdated = {
+      ...jobCurrent,
       status: nextStatus,
-      dateIn: report.dateIn,
-      timeIn: report.timeIn,
-      dateDone: report.dateDone,
-      timeDone: report.timeDone,
-      symptom: report.symptom,
-      cause: report.cause,
-      fix: report.fix,
-      report: report.fix,
-      partsUsed: report.parts,
-      note2: report.note,
+      dateIn: report.dateIn, timeIn: report.timeIn,
+      dateDone: report.dateDone, timeDone: report.timeDone,
+      symptom: report.symptom, cause: report.cause,
+      fix: report.fix, report: report.fix,
+      partsUsed: report.parts, note2: report.note,
       techSubmittedAt: submittedAt,
-      reportReviewStatus: nextReview,
-      reviewNote: '',
-      reportRounds: [...(job.reportRounds||[]), nextRound],
-      technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, rounds:[...(job.technicianReport?.rounds||[]), nextRound], submittedAt, draftSavedAt:'', isDraft:false, reviewStatus:nextReview, reviewNote:'' }
-    });
-
-    const now = submittedAt;
-    // บันทึกแบบ parallel — split table + app_state พร้อมกัน
-    const saves = [];
-
-    // 1) PATCH split table jobs (เร็วที่สุด — เฉพาะ row นี้)
-    saves.push(
-      fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(String(JOB_ID))}`, {
-        method: 'PATCH',
-        headers: sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
-        body: JSON.stringify({ data: job, updated_at: now })
-      })
-    );
-
-    // 2) PATCH split table admin_tasks ที่ผูกกับงานนี้
-    const linkedTasks = (source==='app_state' && latestState?.adminTasks || [])
-      .filter(t => String(t.jobId) === String(JOB_ID));
-    for(const t of linkedTasks){
-      t.status = nextStatus;
-      t.reportReviewNote = report.needQuote ? 'ช่างสำรวจแล้ว' : 'ช่างส่งงานแล้ว';
-      t.reportReviewedAt = now;
-      saves.push(
-        fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?id=eq.${encodeURIComponent(String(t.id))}`, {
-          method: 'PATCH',
-          headers: sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
-          body: JSON.stringify({ data: t, updated_at: now })
-        })
-      );
-    }
-
-    // 3) app_state (ถ้าโหลดมาจาก app_state ก็ save กลับ / ถ้าจาก split table ก็ fire-and-forget)
-    if(source === 'app_state' && latestState){
-      if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes(nextStatus)) latestState.J_ST.push(nextStatus);
-      if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes(nextStatus)) latestState.A_ST.push(nextStatus);
-      latestState.lastDataUpdatedAt = now;
-      saves.push(saveAppState(latestState));
-    }
-
-    // รอทุก save พร้อมกัน
+      reportReviewStatus: nextReview, reviewNote: '',
+      reportRounds: [...(jobCurrent.reportRounds||[]), nextRound],
+      technicianReport: {
+        ...(jobCurrent.technicianReport||{}), ...report,
+        images: uploadedImages,
+        rounds: [...(jobCurrent.technicianReport?.rounds||[]), nextRound],
+        submittedAt, draftSavedAt: '', isDraft: false,
+        reviewStatus: nextReview, reviewNote: ''
+      }
+    };
+    // บันทึกแบบ parallel — jobs + admin_tasks พร้อมกัน
+    const saves = [patchJobRow(JOB_ID, jobUpdated)];
+    // หา admin_tasks ที่ผูกกับงานนี้แล้ว patch
+    try{
+      const atRows = await fetch(
+        `${SUPABASE_URL}/rest/v1/admin_tasks?select=id,data`,
+        { headers: sbHeaders() }
+      ).then(r=>r.json());
+      for(const row of (atRows||[])){
+        if(String(row.data?.jobId) === String(JOB_ID)){
+          const updated = {...row.data, status:nextStatus,
+            reportReviewNote: report.needQuote?'ช่างสำรวจแล้ว':'ช่างส่งงานแล้ว',
+            reportReviewedAt: submittedAt};
+          saves.push(
+            fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?id=eq.${encodeURIComponent(String(row.id))}`,{
+              method:'PATCH',
+              headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+              body:JSON.stringify({data:updated,updated_at:submittedAt})
+            })
+          );
+        }
+      }
+    }catch(e){ console.warn('admin_tasks patch skipped',e); }
     await Promise.all(saves);
-
     // 3. notify LINE (ผ่าน Worker)
     notifyLine(report, { before:photos.before.length, during:photos.during.length, after:photos.after.length });
 
