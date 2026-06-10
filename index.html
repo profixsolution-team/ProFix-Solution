@@ -1262,7 +1262,13 @@ async function deleteSplitRows(table,ids){
   }
 }
 function techReportStamp(j){
-  return Date.parse(j?.technicianReport?.submittedAt||j?.techSubmittedAt||j?.technicianReport?.draftSavedAt||'')||0;
+  return Math.max(
+    Date.parse(j?.techUpdateAt||'')||0,
+    Date.parse(j?.technicianReport?.submittedAt||'')||0,
+    Date.parse(j?.techSubmittedAt||'')||0,
+    Date.parse(j?.technicianReport?.draftSavedAt||'')||0,
+    Date.parse(j?.technicianReport?.returnedForFixAt||'')||0
+  );
 }
 function mergeNewerRemoteTechReport(local,remote){
   if(!remote)return local;
@@ -3245,6 +3251,30 @@ async function returnReportForFix(){
 }
 
 function clearRptFilter(){rptSearch='';rptDateFilter='';rptMonthFilter='';rptFilter='ทั้งหมด';rptReviewFilter='ทั้งหมด';renderReports();saveUIState();}
+let remoteRefreshTimer=null, remoteRefreshRunning=false;
+function canAutoRefreshRemote(){
+  return isHydrated && !hasUnsyncedLocalChanges && !document.querySelector('.modal-overlay.open');
+}
+async function refreshRemoteIfIdle(){
+  if(remoteRefreshRunning || !canAutoRefreshRemote())return;
+  remoteRefreshRunning=true;
+  try{
+    await loadState({silent:true});
+    ensureMeta();
+    cacheFastState();
+    fillSelects();
+    refreshAfterDataChange();
+  }catch(e){
+    console.warn('Silent remote refresh failed',e);
+  }finally{
+    remoteRefreshRunning=false;
+  }
+}
+function startRemoteRefresh(){
+  if(remoteRefreshTimer)return;
+  remoteRefreshTimer=setInterval(refreshRemoteIfIdle,30000);
+  window.addEventListener('focus',()=>setTimeout(refreshRemoteIfIdle,400));
+}
 async function initApp(){
   applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
   loadUIState();
@@ -3263,9 +3293,11 @@ async function initApp(){
     fillSelects();
     renderLPHist();
     refreshAfterDataChange();
+    startRemoteRefresh();
   }).catch(e=>{
     console.warn('Background sync failed',e);
     isHydrated=true;
+    startRemoteRefresh();
   }).finally(()=>setAppLoading(false));
 }
 initApp();
