@@ -2088,10 +2088,9 @@ function renderJobs(){
 function setJS(id,s){const j=jobs.find(x=>x.id===id);if(j){j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;if(s==='รอจ่าย'){j.pay=payStatuses[0]||'รอเก็บเงิน';renderJobs();renderCalendar();renderDash();saveState();goFinanceForJob(id);return;}renderJobs();renderCalendar();renderDash();saveState();}}
 function technicianFormUrl(id){return `technician-submit.html?job=${encodeURIComponent(id)}&rev=${Date.now()}`;}
 async function openTechnicianForm(id){
-  const w=window.open('about:blank','_blank');
-  try{await saveStateNow(false);}catch(e){console.warn('Open technician form before remote save completed',e);}
   const url=new URL(technicianFormUrl(id),location.href).href;
-  if(w)w.location.href=url;else location.href=url;
+  window.open(url,'_blank');
+  saveStateNow(false).catch(e=>console.warn('Open technician form before remote save completed',e));
 }
 async function copyTechnicianLink(id){
   try{await saveStateNow(false);}catch(e){console.warn('Copy technician link before remote save completed',e);}
