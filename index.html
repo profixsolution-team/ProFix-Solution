@@ -1140,7 +1140,7 @@ function repairDuplicateJobs(){
 }
 function ensureMeta(){
   ['ช่างบันทึกร่าง','ช่างส่งงานแล้ว','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ','แอดมินตรวจแล้ว','ต้องแก้ไข'].forEach(s=>{if(Array.isArray(J_ST)&&!J_ST.includes(s))J_ST.push(s);});
-  ['รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ'].forEach(s=>{if(Array.isArray(A_ST)&&!A_ST.includes(s))A_ST.push(s);});
+  ['ช่างบันทึกร่าง','ช่างส่งงานแล้ว','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ'].forEach(s=>{if(Array.isArray(A_ST)&&!A_ST.includes(s))A_ST.push(s);});
   repairDuplicateJobs();
   jobs.forEach((j,i)=>{if(!j.createdAt)j.createdAt=Date.now()-(jobs.length-i)*86400000;if(!j.assignedAt)j.assignedAt=j.date||todayISO();if(j.pay==='unpaid')j.pay='รอเก็บเงิน';if(j.pay==='paid')j.pay='เก็บแล้ว';if(j.pay==='overdue')j.pay='เกินกำหนด';if(!j.reportReviewStatus)j.reportReviewStatus=reportReviewStatus(j);if(j.technicianReport&&!j.technicianReport.reviewStatus)j.technicianReport.reviewStatus=j.reportReviewStatus;});
   adminTasks.forEach((t,i)=>{if(!t.createdAt)t.createdAt=Date.now()-(adminTasks.length-i)*86400000;if(!t.assignedAt)t.assignedAt=t.due||todayISO();if(t.isNew===undefined)t.isNew=false;});
@@ -1232,6 +1232,47 @@ function splitApplyRows({jobRows=[],adminRows=[],partRows=null,workOrderRows=nul
   if(Array.isArray(partRows))st.parts=partRows.map(r=>r.data).filter(Boolean);
   applyState(st);
 }
+function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
+  const data={...(reportRow?.report_data||{})};
+  const images=imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>r.data||{}).filter(Boolean);
+  const documentImages=imageRows.filter(r=>(r.data||{}).documentOnly||r.category==='documents').map(r=>r.data||{}).filter(Boolean);
+  const tr={...(job.technicianReport||{}),...data,images,documentImages,reviewStatus:reportRow.review_status||data.reviewStatus||job.technicianReport?.reviewStatus,isDraft:!!reportRow.is_draft,submittedAt:reportRow.submitted_at||data.submittedAt||job.technicianReport?.submittedAt,draftSavedAt:reportRow.draft_saved_at||data.draftSavedAt||job.technicianReport?.draftSavedAt,reportId:reportRow.id};
+  return {
+    ...job,
+    dateIn:data.dateIn||job.dateIn,
+    timeIn:data.timeIn||job.timeIn,
+    dateDone:data.dateDone||job.dateDone,
+    timeDone:data.timeDone||job.timeDone,
+    symptom:data.symptom||job.symptom,
+    cause:data.cause||job.cause,
+    fix:data.fix||job.fix,
+    report:data.fix||job.report,
+    partsUsed:data.parts||job.partsUsed,
+    note2:data.note||job.note2,
+    techSubmittedAt:reportRow.submitted_at||job.techSubmittedAt,
+    reportReviewStatus:reportRow.review_status||job.reportReviewStatus,
+    technicianReport:tr
+  };
+}
+async function loadTechnicianReportTables(){
+  const [reportRows,imageRows]=await Promise.all([
+    sbFetchAll('technician_reports','?select=id,job_id,round_id,status,review_status,is_draft,report_data,submitted_at,draft_saved_at,updated_at&order=updated_at.desc'),
+    sbFetchAll('technician_report_images','?select=id,report_id,job_id,category,url,data,uploaded_at,updated_at&order=updated_at.asc')
+  ]);
+  if(!reportRows.length)return;
+  const latestByJob=new Map();
+  reportRows.forEach(r=>{
+    const key=normalizePR(r.job_id);
+    if(!key)return;
+    const current=latestByJob.get(key);
+    if(!current || (Date.parse(r.updated_at||'')||0) > (Date.parse(current.updated_at||'')||0))latestByJob.set(key,r);
+  });
+  jobs=jobs.map(j=>{
+    const report=latestByJob.get(normalizePR(j.id));
+    if(!report)return j;
+    return buildJobFromTechnicianReport(j,report,imageRows.filter(im=>im.report_id===report.id));
+  });
+}
 async function loadSplitState(){
   if(!SPLIT_TABLES_ENABLED)return false;
   const [jobRows,adminRows,metaRows]=await Promise.all([
@@ -1261,6 +1302,25 @@ async function loadAppStateData(){
 }
 function taskUpdateStamp(t){
   return Math.max(Date.parse(t?.techUpdateAt||'')||0,Date.parse(t?.reportReviewedAt||'')||0,Date.parse(t?.createdAt||'')||0);
+}
+function mergeSplitWithAppStateAdditive(splitState,fullState){
+  const merged={...(fullState||{}),jobs:[...(splitState.jobs||[])],adminTasks:[...(splitState.adminTasks||[])]};
+  const jobMap=new Map((merged.jobs||[]).map(j=>[normalizePR(j.id),j]));
+  (fullState.jobs||[]).forEach(appJob=>{
+    const key=normalizePR(appJob.id);
+    if(!key)return;
+    const base=jobMap.get(key);
+    jobMap.set(key,base?mergeJobRecords(base,appJob):appJob);
+  });
+  merged.jobs=[...jobMap.values()];
+  const taskMap=new Map((merged.adminTasks||[]).map(t=>[String(t.id),t]));
+  (fullState.adminTasks||[]).forEach(appTask=>{
+    const key=String(appTask.id||'');
+    if(!key)return;
+    if(!taskMap.has(key))taskMap.set(key,appTask);
+  });
+  merged.adminTasks=[...taskMap.values()];
+  return merged;
 }
 function mergeFullStateWithSplit(fullState,splitState){
   const merged={...(fullState||{})};
@@ -1451,16 +1511,8 @@ async function loadState(opts={}){
   try{
     if(await loadSplitState()){
       try{
-        const appStateData=await loadAppStateData();
-        if(Array.isArray(appStateData?.jobs)&&appStateData.jobs.length>jobs.length){
-          const splitState={jobs:[...jobs],adminTasks:[...adminTasks]};
-          applyState(mergeFullStateWithSplit(appStateData,splitState));
-          ensureMeta();
-          if(splitTablesOnline){
-            try{await saveSplitStateNow(true);}catch(migErr){console.warn('Backfill split tables from app_state failed',migErr);}
-          }
-        }
-      }catch(appErr){console.warn('App_state comparison after split load failed',appErr);}
+        await loadTechnicianReportTables();
+      }catch(reportErr){console.warn('Technician report table load failed',reportErr);}
       return;
     }
   }catch(e){
@@ -1471,6 +1523,7 @@ async function loadState(opts={}){
     const data=await loadAppStateData();
     if(data){
       applyState(data);supabaseOnline=true;if(Array.isArray(data.parts))partsLoaded=true;if(data.docs){docsLoaded=true;workOrdersLoaded=true;}
+      try{await loadTechnicianReportTables();}catch(reportErr){console.warn('Technician report table load failed after app_state fallback',reportErr);}
       if(splitTablesOnline){try{await saveSplitStateNow(true);}catch(migErr){console.warn('Auto migration to split tables failed',migErr);}}
     }
   }catch(e){
@@ -3374,8 +3427,9 @@ async function returnReportForFix(){
 
 function clearRptFilter(){rptSearch='';rptDateFilter='';rptMonthFilter='';rptFilter='ทั้งหมด';rptReviewFilter='ทั้งหมด';renderReports();saveUIState();}
 let remoteRefreshTimer=null, remoteRefreshRunning=false;
+const REMOTE_AUTO_REFRESH_ENABLED=false;
 function canAutoRefreshRemote(){
-  return isHydrated && !hasUnsyncedLocalChanges && !document.querySelector('.modal-overlay.open');
+  return REMOTE_AUTO_REFRESH_ENABLED && isHydrated && !hasUnsyncedLocalChanges && !document.querySelector('.modal-overlay.open');
 }
 async function refreshRemoteIfIdle(){
   if(remoteRefreshRunning || !canAutoRefreshRemote())return;
@@ -3393,6 +3447,7 @@ async function refreshRemoteIfIdle(){
   }
 }
 function startRemoteRefresh(){
+  if(!REMOTE_AUTO_REFRESH_ENABLED)return;
   if(remoteRefreshTimer)return;
   remoteRefreshTimer=setInterval(refreshRemoteIfIdle,30000);
   window.addEventListener('focus',()=>setTimeout(refreshRemoteIfIdle,400));
