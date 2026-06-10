@@ -1007,7 +1007,7 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.06.11.2';
+const APP_VERSION='2026.06.11.3';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -1178,6 +1178,19 @@ function mergeJobRecords(a={},b={}){
   });
   return merged;
 }
+function isUsableJobId(v){
+  const id=normalizePR(v);
+  return !!id && !['UNDEFINED','NULL','-'].includes(id);
+}
+function normalizeLoadedJobRow(row){
+  const data={...(row?.data||{})};
+  if(!isUsableJobId(data.id)&&isUsableJobId(row?.id))data.id=String(row.id).trim();
+  return data;
+}
+function cleanLoadedCollections(){
+  jobs=(jobs||[]).filter(j=>isUsableJobId(j?.id));
+  adminTasks=(adminTasks||[]).filter(t=>String(t?.id||'').trim());
+}
 function repairDuplicateJobs(){
   const map=new Map(),out=[];
   let fixed=0;
@@ -1200,6 +1213,7 @@ function ensureMeta(){
   ['ช่างบันทึกร่าง','ช่างส่งงานแล้ว','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ','แอดมินตรวจแล้ว','ต้องแก้ไข'].forEach(s=>{if(Array.isArray(J_ST)&&!J_ST.includes(s))J_ST.push(s);});
   ['ช่างบันทึกร่าง','ช่างส่งงานแล้ว','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ'].forEach(s=>{if(Array.isArray(A_ST)&&!A_ST.includes(s))A_ST.push(s);});
   repairDuplicateJobs();
+  cleanLoadedCollections();
   jobs.forEach((j,i)=>{if(!j.createdAt)j.createdAt=Date.now()-(jobs.length-i)*86400000;if(!j.assignedAt)j.assignedAt=j.date||todayISO();if(j.pay==='unpaid')j.pay='รอเก็บเงิน';if(j.pay==='paid')j.pay='เก็บแล้ว';if(j.pay==='overdue')j.pay='เกินกำหนด';if(!j.reportReviewStatus)j.reportReviewStatus=reportReviewStatus(j);if(j.technicianReport&&!j.technicianReport.reviewStatus)j.technicianReport.reviewStatus=j.reportReviewStatus;});
   adminTasks.forEach((t,i)=>{if(!t.createdAt)t.createdAt=Date.now()-(adminTasks.length-i)*86400000;if(!t.assignedAt)t.assignedAt=t.due||todayISO();if(t.isNew===undefined)t.isNew=false;});
   ensurePersistentIds();
@@ -1272,7 +1286,7 @@ function splitStateSnapshot(){
 }
 function splitApplyRows({jobRows=[],adminRows=[],partRows=null,workOrderRows=null,documentRows=null,metaRows=[]}={}){
   const st={...(metaRows[0]?.data||{})};
-  if(Array.isArray(jobRows))st.jobs=jobRows.map(r=>r.data).filter(Boolean);
+  if(Array.isArray(jobRows))st.jobs=jobRows.map(normalizeLoadedJobRow).filter(j=>j&&isUsableJobId(j.id));
   if(Array.isArray(adminRows))st.adminTasks=adminRows.map(r=>r.data).filter(Boolean);
   if(Array.isArray(documentRows)||Array.isArray(workOrderRows)){
     ensureDocsShape();
