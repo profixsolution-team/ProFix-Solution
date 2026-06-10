@@ -49,7 +49,7 @@ textarea{resize:vertical;min-height:80px;}
 .thumb img{width:100%;height:100%;object-fit:cover;}
 .thumb .rm{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;border:none;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;}
 .thumb .pct{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-family:var(--mono);}
-.color-before{color:#79b8ff;}.color-during{color:#d29922;}.color-after{color:#3fb950;}
+.color-before{color:#79b8ff;}.color-during{color:#d29922;}.color-after{color:#3fb950;}.color-documents{color:#a5b4fc;}
 .badge-st{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--mono);}
 .st-open{background:var(--accent-dim);color:var(--accent);}
 .spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.2);border-top-color:#0d1117;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
@@ -213,6 +213,16 @@ textarea{resize:vertical;min-height:80px;}
         <input type="file" id="inp-after" accept="image/*" multiple class="hidden" onchange="addPhotos('after',this.files)">
         <div class="thumbs" id="th-after"></div>
       </div>
+
+      <div class="up-group">
+        <div class="up-head"><div class="up-label color-documents">📄 ใบงาน / เอกสาร</div><div class="up-count" id="cnt-documents">0 รูป</div></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ไม่บังคับจำนวนรูป · เก็บไว้เป็นหลักฐาน ไม่ถูกนำไปใช้สร้างเอกสาร</div>
+        <div class="up-zone" onclick="document.getElementById('inp-documents').click()">
+          <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูปใบงานหรือเอกสาร</div>
+        </div>
+        <input type="file" id="inp-documents" accept="image/*" multiple class="hidden" onchange="addPhotos('documents',this.files)">
+        <div class="thumbs" id="th-documents"></div>
+      </div>
     </div>
 
     <!-- SUBMIT -->
@@ -269,11 +279,11 @@ function openManualJob(){
 let jobData = null;
 let appState = null;
 let jobStorageMode = 'app_state';
-let photos = { before: [], during: [], after: [] };
+let photos = { before: [], during: [], after: [], documents: [] };
 let noPhoto = { during: false, after: false };
 const PHOTO_MIN = { before: 2, during: 6, after: 2 };
 const PHOTO_MAX = { before: 50, during: 50, after: 50 };
-const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนินการ', during: 'ระหว่างดำเนินการ', after: 'หลังดำเนินการ' };
+const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนินการ', during: 'ระหว่างดำเนินการ', after: 'หลังดำเนินการ', documents: 'ใบงาน/เอกสาร' };
 
 // ============================================================
 // LOAD JOB
@@ -480,7 +490,12 @@ function showForm(){
     if(!photos[im.category])return;
     photos[im.category].push({id:im.id||('old-'+Math.random().toString(36).slice(2)),existing:true,uploadedMeta:im,dataUrl:im.url,url:im.url,status:'ready',width:im.width||0,height:im.height||0,fileKey:im.name||im.url});
   });
+  const oldDocumentImages = Array.isArray(jobData.technicianReport?.documentImages) ? jobData.technicianReport.documentImages : [];
+  oldDocumentImages.forEach(im=>{
+    photos.documents.push({id:im.id||('old-doc-'+Math.random().toString(36).slice(2)),existing:true,uploadedMeta:im,dataUrl:im.url,url:im.url,status:'ready',width:im.width||0,height:im.height||0,fileKey:im.name||im.url});
+  });
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
+  renderThumbs('documents');
   toggleQuoteMode();
 }
 
@@ -488,9 +503,9 @@ function showForm(){
 // PHOTO HANDLING + COMPRESSION
 // ============================================================
 async function addPhotos(cat, files){
-  const max = PHOTO_MAX[cat];
-  let remaining = max - photos[cat].length;
-  if(remaining <= 0){
+  const max = PHOTO_MAX[cat] ?? Infinity;
+  let remaining = Number.isFinite(max) ? max - photos[cat].length : Infinity;
+  if(Number.isFinite(max) && remaining <= 0){
     alert(`รูป${CAT_LABEL[cat]}อัปได้สูงสุด ${max} รูปแล้ว`);
     document.getElementById('inp-'+cat).value = '';
     return;
@@ -499,13 +514,13 @@ async function addPhotos(cat, files){
   let duplicated = 0;
   for(const file of files){
     if(!file.type.startsWith('image/')) continue;
-    if(remaining <= 0){ skipped++; continue; }
+    if(Number.isFinite(max) && remaining <= 0){ skipped++; continue; }
     const fileKey = `${file.name}|${file.size}|${file.lastModified}`;
     if(photos[cat].some(p=>p.fileKey===fileKey)){
       duplicated++;
       continue;
     }
-    remaining--;
+    if(Number.isFinite(max)) remaining--;
     const id = Date.now() + '-' + Math.random().toString(36).slice(2,7);
     const entry = { id, file, fileKey, compressed:null, dataUrl:null, status:'compressing' };
     photos[cat].push(entry);
@@ -644,14 +659,18 @@ async function mapWithConcurrency(items, limit, mapper){
   return results;
 }
 
-async function collectUploadedImages(report){
-  const allPhotos = [...photos.before, ...photos.during, ...photos.after];
+function allPhotoEntries(){
+  return Object.values(photos).flat();
+}
+
+async function collectUploadedImages(report, cats=['before','during','after']){
+  const allPhotos = cats.flatMap(cat=>photos[cat]||[]);
   if(allPhotos.some(p=>p.status==='compressing')) throw new Error('กรุณารอรูปบีบอัดเสร็จก่อน');
   const uploadedImages = [];
   const uploadTasks = [];
   let done = 0;
   let order = 0;
-  for(const cat of ['before','during','after']){
+  for(const cat of cats){
     for(const p of photos[cat]){
       if(p.existing){
         uploadedImages.push({ order: order++, ...(p.uploadedMeta || {id:p.id,category:cat,label:CAT_LABEL[cat],url:p.url||p.dataUrl||'',uploadedAt:new Date().toISOString(),storage:'external'}) });
@@ -695,7 +714,7 @@ async function collectUploadedImages(report){
 
 async function saveDraft(){
   const report = collectReportDraft();
-  const allPhotos = [...photos.before, ...photos.during, ...photos.after];
+  const allPhotos = allPhotoEntries();
   if(allPhotos.some(p=>p.status==='compressing')){ alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
   document.getElementById('draft-btn').disabled = true;
   document.getElementById('submit-btn').disabled = true;
@@ -704,6 +723,7 @@ async function saveDraft(){
   document.getElementById('overlay-upload').classList.add('show');
   try{
     const uploadedImages = await collectUploadedImages(report);
+    const uploadedDocumentImages = await collectUploadedImages(report, ['documents']);
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
     document.getElementById('upload-detail').textContent = '';
     const job = await loadJobRecord(JOB_ID);
@@ -720,7 +740,7 @@ async function saveDraft(){
       report: report.fix,
       partsUsed: report.parts,
       note2: report.note,
-      technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, draftSavedAt:savedAt, isDraft:true, reviewStatus:'ฉบับร่าง' }
+      technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, documentImages: uploadedDocumentImages, draftSavedAt:savedAt, isDraft:true, reviewStatus:'ฉบับร่าง' }
     });
     await saveJobRecord(job, { savedAt, statuses:['ฉบับร่าง'] });
     jobData = job;
@@ -757,7 +777,7 @@ async function submitJob(){
   }
 
   // wait for any compressing
-  const allPhotos = [...photos.before, ...photos.during, ...photos.after];
+  const allPhotos = allPhotoEntries();
   if(allPhotos.some(p=>p.status==='compressing')){ alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
 
   document.getElementById('submit-btn').disabled = true;
@@ -769,6 +789,7 @@ async function submitJob(){
   try{
     // 1. upload photos (ผ่าน Cloudflare Worker → R2)
     const uploadedImages = await collectUploadedImages(report);
+    const uploadedDocumentImages = await collectUploadedImages(report, ['documents']);
 
     // 2. save report + image metadata to Supabase
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
@@ -813,7 +834,7 @@ async function submitJob(){
       reportReviewStatus: nextReview,
       reviewNote: '',
       reportRounds: [...(job.reportRounds||[]), nextRound],
-      technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, rounds:[...(job.technicianReport?.rounds||[]), nextRound], submittedAt, draftSavedAt:'', isDraft:false, reviewStatus:nextReview, reviewNote:'' }
+      technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, documentImages: uploadedDocumentImages, rounds:[...(job.technicianReport?.rounds||[]), nextRound], submittedAt, draftSavedAt:'', isDraft:false, reviewStatus:nextReview, reviewNote:'' }
     });
     await saveJobRecord(job, {
       savedAt: submittedAt,
