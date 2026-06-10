@@ -246,9 +246,8 @@ textarea{resize:vertical;min-height:80px;}
 const SUPABASE_URL = 'https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
 const STATE_KEY = 'service_management_tracker';
-// Cloudflare Worker endpoint สำหรับอัปรูปเข้า Google Drive
-// ตัวอย่าง: https://profix-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload
-const UPLOAD_ENDPOINT = 'Yhttps://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
+// Cloudflare Worker endpoint สำหรับอัปรูปเข้า R2
+const UPLOAD_ENDPOINT = 'https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
 
 let supa = null;
 try { if(SUPABASE_URL.startsWith('http')) supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){ console.error(e); }
@@ -268,6 +267,7 @@ function openManualJob(){
 
 let jobData = null;
 let appState = null;
+let jobStorageMode = 'app_state';
 let photos = { before: [], during: [], after: [] };
 let noPhoto = { during: false, after: false };
 const PHOTO_MIN = { before: 2, during: 6, after: 2 };
@@ -280,9 +280,7 @@ const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนิ
 async function loadJob(){
   if(!JOB_ID){ showError('ไม่พบเลขงาน','ลิงก์ไม่ถูกต้อง กรุณาติดต่อแอดมิน'); return; }
   try{
-    const data = await loadAppState();
-    appState = data || {};
-    const job = (appState.jobs || []).find(j => String(j.id) === String(JOB_ID));
+    const job = await loadJobRecord(JOB_ID);
     if(!job){ showError('ไม่พบงานนี้','ลิงก์อาจหมดอายุ หรือยังไม่มีงานนี้ในระบบหลัก'); return; }
     // ถ้าส่งแล้ว
     if(job.status === 'ช่างส่งงานแล้ว' || job.status === 'แอดมินตรวจแล้ว' || job.status === 'ปิดงานสมบูรณ์' || job.status === 'ปิดงาน'){
@@ -293,6 +291,23 @@ async function loadJob(){
     jobData = job;
     showForm();
   }catch(e){ showError('เกิดข้อผิดพลาด', e.message); }
+}
+
+async function loadJobRecord(jobId){
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(jobId)}&select=data`, { headers: sbHeaders() });
+    if(r.ok){
+      const rows = await r.json();
+      if(rows?.[0]?.data){
+        jobStorageMode = 'split';
+        return rows[0].data;
+      }
+    }
+  }catch(e){ console.warn('Split job load failed, falling back to app_state', e); }
+  const data = await loadAppState();
+  appState = data || {};
+  jobStorageMode = 'app_state';
+  return (appState.jobs || []).find(j => String(j.id) === String(jobId)) || null;
 }
 
 async function loadAppState(){
@@ -310,6 +325,100 @@ async function saveAppState(data){
     body
   });
   if(!r.ok) throw new Error(await r.text());
+}
+
+async function saveJobRecord(job, { adminTaskNote='', savedAt=new Date().toISOString(), statuses=[] } = {}){
+  if(jobStorageMode === 'split'){
+    try{
+      const jobBody = JSON.stringify({ id: JOB_ID, data: job, updated_at: savedAt });
+      const jr = await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
+        method: 'POST',
+        headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+        body: jobBody
+      });
+      if(!jr.ok) throw new Error(await jr.text());
+      await updateRelatedSplitRows(job, { adminTaskNote, savedAt, statuses });
+      return;
+    }catch(e){
+      console.warn('Split job save failed, falling back to app_state RPC', e);
+    }
+  }
+
+  const rpcPayload = {
+    p_key: STATE_KEY,
+    p_job_id: JOB_ID,
+    p_job: job,
+    p_statuses: statuses,
+    p_admin_task_note: adminTaskNote,
+    p_saved_at: savedAt
+  };
+  const rr = await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_update_job_in_app_state`, {
+    method: 'POST',
+    headers: sbHeaders(),
+    body: JSON.stringify(rpcPayload)
+  });
+  if(rr.ok) return;
+  console.warn('RPC save failed, falling back to full app_state save', await rr.text());
+
+  const latestState = await loadAppState();
+  if(!latestState || !Array.isArray(latestState.jobs)) throw new Error('ไม่พบข้อมูลระบบหลักใน Supabase');
+  const latestJob = latestState.jobs.find(j => String(j.id) === String(JOB_ID));
+  if(!latestJob) throw new Error('ไม่พบงานนี้ในระบบหลัก');
+  Object.assign(latestJob, job);
+  statuses.forEach(s=>{
+    if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes(s)) latestState.J_ST.push(s);
+    if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes(s)) latestState.A_ST.push(s);
+  });
+  if(Array.isArray(latestState.adminTasks)){
+    latestState.adminTasks.forEach(t=>{
+      if(String(t.jobId) === String(JOB_ID)){
+        t.status = job.status || t.status;
+        if(adminTaskNote){
+          t.reportReviewNote = adminTaskNote;
+          t.reportReviewedAt = savedAt;
+        }
+      }
+    });
+  }
+  latestState.lastDataUpdatedAt = savedAt;
+  await saveAppState(latestState);
+}
+
+async function updateRelatedSplitRows(job, { adminTaskNote='', savedAt, statuses=[] }){
+  const [taskRes, metaRes] = await Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?select=id,data`, { headers: sbHeaders() }),
+    fetch(`${SUPABASE_URL}/rest/v1/system_data?id=eq.main&select=data`, { headers: sbHeaders() })
+  ]);
+  if(taskRes.ok){
+    const rows = (await taskRes.json()).filter(row => String(row.data?.jobId) === String(JOB_ID));
+    for(const row of rows){
+      const task = { ...(row.data || {}) };
+      task.status = job.status || task.status;
+      if(adminTaskNote){
+        task.reportReviewNote = adminTaskNote;
+        task.reportReviewedAt = savedAt;
+      }
+      await fetch(`${SUPABASE_URL}/rest/v1/admin_tasks`, {
+        method: 'POST',
+        headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+        body: JSON.stringify({ id: row.id, data: task, updated_at: savedAt })
+      });
+    }
+  }
+  if(metaRes.ok){
+    const rows = await metaRes.json();
+    const meta = { ...(rows?.[0]?.data || {}) };
+    statuses.forEach(s=>{
+      if(Array.isArray(meta.J_ST) && !meta.J_ST.includes(s)) meta.J_ST.push(s);
+      if(Array.isArray(meta.A_ST) && !meta.A_ST.includes(s)) meta.A_ST.push(s);
+    });
+    meta.lastDataUpdatedAt = savedAt;
+    await fetch(`${SUPABASE_URL}/rest/v1/system_data`, {
+      method: 'POST',
+      headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+      body: JSON.stringify({ id:'main', data: meta, updated_at: savedAt })
+    });
+  }
 }
 
 function showError(title, msg){
@@ -555,9 +664,7 @@ async function saveDraft(){
     const uploadedImages = await collectUploadedImages(report);
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
     document.getElementById('upload-detail').textContent = '';
-    const latestState = await loadAppState();
-    if(!latestState || !Array.isArray(latestState.jobs)) throw new Error('ไม่พบข้อมูลระบบหลักใน Supabase');
-    const job = latestState.jobs.find(j => String(j.id) === String(JOB_ID));
+    const job = await loadJobRecord(JOB_ID);
     if(!job) throw new Error('ไม่พบงานนี้ในระบบหลัก');
     const savedAt = new Date().toISOString();
     Object.assign(job, {
@@ -573,10 +680,7 @@ async function saveDraft(){
       note2: report.note,
       technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, draftSavedAt:savedAt, isDraft:true, reviewStatus:'ฉบับร่าง' }
     });
-    if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes('ฉบับร่าง')) latestState.J_ST.push('ฉบับร่าง');
-    if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes('ฉบับร่าง')) latestState.A_ST.push('ฉบับร่าง');
-    latestState.lastDataUpdatedAt = savedAt;
-    await saveAppState(latestState);
+    await saveJobRecord(job, { savedAt, statuses:['ฉบับร่าง'] });
     jobData = job;
     document.getElementById('overlay-upload').classList.remove('show');
     alert('บันทึกฉบับร่างแล้ว กลับมาเปิดลิงก์นี้เพื่อกรอกต่อได้');
@@ -621,15 +725,13 @@ async function submitJob(){
   document.getElementById('overlay-upload').classList.add('show');
 
   try{
-    // 1. upload photos (ผ่าน Cloudflare Worker → Google Drive)
+    // 1. upload photos (ผ่าน Cloudflare Worker → R2)
     const uploadedImages = await collectUploadedImages(report);
 
-    // 2. save report + images to Supabase app_state
+    // 2. save report + image metadata to Supabase
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
     document.getElementById('upload-detail').textContent = '';
-    const latestState = await loadAppState();
-    if(!latestState || !Array.isArray(latestState.jobs)) throw new Error('ไม่พบข้อมูลระบบหลักใน Supabase');
-    const job = latestState.jobs.find(j => String(j.id) === String(JOB_ID));
+    const job = await loadJobRecord(JOB_ID);
     if(!job) throw new Error('ไม่พบงานนี้ในระบบหลัก');
     const submittedAt = new Date().toISOString();
     const nextStatus = report.needQuote ? 'รออนุมัติอะไหล่' : 'ช่างส่งงานแล้ว';
@@ -668,19 +770,11 @@ async function submitJob(){
       reportRounds: [...(job.reportRounds||[]), nextRound],
       technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, rounds:[...(job.technicianReport?.rounds||[]), nextRound], submittedAt, draftSavedAt:'', isDraft:false, reviewStatus:nextReview, reviewNote:'' }
     });
-    if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes(nextStatus)) latestState.J_ST.push(nextStatus);
-    if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes(nextStatus)) latestState.A_ST.push(nextStatus);
-    if(Array.isArray(latestState.adminTasks)){
-      latestState.adminTasks.forEach(t=>{
-        if(String(t.jobId) === String(JOB_ID)){
-          t.status = nextStatus;
-          t.reportReviewNote = report.needQuote ? 'ช่างสำรวจแล้ว ต้องเสนอราคาอะไหล่ก่อนซ่อม' : 'ช่างส่งงานแล้ว';
-          t.reportReviewedAt = submittedAt;
-        }
-      });
-    }
-    latestState.lastDataUpdatedAt = submittedAt;
-    await saveAppState(latestState);
+    await saveJobRecord(job, {
+      savedAt: submittedAt,
+      statuses:[nextStatus],
+      adminTaskNote: report.needQuote ? 'ช่างสำรวจแล้ว ต้องเสนอราคาอะไหล่ก่อนซ่อม' : 'ช่างส่งงานแล้ว'
+    });
 
     // 3. notify LINE (ผ่าน Worker)
     notifyLine(report, { before:photos.before.length, during:photos.during.length, after:photos.after.length });
@@ -697,10 +791,8 @@ async function submitJob(){
 }
 
 async function uploadPhoto(blob, category, index, photo){
-  // ถ้ายังไม่ได้ตั้ง Worker → demo mode (ไม่อัปจริง)
   if(!UPLOAD_ENDPOINT.startsWith('http')){
-    await new Promise(r=>setTimeout(r,300)); // จำลองดีเลย์
-    return { url: photo?.dataUrl || '', storage:'app_state_demo' };
+    throw new Error('ยังไม่ได้ตั้งค่า Cloudflare Worker สำหรับอัปโหลดรูป');
   }
   const fd = new FormData();
   fd.append('file', blob, `${category}_${index}.jpg`);
@@ -710,7 +802,9 @@ async function uploadPhoto(blob, category, index, photo){
   const res = await fetch(UPLOAD_ENDPOINT, { method:'POST', body:fd });
   if(!res.ok) throw new Error('อัปโหลดรูปไม่สำเร็จ');
   const data = await res.json();
-  return { url: data.url || data.fileUrl || '', storage:'external' };
+  const url = data.url || data.fileUrl || '';
+  if(!url) throw new Error('อัปโหลดรูปสำเร็จแต่ไม่ได้รับ URL รูป');
+  return { url, storage:data.storage || 'external' };
 }
 
 async function notifyLine(report, counts){
