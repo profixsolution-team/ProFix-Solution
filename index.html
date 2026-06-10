@@ -143,14 +143,19 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .b-unpaid{background:var(--yellow-dim);color:var(--yellow);}
 .badge.tech-update-status{background:var(--green-dim);color:var(--green);border:1px solid var(--green);}
 .badge.tech-update-status.return-fix{background:var(--red-dim);color:var(--red);border-color:var(--red);}
+.badge.tech-update-status.draft-update{background:var(--yellow-dim);color:var(--yellow);border-color:var(--yellow);}
 .tech-update-dot{display:inline-block;width:8px;height:8px;border-radius:999px;background:var(--green);box-shadow:0 0 0 3px rgba(63,185,80,.18),0 0 10px rgba(63,185,80,.55);vertical-align:middle;margin-right:5px;animation:techPulse 1.6s ease-in-out infinite;}
 .tech-update-dot.return-fix{background:var(--red);box-shadow:0 0 0 3px rgba(248,81,73,.18),0 0 10px rgba(248,81,73,.55);}
+.tech-update-dot.draft-update{background:var(--yellow);box-shadow:0 0 0 3px rgba(210,153,34,.18),0 0 10px rgba(210,153,34,.55);}
 .tech-update-pill{display:inline-flex;align-items:center;gap:5px;background:var(--green-dim);border:1px solid var(--green);color:var(--green);font-size:9px;font-weight:900;padding:1px 7px;border-radius:999px;font-family:var(--mono);letter-spacing:.35px;margin-left:5px;white-space:nowrap;}
 .tech-update-pill.return-fix{background:var(--red-dim);border-color:var(--red);color:var(--red);}
+.tech-update-pill.draft-update{background:var(--yellow-dim);border-color:var(--yellow);color:var(--yellow);}
 .tech-update-row td{background:rgba(63,185,80,.055);}
 .tech-update-row:hover td{background:rgba(63,185,80,.09);}
 .tech-update-row.return-fix td{background:rgba(248,81,73,.06);}
 .tech-update-row.return-fix:hover td{background:rgba(248,81,73,.1);}
+.tech-update-row.draft-update td{background:rgba(210,153,34,.06);}
+.tech-update-row.draft-update:hover td{background:rgba(210,153,34,.1);}
 .new-pill{display:inline-flex;align-items:center;background:linear-gradient(135deg,#1a4a1a,#0f2a1f);border:1px solid #3fb950;color:#3fb950;font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;animation:np 2s infinite;}
 .queue-pill{display:inline-flex;align-items:center;background:var(--yellow-dim);border:1px solid var(--yellow);color:var(--yellow);font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.3px;margin-left:4px;}
 .urgent-pill{display:inline-flex;align-items:center;background:var(--red-dim);border:1px solid var(--red);color:var(--red);font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;margin-left:4px;}
@@ -169,10 +174,13 @@ body[data-theme="light"] .queue-pill{background:#fff;border-color:#9a6700;color:
 body[data-theme="light"] .urgent-pill{background:#fff;border-color:#cf222e;color:#cf222e;}
 body[data-theme="light"] .tech-update-pill,body[data-theme="light"] .badge.tech-update-status{background:#fff;border-color:#138a3d;color:#138a3d;}
 body[data-theme="light"] .tech-update-pill.return-fix,body[data-theme="light"] .badge.tech-update-status.return-fix{background:#fff;border-color:#cf222e;color:#cf222e;}
+body[data-theme="light"] .tech-update-pill.draft-update,body[data-theme="light"] .badge.tech-update-status.draft-update{background:#fff;border-color:#9a6700;color:#9a6700;}
 body[data-theme="light"] .tech-update-row td{background:rgba(19,138,61,.06);}
 body[data-theme="light"] .tech-update-row:hover td{background:rgba(19,138,61,.1);}
 body[data-theme="light"] .tech-update-row.return-fix td{background:rgba(207,34,46,.06);}
 body[data-theme="light"] .tech-update-row.return-fix:hover td{background:rgba(207,34,46,.1);}
+body[data-theme="light"] .tech-update-row.draft-update td{background:rgba(154,103,0,.06);}
+body[data-theme="light"] .tech-update-row.draft-update:hover td{background:rgba(154,103,0,.1);}
 @keyframes np{0%,100%{border-color:#3fb950}50%{border-color:#56d364;box-shadow:0 0 6px rgba(63,185,80,.3)}}
 @keyframes techPulse{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.28);opacity:1}}
 .status-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 6px;cursor:pointer;outline:none;transition:all .15s;}
@@ -889,7 +897,7 @@ select option{background:var(--surface2);}
 // DATA
 let J_ST = ['รอเปิดงาน','รอจัดช่าง','จัดช่างแล้ว','ช่างออกงาน','รออะไหล่','เสร็จงาน','รอจ่าย','ปิดงาน','ติดปัญหา','Reject'];
 let A_ST = ['รอดำเนินการ','กำลังทำ','รอลูกค้า','เสร็จแล้ว','ติดปัญหา','Reject'];
-const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','ช่างส่งงานแล้ว':'b-done','รออนุมัติอะไหล่':'b-parts','รอช่างเข้าซ่อม':'b-open','แอดมินตรวจแล้ว':'b-done','ต้องแก้ไข':'b-reject','ปิดงานสำรวจ':'b-closed','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done'};
+const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','ช่างบันทึกร่าง':'b-working','ช่างส่งงานแล้ว':'b-done','รออนุมัติอะไหล่':'b-parts','รอช่างเข้าซ่อม':'b-open','แอดมินตรวจแล้ว':'b-done','ต้องแก้ไข':'b-reject','ปิดงานสำรวจ':'b-closed','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done'};
 
 let jobs = [
   {id:'PR-001',client:'บริษัท A',ref:'WO-2001',branch:'เซ็นทรัลลาดพร้าว',type:'ซ่อมแอร์',team:'ทีม A',date:'2025-06-03',status:'เสร็จงาน',pc:3500,pt:2400,partC:300,partR:500,fuel:150,note:'แอร์ไม่เย็น',report:'เติมน้ำยา R22 2 ปอนด์',isNew:false,pay:'unpaid'},
@@ -990,8 +998,9 @@ function techUpdateTypeOf(item){
   return item.techUpdateType||linked?.techUpdateType||'submitted';
 }
 function isReturnFixUpdate(item){return techUpdateTypeOf(item)==='returned_for_fix';}
-function techUpdateClass(item){return isReturnFixUpdate(item)?' return-fix':'';}
-function techUpdateLabel(item){return isReturnFixUpdate(item)?'ส่งกลับแก้ไข':'ช่างส่งงาน';}
+function isDraftUpdate(item){return techUpdateTypeOf(item)==='draft_saved';}
+function techUpdateClass(item){return isReturnFixUpdate(item)?' return-fix':isDraftUpdate(item)?' draft-update':'';}
+function techUpdateLabel(item){return isReturnFixUpdate(item)?'ส่งกลับแก้ไข':isDraftUpdate(item)?'บันทึกร่าง':'ช่างส่งงาน';}
 function techUpdateMark(item){
   const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);
   return on?`<span class="tech-update-dot${techUpdateClass(item)}" title="${techUpdateLabel(item)}"></span>`:'';
@@ -1006,7 +1015,7 @@ function statusBadge(item,status){
   return `<span class="badge ${on?`tech-update-status${techUpdateClass(item)}`:(SB[status]||'b-wait')}">${on?`<span class="tech-update-dot${techUpdateClass(item)}"></span>`:''}${esc(status||'-')}</span>`;
 }
 function statusSelectColor(item,status,kind='job'){
-  if(item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))return isReturnFixUpdate(item)?'var(--red)':'var(--green)';
+  if(item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))return isReturnFixUpdate(item)?'var(--red)':isDraftUpdate(item)?'var(--yellow)':'var(--green)';
   if(kind==='admin')return status==='เสร็จแล้ว'?'var(--green)':status==='กำลังทำ'?'var(--yellow)':status==='ติดปัญหา'||status==='Reject'?'var(--red)':'var(--text2)';
   return status==='เสร็จงาน'||status==='ปิดงาน'||status==='ช่างส่งงานแล้ว'||status==='แอดมินตรวจแล้ว'?'var(--green)':status==='ช่างออกงาน'||status==='รอเปิดงาน'||status==='รอจ่าย'?'var(--yellow)':status==='Reject'||status==='ติดปัญหา'||status==='ต้องแก้ไข'?'var(--red)':status==='รออะไหล่'||status==='รออนุมัติอะไหล่'?'var(--purple)':'var(--text2)';
 }
@@ -1065,7 +1074,7 @@ function applyTheme(theme){
 function toggleTheme(){applyTheme(document.body.dataset.theme==='light'?'dark':'light');}
 function sbHeaders(extra={}){return {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',...extra};}
 function ensureMeta(){
-  ['ช่างส่งงานแล้ว','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ','แอดมินตรวจแล้ว','ต้องแก้ไข'].forEach(s=>{if(Array.isArray(J_ST)&&!J_ST.includes(s))J_ST.push(s);});
+  ['ช่างบันทึกร่าง','ช่างส่งงานแล้ว','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ','แอดมินตรวจแล้ว','ต้องแก้ไข'].forEach(s=>{if(Array.isArray(J_ST)&&!J_ST.includes(s))J_ST.push(s);});
   ['รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ'].forEach(s=>{if(Array.isArray(A_ST)&&!A_ST.includes(s))A_ST.push(s);});
   jobs.forEach((j,i)=>{if(!j.createdAt)j.createdAt=Date.now()-(jobs.length-i)*86400000;if(!j.assignedAt)j.assignedAt=j.date||todayISO();if(j.pay==='unpaid')j.pay='รอเก็บเงิน';if(j.pay==='paid')j.pay='เก็บแล้ว';if(j.pay==='overdue')j.pay='เกินกำหนด';if(!j.reportReviewStatus)j.reportReviewStatus=reportReviewStatus(j);if(j.technicianReport&&!j.technicianReport.reviewStatus)j.technicianReport.reviewStatus=j.reportReviewStatus;});
   adminTasks.forEach((t,i)=>{if(!t.createdAt)t.createdAt=Date.now()-(adminTasks.length-i)*86400000;if(!t.assignedAt)t.assignedAt=t.due||todayISO();if(t.isNew===undefined)t.isNew=false;});
@@ -2058,7 +2067,26 @@ function openAdminDetail(id){
   openM('m-detail');
 }
 function addAdminName(){const v=document.getElementById('fa-assign').value.trim();if(v&&!adminNames.includes(v)){adminNames.push(v);fillSelects();alert('เพิ่มชื่อแอดมินแล้ว');}}
-function addPRValue(){const v=document.getElementById('fa-job').value.trim();if(v&&!prValues.includes(v)){prValues.push(v);fillSelects();alert('เพิ่ม PR แล้ว');}}
+function normalizePR(v){return String(v||'').trim().replace(/\s+/g,'').toUpperCase();}
+function duplicatePRInfo(pr,{excludeJobId='',excludeTaskId=''}={}){
+  const key=normalizePR(pr);
+  if(!key)return null;
+  const job=jobs.find(j=>normalizePR(j.id)===key&&String(j.id)!==String(excludeJobId));
+  if(job)return {kind:'คิวช่าง',id:job.id,detail:`${job.client||'-'} / ${job.branch||'-'} / ${job.status||'-'}`};
+  const task=adminTasks.find(t=>normalizePR(t.jobId)===key&&String(t.id)!==String(excludeTaskId));
+  if(task)return {kind:'งานแอดมิน',id:task.id,detail:`${task.type||'-'} / ${task.client||'-'} / ${task.status||'-'}`};
+  return null;
+}
+function alertDuplicatePR(pr,info){
+  alert(`มีงานซ้ำ: ${pr}\nพบใน${info.kind} ${info.id}\n${info.detail||''}`);
+}
+function addPRValue(){
+  const v=document.getElementById('fa-job').value.trim();
+  if(!v)return;
+  const dup=duplicatePRInfo(v,{excludeTaskId:editAdminId||''});
+  if(dup){alertDuplicatePR(v,dup);return;}
+  if(!prValues.some(x=>normalizePR(x)===normalizePR(v))){prValues.push(v);fillSelects();alert('เพิ่ม PR แล้ว');}
+}
 function openJobFromAdmin(id){
   const t=adminTasks.find(x=>x.id===id);if(!t)return;
   pendingJobFromAdminId=id;
@@ -2113,10 +2141,10 @@ function saveJob(){
     Object.assign(jobs.find(j=>j.id===editJobId),data);
   }else{
     const id=data.ref&&data.ref!=='N/A'?data.ref:'PR-'+String(jCnt++).padStart(3,'0');
-    const existing=jobs.find(j=>j.id===id);
+    const dup=duplicatePRInfo(id);
+    if(dup){alertDuplicatePR(id,dup);document.getElementById('fj-ref').focus();return;}
     savedJobId=id;
-    if(existing)Object.assign(existing,data,{assignedAt:existing.assignedAt||todayISO(),createdAt:existing.createdAt||Date.now()});
-    else jobs.unshift({id,...data,assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()});
+    jobs.unshift({id,...data,assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()});
     if(id&&!prValues.includes(id))prValues.push(id);
   }
   const openedFromAdminId=pendingJobFromAdminId;
