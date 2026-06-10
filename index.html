@@ -141,6 +141,11 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .b-hold{background:var(--orange-dim);color:var(--orange);}
 .b-paid{background:var(--green-dim);color:var(--green);}
 .b-unpaid{background:var(--yellow-dim);color:var(--yellow);}
+.badge.tech-update-status{background:var(--green-dim);color:var(--green);border:1px solid var(--green);}
+.tech-update-dot{display:inline-block;width:8px;height:8px;border-radius:999px;background:var(--green);box-shadow:0 0 0 3px rgba(63,185,80,.18),0 0 10px rgba(63,185,80,.55);vertical-align:middle;margin-right:5px;animation:techPulse 1.6s ease-in-out infinite;}
+.tech-update-pill{display:inline-flex;align-items:center;gap:5px;background:var(--green-dim);border:1px solid var(--green);color:var(--green);font-size:9px;font-weight:900;padding:1px 7px;border-radius:999px;font-family:var(--mono);letter-spacing:.35px;margin-left:5px;white-space:nowrap;}
+.tech-update-row td{background:rgba(63,185,80,.055);}
+.tech-update-row:hover td{background:rgba(63,185,80,.09);}
 .new-pill{display:inline-flex;align-items:center;background:linear-gradient(135deg,#1a4a1a,#0f2a1f);border:1px solid #3fb950;color:#3fb950;font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;animation:np 2s infinite;}
 .queue-pill{display:inline-flex;align-items:center;background:var(--yellow-dim);border:1px solid var(--yellow);color:var(--yellow);font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.3px;margin-left:4px;}
 .urgent-pill{display:inline-flex;align-items:center;background:var(--red-dim);border:1px solid var(--red);color:var(--red);font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;margin-left:4px;}
@@ -157,7 +162,11 @@ body[data-theme="light"] .b-hold{color:#bc4c00;}
 body[data-theme="light"] .new-pill{background:#fff;border-color:#067a2d;color:#067a2d;box-shadow:none;}
 body[data-theme="light"] .queue-pill{background:#fff;border-color:#9a6700;color:#9a6700;box-shadow:none;}
 body[data-theme="light"] .urgent-pill{background:#fff;border-color:#cf222e;color:#cf222e;}
+body[data-theme="light"] .tech-update-pill,body[data-theme="light"] .badge.tech-update-status{background:#fff;border-color:#138a3d;color:#138a3d;}
+body[data-theme="light"] .tech-update-row td{background:rgba(19,138,61,.06);}
+body[data-theme="light"] .tech-update-row:hover td{background:rgba(19,138,61,.1);}
 @keyframes np{0%,100%{border-color:#3fb950}50%{border-color:#56d364;box-shadow:0 0 6px rgba(63,185,80,.3)}}
+@keyframes techPulse{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.28);opacity:1}}
 .status-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 6px;cursor:pointer;outline:none;transition:all .15s;}
 .status-select:hover{border-color:var(--accent);}
 .status-select option{background:var(--surface2);font-size:12px;}
@@ -872,7 +881,7 @@ select option{background:var(--surface2);}
 // DATA
 let J_ST = ['รอเปิดงาน','รอจัดช่าง','จัดช่างแล้ว','ช่างออกงาน','รออะไหล่','เสร็จงาน','รอจ่าย','ปิดงาน','ติดปัญหา','Reject'];
 let A_ST = ['รอดำเนินการ','กำลังทำ','รอลูกค้า','เสร็จแล้ว','ติดปัญหา','Reject'];
-const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done'};
+const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','ช่างส่งงานแล้ว':'b-done','รออนุมัติอะไหล่':'b-parts','รอช่างเข้าซ่อม':'b-open','แอดมินตรวจแล้ว':'b-done','ต้องแก้ไข':'b-reject','ปิดงานสำรวจ':'b-closed','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done'};
 
 let jobs = [
   {id:'PR-001',client:'บริษัท A',ref:'WO-2001',branch:'เซ็นทรัลลาดพร้าว',type:'ซ่อมแอร์',team:'ทีม A',date:'2025-06-03',status:'เสร็จงาน',pc:3500,pt:2400,partC:300,partR:500,fuel:150,note:'แอร์ไม่เย็น',report:'เติมน้ำยา R22 2 ปอนด์',isNew:false,pay:'unpaid'},
@@ -962,6 +971,40 @@ function isThisWeekDate(v){
 }
 function inQuickRange(item,range){const d=itemDateValue(item);if(range==='today')return d===todayISO();if(range==='week')return isThisWeekDate(d);return true;}
 function sortByItemDate(arr,dir){return [...arr].sort((a,b)=>{const av=itemDateValue(a)||'';const bv=itemDateValue(b)||'';const c=av.localeCompare(bv)||(Number(a.createdAt||0)-Number(b.createdAt||0));return dir==='asc'?c:-c;});}
+function techUpdateTs(j){return Date.parse(j?.techUpdateAt||j?.technicianReport?.submittedAt||j?.techSubmittedAt||'')||0;}
+function hasTechUpdate(j){return !!(j&&j.techUpdateUnread&&techUpdateTs(j));}
+function jobForTask(t){return t?.jobId?jobs.find(j=>String(j.id)===String(t.jobId)):null;}
+function taskHasTechUpdate(t){return !!(t?.techUpdateUnread||hasTechUpdate(jobForTask(t)));}
+function taskTechUpdateTs(t){return Date.parse(t?.techUpdateAt||'')||techUpdateTs(jobForTask(t));}
+function techUpdateMark(item){const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);return on?'<span class="tech-update-dot" title="มีอัปเดทจากช่าง"></span>':'';}
+function techUpdatePill(item){const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);return on?'<span class="tech-update-pill"><span class="tech-update-dot"></span>ช่างส่งงาน</span>':'';}
+function techUpdateRowClass(item){return (item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))?' tech-update-row':'';}
+function statusBadge(item,status){
+  const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);
+  return `<span class="badge ${on?'tech-update-status':(SB[status]||'b-wait')}">${on?'<span class="tech-update-dot"></span>':''}${esc(status||'-')}</span>`;
+}
+function statusSelectColor(item,status,kind='job'){
+  if(item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))return 'var(--green)';
+  if(kind==='admin')return status==='เสร็จแล้ว'?'var(--green)':status==='กำลังทำ'?'var(--yellow)':status==='ติดปัญหา'||status==='Reject'?'var(--red)':'var(--text2)';
+  return status==='เสร็จงาน'||status==='ปิดงาน'||status==='ช่างส่งงานแล้ว'||status==='แอดมินตรวจแล้ว'?'var(--green)':status==='ช่างออกงาน'||status==='รอเปิดงาน'||status==='รอจ่าย'?'var(--yellow)':status==='Reject'||status==='ติดปัญหา'||status==='ต้องแก้ไข'?'var(--red)':status==='รออะไหล่'||status==='รออนุมัติอะไหล่'?'var(--purple)':'var(--text2)';
+}
+function sortByTechUpdateThenDate(arr,dir,isTask=false){
+  return [...arr].sort((a,b)=>{
+    const au=isTask?taskHasTechUpdate(a):hasTechUpdate(a), bu=isTask?taskHasTechUpdate(b):hasTechUpdate(b);
+    if(au!==bu)return au?-1:1;
+    const at=isTask?taskTechUpdateTs(a):techUpdateTs(a), bt=isTask?taskTechUpdateTs(b):techUpdateTs(b);
+    if(at!==bt)return bt-at;
+    const av=itemDateValue(a)||'', bv=itemDateValue(b)||'';
+    const c=av.localeCompare(bv)||(Number(a.createdAt||0)-Number(b.createdAt||0));
+    return dir==='asc'?c:-c;
+  });
+}
+function markTechUpdateSeen(jobId,{save=true}={}){
+  const j=jobs.find(x=>String(x.id)===String(jobId));
+  if(j){j.techUpdateUnread=false;j.techUpdateSeenAt=new Date().toISOString();}
+  adminTasks.forEach(t=>{if(String(t.jobId)===String(jobId)){t.techUpdateUnread=false;t.techUpdateSeenAt=new Date().toISOString();}});
+  if(save)saveState();
+}
 function adminNeedsQueueBadge(t){return !t?.jobId||!jobs.some(j=>j.id===t.jobId);}
 function isClosedAdminTask(t){return ['เสร็จแล้ว','ปิดงาน','Reject'].includes(t?.status);}
 function isClosedJob(j){return ['ปิดงาน','Reject','ปิดงานสำรวจ'].includes(j?.status);}
@@ -969,8 +1012,9 @@ function activeAdminCount(){return adminTasks.filter(t=>!isClosedAdminTask(t)).l
 function activeJobCount(){return jobs.filter(j=>!isClosedJob(j)).length;}
 function updateNavBadges(){
   const admin=document.getElementById('nb-admin'),job=document.getElementById('nb-new');
-  if(admin)admin.textContent=activeAdminCount();
-  if(job)job.textContent=activeJobCount();
+  const updates=jobs.filter(hasTechUpdate).length;
+  if(admin)admin.textContent=updates||activeAdminCount();
+  if(job)job.textContent=updates||activeJobCount();
 }
 function setAppLoading(on,msg='กำลังโหลด...',sub='กำลังซิงก์ข้อมูลล่าสุด'){
   const el=document.getElementById('app-loader');if(!el)return;
@@ -1158,6 +1202,10 @@ function mergeNewerRemoteTechReport(local,remote){
     partsUsed: remote.partsUsed,
     note2: remote.note2,
     techSubmittedAt: remote.techSubmittedAt,
+    techUpdateUnread: remote.techUpdateUnread,
+    techUpdateAt: remote.techUpdateAt,
+    techUpdateType: remote.techUpdateType,
+    techUpdateSeenAt: remote.techUpdateSeenAt,
     reportReviewStatus: remote.reportReviewStatus,
     reviewNote: remote.reviewNote,
     reportRounds: remote.reportRounds,
@@ -1507,9 +1555,9 @@ function renderDash(){
   document.getElementById('ds-paid-c').textContent=pd.length+' รายการ';
   document.getElementById('ds-owe').textContent='฿'+ow.toLocaleString();
   updateNavBadges();
-  const latest=(arr)=>arr.map((x,i)=>({x,t:x.createdAt??i})).sort((a,b)=>b.t-a.t).slice(0,6).sort((a,b)=>a.t-b.t).map(o=>o.x);
-  document.getElementById('ds-admin-tbody').innerHTML=latest(adminTasks).map(t=>`<tr onclick="goTo('admin-tracker');setTimeout(()=>editAdminTask('${t.id}'),0)" style="cursor:pointer;"><td class="mono ta">${esc(t.id)} ${isTodayItem(t)?'<span class="new-pill">NEW</span>':''}${t.pri==='ด่วน'||t.pri==='เร่งด่วนมาก'?'<span class="urgent-pill">URGENT</span>':''}</td><td><span class="chip">${esc(t.type)}</span></td><td>${esc(t.assign)}</td><td class="tm">${esc(t.due)}</td><td><span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status)}</span></td></tr>`).join('');
-  document.getElementById('ds-job-tbody').innerHTML=latest(jobs).map(j=>`<tr onclick="goTo('jobs');setTimeout(()=>openDet('${j.id}'),0)" style="cursor:pointer;"><td class="mono ta">${esc(j.id)} ${isTodayItem(j)?'<span class="new-pill">NEW</span>':''}</td><td>${esc(j.branch)}</td><td>${esc(j.team)}</td><td class="tm">${esc(j.date)}</td><td><span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span></td></tr>`).join('');
+  const latest=(arr,isTask=false)=>sortByTechUpdateThenDate(arr,'desc',isTask).slice(0,6);
+  document.getElementById('ds-admin-tbody').innerHTML=latest(adminTasks,true).map(t=>`<tr class="${techUpdateRowClass(t)}" onclick="goTo('admin-tracker');setTimeout(()=>editAdminTask('${t.id}'),0)" style="cursor:pointer;"><td class="mono ta">${techUpdateMark(t)}${esc(t.id)} ${isTodayItem(t)?'<span class="new-pill">NEW</span>':''}${t.pri==='ด่วน'||t.pri==='เร่งด่วนมาก'?'<span class="urgent-pill">URGENT</span>':''}${techUpdatePill(t)}</td><td><span class="chip">${esc(t.type)}</span></td><td>${esc(t.assign)}</td><td class="tm">${esc(t.due)}</td><td>${statusBadge(t,t.status)}</td></tr>`).join('');
+  document.getElementById('ds-job-tbody').innerHTML=latest(jobs).map(j=>`<tr class="${techUpdateRowClass(j)}" onclick="goTo('jobs');setTimeout(()=>openDet('${j.id}'),0)" style="cursor:pointer;"><td class="mono ta">${techUpdateMark(j)}${esc(j.id)} ${isTodayItem(j)?'<span class="new-pill">NEW</span>':''}${techUpdatePill(j)}</td><td>${esc(j.branch)}</td><td>${esc(j.team)}</td><td class="tm">${esc(j.date)}</td><td>${statusBadge(j,j.status)}</td></tr>`).join('');
 }
 
 // ADMIN TRACKER
@@ -1524,7 +1572,7 @@ function renderAdmin(){
   if(rj.length){rb.style.display='block';document.getElementById('admin-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('admin-reject-list').innerHTML=rj.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${esc(t.id)}</span><span>${esc(t.type)}</span><span class="tm">-</span><span>${esc(t.client)}</span><span class="badge ${SB[t.status]||'b-reject'}">${esc(t.status)}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setAS('${t.id}','รอดำเนินการ')">รีเซ็ต</button></div>`).join('');}
   else rb.style.display='none';
   let fil=adminFilter==='ทั้งหมด'?scoped:adminFilter==='ติดปัญหา'?scoped.filter(t=>t.status==='ติดปัญหา'||t.status==='Reject'):scoped.filter(t=>t.status===adminFilter);
-  fil=sortByItemDate(fil.filter(t=>matchText(t,['id','jobId','type','detail','client','assign','due','status'],adminSearch)),adminSortDir);
+  fil=sortByTechUpdateThenDate(fil.filter(t=>matchText(t,['id','jobId','type','detail','client','assign','due','status'],adminSearch)),adminSortDir,true);
   document.getElementById('admin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('admin-tbl-title').textContent='งาน Admin - '+adminFilter+(adminSearch?' / ค้นหา: '+adminSearch:'');
   const tb=document.getElementById('admin-tbody');
@@ -1533,8 +1581,8 @@ function renderAdmin(){
     const pr=t.jobId||'';
     const linked=jobs.find(j=>j.id===pr);
     const mid='am-'+t.id;
-    const stBadge=`<span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status||'-')}</span>`;
-    return `<tr class="task-row" onclick="openAdminDetail('${t.id}')"><td class="mono ta" style="font-size:11px;">${mobileCard(pr||'ยังไม่เปิด PR',t.type,t.assign,t.due,stBadge)}${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">เปิดคิว</button>`}${adminNeedsQueueBadge(t)?' <span class="queue-pill">รอจัดคิวช่าง</span>':''}</td><td class="tm" style="font-size:11px;">${esc(t.assignedAt||'-')}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td class="task-detail" style="max-width:260px;font-size:12px;">${esc(t.detail)}${t.phone?`<span class="task-phone">เบอร์ติดต่อ: ${esc(t.phone)}</span>`:''}</td><td style="font-size:12px;">${esc(t.client)}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${t.status==='เสร็จแล้ว'?'var(--green)':t.status==='กำลังทำ'?'var(--yellow)':t.status==='ติดปัญหา'||t.status==='Reject'?'var(--red)':'var(--text2)'}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="mono ta" style="font-size:11px;">${esc(t.id)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
+    const stBadge=statusBadge(t,t.status||'-');
+    return `<tr class="task-row${techUpdateRowClass(t)}" onclick="openAdminDetail('${t.id}')"><td class="mono ta" style="font-size:11px;">${mobileCard(pr||'ยังไม่เปิด PR',t.type,t.assign,t.due,stBadge)}${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openReportModal('${pr}')`:`openJobFromAdmin('${t.id}')`}">${techUpdateMark(t)}${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">เปิดคิว</button>`}${adminNeedsQueueBadge(t)?' <span class="queue-pill">รอจัดคิวช่าง</span>':''}${techUpdatePill(t)}</td><td class="tm" style="font-size:11px;">${esc(t.assignedAt||'-')}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td class="task-detail" style="max-width:260px;font-size:12px;">${esc(t.detail)}${t.phone?`<span class="task-phone">เบอร์ติดต่อ: ${esc(t.phone)}</span>`:''}</td><td style="font-size:12px;">${esc(t.client)}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${statusSelectColor(t,t.status,'admin')}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(t)}</td><td class="mono ta" style="font-size:11px;">${esc(t.id)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
   }).join('');
 }
 function setAS(id,s){const t=adminTasks.find(x=>x.id===id);if(t){t.status=s;t.isNew=false;renderAdmin();renderDash();saveState();}}
@@ -1919,12 +1967,12 @@ function renderJobs(){
   else rb.style.display='none';
   let fil=jobFilter==='ทั้งหมด'?scoped:scoped.filter(j=>j.status===jobFilter);
   if(jobTeamFilter!=='ทั้งหมด')fil=fil.filter(j=>j.team===jobTeamFilter);
-  fil=sortByItemDate(fil.filter(j=>matchText(j,['id','ref','branch','client','type','team','date','status','note'],jobSearch)),jobSortDir);
+  fil=sortByTechUpdateThenDate(fil.filter(j=>matchText(j,['id','ref','branch','client','type','team','date','status','note'],jobSearch)),jobSortDir);
   document.getElementById('job-cnt').textContent=fil.length+' รายการ';
   document.getElementById('job-tbl-title').textContent='คิวช่าง - '+jobFilter+(jobTeamFilter!=='ทั้งหมด'?' / '+jobTeamFilter:'')+(jobSearch?' / ค้นหา: '+jobSearch:'');
   const tb=document.getElementById('job-tbody');
   if(!fil.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีงาน</div></div></td></tr>';return;}
-  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=`<span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status||'-')}</span>`;return `<tr class="task-row" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}${esc(j.id)}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="color:${j.status==='เสร็จงาน'||j.status==='ปิดงาน'?'var(--green)':j.status==='ช่างออกงาน'||j.status==='รอเปิดงาน'||j.status==='รอจ่าย'?'var(--yellow)':j.status==='Reject'||j.status==='ติดปัญหา'?'var(--red)':j.status==='รออะไหล่'?'var(--purple)':'var(--text2)'}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
+  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}${techUpdateMark(j)}${esc(j.id)}${techUpdatePill(j)}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="color:${statusSelectColor(j,j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
 function setJS(id,s){const j=jobs.find(x=>x.id===id);if(j){j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;if(s==='รอจ่าย'){j.pay=payStatuses[0]||'รอเก็บเงิน';renderJobs();renderCalendar();renderDash();saveState();goFinanceForJob(id);return;}renderJobs();renderCalendar();renderDash();saveState();}}
 function technicianFormUrl(id){return `technician-submit.html?job=${encodeURIComponent(id)}`;}
@@ -1934,7 +1982,7 @@ function openDet(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
-  document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span></div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div class="form-row"><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
+  document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
   openM('m-detail');
 }
 function openJobModal(pref={}){if(!pref.fromAdmin)pendingJobFromAdminId=null;editJobId=null;fillSelects();document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=pref.date||new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';document.getElementById('fj-type').value=jobTypes[0]||'';document.getElementById('fj-status').value=J_ST[0]||'รอเปิดงาน';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
@@ -1997,7 +2045,7 @@ function renderCalendar(){
       .filter(j=>calendarTeamFilter==='ทั้งหมด'||j.team===calendarTeamFilter)
       .filter(j=>matchText(j,['id','ref','branch','client','type','team','status','note'],calendarSearch));
     const muted=d.getMonth()!==mm-1;
-    days.push(`<div class="cal-day${muted?' muted':''}"><div class="cal-num">${d.getDate()}${dayJobs.length?` <span class="fc">${dayJobs.length}</span>`:''}</div>${dayJobs.map(j=>`<div class="cal-job" onclick="openDet('${j.id}')"><div class="cal-job-pr">${esc(j.id)} <span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span></div><div class="cal-job-meta">${esc(j.team)} · ${esc(j.branch)}</div><div class="cal-job-meta">${esc(j.type)}</div></div>`).join('')}</div>`);
+    days.push(`<div class="cal-day${muted?' muted':''}"><div class="cal-num">${d.getDate()}${dayJobs.length?` <span class="fc">${dayJobs.length}</span>`:''}</div>${sortByTechUpdateThenDate(dayJobs,'desc').map(j=>`<div class="cal-job${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><div class="cal-job-pr">${techUpdateMark(j)}${esc(j.id)} ${statusBadge(j,j.status)}</div><div class="cal-job-meta">${esc(j.team)} · ${esc(j.branch)}</div><div class="cal-job-meta">${esc(j.type)} ${techUpdatePill(j)}</div></div>`).join('')}</div>`);
   }
   grid.innerHTML=headers+days.join('');
 }
@@ -2022,10 +2070,10 @@ function renderFin(){
   buildFinanceControls(cnts);
   let fil=finFilter==='ทั้งหมด'?jobs:jobs.filter(j=>payLabel(j.pay)===finFilter);
   if(financeDateFilter)fil=fil.filter(j=>(j.date||j.assignedAt||'')===financeDateFilter);
-  fil=fil.filter(j=>matchText(j,['id','ref','branch','client','team','type','date','status','pay','financeNote'],financeSearch));
+  fil=sortByTechUpdateThenDate(fil.filter(j=>matchText(j,['id','ref','branch','client','team','type','date','status','pay','financeNote'],financeSearch)),'desc');
   document.getElementById('fin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('fin-tbl-title').textContent='P&L ต่องาน - '+finFilter+(financeDateFilter?' / '+financeDateFilter:'')+(financeSearch?' / ค้นหา: '+financeSearch:'');
-  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openFinanceEdit('${j.id}')">${esc(j.id)}</button></td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${j.pc+j.partR}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button></div></td></tr>`;}).join('');
+  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openFinanceEdit('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${j.pc+j.partR}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button></div></td></tr>`;}).join('');
   renderFixedExpenses();
 }
 function setPay(id,s){const j=jobs.find(x=>x.id===id);if(j){j.pay=s;renderFin();renderDash();saveState();}}
@@ -2041,7 +2089,7 @@ function deleteFixedExpense(i){if(confirm('ลบรายจ่าย Fixed น
 function renderTP(){
   const ts=teams.map(t=>t.name);
   const c=document.getElementById('techpay-list');
-  const h=ts.map(t=>{const tj=jobs.filter(j=>j.team===t&&j.status!=='รอเปิดงาน'&&j.status!=='Reject');const tot=tj.reduce((s,j)=>s+j.pt,0);if(!tot)return'';return`<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${t}</div><div class="flex g8"><span class="mono fw7 tg">฿${tot.toLocaleString()}</span><button class="btn btn-success btn-sm" onclick="alert('ยืนยันจ่าย ${t}')">✓ จ่ายแล้ว</button></div></div><table><thead><tr><th>PR</th><th>สาขา</th><th>วันที่</th><th>ประเภท</th><th>ค่าแรงช่าง</th><th>สถานะ</th></tr></thead><tbody>${tj.map(j=>`<tr><td class="mono ta" style="font-size:11px;">${j.id}</td><td style="font-size:12px;">${j.branch}</td><td class="tm" style="font-size:11px;">${j.date}</td><td><span class="chip">${j.type}</span></td><td class="mono fw7 tg">฿${j.pt.toLocaleString()}</td><td><span class="badge ${SB[j.status]||'b-wait'}">${j.status}</span></td></tr>`).join('')}</tbody></table></div>`;}).join('');
+  const h=ts.map(t=>{const tj=sortByTechUpdateThenDate(jobs.filter(j=>j.team===t&&j.status!=='รอเปิดงาน'&&j.status!=='Reject'),'desc');const tot=tj.reduce((s,j)=>s+j.pt,0);if(!tot)return'';return`<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${t}</div><div class="flex g8"><span class="mono fw7 tg">฿${tot.toLocaleString()}</span><button class="btn btn-success btn-sm" onclick="alert('ยืนยันจ่าย ${t}')">✓ จ่ายแล้ว</button></div></div><table><thead><tr><th>PR</th><th>สาขา</th><th>วันที่</th><th>ประเภท</th><th>ค่าแรงช่าง</th><th>สถานะ</th></tr></thead><tbody>${tj.map(j=>`<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${techUpdateMark(j)}${j.id}${techUpdatePill(j)}</td><td style="font-size:12px;">${j.branch}</td><td class="tm" style="font-size:11px;">${j.date}</td><td><span class="chip">${j.type}</span></td><td class="mono fw7 tg">฿${j.pt.toLocaleString()}</td><td>${statusBadge(j,j.status)}</td></tr>`).join('')}</tbody></table></div>`;}).join('');
   c.innerHTML=h||'<div class="empty"><div class="empty-icon">✅</div><div>ไม่มียอดค้างจ่าย</div></div>';
 }
 
@@ -2615,6 +2663,8 @@ function syncAdminTasksFromReport(jobId,status,note=''){
     if(t.jobId===jobId){
       t.status=status;
       t.isNew=false;
+      t.techUpdateUnread=false;
+      t.techUpdateSeenAt=new Date().toISOString();
       t.reportReviewNote=note;
       t.reportReviewedAt=new Date().toISOString();
     }
@@ -2661,7 +2711,7 @@ function renderReports(){
     const s=rptSearch.toLowerCase();
     fil=fil.filter(j=>(j.id||'').toLowerCase().includes(s)||(j.branch||'').toLowerCase().includes(s)||(j.team||'').toLowerCase().includes(s)||(j.client||'').toLowerCase().includes(s));
   }
-  fil=sortByItemDate(fil,rptSortDir);
+  fil=sortByTechUpdateThenDate(fil,rptSortDir);
   document.getElementById('rpt-cnt').textContent=fil.length+' รายการ';
   document.getElementById('rpt-title').textContent='รายงานช่าง'+(rptFilter&&rptFilter!=='ทั้งหมด'?' — '+rptFilter:'');
   const tb=document.getElementById('rpt-tbody');
@@ -2669,8 +2719,8 @@ function renderReports(){
   tb.innerHTML=fil.map(j=>{
     const hasReport=j.symptom||j.fix||j.report;
     const review=reportReviewStatus(j);
-    return `<tr onclick="openReportModal('${j.id}')" style="cursor:pointer;">
-      <td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,`<span class="badge ${SB[j.status]||'b-wait'}">${esc(j.status)}</span>`)}${j.id}</td>
+    return `<tr class="${techUpdateRowClass(j)}" onclick="openReportModal('${j.id}')" style="cursor:pointer;">
+      <td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,statusBadge(j,j.status))}${techUpdateMark(j)}${j.id}${techUpdatePill(j)}</td>
       <td style="font-size:12px;">${j.branch}</td>
       <td><span class="chip">${j.type}</span></td>
       <td style="font-size:12px;">${j.team}</td>
@@ -2678,15 +2728,16 @@ function renderReports(){
       <td class="tm" style="font-size:11px;">${formatDateTime(j.dateIn,j.timeIn)}</td>
       <td class="tm" style="font-size:11px;">${formatDateTime(j.dateDone,j.timeDone)}</td>
       <td style="font-size:12px;">${j.pic||'—'}</td>
-      <td><span class="badge ${SB[j.status]||'b-wait'}">${j.status}</span></td>
+      <td>${statusBadge(j,j.status)}</td>
       <td>${reportReviewBadge(review)}</td>
       <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);">${hasReport?(j.symptom||j.technicianReport?.symptom||j.report||'').substring(0,60):'<span style="color:var(--text3);">ยังไม่มีรายงาน</span>'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openReportModal('${j.id}')">${review==='รอตรวจ'?'ตรวจงาน':hasReport?'แก้ไข':'+ กรอก'}</button></td>
+      <td><button class="btn ${hasTechUpdate(j)||review==='รอตรวจ'?'btn-success':'btn-ghost'} btn-sm" onclick="event.stopPropagation();openReportModal('${j.id}')">${hasTechUpdate(j)?'ตรวจอัปเดท':review==='รอตรวจ'?'ตรวจงาน':hasReport?'แก้ไข':'+ กรอก'}</button></td>
     </tr>`;
   }).join('');
 }
 function openReportModal(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;
+  const hadUnread=hasTechUpdate(j);
   const review=reportReviewStatus(j);
   document.getElementById('mrpt-title').textContent=j.id+' — '+j.branch;
   document.getElementById('mrpt-sub').textContent=j.client+' | '+j.type+' | '+j.team;
@@ -2697,7 +2748,8 @@ function openReportModal(id){
     <div class="detail-item"><div class="detail-label">ลูกค้า</div><div class="detail-val">${j.client}</div></div>
     <div class="detail-item"><div class="detail-label">ประเภทงาน</div><div class="detail-val">${j.type}</div></div>
     <div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${j.team}</div></div>
-    <div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[j.status]||'b-wait'}">${j.status}</span></div></div>
+    <div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div>
+    <div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hadUnread?techUpdatePill(j):'—'}</div></div>
     <div class="detail-item"><div class="detail-label">สถานะรายงาน</div><div class="detail-val">${reportReviewBadge(review)}</div></div>
     <div class="detail-item"><div class="detail-label">วันแจ้งซ่อม</div><div class="detail-val">${j.date||'—'}</div></div>
     <div class="detail-item"><div class="detail-label">Ref ลูกค้า</div><div class="detail-val mono">${j.ref||'—'}</div></div>
@@ -2719,6 +2771,11 @@ function openReportModal(id){
   const picSel=document.getElementById('mrpt-pic');
   picSel.innerHTML=['— ไม่ระบุ —',...(adminNames||[])].map(a=>`<option${a===j.pic?' selected':''}>${a}</option>`).join('');
   openM('m-report');
+  if(hadUnread){
+    markTechUpdateSeen(id,{save:false});
+    renderDash();
+    saveState();
+  }
 }
 function syncReportFormToJob(){
   const id=document.getElementById('mrpt-jobid').value;
