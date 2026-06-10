@@ -1186,6 +1186,35 @@ async function loadSplitState(){
   splitRowHashes.adminTasks=rowHashMap(snap.adminTasks,t=>t.id);
   return true;
 }
+async function loadAppStateData(){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/app_state?key=eq.${encodeURIComponent(STATE_KEY)}&select=data`,{headers:sbHeaders()});
+  if(!r.ok)throw new Error(await r.text());
+  const rows=await r.json();
+  return rows?.[0]?.data||null;
+}
+function taskUpdateStamp(t){
+  return Math.max(Date.parse(t?.techUpdateAt||'')||0,Date.parse(t?.reportReviewedAt||'')||0,Date.parse(t?.createdAt||'')||0);
+}
+function mergeFullStateWithSplit(fullState,splitState){
+  const merged={...(fullState||{})};
+  const jobMap=new Map((merged.jobs||[]).map(j=>[String(j.id),j]));
+  (splitState.jobs||[]).forEach(sj=>{
+    const key=String(sj.id||'');
+    if(!key)return;
+    const base=jobMap.get(key);
+    jobMap.set(key,base?mergeNewerRemoteTechReport(base,sj):sj);
+  });
+  merged.jobs=[...jobMap.values()];
+  const taskMap=new Map((merged.adminTasks||[]).map(t=>[String(t.id),t]));
+  (splitState.adminTasks||[]).forEach(st=>{
+    const key=String(st.id||'');
+    if(!key)return;
+    const base=taskMap.get(key);
+    taskMap.set(key,!base||taskUpdateStamp(st)>taskUpdateStamp(base)?{...base,...st}:base);
+  });
+  merged.adminTasks=[...taskMap.values()];
+  return merged;
+}
 async function ensurePartsLoaded(){
   if(partsLoaded)return parts;
   if(partsLoadingPromise)return partsLoadingPromise;
@@ -1353,17 +1382,28 @@ async function loadState(opts={}){
   const silent=!!opts.silent;
   loadUIState();
   try{
-    if(await loadSplitState())return;
+    if(await loadSplitState()){
+      try{
+        const appStateData=await loadAppStateData();
+        if(Array.isArray(appStateData?.jobs)&&appStateData.jobs.length>jobs.length){
+          const splitState={jobs:[...jobs],adminTasks:[...adminTasks]};
+          applyState(mergeFullStateWithSplit(appStateData,splitState));
+          ensureMeta();
+          if(splitTablesOnline){
+            try{await saveSplitStateNow(true);}catch(migErr){console.warn('Backfill split tables from app_state failed',migErr);}
+          }
+        }
+      }catch(appErr){console.warn('App_state comparison after split load failed',appErr);}
+      return;
+    }
   }catch(e){
     splitTablesOnline=false;
     console.warn('Split table load failed. Falling back to app_state.',e);
   }
   try{
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/app_state?key=eq.${encodeURIComponent(STATE_KEY)}&select=data`,{headers:sbHeaders()});
-    if(!r.ok)throw new Error(await r.text());
-    const rows=await r.json();
-    if(rows?.[0]?.data){
-      applyState(rows[0].data);supabaseOnline=true;if(Array.isArray(rows[0].data.parts))partsLoaded=true;if(rows[0].data.docs){docsLoaded=true;workOrdersLoaded=true;}
+    const data=await loadAppStateData();
+    if(data){
+      applyState(data);supabaseOnline=true;if(Array.isArray(data.parts))partsLoaded=true;if(data.docs){docsLoaded=true;workOrdersLoaded=true;}
       if(splitTablesOnline){try{await saveSplitStateNow(true);}catch(migErr){console.warn('Auto migration to split tables failed',migErr);}}
     }
   }catch(e){
