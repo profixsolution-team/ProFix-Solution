@@ -1055,6 +1055,7 @@ function setAppLoading(on,msg='กำลังโหลด...',sub='กำลั
   if(small)small.textContent=sub;
 }
 let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, docsLoaded=false, workOrdersLoaded=false, partsLoadingPromise=null, docsLoadingPromise=null, workOrdersLoadingPromise=null, hasUnsyncedLocalChanges=false, lastSaveErrorAt=0;
+let duplicateJobsRepairedSinceSave=0;
 let splitSaveHashes={};
 let splitRowHashes={jobs:{},adminTasks:{},workOrders:{},documents:{},parts:{}};
 let splitKnownIds={jobs:new Set(),adminTasks:new Set(),workOrders:new Set(),documents:new Set(),parts:new Set()};
@@ -1073,9 +1074,74 @@ function applyTheme(theme){
 }
 function toggleTheme(){applyTheme(document.body.dataset.theme==='light'?'dark':'light');}
 function sbHeaders(extra={}){return {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',...extra};}
+function hasValue(v){
+  if(v===null||v===undefined)return false;
+  if(typeof v==='string')return v.trim()!=='';
+  if(Array.isArray(v))return v.length>0;
+  if(typeof v==='object')return Object.keys(v).length>0;
+  return true;
+}
+function mergeUniqueBy(items,keyOf){
+  const out=[],seen=new Set();
+  (items||[]).forEach(item=>{
+    const key=String(keyOf(item)||'').trim()||JSON.stringify(item);
+    if(seen.has(key))return;
+    seen.add(key);
+    out.push(item);
+  });
+  return out;
+}
+function mergeTechReports(older={},newer={}){
+  const merged={...older,...newer};
+  Object.keys({...older,...newer}).forEach(k=>{
+    if(!hasValue(merged[k])&&hasValue(older[k]))merged[k]=older[k];
+  });
+  ['images','documentImages','rounds'].forEach(k=>{
+    const rows=[...(older[k]||[]),...(newer[k]||[])];
+    if(rows.length)merged[k]=mergeUniqueBy(rows,x=>x?.id||x?.url||x?.name);
+  });
+  return merged;
+}
+function mergeJobRecords(a={},b={}){
+  const aStamp=techReportStamp(a),bStamp=techReportStamp(b);
+  const newer=bStamp>=aStamp?b:a;
+  const older=newer===b?a:b;
+  const merged={...older,...newer};
+  Object.keys({...older,...newer}).forEach(k=>{
+    if(!hasValue(merged[k])&&hasValue(older[k]))merged[k]=older[k];
+  });
+  merged.id=older.id||newer.id||merged.id;
+  if(older.technicianReport||newer.technicianReport){
+    merged.technicianReport=mergeTechReports(older.technicianReport||{},newer.technicianReport||{});
+  }
+  ['generatedReports','reportRounds'].forEach(k=>{
+    const rows=[...(older[k]||[]),...(newer[k]||[])];
+    if(rows.length)merged[k]=mergeUniqueBy(rows,x=>x?.id||x?.generatedAt||x?.submittedAt||x?.type);
+  });
+  return merged;
+}
+function repairDuplicateJobs(){
+  const map=new Map(),out=[];
+  let fixed=0;
+  jobs.forEach(j=>{
+    const key=normalizePR(j?.id);
+    if(!key){out.push(j);return;}
+    if(!map.has(key)){
+      map.set(key,out.length);
+      out.push(j);
+    }else{
+      const idx=map.get(key);
+      out[idx]=mergeJobRecords(out[idx],j);
+      fixed++;
+    }
+  });
+  if(fixed){jobs=out;duplicateJobsRepairedSinceSave+=fixed;}
+  return fixed;
+}
 function ensureMeta(){
   ['ช่างบันทึกร่าง','ช่างส่งงานแล้ว','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ','แอดมินตรวจแล้ว','ต้องแก้ไข'].forEach(s=>{if(Array.isArray(J_ST)&&!J_ST.includes(s))J_ST.push(s);});
   ['รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ'].forEach(s=>{if(Array.isArray(A_ST)&&!A_ST.includes(s))A_ST.push(s);});
+  repairDuplicateJobs();
   jobs.forEach((j,i)=>{if(!j.createdAt)j.createdAt=Date.now()-(jobs.length-i)*86400000;if(!j.assignedAt)j.assignedAt=j.date||todayISO();if(j.pay==='unpaid')j.pay='รอเก็บเงิน';if(j.pay==='paid')j.pay='เก็บแล้ว';if(j.pay==='overdue')j.pay='เกินกำหนด';if(!j.reportReviewStatus)j.reportReviewStatus=reportReviewStatus(j);if(j.technicianReport&&!j.technicianReport.reviewStatus)j.technicianReport.reviewStatus=j.reportReviewStatus;});
   adminTasks.forEach((t,i)=>{if(!t.createdAt)t.createdAt=Date.now()-(adminTasks.length-i)*86400000;if(!t.assignedAt)t.assignedAt=t.due||todayISO();if(t.isNew===undefined)t.isNew=false;});
   ensurePersistentIds();
@@ -1136,6 +1202,7 @@ function lightWorkOrderDoc(d){
 }
 function splitStateSnapshot(){
   ensurePersistentIds();
+  repairDuplicateJobs();
   return {
     jobs,
     adminTasks,
@@ -1197,9 +1264,9 @@ function taskUpdateStamp(t){
 }
 function mergeFullStateWithSplit(fullState,splitState){
   const merged={...(fullState||{})};
-  const jobMap=new Map((merged.jobs||[]).map(j=>[String(j.id),j]));
+  const jobMap=new Map((merged.jobs||[]).map(j=>[normalizePR(j.id),j]));
   (splitState.jobs||[]).forEach(sj=>{
-    const key=String(sj.id||'');
+    const key=normalizePR(sj.id);
     if(!key)return;
     const base=jobMap.get(key);
     jobMap.set(key,base?mergeNewerRemoteTechReport(base,sj):sj);
@@ -2213,7 +2280,20 @@ function saveJob(){
   saveState();
 }
 function editJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;closeM('m-detail');fillSelects();editJobId=id;document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
-function deleteJob(id){if(confirm('ลบงานคิวช่างนี้?')){jobs=jobs.filter(j=>j.id!==id);renderJobs();renderCalendar();renderDash();fillSelects();saveState();}}
+function deleteJob(id){
+  const key=normalizePR(id);
+  const dupCount=jobs.filter(j=>normalizePR(j.id)===key).length;
+  if(dupCount>1){
+    const fixed=repairDuplicateJobs();
+    renderJobs();renderCalendar();renderDash();fillSelects();saveState();
+    alert(`พบงาน ${id} ซ้ำ ${dupCount} รายการ ระบบรวมข้อมูลให้เหลือ 1 งานแล้ว ยังไม่ได้ลบงานนี้`);
+    return;
+  }
+  if(confirm('ลบงานคิวช่างนี้?')){
+    jobs=jobs.filter(j=>normalizePR(j.id)!==key);
+    renderJobs();renderCalendar();renderDash();fillSelects();saveState();
+  }
+}
 function goFinanceForJob(id){closeM('m-detail');finFilter='ทั้งหมด';goTo('finance');setTimeout(()=>openFinanceEdit(id),0);}
 
 // JOB CALENDAR
@@ -3335,6 +3415,9 @@ async function initApp(){
     fillSelects();
     renderLPHist();
     refreshAfterDataChange();
+    if(duplicateJobsRepairedSinceSave>0){
+      saveStateNow(true).then(()=>{duplicateJobsRepairedSinceSave=0;}).catch(e=>console.warn('Duplicate job repair save failed',e));
+    }
     startRemoteRefresh();
   }).catch(e=>{
     console.warn('Background sync failed',e);
