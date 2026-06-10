@@ -981,6 +981,7 @@ function setAppLoading(on,msg='กำลังโหลด...',sub='กำลั
 }
 let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, partsLoadingPromise=null, hasUnsyncedLocalChanges=false, lastSaveErrorAt=0;
 let splitSaveHashes={};
+let splitRowHashes={jobs:{},adminTasks:{},workOrders:{},documents:{},parts:{}};
 let splitKnownIds={jobs:new Set(),adminTasks:new Set(),workOrders:new Set(),documents:new Set(),parts:new Set()};
 function applyTheme(theme){
   const t=theme==='light'?'light':'dark';
@@ -1025,6 +1026,9 @@ function refreshAfterDataChange(){
 function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.rptFilter)rptFilter=ui.rptFilter;if(ui.rptReviewFilter)rptReviewFilter=ui.rptReviewFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;if(ui.rptDateFilter!==undefined)rptDateFilter=ui.rptDateFilter;if(ui.docDateFilter!==undefined)docDateFilter=ui.docDateFilter;adminMonthFilter='';jobMonthFilter='';if(ui.adminRangeFilter!==undefined)adminRangeFilter=ui.adminRangeFilter;if(ui.jobRangeFilter!==undefined)jobRangeFilter=ui.jobRangeFilter;if(ui.rptRangeFilter!==undefined)rptRangeFilter=ui.rptRangeFilter;if(ui.docRangeFilter!==undefined)docRangeFilter=ui.docRangeFilter;if(ui.adminSearch!==undefined)adminSearch=ui.adminSearch;if(ui.jobSearch!==undefined)jobSearch=ui.jobSearch;if(ui.rptSearch!==undefined)rptSearch=ui.rptSearch;if(ui.docSearch!==undefined)docSearch=ui.docSearch;if(ui.jobTeamFilter)jobTeamFilter=ui.jobTeamFilter;if(ui.calendarTeamFilter)calendarTeamFilter=ui.calendarTeamFilter;if(ui.calendarMonthFilter!==undefined)calendarMonthFilter=ui.calendarMonthFilter;if(ui.calendarSearch!==undefined)calendarSearch=ui.calendarSearch;if(ui.financeSearch!==undefined)financeSearch=ui.financeSearch;if(ui.financeDateFilter!==undefined)financeDateFilter=ui.financeDateFilter;if(ui.adminSortDir)adminSortDir=ui.adminSortDir;if(ui.jobSortDir)jobSortDir=ui.jobSortDir;if(ui.rptSortDir)rptSortDir=ui.rptSortDir;if(ui.docSortDir)docSortDir=ui.docSortDir;if(ui.activeDocTab)activeDocTab=ui.activeDocTab;if(ui.workOrderPrFilter!==undefined)workOrderPrFilter=ui.workOrderPrFilter;if(ui.workOrderSortDir)workOrderSortDir=ui.workOrderSortDir;}catch(e){}}
 function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,rptFilter,rptReviewFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,rptDateFilter,docDateFilter,adminRangeFilter,jobRangeFilter,rptRangeFilter,docRangeFilter,adminSearch,jobSearch,rptSearch,docSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch,financeSearch,financeDateFilter,adminSortDir,jobSortDir,rptSortDir,docSortDir,activeDocTab,workOrderPrFilter,workOrderSortDir}));}catch(e){}}
 function stableJson(v){return JSON.stringify(v||null);}
+function rowHashMap(rows,idOf){
+  return rows.reduce((m,row)=>{const id=idOf(row);if(id)m[id]=stableJson(row);return m;},{});
+}
 function splitUrl(table,query=''){return `${SUPABASE_URL}/rest/v1/${table}${query}`;}
 async function sbFetchJson(table,query=''){
   const r=await fetch(splitUrl(table,query),{headers:sbHeaders()});
@@ -1092,6 +1096,10 @@ async function loadSplitState(){
   splitKnownIds.workOrders=new Set(workOrderRows.map(r=>r.id));
   splitKnownIds.documents=new Set(documentRows.map(r=>r.id));
   splitSaveHashes={jobs:stableJson(snap.jobs),adminTasks:stableJson(snap.adminTasks),workOrders:stableJson(snap.workOrders),documents:stableJson(snap.documents),meta:stableJson(snap.meta)};
+  splitRowHashes.jobs=rowHashMap(snap.jobs,j=>j.id);
+  splitRowHashes.adminTasks=rowHashMap(snap.adminTasks,t=>t.id);
+  splitRowHashes.workOrders=rowHashMap(snap.workOrders,d=>d.id);
+  splitRowHashes.documents=rowHashMap(snap.documents,d=>(d.docType||'doc')+':'+(d.no||d.jid||''));
   return true;
 }
 async function ensurePartsLoaded(){
@@ -1106,6 +1114,7 @@ async function ensurePartsLoaded(){
     const snap=splitStateSnapshot();
     splitKnownIds.parts=new Set(rows.map(r=>r.id));
     splitSaveHashes.parts=stableJson(snap.parts);
+    splitRowHashes.parts=rowHashMap(snap.parts,p=>p._id);
     return parts;
   })().catch(e=>{
     console.warn('Parts lazy load failed',e);
@@ -1128,12 +1137,67 @@ async function deleteSplitRows(table,ids){
     if(!r.ok)console.warn('Supabase delete failed',table,id,await r.text());
   }
 }
+function techReportStamp(j){
+  return Date.parse(j?.technicianReport?.submittedAt||j?.techSubmittedAt||j?.technicianReport?.draftSavedAt||'')||0;
+}
+function mergeNewerRemoteTechReport(local,remote){
+  if(!remote)return local;
+  const remoteStamp=techReportStamp(remote), localStamp=techReportStamp(local);
+  if(!remoteStamp || remoteStamp<=localStamp)return local;
+  return {
+    ...local,
+    status: remote.status || local.status,
+    dateIn: remote.dateIn,
+    timeIn: remote.timeIn,
+    dateDone: remote.dateDone,
+    timeDone: remote.timeDone,
+    symptom: remote.symptom,
+    cause: remote.cause,
+    fix: remote.fix,
+    report: remote.report,
+    partsUsed: remote.partsUsed,
+    note2: remote.note2,
+    techSubmittedAt: remote.techSubmittedAt,
+    reportReviewStatus: remote.reportReviewStatus,
+    reviewNote: remote.reviewNote,
+    reportRounds: remote.reportRounds,
+    technicianReport: remote.technicianReport
+  };
+}
+async function preserveNewerRemoteJobReports(rows){
+  for(const row of rows){
+    if(!row?.id)continue;
+    const r=await fetch(splitUrl('jobs',`?id=eq.${encodeURIComponent(row.id)}&select=data`),{headers:sbHeaders()});
+    if(!r.ok)continue;
+    const remoteRows=await r.json();
+    const merged=mergeNewerRemoteTechReport(row,remoteRows?.[0]?.data);
+    if(merged!==row)Object.assign(row,merged);
+  }
+}
 async function syncSplitRows(table,rows,mapRow,knownKey,idOf){
   await upsertSplitRows(table,rows,mapRow);
   const current=new Set(rows.map(idOf));
   const missing=[...(splitKnownIds[knownKey]||new Set())].filter(id=>!current.has(id));
   if(missing.length)await deleteSplitRows(table,missing);
   splitKnownIds[knownKey]=current;
+}
+async function syncSplitRowsChanged(table,rows,mapRow,knownKey,idOf,force=false){
+  const prev=splitRowHashes[knownKey]||{};
+  const current=new Set();
+  const changed=[];
+  rows.forEach(row=>{
+    const id=idOf(row);
+    if(!id)return;
+    current.add(id);
+    const hash=stableJson(row);
+    if(force||prev[id]!==hash)changed.push(row);
+  });
+  if(table==='jobs'&&changed.length)await preserveNewerRemoteJobReports(changed);
+  if(changed.length)await upsertSplitRows(table,changed,mapRow);
+  const missing=[...(splitKnownIds[knownKey]||new Set())].filter(id=>!current.has(id));
+  if(missing.length)await deleteSplitRows(table,missing);
+  splitKnownIds[knownKey]=current;
+  splitRowHashes[knownKey]=rowHashMap(rows,idOf);
 }
 async function upsertSystemData(data){
   const r=await fetch(splitUrl('system_data'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({id:'main',data,updated_at:new Date().toISOString()})});
@@ -1143,11 +1207,11 @@ async function saveSplitStateNow(force=false){
   const snap=splitStateSnapshot();
   const now=new Date().toISOString();
   const jobsHash=stableJson(snap.jobs), adminHash=stableJson(snap.adminTasks), partsHash=stableJson(snap.parts), woHash=stableJson(snap.workOrders), docHash=stableJson(snap.documents), metaHash=stableJson(snap.meta);
-  if(force||splitSaveHashes.jobs!==jobsHash){await syncSplitRows('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}),'jobs',j=>j.id);splitSaveHashes.jobs=jobsHash;}
-  if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRows('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id);splitSaveHashes.adminTasks=adminHash;}
-  if(force||splitSaveHashes.workOrders!==woHash){await syncSplitRows('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id);splitSaveHashes.workOrders=woHash;}
-  if(force||splitSaveHashes.documents!==docHash){await syncSplitRows('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||Date.now()),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||Date.now()));splitSaveHashes.documents=docHash;}
-  if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await syncSplitRows('parts',snap.parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}),'parts',p=>p._id);splitSaveHashes.parts=partsHash;}
+  if(force||splitSaveHashes.jobs!==jobsHash){await syncSplitRowsChanged('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}),'jobs',j=>j.id,force);splitSaveHashes.jobs=stableJson(snap.jobs);}
+  if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRowsChanged('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id,force);splitSaveHashes.adminTasks=adminHash;}
+  if(force||splitSaveHashes.workOrders!==woHash){await syncSplitRowsChanged('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id,force);splitSaveHashes.workOrders=woHash;}
+  if(force||splitSaveHashes.documents!==docHash){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
+  if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await syncSplitRowsChanged('parts',snap.parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}),'parts',p=>p._id,force);splitSaveHashes.parts=partsHash;}
   if(force||splitSaveHashes.meta!==metaHash){await upsertSystemData(snap.meta);splitSaveHashes.meta=metaHash;}
   splitTablesOnline=true;loadedFromSplitTables=true;supabaseOnline=true;
 }
@@ -1204,7 +1268,7 @@ async function saveState(){
         setPdfStatus?.('บันทึก Supabase ไม่สำเร็จชั่วคราว แต่เก็บข้อมูลไว้ในเครื่องแล้ว ระบบจะลองซิงก์ใหม่เมื่อมีการบันทึกครั้งถัดไป','warn');
       }
     }
-  },1500);
+  },250);
 }
 function resetSavedData(){alert('ระบบนี้เก็บข้อมูลใน Supabase แล้ว ถ้าต้องการล้างข้อมูลให้ลบ row key service_management_tracker ในตาราง app_state');}
 window.addEventListener('beforeunload',()=>{saveUIState();});
@@ -2956,18 +3020,22 @@ async function initApp(){
   const hadFastCache=loadFastState();
   setAppLoading(true,'กำลังโหลด...',hadFastCache?'กำลังซิงก์ข้อมูลล่าสุด':'กำลังโหลดข้อมูลจาก Supabase');
   ensureMeta();
-  isHydrated=true;
+  isHydrated=false;
   fillSelects();
   renderLPHist();
   renderCurrentPage();
   loadState({silent:hadFastCache}).then(()=>{
+    isHydrated=true;
     if(hasUnsyncedLocalChanges)return;
     ensureMeta();
     cacheFastState();
     fillSelects();
     renderLPHist();
     refreshAfterDataChange();
-  }).catch(e=>console.warn('Background sync failed',e)).finally(()=>setAppLoading(false));
+  }).catch(e=>{
+    console.warn('Background sync failed',e);
+    isHydrated=true;
+  }).finally(()=>setAppLoading(false));
 }
 initApp();
 </script>
