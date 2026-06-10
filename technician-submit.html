@@ -390,7 +390,7 @@ async function upsertTechnicianReportTables(job, report, { images=[], documentIm
     }
   };
   const reportRow = {
-    id: reportId,
+    report_id: reportId,
     job_id: jobId,
     round_id: roundId || reportId,
     status,
@@ -401,7 +401,7 @@ async function upsertTechnicianReportTables(job, report, { images=[], documentIm
     draft_saved_at: isDraft ? savedAt : (job.technicianReport?.draftSavedAt || null),
     updated_at: savedAt
   };
-  const rr = await fetch(`${SUPABASE_URL}/rest/v1/technician_reports`, {
+  const rr = await fetch(`${SUPABASE_URL}/rest/v1/technician_reports?on_conflict=report_id`, {
     method: 'POST',
     headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
     body: JSON.stringify(reportRow)
