@@ -1292,9 +1292,10 @@ function splitApplyRows({jobRows=[],adminRows=[],partRows=null,workOrderRows=nul
 }
 function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
   const data={...(reportRow?.report_data||{})};
+  const reportId=reportRow.report_id||reportRow.id;
   const images=imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>r.data||{}).filter(Boolean);
   const documentImages=imageRows.filter(r=>(r.data||{}).documentOnly||r.category==='documents').map(r=>r.data||{}).filter(Boolean);
-  const tr={...(job.technicianReport||{}),...data,images,documentImages,reviewStatus:reportRow.review_status||data.reviewStatus||job.technicianReport?.reviewStatus,isDraft:!!reportRow.is_draft,submittedAt:reportRow.submitted_at||data.submittedAt||job.technicianReport?.submittedAt,draftSavedAt:reportRow.draft_saved_at||data.draftSavedAt||job.technicianReport?.draftSavedAt,reportId:reportRow.id};
+  const tr={...(job.technicianReport||{}),...data,images,documentImages,reviewStatus:reportRow.review_status||data.reviewStatus||job.technicianReport?.reviewStatus,isDraft:!!reportRow.is_draft,submittedAt:reportRow.submitted_at||data.submittedAt||job.technicianReport?.submittedAt,draftSavedAt:reportRow.draft_saved_at||data.draftSavedAt||job.technicianReport?.draftSavedAt,reportId};
   return {
     ...job,
     dateIn:data.dateIn||job.dateIn,
@@ -1314,7 +1315,7 @@ function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
 }
 async function loadTechnicianReportTables(){
   const [reportRows,imageRows]=await Promise.all([
-    sbFetchAll('technician_reports','?select=id,job_id,round_id,status,review_status,is_draft,report_data,submitted_at,draft_saved_at,updated_at&order=updated_at.desc'),
+    sbFetchAll('technician_reports','?select=id,report_id,job_id,round_id,status,review_status,is_draft,report_data,submitted_at,draft_saved_at,updated_at&order=updated_at.desc'),
     sbFetchAll('technician_report_images','?select=id,report_id,job_id,category,url,data,uploaded_at,updated_at&order=updated_at.asc')
   ]);
   if(!reportRows.length)return;
@@ -1328,7 +1329,8 @@ async function loadTechnicianReportTables(){
   jobs=jobs.map(j=>{
     const report=latestByJob.get(normalizePR(j.id));
     if(!report)return j;
-    return buildJobFromTechnicianReport(j,report,imageRows.filter(im=>im.report_id===report.id));
+    const reportId=report.report_id||report.id;
+    return buildJobFromTechnicianReport(j,report,imageRows.filter(im=>im.report_id===reportId));
   });
 }
 async function loadSplitState(){
@@ -3591,8 +3593,8 @@ async function restoreTechnicianReportFromEvent(index){
   if(report.isDraft)report.draftSavedAt=report.draftSavedAt||savedAt;
   else report.submittedAt=report.submittedAt||savedAt;
   try{
-    const rr=await fetch(splitUrl('technician_reports'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({
-      id: reportId,
+    const rr=await fetch(splitUrl('technician_reports','?on_conflict=report_id'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({
+      report_id: reportId,
       job_id: jobId,
       round_id: report.roundId||reportId,
       status,
@@ -3611,7 +3613,7 @@ async function restoreTechnicianReportFromEvent(index){
       j={id:jobId,client:snap.client||'',branch:snap.branch||'',type:snap.type||'',team:snap.team||'',ref:snap.ref||'',date:snap.date||todayISO(),status,note:'',pay:'รอเก็บเงิน',createdAt:Date.now(),assignedAt:todayISO()};
       jobs.unshift(j);
     }
-    const merged=buildJobFromTechnicianReport(j,{id:reportId,job_id:jobId,status,review_status:reviewStatus,is_draft:!!report.isDraft,report_data:report,submitted_at:report.submittedAt||null,draft_saved_at:report.draftSavedAt||null,updated_at:savedAt},imageRows);
+    const merged=buildJobFromTechnicianReport(j,{report_id:reportId,job_id:jobId,status,review_status:reviewStatus,is_draft:!!report.isDraft,report_data:report,submitted_at:report.submittedAt||null,draft_saved_at:report.draftSavedAt||null,updated_at:savedAt},imageRows);
     Object.assign(j,merged,{status,reportReviewStatus:reviewStatus,techUpdateUnread:true,techUpdateAt:savedAt,techUpdateType:report.isDraft?'draft_saved':'submitted'});
     ensureMeta();
     renderReports();renderJobs();renderAdmin();renderDash();fillSelects();
