@@ -270,6 +270,8 @@ function sbHeaders(extra={}){return {'apikey':SUPABASE_KEY,'Authorization':'Bear
 const params = new URLSearchParams(location.search);
 const JOB_ID = params.get('job') || params.get('pr') || '';
 const TOKEN = params.get('token') || '';
+function normJobId(v){ return String(v||'').trim().replace(/\s+/g,'').toUpperCase(); }
+function sameJobId(a,b){ return normJobId(a) === normJobId(b); }
 function openManualJob(){
   const id = document.getElementById('manual-job')?.value.trim();
   if(!id){ alert('กรุณากรอก PR'); return; }
@@ -305,8 +307,9 @@ async function loadJob(){
 }
 
 async function loadJobRecord(jobId){
+  const cleanJobId = String(jobId||'').trim();
   try{
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(jobId)}&select=data`, { headers: sbHeaders() });
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(cleanJobId)}&select=id,data`, { headers: sbHeaders() });
     if(r.ok){
       const rows = await r.json();
       if(rows?.[0]?.data){
@@ -315,6 +318,17 @@ async function loadJobRecord(jobId){
       }
     }
   }catch(e){ console.warn('Split job load failed, falling back to app_state', e); }
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=ilike.${encodeURIComponent(cleanJobId)}&select=id,data`, { headers: sbHeaders() });
+    if(r.ok){
+      const rows = await r.json();
+      const row = rows.find(x=>sameJobId(x.id, cleanJobId));
+      if(row?.data){
+        jobStorageMode = 'split';
+        return row.data;
+      }
+    }
+  }catch(e){ console.warn('Split case-insensitive job load failed, falling back to app_state', e); }
   try{
     const rr = await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_get_job_from_app_state`, {
       method: 'POST',
@@ -332,7 +346,7 @@ async function loadJobRecord(jobId){
   const data = await loadAppState();
   appState = data || {};
   jobStorageMode = 'app_state';
-  return (appState.jobs || []).find(j => String(j.id) === String(jobId)) || null;
+  return (appState.jobs || []).find(j => sameJobId(j.id, cleanJobId)) || null;
 }
 
 async function loadAppState(){
@@ -353,16 +367,17 @@ async function saveAppState(data){
 }
 
 async function saveJobRecord(job, { adminTaskNote='', savedAt=new Date().toISOString(), statuses=[] } = {}){
+  const targetJobId = job?.id || JOB_ID;
   if(jobStorageMode === 'split'){
     try{
-      const jobBody = JSON.stringify({ id: JOB_ID, data: job, updated_at: savedAt });
+      const jobBody = JSON.stringify({ id: targetJobId, data: job, updated_at: savedAt });
       const jr = await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
         method: 'POST',
         headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
         body: jobBody
       });
       if(!jr.ok) throw new Error(await jr.text());
-      await updateRelatedSplitRows(job, { adminTaskNote, savedAt, statuses });
+      await updateRelatedSplitRows(job, { jobId: targetJobId, adminTaskNote, savedAt, statuses });
       return;
     }catch(e){
       console.warn('Split job save failed, falling back to app_state RPC', e);
@@ -371,7 +386,7 @@ async function saveJobRecord(job, { adminTaskNote='', savedAt=new Date().toISOSt
 
   const rpcPayload = {
     p_key: STATE_KEY,
-    p_job_id: JOB_ID,
+    p_job_id: targetJobId,
     p_job: job,
     p_statuses: statuses,
     p_admin_task_note: adminTaskNote,
@@ -387,7 +402,7 @@ async function saveJobRecord(job, { adminTaskNote='', savedAt=new Date().toISOSt
 
   const latestState = await loadAppState();
   if(!latestState || !Array.isArray(latestState.jobs)) throw new Error('ไม่พบข้อมูลระบบหลักใน Supabase');
-  const latestJob = latestState.jobs.find(j => String(j.id) === String(JOB_ID));
+  const latestJob = latestState.jobs.find(j => sameJobId(j.id, targetJobId));
   if(!latestJob) throw new Error('ไม่พบงานนี้ในระบบหลัก');
   Object.assign(latestJob, job);
   statuses.forEach(s=>{
@@ -396,7 +411,7 @@ async function saveJobRecord(job, { adminTaskNote='', savedAt=new Date().toISOSt
   });
   if(Array.isArray(latestState.adminTasks)){
     latestState.adminTasks.forEach(t=>{
-      if(String(t.jobId) === String(JOB_ID)){
+      if(sameJobId(t.jobId, targetJobId)){
         t.status = job.status || t.status;
         t.techUpdateUnread = !!job.techUpdateUnread;
         t.techUpdateAt = job.techUpdateAt || savedAt;
@@ -412,13 +427,21 @@ async function saveJobRecord(job, { adminTaskNote='', savedAt=new Date().toISOSt
   await saveAppState(latestState);
 }
 
-async function updateRelatedSplitRows(job, { adminTaskNote='', savedAt, statuses=[] }){
+async function updateRelatedSplitRows(job, { jobId=JOB_ID, adminTaskNote='', savedAt, statuses=[] }){
   const [taskRes, metaRes] = await Promise.all([
-    fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?select=id,data&data->>jobId=eq.${encodeURIComponent(JOB_ID)}`, { headers: sbHeaders() }),
+    fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?select=id,data&data->>jobId=eq.${encodeURIComponent(jobId)}`, { headers: sbHeaders() }),
     fetch(`${SUPABASE_URL}/rest/v1/system_data?id=eq.main&select=data`, { headers: sbHeaders() })
   ]);
   if(taskRes.ok){
-    const rows = await taskRes.json();
+    let rows = await taskRes.json();
+    if(!rows.length){
+      try{
+        const fallbackRes = await fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?select=id,data&limit=1000`, { headers: sbHeaders() });
+        if(fallbackRes.ok){
+          rows = (await fallbackRes.json()).filter(row=>sameJobId(row?.data?.jobId, jobId));
+        }
+      }catch(e){ console.warn('Admin task fallback lookup failed', e); }
+    }
     for(const row of rows){
       const task = { ...(row.data || {}) };
       task.status = job.status || task.status;
