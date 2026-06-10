@@ -142,10 +142,15 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .b-paid{background:var(--green-dim);color:var(--green);}
 .b-unpaid{background:var(--yellow-dim);color:var(--yellow);}
 .badge.tech-update-status{background:var(--green-dim);color:var(--green);border:1px solid var(--green);}
+.badge.tech-update-status.return-fix{background:var(--red-dim);color:var(--red);border-color:var(--red);}
 .tech-update-dot{display:inline-block;width:8px;height:8px;border-radius:999px;background:var(--green);box-shadow:0 0 0 3px rgba(63,185,80,.18),0 0 10px rgba(63,185,80,.55);vertical-align:middle;margin-right:5px;animation:techPulse 1.6s ease-in-out infinite;}
+.tech-update-dot.return-fix{background:var(--red);box-shadow:0 0 0 3px rgba(248,81,73,.18),0 0 10px rgba(248,81,73,.55);}
 .tech-update-pill{display:inline-flex;align-items:center;gap:5px;background:var(--green-dim);border:1px solid var(--green);color:var(--green);font-size:9px;font-weight:900;padding:1px 7px;border-radius:999px;font-family:var(--mono);letter-spacing:.35px;margin-left:5px;white-space:nowrap;}
+.tech-update-pill.return-fix{background:var(--red-dim);border-color:var(--red);color:var(--red);}
 .tech-update-row td{background:rgba(63,185,80,.055);}
 .tech-update-row:hover td{background:rgba(63,185,80,.09);}
+.tech-update-row.return-fix td{background:rgba(248,81,73,.06);}
+.tech-update-row.return-fix:hover td{background:rgba(248,81,73,.1);}
 .new-pill{display:inline-flex;align-items:center;background:linear-gradient(135deg,#1a4a1a,#0f2a1f);border:1px solid #3fb950;color:#3fb950;font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;animation:np 2s infinite;}
 .queue-pill{display:inline-flex;align-items:center;background:var(--yellow-dim);border:1px solid var(--yellow);color:var(--yellow);font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.3px;margin-left:4px;}
 .urgent-pill{display:inline-flex;align-items:center;background:var(--red-dim);border:1px solid var(--red);color:var(--red);font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;margin-left:4px;}
@@ -163,8 +168,11 @@ body[data-theme="light"] .new-pill{background:#fff;border-color:#067a2d;color:#0
 body[data-theme="light"] .queue-pill{background:#fff;border-color:#9a6700;color:#9a6700;box-shadow:none;}
 body[data-theme="light"] .urgent-pill{background:#fff;border-color:#cf222e;color:#cf222e;}
 body[data-theme="light"] .tech-update-pill,body[data-theme="light"] .badge.tech-update-status{background:#fff;border-color:#138a3d;color:#138a3d;}
+body[data-theme="light"] .tech-update-pill.return-fix,body[data-theme="light"] .badge.tech-update-status.return-fix{background:#fff;border-color:#cf222e;color:#cf222e;}
 body[data-theme="light"] .tech-update-row td{background:rgba(19,138,61,.06);}
 body[data-theme="light"] .tech-update-row:hover td{background:rgba(19,138,61,.1);}
+body[data-theme="light"] .tech-update-row.return-fix td{background:rgba(207,34,46,.06);}
+body[data-theme="light"] .tech-update-row.return-fix:hover td{background:rgba(207,34,46,.1);}
 @keyframes np{0%,100%{border-color:#3fb950}50%{border-color:#56d364;box-shadow:0 0 6px rgba(63,185,80,.3)}}
 @keyframes techPulse{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.28);opacity:1}}
 .status-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 6px;cursor:pointer;outline:none;transition:all .15s;}
@@ -976,15 +984,29 @@ function hasTechUpdate(j){return !!(j&&j.techUpdateUnread&&techUpdateTs(j));}
 function jobForTask(t){return t?.jobId?jobs.find(j=>String(j.id)===String(t.jobId)):null;}
 function taskHasTechUpdate(t){return !!(t?.techUpdateUnread||hasTechUpdate(jobForTask(t)));}
 function taskTechUpdateTs(t){return Date.parse(t?.techUpdateAt||'')||techUpdateTs(jobForTask(t));}
-function techUpdateMark(item){const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);return on?'<span class="tech-update-dot" title="มีอัปเดทจากช่าง"></span>':'';}
-function techUpdatePill(item){const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);return on?'<span class="tech-update-pill"><span class="tech-update-dot"></span>ช่างส่งงาน</span>':'';}
-function techUpdateRowClass(item){return (item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))?' tech-update-row':'';}
+function techUpdateTypeOf(item){
+  if(!item)return '';
+  const linked=item.jobId?jobForTask(item):null;
+  return item.techUpdateType||linked?.techUpdateType||'submitted';
+}
+function isReturnFixUpdate(item){return techUpdateTypeOf(item)==='returned_for_fix';}
+function techUpdateClass(item){return isReturnFixUpdate(item)?' return-fix':'';}
+function techUpdateLabel(item){return isReturnFixUpdate(item)?'ส่งกลับแก้ไข':'ช่างส่งงาน';}
+function techUpdateMark(item){
+  const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);
+  return on?`<span class="tech-update-dot${techUpdateClass(item)}" title="${techUpdateLabel(item)}"></span>`:'';
+}
+function techUpdatePill(item){
+  const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);
+  return on?`<span class="tech-update-pill${techUpdateClass(item)}"><span class="tech-update-dot${techUpdateClass(item)}"></span>${techUpdateLabel(item)}</span>`:'';
+}
+function techUpdateRowClass(item){return (item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))?` tech-update-row${techUpdateClass(item)}`:'';}
 function statusBadge(item,status){
   const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);
-  return `<span class="badge ${on?'tech-update-status':(SB[status]||'b-wait')}">${on?'<span class="tech-update-dot"></span>':''}${esc(status||'-')}</span>`;
+  return `<span class="badge ${on?`tech-update-status${techUpdateClass(item)}`:(SB[status]||'b-wait')}">${on?`<span class="tech-update-dot${techUpdateClass(item)}"></span>`:''}${esc(status||'-')}</span>`;
 }
 function statusSelectColor(item,status,kind='job'){
-  if(item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))return 'var(--green)';
+  if(item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))return isReturnFixUpdate(item)?'var(--red)':'var(--green)';
   if(kind==='admin')return status==='เสร็จแล้ว'?'var(--green)':status==='กำลังทำ'?'var(--yellow)':status==='ติดปัญหา'||status==='Reject'?'var(--red)':'var(--text2)';
   return status==='เสร็จงาน'||status==='ปิดงาน'||status==='ช่างส่งงานแล้ว'||status==='แอดมินตรวจแล้ว'?'var(--green)':status==='ช่างออกงาน'||status==='รอเปิดงาน'||status==='รอจ่าย'?'var(--yellow)':status==='Reject'||status==='ติดปัญหา'||status==='ต้องแก้ไข'?'var(--red)':status==='รออะไหล่'||status==='รออนุมัติอะไหล่'?'var(--purple)':'var(--text2)';
 }
@@ -1366,6 +1388,32 @@ async function saveState(){
       }
     }
   },250);
+}
+async function saveStateNow(force=false){
+  if(!isHydrated)return;
+  clearTimeout(saveTimer);
+  lastDataUpdatedAt=new Date().toISOString();
+  updateSystemUpdated();
+  hasUnsyncedLocalChanges=true;
+  cacheFastState();
+  try{
+    if(splitTablesOnline||loadedFromSplitTables){
+      await saveSplitStateNow(force);
+    }else{
+      const body=JSON.stringify({key:STATE_KEY,data:collectState(),updated_at:new Date().toISOString()});
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/app_state`,{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body});
+      if(!r.ok)throw new Error(await r.text());
+      supabaseOnline=true;
+    }
+    hasUnsyncedLocalChanges=false;
+    cacheFastState();
+  }catch(e){
+    supabaseOnline=false;
+    hasUnsyncedLocalChanges=true;
+    cacheFastState();
+    console.warn('Immediate Supabase save failed; kept local cache for retry.',e);
+    throw e;
+  }
 }
 function resetSavedData(){alert('ระบบนี้เก็บข้อมูลใน Supabase แล้ว ถ้าต้องการล้างข้อมูลให้ลบ row key service_management_tracker ในตาราง app_state');}
 window.addEventListener('beforeunload',()=>{saveUIState();});
@@ -2038,9 +2086,18 @@ function renderJobs(){
   tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}${techUpdateMark(j)}${esc(j.id)}${techUpdatePill(j)}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="color:${statusSelectColor(j,j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
 function setJS(id,s){const j=jobs.find(x=>x.id===id);if(j){j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;if(s==='รอจ่าย'){j.pay=payStatuses[0]||'รอเก็บเงิน';renderJobs();renderCalendar();renderDash();saveState();goFinanceForJob(id);return;}renderJobs();renderCalendar();renderDash();saveState();}}
-function technicianFormUrl(id){return `technician-submit.html?job=${encodeURIComponent(id)}`;}
-function openTechnicianForm(id){window.open(technicianFormUrl(id),'_blank');}
-async function copyTechnicianLink(id){const url=new URL(technicianFormUrl(id),location.href).href;try{await navigator.clipboard.writeText(url);alert('คัดลอกลิงก์ฟอร์มช่างแล้ว');}catch(e){prompt('คัดลอกลิงก์นี้',url);}}
+function technicianFormUrl(id){return `technician-submit.html?job=${encodeURIComponent(id)}&rev=${Date.now()}`;}
+async function openTechnicianForm(id){
+  const w=window.open('about:blank','_blank');
+  try{await saveStateNow(false);}catch(e){console.warn('Open technician form before remote save completed',e);}
+  const url=new URL(technicianFormUrl(id),location.href).href;
+  if(w)w.location.href=url;else location.href=url;
+}
+async function copyTechnicianLink(id){
+  try{await saveStateNow(false);}catch(e){console.warn('Copy technician link before remote save completed',e);}
+  const url=new URL(technicianFormUrl(id),location.href).href;
+  try{await navigator.clipboard.writeText(url);alert('คัดลอกลิงก์ฟอร์มช่างแล้ว');}catch(e){prompt('คัดลอกลิงก์นี้',url);}
+}
 function openDet(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
@@ -2720,14 +2777,19 @@ function ensureJobStatus(status){
 function ensureAdminStatus(status){
   if(status && Array.isArray(A_ST) && !A_ST.includes(status))A_ST.push(status);
 }
-function syncAdminTasksFromReport(jobId,status,note=''){
+function syncAdminTasksFromReport(jobId,status,note='',update={}){
   ensureAdminStatus(status);
+  const markUnread=!!update.markUnread;
+  const updateAt=update.updateAt||new Date().toISOString();
+  const updateType=update.updateType||'';
   adminTasks.forEach(t=>{
     if(t.jobId===jobId){
       t.status=status;
       t.isNew=false;
-      t.techUpdateUnread=false;
-      t.techUpdateSeenAt=new Date().toISOString();
+      t.techUpdateUnread=markUnread;
+      t.techUpdateAt=markUnread?updateAt:t.techUpdateAt;
+      t.techUpdateType=markUnread?updateType:t.techUpdateType;
+      if(!markUnread)t.techUpdateSeenAt=new Date().toISOString();
       t.reportReviewNote=note;
       t.reportReviewedAt=new Date().toISOString();
     }
@@ -3137,13 +3199,22 @@ async function returnReportForFix(){
   document.getElementById('mrpt-review-note').value=note;
   await saveReport();
   const x=jobs.find(v=>v.id===id);if(!x)return;
+  const returnedAt=new Date().toISOString();
   x.reportReviewStatus='ต้องแก้ไข';
   x.status='ต้องแก้ไข';
   x.reviewNote=note;
+  x.techUpdateUnread=true;
+  x.techUpdateAt=returnedAt;
+  x.techUpdateType='returned_for_fix';
   ensureJobStatus('ต้องแก้ไข');
-  syncAdminTasksFromReport(id,'ต้องแก้ไข',note);
-  x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ต้องแก้ไข',reviewNote:note,reviewedAt:new Date().toISOString()};
-  renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
+  syncAdminTasksFromReport(id,'ต้องแก้ไข',note,{markUnread:true,updateAt:returnedAt,updateType:'returned_for_fix'});
+  x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ต้องแก้ไข',reviewNote:note,reviewedAt:returnedAt,returnedForFixAt:returnedAt};
+  renderReports();renderJobs();renderAdmin();renderDash();fillSelects();
+  try{
+    await saveStateNow(true);
+  }catch(e){
+    alert('ส่งกลับแก้ไขแล้วในหน้าเว็บ แต่ยังบันทึกขึ้น Supabase ไม่สำเร็จ: '+e.message);
+  }
 }
 
 function clearRptFilter(){rptSearch='';rptDateFilter='';rptMonthFilter='';rptFilter='ทั้งหมด';rptReviewFilter='ทั้งหมด';renderReports();saveUIState();}
