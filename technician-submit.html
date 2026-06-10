@@ -248,7 +248,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const STATE_KEY = 'service_management_tracker';
 // Cloudflare Worker endpoint สำหรับอัปรูปเข้า Google Drive
 // ตัวอย่าง: https://profix-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload
-const UPLOAD_ENDPOINT = 'Yhttps://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
+const UPLOAD_ENDPOINT = 'YOUR_CLOUDFLARE_WORKER_URL/upload';
 
 let supa = null;
 try { if(SUPABASE_URL.startsWith('http')) supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){ console.error(e); }
@@ -271,7 +271,7 @@ let appState = null;
 let photos = { before: [], during: [], after: [] };
 let noPhoto = { during: false, after: false };
 const PHOTO_MIN = { before: 2, during: 6, after: 2 };
-const PHOTO_MAX = { before: 40, during: 40, after: 40 };
+const PHOTO_MAX = { before: 20, during: 40, after: 20 };
 const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนินการ', during: 'ระหว่างดำเนินการ', after: 'หลังดำเนินการ' };
 
 // ============================================================
@@ -627,10 +627,9 @@ async function submitJob(){
     // 2. save report + images to Supabase app_state
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
     document.getElementById('upload-detail').textContent = '';
-    const latestState = await loadAppState();
-    if(!latestState || !Array.isArray(latestState.jobs)) throw new Error('ไม่พบข้อมูลระบบหลักใน Supabase');
-    const job = latestState.jobs.find(j => String(j.id) === String(JOB_ID));
-    if(!job) throw new Error('ไม่พบงานนี้ในระบบหลัก');
+    // โหลดเฉพาะ job ที่ต้องการ (เร็วกว่าโหลดทั้งหมด)
+    const { source, job, state: latestState } = await loadJobOnly(JOB_ID);
+    if(!job) throw new Error('ไม่พบงานนี้ในระบบ กรุณาติดต่อแอดมิน');
     const submittedAt = new Date().toISOString();
     const nextStatus = report.needQuote ? 'รออนุมัติอะไหล่' : 'ช่างส่งงานแล้ว';
     const nextReview = report.needQuote ? 'รออนุมัติอะไหล่' : 'รอตรวจ';
@@ -668,19 +667,46 @@ async function submitJob(){
       reportRounds: [...(job.reportRounds||[]), nextRound],
       technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, rounds:[...(job.technicianReport?.rounds||[]), nextRound], submittedAt, draftSavedAt:'', isDraft:false, reviewStatus:nextReview, reviewNote:'' }
     });
-    if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes(nextStatus)) latestState.J_ST.push(nextStatus);
-    if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes(nextStatus)) latestState.A_ST.push(nextStatus);
-    if(Array.isArray(latestState.adminTasks)){
-      latestState.adminTasks.forEach(t=>{
-        if(String(t.jobId) === String(JOB_ID)){
-          t.status = nextStatus;
-          t.reportReviewNote = report.needQuote ? 'ช่างสำรวจแล้ว ต้องเสนอราคาอะไหล่ก่อนซ่อม' : 'ช่างส่งงานแล้ว';
-          t.reportReviewedAt = submittedAt;
-        }
-      });
+
+    const now = submittedAt;
+    // บันทึกแบบ parallel — split table + app_state พร้อมกัน
+    const saves = [];
+
+    // 1) PATCH split table jobs (เร็วที่สุด — เฉพาะ row นี้)
+    saves.push(
+      fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(String(JOB_ID))}`, {
+        method: 'PATCH',
+        headers: sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+        body: JSON.stringify({ data: job, updated_at: now })
+      })
+    );
+
+    // 2) PATCH split table admin_tasks ที่ผูกกับงานนี้
+    const linkedTasks = (source==='app_state' && latestState?.adminTasks || [])
+      .filter(t => String(t.jobId) === String(JOB_ID));
+    for(const t of linkedTasks){
+      t.status = nextStatus;
+      t.reportReviewNote = report.needQuote ? 'ช่างสำรวจแล้ว' : 'ช่างส่งงานแล้ว';
+      t.reportReviewedAt = now;
+      saves.push(
+        fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?id=eq.${encodeURIComponent(String(t.id))}`, {
+          method: 'PATCH',
+          headers: sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}),
+          body: JSON.stringify({ data: t, updated_at: now })
+        })
+      );
     }
-    latestState.lastDataUpdatedAt = submittedAt;
-    await saveAppState(latestState);
+
+    // 3) app_state (ถ้าโหลดมาจาก app_state ก็ save กลับ / ถ้าจาก split table ก็ fire-and-forget)
+    if(source === 'app_state' && latestState){
+      if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes(nextStatus)) latestState.J_ST.push(nextStatus);
+      if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes(nextStatus)) latestState.A_ST.push(nextStatus);
+      latestState.lastDataUpdatedAt = now;
+      saves.push(saveAppState(latestState));
+    }
+
+    // รอทุก save พร้อมกัน
+    await Promise.all(saves);
 
     // 3. notify LINE (ผ่าน Worker)
     notifyLine(report, { before:photos.before.length, during:photos.during.length, after:photos.after.length });
