@@ -41,6 +41,20 @@ body[data-theme="light"] .logo-light{display:block;}
 .theme-toggle{margin-top:14px;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);border-radius:8px;padding:7px 9px;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;}
 .theme-toggle:hover{border-color:var(--accent);color:var(--accent);}
 .theme-toggle .theme-icon{font-family:var(--mono);font-size:11px;color:var(--accent);}
+.version-chip{margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--text3);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.version-chip b{color:var(--accent);font-weight:800;}
+.version-alert{display:none;position:sticky;top:0;z-index:950;background:var(--yellow-dim);border-bottom:1px solid var(--yellow);color:var(--yellow);padding:8px 14px;font-size:12px;font-weight:800;}
+.version-alert.show{display:flex;align-items:center;justify-content:center;gap:10px;}
+.system-grid{display:grid;grid-template-columns:minmax(280px,420px) 1fr;gap:16px;align-items:start;}
+.event-card{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:12px;margin-bottom:10px;}
+.event-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.event-type{font-weight:900;color:var(--accent);}
+.event-meta{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px;}
+.event-summary{font-size:12px;color:var(--text2);line-height:1.5;}
+.backup-status{font-size:12px;color:var(--text2);line-height:1.5;margin-top:8px;}
+.backup-status.ok{color:var(--green);}
+.backup-status.warn{color:var(--yellow);}
+.backup-status.err{color:var(--red);}
 .nav{padding:12px 10px;flex:1;}
 .nav-section{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;padding:8px 8px 4px;}
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:6px;cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:all .15s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;}
@@ -368,6 +382,7 @@ select option{background:var(--surface2);}
       <div><img class="brand-logo logo-dark" src="assets/profix-logo.svg" alt="ProFix Solution"><img class="brand-logo logo-light" src="assets/profix-logo-dark.svg" alt="ProFix Solution"><div class="logo-sub">Service Console</div></div>
     </button>
     <button class="theme-toggle" onclick="toggleTheme()" type="button"><span id="theme-label">Light mode</span><span class="theme-icon" id="theme-icon">☀</span></button>
+    <div class="version-chip"><span>Version</span><b id="app-version-label">—</b></div>
   </div>
   <nav class="nav">
     <div class="nav-section">หลัก</div>
@@ -389,9 +404,11 @@ select option{background:var(--surface2);}
     <button class="nav-item" data-page="settings-suppliers" onclick="goTo('settings-suppliers',this)"><span class="nav-icon">🔩</span>ซัพพลายเออร์</button>
     <div class="nav-section">รายงาน</div>
     <button class="nav-item" data-page="reports" onclick="goTo('reports',this)"><span class="nav-icon">📝</span>รายงานช่าง</button>
+    <button class="nav-item" data-page="system-safety" onclick="goTo('system-safety',this)"><span class="nav-icon">🛡</span>กู้ข้อมูล / Backup</button>
   </nav>
 </aside>
 <main class="main">
+<div class="version-alert" id="version-alert"><span>มีเว็บเวอร์ชันใหม่ กรุณา refresh เพื่อป้องกันข้อมูลคนละรุ่น</span><button class="btn btn-ghost btn-sm" onclick="location.reload()">Refresh</button></div>
 
 <!-- DASHBOARD -->
 <div class="page active" id="page-dashboard">
@@ -787,6 +804,34 @@ select option{background:var(--surface2);}
   </div>
 </div>
 
+<!-- SYSTEM SAFETY -->
+<div class="page" id="page-system-safety">
+  <div class="page-header">
+    <div><div class="page-title">กู้ข้อมูล / Backup</div><div class="page-sub">ค้น event log ของรายงานช่าง และสร้าง backup snapshot</div></div>
+    <button class="btn btn-primary" onclick="runManualBackup()">สร้าง Backup ตอนนี้</button>
+  </div>
+  <div class="content">
+    <div class="system-grid">
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">ค้นรายงานช่างจาก Event Log</div></div>
+        <div style="padding:14px;display:grid;gap:10px;">
+          <div class="form-group"><label>PR / Job ID</label><input id="recover-job-id" placeholder="เช่น PR390967" onkeydown="if(event.key==='Enter')searchReportEvents()"></div>
+          <div class="flex g8">
+            <button class="btn btn-primary" onclick="searchReportEvents()">ค้นหา</button>
+            <button class="btn btn-ghost" onclick="openLatestRecoveryTarget()">งานล่าสุดที่มีอัปเดท</button>
+          </div>
+          <div class="text-box">ใช้หน้านี้เมื่อรายงานช่างหายจากหน้า admin แต่เคยบันทึก/ส่งเข้าระบบแล้ว ระบบจะดึงข้อมูลจาก `technician_report_events` เพื่อกู้กลับเข้า `technician_reports` และอัปเดท tracker อีกครั้ง</div>
+          <div id="backup-status" class="backup-status"></div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title" id="recover-title">Event Log</div><span class="mono tm" id="recover-count" style="font-size:11px;"></span></div>
+        <div id="recover-results" style="padding:14px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </main>
 </div>
 
@@ -962,6 +1007,7 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
+const APP_VERSION='2026.06.11.1';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -969,6 +1015,8 @@ const WORKORDER_UPLOAD_ENDPOINT='https://profix-r2-upload-worker.profixsolution-
 const LS_UI_KEY='svc_admin_tracker_ui_v1';
 const LS_THEME_KEY='svc_admin_tracker_theme';
 const LS_FAST_STATE_KEY='svc_admin_tracker_fast_state_v3';
+const LS_APP_VERSION_KEY='svc_admin_tracker_app_version';
+const LS_AUTO_BACKUP_DATE_KEY='svc_admin_tracker_auto_backup_date';
 const todayISO=()=>new Date().toISOString().split('T')[0];
 const monthOf=v=>(v||'').slice(0,7);
 const dateLocalISO=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1073,6 +1121,16 @@ function applyTheme(theme){
   if(mobileBtn)mobileBtn.textContent=icon;
 }
 function toggleTheme(){applyTheme(document.body.dataset.theme==='light'?'dark':'light');}
+function initAppVersion(){
+  const label=document.getElementById('app-version-label');
+  if(label)label.textContent=APP_VERSION;
+  const previous=localStorage.getItem(LS_APP_VERSION_KEY);
+  if(previous&&previous!==APP_VERSION){
+    const alert=document.getElementById('version-alert');
+    if(alert)alert.classList.add('show');
+  }
+  localStorage.setItem(LS_APP_VERSION_KEY,APP_VERSION);
+}
 function sbHeaders(extra={}){return {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',...extra};}
 function hasValue(v){
   if(v===null||v===undefined)return false;
@@ -1614,7 +1672,8 @@ function goTo(id, el){
     'settings-teams':renderTeams,
     'settings-branches':()=>{renderClients();renderBranches();},
     'settings-suppliers':()=>{renderSuppliers();ensurePartsLoaded().then(renderParts);},
-    reports:renderReports
+    reports:renderReports,
+    'system-safety':renderSystemSafety
   };
   if(m[id]) m[id]();
   closeSidebar();
@@ -3425,6 +3484,170 @@ async function returnReportForFix(){
   }
 }
 
+function setBackupStatus(msg,type=''){
+  const el=document.getElementById('backup-status');
+  if(el){el.textContent=msg;el.className='backup-status '+type;}
+}
+function renderSystemSafety(){
+  initAppVersion();
+  const count=document.getElementById('recover-count');
+  const title=document.getElementById('recover-title');
+  const results=document.getElementById('recover-results');
+  if(title)title.textContent='Event Log';
+  if(count)count.textContent='';
+  if(results&&!results.innerHTML)results.innerHTML='<div class="empty"><div class="empty-icon">LOG</div><div>กรอก PR / Job ID เพื่อค้นประวัติรายงานช่าง</div></div>';
+  setBackupStatus(`เว็บเวอร์ชัน ${APP_VERSION} | Auto backup ทำงานวันละครั้งหลังโหลดข้อมูลสำเร็จ`, 'ok');
+}
+function eventTypeLabel(type){
+  return {draft_saved:'บันทึกร่าง',submitted:'ช่างส่งงาน',parts_quote_needed:'ขออนุมัติอะไหล่',returned_for_fix:'ส่งกลับแก้ไข'}[type]||type||'event';
+}
+function eventSummary(row){
+  const data=row?.data||{};
+  const report=data.report||{};
+  const images=[...(report.images||[]),...(report.documentImages||[])];
+  return [
+    `สถานะ: ${data.status||report.status||'—'}`,
+    `รีวิว: ${data.reviewStatus||report.reviewStatus||'—'}`,
+    `รูป: ${images.length} รูป`,
+    `อาการ: ${(report.symptom||'').slice(0,90)||'—'}`,
+    `แก้ไข: ${(report.fix||'').slice(0,90)||'—'}`
+  ].join(' | ');
+}
+async function searchReportEvents(){
+  const input=document.getElementById('recover-job-id');
+  const raw=(input?.value||'').trim();
+  if(!raw){alert('กรุณาใส่ PR / Job ID');return;}
+  const title=document.getElementById('recover-title');
+  const count=document.getElementById('recover-count');
+  const results=document.getElementById('recover-results');
+  if(results)results.innerHTML='<div class="empty"><div class="empty-icon">...</div><div>กำลังค้น event log</div></div>';
+  try{
+    const rows=await sbFetchJson('technician_report_events',`?job_id=eq.${encodeURIComponent(raw)}&select=id,job_id,report_id,event_type,data,created_at&order=created_at.desc&limit=50`);
+    if(title)title.textContent='Event Log — '+raw;
+    if(count)count.textContent=rows.length+' รายการ';
+    if(!rows.length){
+      results.innerHTML='<div class="empty"><div class="empty-icon">—</div><div>ไม่พบ event log ของงานนี้</div></div>';
+      return;
+    }
+    results.innerHTML=rows.map((row,idx)=>`<div class="event-card">
+      <div class="event-card-head">
+        <div><div class="event-type">${eventTypeLabel(row.event_type)}</div><div class="event-meta">${row.created_at?new Date(row.created_at).toLocaleString('th-TH'):'—'} | ${esc(row.report_id||'')}</div></div>
+        <button class="btn btn-success btn-sm" onclick="restoreTechnicianReportFromEvent(${idx})">กู้จากรายการนี้</button>
+      </div>
+      <div class="event-summary">${esc(eventSummary(row))}</div>
+    </div>`).join('');
+    window.__recoverEventRows=rows;
+  }catch(e){
+    console.warn('Event search failed',e);
+    if(results)results.innerHTML='<div class="empty"><div class="empty-icon">ERR</div><div>ค้น event log ไม่สำเร็จ: '+esc(e.message)+'</div></div>';
+  }
+}
+function openLatestRecoveryTarget(){
+  const latest=sortByTechUpdateThenDate(jobs,'desc')[0];
+  if(!latest){alert('ยังไม่มีงานในระบบ');return;}
+  const input=document.getElementById('recover-job-id');
+  if(input)input.value=latest.id;
+  searchReportEvents();
+}
+async function clearReportImages(reportId){
+  const r=await fetch(splitUrl('technician_report_images',`?report_id=eq.${encodeURIComponent(reportId)}`),{method:'DELETE',headers:sbHeaders()});
+  if(!r.ok)throw new Error(await r.text());
+}
+async function upsertReportImages(reportId,jobId,report,savedAt){
+  const allImages=[
+    ...(report.images||[]).map(im=>({...im,documentOnly:false})),
+    ...(report.documentImages||[]).map(im=>({...im,documentOnly:true,category:im.category||'documents'}))
+  ];
+  await clearReportImages(reportId);
+  if(!allImages.length)return [];
+  const rows=allImages.map((im,idx)=>({
+    id: im.id || `${reportId}:restore:${idx}`,
+    report_id: reportId,
+    job_id: jobId,
+    category: im.category || (im.documentOnly?'documents':''),
+    url: im.url || '',
+    data: im,
+    uploaded_at: im.uploadedAt || savedAt,
+    updated_at: savedAt
+  }));
+  const r=await fetch(splitUrl('technician_report_images'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(rows)});
+  if(!r.ok)throw new Error(await r.text());
+  return rows;
+}
+async function restoreTechnicianReportFromEvent(index){
+  const row=window.__recoverEventRows?.[index];
+  if(!row){alert('ไม่พบ event ที่เลือก');return;}
+  if(!confirm(`กู้รายงานของ ${row.job_id} จาก event ${eventTypeLabel(row.event_type)} ใช่ไหม?`))return;
+  const data=row.data||{};
+  const report={...(data.report||{})};
+  const savedAt=row.created_at||new Date().toISOString();
+  const jobId=row.job_id;
+  const reportId=row.report_id||`${jobId}:latest`;
+  const reviewStatus=data.reviewStatus||report.reviewStatus||(data.isDraft?'ฉบับร่าง':'รอตรวจ');
+  const status=data.status||report.status||(data.isDraft?'ช่างบันทึกร่าง':'ช่างส่งงานแล้ว');
+  report.status=status;
+  report.reviewStatus=reviewStatus;
+  report.isDraft=!!data.isDraft;
+  if(report.isDraft)report.draftSavedAt=report.draftSavedAt||savedAt;
+  else report.submittedAt=report.submittedAt||savedAt;
+  try{
+    const rr=await fetch(splitUrl('technician_reports'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({
+      id: reportId,
+      job_id: jobId,
+      round_id: report.roundId||reportId,
+      status,
+      review_status: reviewStatus,
+      is_draft: !!report.isDraft,
+      report_data: report,
+      submitted_at: report.isDraft ? null : (report.submittedAt||savedAt),
+      draft_saved_at: report.isDraft ? (report.draftSavedAt||savedAt) : (report.draftSavedAt||null),
+      updated_at: savedAt
+    })});
+    if(!rr.ok)throw new Error(await rr.text());
+    const imageRows=await upsertReportImages(reportId,jobId,report,savedAt);
+    let j=jobs.find(x=>normalizePR(x.id)===normalizePR(jobId));
+    if(!j){
+      const snap=report.jobSnapshot||{};
+      j={id:jobId,client:snap.client||'',branch:snap.branch||'',type:snap.type||'',team:snap.team||'',ref:snap.ref||'',date:snap.date||todayISO(),status,note:'',pay:'รอเก็บเงิน',createdAt:Date.now(),assignedAt:todayISO()};
+      jobs.unshift(j);
+    }
+    const merged=buildJobFromTechnicianReport(j,{id:reportId,job_id:jobId,status,review_status:reviewStatus,is_draft:!!report.isDraft,report_data:report,submitted_at:report.submittedAt||null,draft_saved_at:report.draftSavedAt||null,updated_at:savedAt},imageRows);
+    Object.assign(j,merged,{status,reportReviewStatus:reviewStatus,techUpdateUnread:true,techUpdateAt:savedAt,techUpdateType:report.isDraft?'draft_saved':'submitted'});
+    ensureMeta();
+    renderReports();renderJobs();renderAdmin();renderDash();fillSelects();
+    await saveStateNow(true);
+    setBackupStatus(`กู้รายงาน ${jobId} สำเร็จจาก event ${eventTypeLabel(row.event_type)}`, 'ok');
+    alert('กู้รายงานกลับเข้าระบบแล้ว');
+  }catch(e){
+    console.warn('Restore failed',e);
+    setBackupStatus('กู้ข้อมูลไม่สำเร็จ: '+e.message,'err');
+    alert('กู้ข้อมูลไม่สำเร็จ: '+e.message);
+  }
+}
+async function createDatabaseBackup(source='manual-ui'){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_create_backup`,{method:'POST',headers:sbHeaders(),body:JSON.stringify({p_source:source,p_note:`web ${APP_VERSION}`})});
+  if(!r.ok)throw new Error(await r.text());
+  return r.json();
+}
+async function runManualBackup(){
+  setBackupStatus('กำลังสร้าง backup snapshot...', 'warn');
+  try{
+    const result=await createDatabaseBackup('manual-ui');
+    setBackupStatus('สร้าง backup สำเร็จ: '+JSON.stringify(result), 'ok');
+  }catch(e){
+    setBackupStatus('สร้าง backup ไม่สำเร็จ อาจยังไม่ได้รัน SQL backup tools: '+e.message, 'err');
+  }
+}
+async function runDailyBackupIfNeeded(){
+  const today=todayISO();
+  if(localStorage.getItem(LS_AUTO_BACKUP_DATE_KEY)===today)return;
+  try{
+    await createDatabaseBackup('auto-ui-daily');
+    localStorage.setItem(LS_AUTO_BACKUP_DATE_KEY,today);
+  }catch(e){
+    console.warn('Daily backup skipped',e);
+  }
+}
 function clearRptFilter(){rptSearch='';rptDateFilter='';rptMonthFilter='';rptFilter='ทั้งหมด';rptReviewFilter='ทั้งหมด';renderReports();saveUIState();}
 let remoteRefreshTimer=null, remoteRefreshRunning=false;
 const REMOTE_AUTO_REFRESH_ENABLED=false;
@@ -3453,6 +3676,7 @@ function startRemoteRefresh(){
   window.addEventListener('focus',()=>setTimeout(refreshRemoteIfIdle,400));
 }
 async function initApp(){
+  initAppVersion();
   applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
   loadUIState();
   const hadFastCache=loadFastState();
@@ -3473,6 +3697,7 @@ async function initApp(){
     if(duplicateJobsRepairedSinceSave>0){
       saveStateNow(true).then(()=>{duplicateJobsRepairedSinceSave=0;}).catch(e=>console.warn('Duplicate job repair save failed',e));
     }
+    runDailyBackupIfNeeded();
     startRemoteRefresh();
   }).catch(e=>{
     console.warn('Background sync failed',e);
