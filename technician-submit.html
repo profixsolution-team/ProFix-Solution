@@ -272,7 +272,7 @@ let jobStorageMode = 'app_state';
 let photos = { before: [], during: [], after: [] };
 let noPhoto = { during: false, after: false };
 const PHOTO_MIN = { before: 2, during: 6, after: 2 };
-const PHOTO_MAX = { before: 50, during: 50, after: 50 };
+const PHOTO_MAX = { before: 20, during: 40, after: 20 };
 const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนินการ', during: 'ระหว่างดำเนินการ', after: 'หลังดำเนินการ' };
 
 // ============================================================
@@ -388,6 +388,9 @@ async function saveJobRecord(job, { adminTaskNote='', savedAt=new Date().toISOSt
     latestState.adminTasks.forEach(t=>{
       if(String(t.jobId) === String(JOB_ID)){
         t.status = job.status || t.status;
+        t.techUpdateUnread = !!job.techUpdateUnread;
+        t.techUpdateAt = job.techUpdateAt || savedAt;
+        t.techUpdateType = job.techUpdateType || '';
         if(adminTaskNote){
           t.reportReviewNote = adminTaskNote;
           t.reportReviewedAt = savedAt;
@@ -409,6 +412,9 @@ async function updateRelatedSplitRows(job, { adminTaskNote='', savedAt, statuses
     for(const row of rows){
       const task = { ...(row.data || {}) };
       task.status = job.status || task.status;
+      task.techUpdateUnread = !!job.techUpdateUnread;
+      task.techUpdateAt = job.techUpdateAt || savedAt;
+      task.techUpdateType = job.techUpdateType || '';
       if(adminTaskNote){
         task.reportReviewNote = adminTaskNote;
         task.reportReviewedAt = savedAt;
@@ -790,6 +796,9 @@ async function submitJob(){
     };
     Object.assign(job, {
       status: nextStatus,
+      techUpdateUnread: true,
+      techUpdateAt: submittedAt,
+      techUpdateType: report.needQuote ? 'parts_quote_needed' : 'submitted',
       dateIn: report.dateIn,
       timeIn: report.timeIn,
       dateDone: report.dateDone,
