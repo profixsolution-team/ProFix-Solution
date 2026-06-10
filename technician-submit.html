@@ -248,6 +248,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const STATE_KEY = 'service_management_tracker';
 // Cloudflare Worker endpoint สำหรับอัปรูปเข้า R2
 const UPLOAD_ENDPOINT = 'https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
+const PHOTO_UPLOAD_CONCURRENCY = 3;
 
 let supa = null;
 try { if(SUPABASE_URL.startsWith('http')) supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){ console.error(e); }
@@ -304,6 +305,20 @@ async function loadJobRecord(jobId){
       }
     }
   }catch(e){ console.warn('Split job load failed, falling back to app_state', e); }
+  try{
+    const rr = await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_get_job_from_app_state`, {
+      method: 'POST',
+      headers: sbHeaders(),
+      body: JSON.stringify({ p_key: STATE_KEY, p_job_id: jobId })
+    });
+    if(rr.ok){
+      const job = await rr.json();
+      if(job){
+        jobStorageMode = 'app_state';
+        return job;
+      }
+    }
+  }catch(e){ console.warn('Single job RPC load failed, falling back to full app_state', e); }
   const data = await loadAppState();
   appState = data || {};
   jobStorageMode = 'app_state';
@@ -386,11 +401,11 @@ async function saveJobRecord(job, { adminTaskNote='', savedAt=new Date().toISOSt
 
 async function updateRelatedSplitRows(job, { adminTaskNote='', savedAt, statuses=[] }){
   const [taskRes, metaRes] = await Promise.all([
-    fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?select=id,data`, { headers: sbHeaders() }),
+    fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?select=id,data&data->>jobId=eq.${encodeURIComponent(JOB_ID)}`, { headers: sbHeaders() }),
     fetch(`${SUPABASE_URL}/rest/v1/system_data?id=eq.main&select=data`, { headers: sbHeaders() })
   ]);
   if(taskRes.ok){
-    const rows = (await taskRes.json()).filter(row => String(row.data?.jobId) === String(JOB_ID));
+    const rows = await taskRes.json();
     for(const row of rows){
       const task = { ...(row.data || {}) };
       task.status = job.status || task.status;
@@ -610,22 +625,41 @@ function collectReportDraft(){
   };
 }
 
+async function mapWithConcurrency(items, limit, mapper){
+  const results = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async ()=>{
+    while(next < items.length){
+      const i = next++;
+      results[i] = await mapper(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 async function collectUploadedImages(report){
   const allPhotos = [...photos.before, ...photos.during, ...photos.after];
   if(allPhotos.some(p=>p.status==='compressing')) throw new Error('กรุณารอรูปบีบอัดเสร็จก่อน');
   const uploadedImages = [];
+  const uploadTasks = [];
   let done = 0;
-  const uploadQueue = allPhotos.filter(p=>!p.existing);
-  const total = uploadQueue.length;
+  let order = 0;
   for(const cat of ['before','during','after']){
     for(const p of photos[cat]){
       if(p.existing){
-        uploadedImages.push(p.uploadedMeta || {id:p.id,category:cat,label:CAT_LABEL[cat],url:p.url||p.dataUrl||'',uploadedAt:new Date().toISOString(),storage:'external'});
+        uploadedImages.push({ order: order++, ...(p.uploadedMeta || {id:p.id,category:cat,label:CAT_LABEL[cat],url:p.url||p.dataUrl||'',uploadedAt:new Date().toISOString(),storage:'external'}) });
         continue;
       }
+      uploadTasks.push({ order: order++, cat, p });
+    }
+  }
+  const total = uploadTasks.length;
+  const uploadedNewImages = await mapWithConcurrency(uploadTasks, PHOTO_UPLOAD_CONCURRENCY, async ({ order, cat, p }, index)=>{
       document.getElementById('upload-detail').textContent = total ? `อัปโหลดรูป ${done+1}/${total}` : '';
-      const uploaded = await uploadPhoto(p.compressed, cat, done, p);
+      const uploaded = await uploadPhoto(p.compressed, cat, index, p);
       const meta = {
+        order,
         id: p.id,
         category: cat,
         label: CAT_LABEL[cat],
@@ -644,11 +678,13 @@ async function collectUploadedImages(report){
       p.uploadedMeta = meta;
       p.url = meta.url;
       p.dataUrl = meta.url || p.dataUrl;
-      uploadedImages.push(meta);
       done++;
-    }
-  }
-  return uploadedImages;
+      document.getElementById('upload-detail').textContent = total ? `อัปโหลดรูป ${done}/${total}` : '';
+      return meta;
+  });
+  return [...uploadedImages, ...uploadedNewImages]
+    .sort((a,b)=>a.order-b.order)
+    .map(({ order, ...meta })=>meta);
 }
 
 async function saveDraft(){
