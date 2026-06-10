@@ -178,7 +178,7 @@ textarea{resize:vertical;min-height:80px;}
 
       <div class="up-group">
         <div class="up-head"><div class="up-label color-before">📸 ตรวจเช็คก่อนดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-before">0 รูป</div></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 50 รูป · ระบบจะข้ามรูปที่ซ้ำ</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 20 รูป · ระบบจะข้ามรูปที่ซ้ำ</div>
         <div class="up-zone" onclick="document.getElementById('inp-before').click()">
           <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูปตรวจเช็คก่อนดำเนินการ</div>
         </div>
@@ -188,7 +188,7 @@ textarea{resize:vertical;min-height:80px;}
 
       <div class="up-group">
         <div class="up-head"><div class="up-label color-during">🔧 ระหว่างดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-during">0 รูป</div></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 6 รูป · สูงสุด 50 รูป</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 6 รูป · สูงสุด 40 รูป</div>
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
           <input type="checkbox" id="f-no-during" onchange="toggleNoPhotos('during')" style="width:18px;height:18px;flex:0 0 auto;">
           ไม่มีรูปภาพระหว่างดำเนินการ
@@ -202,7 +202,7 @@ textarea{resize:vertical;min-height:80px;}
 
       <div class="up-group">
         <div class="up-head"><div class="up-label color-after">✅ หลังดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-after">0 รูป</div></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 50 รูป</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 20 รูป</div>
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
           <input type="checkbox" id="f-no-after" onchange="toggleNoPhotos('after')" style="width:18px;height:18px;flex:0 0 auto;">
           ไม่มีรูปภาพหลังดำเนินการ
@@ -282,7 +282,7 @@ let jobStorageMode = 'app_state';
 let photos = { before: [], during: [], after: [], documents: [] };
 let noPhoto = { during: false, after: false };
 const PHOTO_MIN = { before: 2, during: 6, after: 2 };
-const PHOTO_MAX = { before: 50, during: 50, after: 50 };
+const PHOTO_MAX = { before: 20, during: 40, after: 20 };
 const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนินการ', during: 'ระหว่างดำเนินการ', after: 'หลังดำเนินการ', documents: 'ใบงาน/เอกสาร' };
 
 // ============================================================
@@ -729,7 +729,12 @@ async function saveDraft(){
     const job = await loadJobRecord(JOB_ID);
     if(!job) throw new Error('ไม่พบงานนี้ในระบบหลัก');
     const savedAt = new Date().toISOString();
+    const draftStatus = 'ช่างบันทึกร่าง';
     Object.assign(job, {
+      status: draftStatus,
+      techUpdateUnread: true,
+      techUpdateAt: savedAt,
+      techUpdateType: 'draft_saved',
       dateIn: report.dateIn,
       timeIn: report.timeIn,
       dateDone: report.dateDone,
@@ -742,7 +747,7 @@ async function saveDraft(){
       note2: report.note,
       technicianReport: { ...(job.technicianReport||{}), ...report, images: uploadedImages, documentImages: uploadedDocumentImages, draftSavedAt:savedAt, isDraft:true, reviewStatus:'ฉบับร่าง' }
     });
-    await saveJobRecord(job, { savedAt, statuses:['ฉบับร่าง'] });
+    await saveJobRecord(job, { savedAt, statuses:[draftStatus], adminTaskNote:'ช่างบันทึกฉบับร่าง' });
     jobData = job;
     document.getElementById('overlay-upload').classList.remove('show');
     alert('บันทึกฉบับร่างแล้ว กลับมาเปิดลิงก์นี้เพื่อกรอกต่อได้');
