@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -952,7 +952,7 @@ const SPLIT_TABLES_ENABLED=true;
 const WORKORDER_UPLOAD_ENDPOINT='https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload-workorder';
 const LS_UI_KEY='svc_admin_tracker_ui_v1';
 const LS_THEME_KEY='svc_admin_tracker_theme';
-const LS_FAST_STATE_KEY='svc_admin_tracker_fast_state_v2';
+const LS_FAST_STATE_KEY='svc_admin_tracker_fast_state_v3';
 const todayISO=()=>new Date().toISOString().split('T')[0];
 const monthOf=v=>(v||'').slice(0,7);
 const dateLocalISO=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1023,7 +1023,7 @@ function setAppLoading(on,msg='กำลังโหลด...',sub='กำลั
   if(main)main.textContent=msg;
   if(small)small.textContent=sub;
 }
-let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, partsLoadingPromise=null, hasUnsyncedLocalChanges=false, lastSaveErrorAt=0;
+let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, docsLoaded=false, workOrdersLoaded=false, partsLoadingPromise=null, docsLoadingPromise=null, workOrdersLoadingPromise=null, hasUnsyncedLocalChanges=false, lastSaveErrorAt=0;
 let splitSaveHashes={};
 let splitRowHashes={jobs:{},adminTasks:{},workOrders:{},documents:{},parts:{}};
 let splitKnownIds={jobs:new Set(),adminTasks:new Set(),workOrders:new Set(),documents:new Set(),parts:new Set()};
@@ -1057,9 +1057,16 @@ function ensurePersistentIds(){
 }
 function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,docs,jCnt,aCnt,lastDataUpdatedAt};}
 function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
-function collectFastState(){const st=collectState();st.parts=[];st._partsOmitted=true;return st;}
+function collectFastState(){
+  const st=collectState();
+  st.parts=[];
+  st.docs={qt:[],iv:[],workOrders:[]};
+  st._partsOmitted=true;
+  st._docsOmitted=true;
+  return st;
+}
 function cacheFastState(){try{localStorage.setItem(LS_FAST_STATE_KEY,JSON.stringify(collectFastState()));}catch(e){console.warn('Fast cache save failed',e);}}
-function loadFastState(){try{const st=JSON.parse(localStorage.getItem(LS_FAST_STATE_KEY)||'null');if(!st)return false;if(st._partsOmitted)delete st.parts;applyState(st);return true;}catch(e){console.warn('Fast cache load failed',e);return false;}}
+function loadFastState(){try{const st=JSON.parse(localStorage.getItem(LS_FAST_STATE_KEY)||'null');if(!st)return false;if(st._partsOmitted)delete st.parts;if(st._docsOmitted)delete st.docs;applyState(st);return true;}catch(e){console.warn('Fast cache load failed',e);return false;}}
 function renderCurrentPage(){let ui={};try{ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');}catch(e){}goTo(ui.lastPage||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard');updateNavBadges();}
 function refreshAfterDataChange(){
   updateNavBadges();
@@ -1107,43 +1114,45 @@ function splitStateSnapshot(){
     meta:splitMetaData()
   };
 }
-function splitApplyRows({jobRows=[],adminRows=[],partRows=null,workOrderRows=[],documentRows=[],metaRows=[]}={}){
-  const qt=[],iv=[];
-  documentRows.forEach(r=>{const d={...(r.data||{})};const t=r.doc_type||d.docType;if(t==='qt'){delete d.docType;qt.push(d);}else if(t==='iv'){delete d.docType;iv.push(d);}});
-  const st={
-    ...(metaRows[0]?.data||{}),
-    jobs:jobRows.map(r=>r.data).filter(Boolean),
-    adminTasks:adminRows.map(r=>r.data).filter(Boolean),
-    docs:{qt,iv,workOrders:workOrderRows.map(r=>r.data).filter(Boolean)}
-  };
+function splitApplyRows({jobRows=[],adminRows=[],partRows=null,workOrderRows=null,documentRows=null,metaRows=[]}={}){
+  const st={...(metaRows[0]?.data||{})};
+  if(Array.isArray(jobRows))st.jobs=jobRows.map(r=>r.data).filter(Boolean);
+  if(Array.isArray(adminRows))st.adminTasks=adminRows.map(r=>r.data).filter(Boolean);
+  if(Array.isArray(documentRows)||Array.isArray(workOrderRows)){
+    ensureDocsShape();
+    const qt=docs.qt||[],iv=docs.iv||[],wo=docs.workOrders||[];
+    if(Array.isArray(documentRows)){
+      qt.length=0;iv.length=0;
+      documentRows.forEach(r=>{const d={...(r.data||{})};const t=r.doc_type||d.docType;if(t==='qt'){delete d.docType;qt.push(d);}else if(t==='iv'){delete d.docType;iv.push(d);}});
+    }
+    if(Array.isArray(workOrderRows)){
+      wo.length=0;
+      wo.push(...workOrderRows.map(r=>r.data).filter(Boolean));
+    }
+    st.docs={qt,iv,workOrders:wo};
+  }
   if(Array.isArray(partRows))st.parts=partRows.map(r=>r.data).filter(Boolean);
   applyState(st);
 }
 async function loadSplitState(){
   if(!SPLIT_TABLES_ENABLED)return false;
-  const [jobRows,adminRows,workOrderRows,documentRows,metaRows]=await Promise.all([
+  const [jobRows,adminRows,metaRows]=await Promise.all([
     sbFetchAll('jobs','?select=id,data,updated_at&order=updated_at.desc'),
     sbFetchAll('admin_tasks','?select=id,data,updated_at&order=updated_at.desc'),
-    sbFetchAll('work_orders','?select=id,data,updated_at&order=updated_at.desc'),
-    sbFetchAll('documents','?select=id,doc_type,data,updated_at&order=updated_at.desc'),
     sbFetchJson('system_data','?id=eq.main&select=id,data,updated_at')
   ]);
   splitTablesOnline=true;
-  const hasData=jobRows.length||adminRows.length||workOrderRows.length||documentRows.length||metaRows.length;
+  const hasData=jobRows.length||adminRows.length||metaRows.length;
   if(!hasData)return false;
-  splitApplyRows({jobRows,adminRows,workOrderRows,documentRows,metaRows});
+  splitApplyRows({jobRows,adminRows,metaRows});
   loadedFromSplitTables=true;
   supabaseOnline=true;
   const snap=splitStateSnapshot();
   splitKnownIds.jobs=new Set(jobRows.map(r=>r.id));
   splitKnownIds.adminTasks=new Set(adminRows.map(r=>r.id));
-  splitKnownIds.workOrders=new Set(workOrderRows.map(r=>r.id));
-  splitKnownIds.documents=new Set(documentRows.map(r=>r.id));
   splitSaveHashes={jobs:stableJson(snap.jobs),adminTasks:stableJson(snap.adminTasks),workOrders:stableJson(snap.workOrders),documents:stableJson(snap.documents),meta:stableJson(snap.meta)};
   splitRowHashes.jobs=rowHashMap(snap.jobs,j=>j.id);
   splitRowHashes.adminTasks=rowHashMap(snap.adminTasks,t=>t.id);
-  splitRowHashes.workOrders=rowHashMap(snap.workOrders,d=>d.id);
-  splitRowHashes.documents=rowHashMap(snap.documents,d=>(d.docType||'doc')+':'+(d.no||d.jid||''));
   return true;
 }
 async function ensurePartsLoaded(){
@@ -1166,6 +1175,46 @@ async function ensurePartsLoaded(){
     return parts;
   }).finally(()=>{partsLoadingPromise=null;});
   return partsLoadingPromise;
+}
+async function ensureWorkOrdersLoaded(){
+  if(workOrdersLoaded||!splitTablesOnline&&!loadedFromSplitTables)return docs.workOrders||[];
+  if(workOrdersLoadingPromise)return workOrdersLoadingPromise;
+  workOrdersLoadingPromise=(async()=>{
+    ensureDocsShape();
+    const rows=await sbFetchAll('work_orders','?select=id,data,updated_at&order=updated_at.desc');
+    splitApplyRows({workOrderRows:rows});
+    workOrdersLoaded=true;
+    splitKnownIds.workOrders=new Set(rows.map(r=>r.id));
+    const snap=splitStateSnapshot();
+    splitSaveHashes.workOrders=stableJson(snap.workOrders);
+    splitRowHashes.workOrders=rowHashMap(snap.workOrders,d=>d.id);
+    return docs.workOrders;
+  })().catch(e=>{
+    console.warn('Work orders lazy load failed',e);
+    workOrdersLoaded=true;
+    return docs.workOrders||[];
+  }).finally(()=>{workOrdersLoadingPromise=null;});
+  return workOrdersLoadingPromise;
+}
+async function ensureDocsLoaded(){
+  if(docsLoaded||!splitTablesOnline&&!loadedFromSplitTables)return docs;
+  if(docsLoadingPromise)return docsLoadingPromise;
+  docsLoadingPromise=(async()=>{
+    ensureDocsShape();
+    const rows=await sbFetchAll('documents','?select=id,doc_type,data,updated_at&order=updated_at.desc');
+    splitApplyRows({documentRows:rows});
+    docsLoaded=true;
+    splitKnownIds.documents=new Set(rows.map(r=>r.id));
+    const snap=splitStateSnapshot();
+    splitSaveHashes.documents=stableJson(snap.documents);
+    splitRowHashes.documents=rowHashMap(snap.documents,d=>(d.docType||'doc')+':'+(d.no||d.jid||''));
+    return docs;
+  })().catch(e=>{
+    console.warn('Documents lazy load failed',e);
+    docsLoaded=true;
+    return docs;
+  }).finally(()=>{docsLoadingPromise=null;});
+  return docsLoadingPromise;
 }
 async function upsertSplitRows(table,rows,mapRow){
   if(!rows.length)return;
@@ -1257,8 +1306,8 @@ async function saveSplitStateNow(force=false){
   const jobsHash=stableJson(snap.jobs), adminHash=stableJson(snap.adminTasks), partsHash=stableJson(snap.parts), woHash=stableJson(snap.workOrders), docHash=stableJson(snap.documents), metaHash=stableJson(snap.meta);
   if(force||splitSaveHashes.jobs!==jobsHash){await syncSplitRowsChanged('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}),'jobs',j=>j.id,force);splitSaveHashes.jobs=stableJson(snap.jobs);}
   if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRowsChanged('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id,force);splitSaveHashes.adminTasks=adminHash;}
-  if(force||splitSaveHashes.workOrders!==woHash){await syncSplitRowsChanged('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id,force);splitSaveHashes.workOrders=woHash;}
-  if(force||splitSaveHashes.documents!==docHash){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
+  if(workOrdersLoaded&&(force||splitSaveHashes.workOrders!==woHash)){await syncSplitRowsChanged('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id,force);splitSaveHashes.workOrders=woHash;}
+  if(docsLoaded&&(force||splitSaveHashes.documents!==docHash)){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
   if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await syncSplitRowsChanged('parts',snap.parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}),'parts',p=>p._id,force);splitSaveHashes.parts=partsHash;}
   if(force||splitSaveHashes.meta!==metaHash){await upsertSystemData(snap.meta);splitSaveHashes.meta=metaHash;}
   splitTablesOnline=true;loadedFromSplitTables=true;supabaseOnline=true;
@@ -1277,7 +1326,7 @@ async function loadState(opts={}){
     if(!r.ok)throw new Error(await r.text());
     const rows=await r.json();
     if(rows?.[0]?.data){
-      applyState(rows[0].data);supabaseOnline=true;if(Array.isArray(rows[0].data.parts))partsLoaded=true;
+      applyState(rows[0].data);supabaseOnline=true;if(Array.isArray(rows[0].data.parts))partsLoaded=true;if(rows[0].data.docs){docsLoaded=true;workOrdersLoaded=true;}
       if(splitTablesOnline){try{await saveSplitStateNow(true);}catch(migErr){console.warn('Auto migration to split tables failed',migErr);}}
     }
   }catch(e){
@@ -1329,7 +1378,21 @@ function goTo(id, el){
   document.getElementById('page-'+id).classList.add('active');
   if(el) el.classList.add('active');
   else { const b=document.querySelector('[data-page="'+id+'"]'); if(b) b.classList.add('active'); }
-  const m={dashboard:renderDash, 'admin-tracker':renderAdmin, jobs:renderJobs, 'job-calendar':renderCalendar, finance:renderFin, 'tech-pay':renderTP, workorders:renderWorkOrders, documents:renderDocs, 'settings-clients':renderClients, 'settings-teams':renderTeams, 'settings-branches':()=>{renderClients();renderBranches();}, 'settings-suppliers':()=>{renderSuppliers();ensurePartsLoaded().then(renderParts);},'reports':renderReports};
+  const m={
+    dashboard:renderDash,
+    'admin-tracker':renderAdmin,
+    jobs:renderJobs,
+    'job-calendar':renderCalendar,
+    finance:renderFin,
+    'tech-pay':renderTP,
+    workorders:()=>{renderWorkOrders();ensureWorkOrdersLoaded().then(renderWorkOrders);ensureDocsLoaded().then(renderWorkOrders);},
+    documents:()=>{renderDocs();ensureDocsLoaded().then(renderDocs);},
+    'settings-clients':renderClients,
+    'settings-teams':renderTeams,
+    'settings-branches':()=>{renderClients();renderBranches();},
+    'settings-suppliers':()=>{renderSuppliers();ensurePartsLoaded().then(renderParts);},
+    reports:renderReports
+  };
   if(m[id]) m[id]();
   closeSidebar();
 }
@@ -2848,48 +2911,65 @@ function acceptanceReportHtml(j){
 }
 function photoBillingReportHtml(j){
   const imgs=reportImages(j);
-  const essLogo=new URL('assets/ess-logo.jpg',location.href).href;
-  const imageRatio=im=>{
+  const logo=new URL('assets/profix-logo-dark.svg',location.href).href;
+  const imageOrientation=im=>{
     const w=Number(im.width)||0;
     const h=Number(im.height)||0;
-    if(w>0&&h>0)return h/w;
-    return ((im.orientation==='portrait')||h>w)?1.45:.72;
+    if(w>0&&h>0)return h>w?'portrait':'landscape';
+    if(im.orientation==='portrait'||im.orientation==='landscape')return im.orientation;
+    return 'landscape';
   };
-  const estimateImageHeight=im=>{
-    const colW=87;
-    return Math.min(112,Math.max(42,colW*imageRatio(im)));
-  };
-  const paginatePhotoGroup=(cat,group)=>{
-    const pages=[];let rows=[];let used=0;
-    const maxHeight=202;
-    for(let i=0;i<group.length;i+=2){
-      const row=group.slice(i,i+2);
-      const rowHeight=Math.max(...row.map(estimateImageHeight))+7;
-      if(rows.length&&used+rowHeight>maxHeight){
-        pages.push({cat,rows});
-        rows=[];used=0;
-      }
-      rows.push(row);
-      used+=rowHeight;
-    }
-    if(rows.length)pages.push({cat,rows});
+  const makePages=()=>{
+    const pages=[];
+    ['before','during','after'].forEach(cat=>{
+      const group=imgs.filter(im=>im.category===cat);
+      ['portrait','landscape'].forEach(orientation=>{
+        const slotCount=orientation==='portrait'?9:6;
+        imageChunks(group.filter(im=>imageOrientation(im)===orientation),slotCount).forEach((items,idx)=>{
+          pages.push({cat,orientation,items,part:idx+1,slotCount});
+        });
+      });
+    });
     return pages;
   };
-  const pages=['before','during','after'].flatMap(cat=>paginatePhotoGroup(cat,imgs.filter(im=>im.category===cat)));
-  if(!pages.length)pages.push({cat:'before',rows:[]});
+  const pages=makePages();
+  if(!pages.length)pages.push({cat:'before',orientation:'portrait',items:[],part:1,slotCount:9});
   const total=Math.max(1,pages.length);
   const project=j.type||'งานซ่อมแซมและปรับปรุง';
   const station=j.branch||'—';
-  const workDetail=j.fix||j.report||j.note||'รูปการทำงาน';
-  const pageHtml=(page,pageIndex)=>`<main class="photo-page">
-    <table class="doc-head"><tr><td rowspan="3" class="logo-cell"><img src="${essLogo}" alt="ESS"></td><td>Project : ${esc(project)}</td><td>Page</td><td>${pageIndex+1} of ${total}</td></tr><tr><td>Station Name : ${esc(station)}</td><td>ID</td><td></td></tr><tr><td>Class of Trade : </td><td>Job No.</td><td>${esc(j.id)}</td></tr></table>
-    <div class="work-detail">Work Detail : ${esc(workDetail)}</div>
-    <div class="photo-title">${esc(REPORT_DOC_IMAGE_TITLES[page.cat]||'รูปการปฏิบัติงาน')}</div>
-    ${page.rows.length?`<div class="billing-rows">${page.rows.map(row=>`<div class="billing-row ${row.length===1?'single':''}">${row.map(im=>`<figure><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน')}"></figure>`).join('')}</div>`).join('')}</div>`:'<div class="billing-empty">ยังไม่มีรูปจากช่าง</div>'}
+  const workDetail=j.fix||j.report||j.note||j.symptom||'รูปการทำงาน';
+  const orientationText=orientation=>orientation==='portrait'?'แนวตั้ง':'แนวนอน';
+  const pageTitle=page=>`${REPORT_DOC_IMAGE_TITLES[page.cat]||'รูปการปฏิบัติงาน'} (${orientationText(page.orientation)})`;
+  const pageHtml=(page,pageIndex)=>{
+    const slots=[...page.items];
+    while(slots.length<page.slotCount)slots.push(null);
+    return `<main class="photo-page ${page.orientation}">
+    <header class="photo-doc-head">
+      <div class="photo-brand"><img src="${logo}" alt="ProFix Solution"></div>
+      <div class="photo-doc-title">
+        <h1>ใบงานรูปภาพสำหรับวางบิล</h1>
+        <div>${esc(project)}</div>
+      </div>
+      <div class="photo-doc-meta">
+        <div><b>JOB / PR</b><span>${esc(j.id||'—')}</span></div>
+        <div><b>Page</b><span>${pageIndex+1} / ${total}</span></div>
+      </div>
+    </header>
+    <section class="photo-info">
+      <div><b>ลูกค้า / สาขา</b><span>${esc(j.client||'—')} / ${esc(station)}</span></div>
+      <div><b>ทีมช่าง</b><span>${esc(j.team||'—')}</span></div>
+      <div><b>รายละเอียดงาน</b><span>${esc(workDetail)}</span></div>
+    </section>
+    <div class="photo-title">${esc(pageTitle(page))}</div>
+    <div class="photo-grid ${page.orientation}">
+      ${slots.map((im,i)=>im?`<figure class="photo-slot"><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน')}"><figcaption>${i+1}</figcaption></figure>`:'<figure class="photo-slot empty"></figure>').join('')}
+    </div>
+    <footer class="photo-footer">Generated by ProFix Service Console</footer>
   </main>`;
+  };
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ใบงานรูปภาพ ${esc(j.id)}</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#e8edf3;color:#111;font-family:"Times New Roman",Arial,"Noto Sans Thai",sans-serif}.toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff;font-family:Arial,"Noto Sans Thai",sans-serif}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}.photo-page{width:210mm;height:297mm;margin:18px auto;padding:9mm;background:#fff;border:2px solid #111;box-shadow:0 12px 34px rgba(16,24,40,.16);page-break-after:always;break-after:page;break-inside:avoid;page-break-inside:avoid;overflow:hidden}.doc-head{width:100%;border-collapse:collapse;font-size:14px}.doc-head td{border:2px solid #111;padding:5px 8px;height:28px}.logo-cell{width:38%;text-align:center}.logo-cell img{width:94%;max-height:58px;object-fit:contain}.work-detail{border:2px solid #111;border-top:0;padding:8px;font-size:16px;font-weight:700}.photo-title{width:52%;margin:12px auto 12px;border:3px solid #222;text-align:center;font-size:23px;font-weight:800;padding:5px}.billing-rows{display:flex;flex-direction:column;gap:7mm}.billing-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7mm;align-items:start;break-inside:avoid;page-break-inside:avoid}.billing-row.single{grid-template-columns:1fr}.billing-row figure{margin:0;text-align:center;break-inside:avoid;page-break-inside:avoid}.billing-row img{display:block;max-width:100%;height:auto;max-height:112mm;margin:0 auto;object-fit:contain}.billing-row.single img{max-height:202mm}.billing-empty{text-align:center;padding:90px 0;color:#666;font-size:18px}@media print{body{background:#fff}.toolbar{display:none}.photo-page{width:210mm;height:297mm;margin:0;padding:9mm;box-shadow:none}.billing-row img{max-height:112mm}.billing-row.single img{max-height:202mm}}@page{size:A4;margin:0}
+    *{box-sizing:border-box}body{margin:0;background:#e8edf3;color:#111;font-family:Arial,"Noto Sans Thai",sans-serif}.toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}.photo-page{position:relative;width:210mm;height:297mm;margin:18px auto;padding:7mm 8mm 9mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);page-break-after:always;break-after:page;break-inside:avoid;page-break-inside:avoid;overflow:hidden}.photo-doc-head{height:43mm;border:1.5px solid #111;display:grid;grid-template-columns:42mm 1fr 42mm;align-items:center;gap:8mm;padding:6mm 8mm}.photo-brand img{width:34mm;max-height:24mm;object-fit:contain}.photo-doc-title{text-align:center}.photo-doc-title h1{font-size:22px;line-height:1.25;margin:0 0 3mm}.photo-doc-title div{font-size:13px;font-weight:800}.photo-doc-meta{display:grid;gap:3mm;font-size:11px}.photo-doc-meta div{display:grid;grid-template-columns:1fr;gap:1mm}.photo-doc-meta b{font-size:10px;color:#536173;text-transform:uppercase}.photo-doc-meta span{font-weight:800}.photo-info{display:grid;grid-template-columns:1.3fr .7fr;gap:0;border:1px solid #111;border-top:0;font-size:11px}.photo-info div{min-height:9mm;padding:2mm 3mm;border-right:1px solid #111;border-bottom:1px solid #111}.photo-info div:nth-child(2){border-right:0}.photo-info div:last-child{grid-column:1 / -1;border-right:0;border-bottom:0}.photo-info b{display:inline-block;min-width:24mm}.photo-info span{font-weight:700}.photo-title{width:82mm;margin:7mm auto 7mm;border:1.5px solid #111;text-align:center;font-size:21px;font-weight:800;line-height:1.25;padding:2.5mm 4mm}.photo-grid{display:grid;gap:4mm 5mm}.photo-grid.portrait{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,1fr);height:185mm}.photo-grid.landscape{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,1fr);height:185mm}.photo-slot{position:relative;margin:0;border:1.5px solid #ff2aa1;background:#fff;overflow:hidden;break-inside:avoid;page-break-inside:avoid}.photo-slot img{display:block;width:100%;height:100%;object-fit:contain;background:#fff}.photo-slot figcaption{position:absolute;right:2mm;bottom:1.5mm;min-width:7mm;height:5mm;padding:0 1.5mm;border-radius:999px;background:rgba(17,24,39,.74);color:#fff;font-size:9px;line-height:5mm;text-align:center}.photo-slot.empty{background:#fff}.photo-footer{position:absolute;left:8mm;right:8mm;bottom:4mm;text-align:right;font-size:9px;color:#7b8795}@media print{body{background:#fff}.toolbar{display:none}.photo-page{width:210mm;height:297mm;margin:0;box-shadow:none}}@page{size:A4;margin:0}
   </style></head><body><div class="toolbar"><div><b>ใบงานรูปภาพสำหรับวางบิล ${esc(j.id)}</b><div style="font-size:12px;color:#cbd5e1;">รูปทั้งหมด ${imgs.length} รูป</div></div><button onclick="window.print()">พิมพ์ / Save PDF</button></div>${pages.map(pageHtml).join('')}</body></html>`;
 }
 function serviceReportHtml(j){
@@ -3075,7 +3155,7 @@ async function initApp(){
   applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
   loadUIState();
   const hadFastCache=loadFastState();
-  setAppLoading(true,'กำลังโหลด...',hadFastCache?'กำลังซิงก์ข้อมูลล่าสุด':'กำลังโหลดข้อมูลจาก Supabase');
+  setAppLoading(!hadFastCache,'กำลังโหลด...',hadFastCache?'กำลังซิงก์ข้อมูลล่าสุด':'กำลังโหลดข้อมูลจาก Supabase');
   ensureMeta();
   isHydrated=false;
   fillSelects();
