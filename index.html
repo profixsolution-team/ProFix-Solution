@@ -2074,13 +2074,15 @@ function openAdminDetail(id){
 }
 function addAdminName(){const v=document.getElementById('fa-assign').value.trim();if(v&&!adminNames.includes(v)){adminNames.push(v);fillSelects();alert('เพิ่มชื่อแอดมินแล้ว');}}
 function normalizePR(v){return String(v||'').trim().replace(/\s+/g,'').toUpperCase();}
-function duplicatePRInfo(pr,{excludeJobId='',excludeTaskId=''}={}){
+function duplicatePRInfo(pr,{excludeJobId='',excludeTaskId='',includeAdmin=true}={}){
   const key=normalizePR(pr);
   if(!key)return null;
   const job=jobs.find(j=>normalizePR(j.id)===key&&String(j.id)!==String(excludeJobId));
   if(job)return {kind:'คิวช่าง',id:job.id,detail:`${job.client||'-'} / ${job.branch||'-'} / ${job.status||'-'}`};
-  const task=adminTasks.find(t=>normalizePR(t.jobId)===key&&String(t.id)!==String(excludeTaskId));
-  if(task)return {kind:'งานแอดมิน',id:task.id,detail:`${task.type||'-'} / ${task.client||'-'} / ${task.status||'-'}`};
+  if(includeAdmin){
+    const task=adminTasks.find(t=>normalizePR(t.jobId)===key&&String(t.id)!==String(excludeTaskId));
+    if(task)return {kind:'งานแอดมิน',id:task.id,detail:`${task.type||'-'} / ${task.client||'-'} / ${task.status||'-'}`};
+  }
   return null;
 }
 function alertDuplicatePR(pr,info){
@@ -2147,7 +2149,7 @@ function saveJob(){
     Object.assign(jobs.find(j=>j.id===editJobId),data);
   }else{
     const id=data.ref&&data.ref!=='N/A'?data.ref:'PR-'+String(jCnt++).padStart(3,'0');
-    const dup=duplicatePRInfo(id);
+    const dup=duplicatePRInfo(id,{excludeTaskId:pendingJobFromAdminId||'',includeAdmin:false});
     if(dup){alertDuplicatePR(id,dup);document.getElementById('fj-ref').focus();return;}
     savedJobId=id;
     jobs.unshift({id,...data,assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()});
