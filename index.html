@@ -1007,7 +1007,7 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.06.11.5';
+const APP_VERSION='2026.06.11.6';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -1347,8 +1347,8 @@ function splitStateSnapshot(){
     meta:splitMetaData()
   };
 }
-function splitApplyRows({jobRows=[],adminRows=[],partRows=null,workOrderRows=null,documentRows=null,metaRows=[]}={}){
-  const st={...(metaRows[0]?.data||{})};
+function splitApplyRows({jobRows=null,adminRows=null,partRows=null,workOrderRows=null,documentRows=null,metaRows=null}={}){
+  const st={...(Array.isArray(metaRows)?metaRows[0]?.data:null||{})};
   if(Array.isArray(jobRows))st.jobs=jobRows.map(normalizeLoadedJobRow).filter(j=>j&&isUsableJobId(j.id));
   if(Array.isArray(adminRows))st.adminTasks=adminRows.map(r=>r.data).filter(Boolean);
   if(Array.isArray(documentRows)||Array.isArray(workOrderRows)){
