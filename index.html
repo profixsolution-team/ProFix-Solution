@@ -1007,7 +1007,7 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.06.11.3';
+const APP_VERSION='2026.06.11.4';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -1017,6 +1017,8 @@ const LS_THEME_KEY='svc_admin_tracker_theme';
 const LS_FAST_STATE_KEY='svc_admin_tracker_fast_state_v3';
 const LS_APP_VERSION_KEY='svc_admin_tracker_app_version';
 const LS_AUTO_BACKUP_DATE_KEY='svc_admin_tracker_auto_backup_date';
+const LS_ACTOR_NAME_KEY='svc_admin_tracker_actor_name';
+const LS_DEVICE_ID_KEY='svc_admin_tracker_device_id';
 const todayISO=()=>new Date().toISOString().split('T')[0];
 const monthOf=v=>(v||'').slice(0,7);
 const dateLocalISO=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1037,7 +1039,7 @@ function inQuickRange(item,range){const d=itemDateValue(item);if(range==='today'
 function sortByItemDate(arr,dir){return [...arr].sort((a,b)=>{const av=itemDateValue(a)||'';const bv=itemDateValue(b)||'';const c=av.localeCompare(bv)||(Number(a.createdAt||0)-Number(b.createdAt||0));return dir==='asc'?c:-c;});}
 function techUpdateTs(j){return Date.parse(j?.techUpdateAt||j?.technicianReport?.submittedAt||j?.techSubmittedAt||'')||0;}
 function hasTechUpdate(j){return !!(j&&j.techUpdateUnread&&techUpdateTs(j));}
-function jobForTask(t){return t?.jobId?jobs.find(j=>String(j.id)===String(t.jobId)):null;}
+function jobForTask(t){return t?.jobId?liveJobs().find(j=>String(j.id)===String(t.jobId)):null;}
 function taskHasTechUpdate(t){return !!(t?.techUpdateUnread||hasTechUpdate(jobForTask(t)));}
 function taskTechUpdateTs(t){return Date.parse(t?.techUpdateAt||'')||techUpdateTs(jobForTask(t));}
 function techUpdateTypeOf(item){
@@ -1084,14 +1086,14 @@ function markTechUpdateSeen(jobId,{save=true}={}){
   adminTasks.forEach(t=>{if(String(t.jobId)===String(jobId)){t.techUpdateUnread=false;t.techUpdateSeenAt=new Date().toISOString();}});
   if(save)saveState();
 }
-function adminNeedsQueueBadge(t){return !t?.jobId||!jobs.some(j=>j.id===t.jobId);}
-function isClosedAdminTask(t){return ['เสร็จแล้ว','ปิดงาน','Reject'].includes(t?.status);}
-function isClosedJob(j){return ['ปิดงาน','Reject','ปิดงานสำรวจ'].includes(j?.status);}
-function activeAdminCount(){return adminTasks.filter(t=>!isClosedAdminTask(t)).length;}
-function activeJobCount(){return jobs.filter(j=>!isClosedJob(j)).length;}
+function adminNeedsQueueBadge(t){return !t?.jobId||!liveJobs().some(j=>j.id===t.jobId);}
+function isClosedAdminTask(t){return isDeletedRecord(t)||['เสร็จแล้ว','ปิดงาน','Reject'].includes(t?.status);}
+function isClosedJob(j){return isDeletedRecord(j)||['ปิดงาน','Reject','ปิดงานสำรวจ'].includes(j?.status);}
+function activeAdminCount(){return liveAdminTasks().filter(t=>!isClosedAdminTask(t)).length;}
+function activeJobCount(){return liveJobs().filter(j=>!isClosedJob(j)).length;}
 function updateNavBadges(){
   const admin=document.getElementById('nb-admin'),job=document.getElementById('nb-new');
-  const updates=jobs.filter(hasTechUpdate).length;
+  const updates=liveJobs().filter(hasTechUpdate).length;
   if(admin)admin.textContent=updates||activeAdminCount();
   if(job)job.textContent=updates||activeJobCount();
 }
@@ -1132,6 +1134,57 @@ function initAppVersion(){
   localStorage.setItem(LS_APP_VERSION_KEY,APP_VERSION);
 }
 function sbHeaders(extra={}){return {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',...extra};}
+function getDeviceId(){
+  let id=localStorage.getItem(LS_DEVICE_ID_KEY);
+  if(!id){
+    id='dev_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);
+    localStorage.setItem(LS_DEVICE_ID_KEY,id);
+  }
+  return id;
+}
+function getActorName({ask=false}={}){
+  let name=localStorage.getItem(LS_ACTOR_NAME_KEY)||'';
+  if((ask||!name) && !name){
+    name=(prompt('ตั้งชื่อเครื่อง/ผู้ใช้งานสำหรับ Audit log เช่น Admin Mint, Admin Meow, Office PC')||'').trim();
+    if(!name)name='Unknown Admin';
+    localStorage.setItem(LS_ACTOR_NAME_KEY,name);
+  }
+  return name||'Unknown Admin';
+}
+function initAuditIdentity(){
+  getDeviceId();
+  getActorName();
+}
+function clonePlain(v){return JSON.parse(JSON.stringify(v??null));}
+function patchFromDiff(before={},after={}){
+  const patch={};
+  Object.keys({...before,...after}).forEach(k=>{
+    if(JSON.stringify(before?.[k]??null)!==JSON.stringify(after?.[k]??null))patch[k]=after?.[k]??null;
+  });
+  return patch;
+}
+async function writeAuditLog(action,targetType,targetId,beforeData,patchData,afterData,meta={}){
+  try{
+    const body=JSON.stringify({
+      p_actor_name:getActorName(),
+      p_device_id:getDeviceId(),
+      p_action:action,
+      p_target_type:targetType,
+      p_target_id:String(targetId||''),
+      p_before_data:beforeData??null,
+      p_patch_data:patchData??null,
+      p_after_data:afterData??null,
+      p_meta:{...meta,appVersion:APP_VERSION,page:document.querySelector('.page.active')?.id||''}
+    });
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_admin_audit_log`,{method:'POST',headers:sbHeaders(),body});
+    if(!r.ok)throw new Error(await r.text());
+  }catch(e){
+    console.warn('Audit log failed',e);
+  }
+}
+function isDeletedRecord(x){return !!(x?.deletedAt||x?.deleted_at);}
+function liveJobs(){return (jobs||[]).filter(j=>!isDeletedRecord(j)&&isUsableJobId(j?.id));}
+function liveAdminTasks(){return (adminTasks||[]).filter(t=>!isDeletedRecord(t)&&String(t?.id||'').trim());}
 function hasValue(v){
   if(v===null||v===undefined)return false;
   if(typeof v==='string')return v.trim()!=='';
@@ -1898,18 +1951,19 @@ function commitListManager(){const key=document.getElementById('lm-key').value;s
 // DASHBOARD
 function renderDash(){
   updateNavBadges();
-  const nw=jobs.filter(j=>isTodayItem(j)&&j.status==='รอเปิดงาน').length;
-  const rj=jobs.filter(j=>j.status==='Reject'||j.status==='ติดปัญหา').length;
-  const cl=jobs.filter(j=>j.status==='ปิดงาน').length;
-  document.getElementById('ds-total').textContent=jobs.length;
+  const jRows=liveJobs(), tRows=liveAdminTasks();
+  const nw=jRows.filter(j=>isTodayItem(j)&&j.status==='รอเปิดงาน').length;
+  const rj=jRows.filter(j=>j.status==='Reject'||j.status==='ติดปัญหา').length;
+  const cl=jRows.filter(j=>j.status==='ปิดงาน').length;
+  document.getElementById('ds-total').textContent=jRows.length;
   document.getElementById('ds-new').textContent=nw;
   document.getElementById('ds-reject').textContent=rj;
   document.getElementById('ds-closed').textContent=cl;
-  const unp=jobs.filter(j=>payLabel(j.pay)==='รอเก็บเงิน'&&(j.status==='ปิดงาน'||j.status==='เสร็จงาน'));
-  const pd=jobs.filter(j=>payLabel(j.pay)==='เก็บแล้ว');
+  const unp=jRows.filter(j=>payLabel(j.pay)==='รอเก็บเงิน'&&(j.status==='ปิดงาน'||j.status==='เสร็จงาน'));
+  const pd=jRows.filter(j=>payLabel(j.pay)==='เก็บแล้ว');
   const ua=unp.reduce((s,j)=>s+(j.pc+j.partR),0);
   const pa=pd.reduce((s,j)=>s+(j.pc+j.partR),0);
-  const ow=jobs.filter(j=>j.status!=='รอเปิดงาน'&&j.status!=='Reject').reduce((s,j)=>s+j.pt,0);
+  const ow=jRows.filter(j=>j.status!=='รอเปิดงาน'&&j.status!=='Reject').reduce((s,j)=>s+j.pt,0);
   document.getElementById('ds-unpaid').textContent='฿'+ua.toLocaleString();
   document.getElementById('ds-unpaid-c').textContent=unp.length+' รายการ';
   document.getElementById('ds-paid').textContent='฿'+pa.toLocaleString();
@@ -1917,13 +1971,13 @@ function renderDash(){
   document.getElementById('ds-owe').textContent='฿'+ow.toLocaleString();
   updateNavBadges();
   const latest=(arr,isTask=false)=>sortByTechUpdateThenDate(arr,'desc',isTask).slice(0,6);
-  document.getElementById('ds-admin-tbody').innerHTML=latest(adminTasks,true).map(t=>`<tr class="${techUpdateRowClass(t)}" onclick="goTo('admin-tracker');setTimeout(()=>editAdminTask('${t.id}'),0)" style="cursor:pointer;"><td class="mono ta">${techUpdateMark(t)}${esc(t.id)} ${isTodayItem(t)?'<span class="new-pill">NEW</span>':''}${t.pri==='ด่วน'||t.pri==='เร่งด่วนมาก'?'<span class="urgent-pill">URGENT</span>':''}${techUpdatePill(t)}</td><td><span class="chip">${esc(t.type)}</span></td><td>${esc(t.assign)}</td><td class="tm">${esc(t.due)}</td><td>${statusBadge(t,t.status)}</td></tr>`).join('');
-  document.getElementById('ds-job-tbody').innerHTML=latest(jobs).map(j=>`<tr class="${techUpdateRowClass(j)}" onclick="goTo('jobs');setTimeout(()=>openDet('${j.id}'),0)" style="cursor:pointer;"><td class="mono ta">${techUpdateMark(j)}${esc(j.id)} ${isTodayItem(j)?'<span class="new-pill">NEW</span>':''}${techUpdatePill(j)}</td><td>${esc(j.branch)}</td><td>${esc(j.team)}</td><td class="tm">${esc(j.date)}</td><td>${statusBadge(j,j.status)}</td></tr>`).join('');
+  document.getElementById('ds-admin-tbody').innerHTML=latest(tRows,true).map(t=>`<tr class="${techUpdateRowClass(t)}" onclick="goTo('admin-tracker');setTimeout(()=>editAdminTask('${t.id}'),0)" style="cursor:pointer;"><td class="mono ta">${techUpdateMark(t)}${esc(t.id)} ${isTodayItem(t)?'<span class="new-pill">NEW</span>':''}${t.pri==='ด่วน'||t.pri==='เร่งด่วนมาก'?'<span class="urgent-pill">URGENT</span>':''}${techUpdatePill(t)}</td><td><span class="chip">${esc(t.type)}</span></td><td>${esc(t.assign)}</td><td class="tm">${esc(t.due)}</td><td>${statusBadge(t,t.status)}</td></tr>`).join('');
+  document.getElementById('ds-job-tbody').innerHTML=latest(jRows).map(j=>`<tr class="${techUpdateRowClass(j)}" onclick="goTo('jobs');setTimeout(()=>openDet('${j.id}'),0)" style="cursor:pointer;"><td class="mono ta">${techUpdateMark(j)}${esc(j.id)} ${isTodayItem(j)?'<span class="new-pill">NEW</span>':''}${techUpdatePill(j)}</td><td>${esc(j.branch)}</td><td>${esc(j.team)}</td><td class="tm">${esc(j.date)}</td><td>${statusBadge(j,j.status)}</td></tr>`).join('');
 }
 
 // ADMIN TRACKER
 function renderAdmin(){
-  const all=adminTasks;
+  const all=liveAdminTasks();
   const scoped=all.filter(t=>inDateScope(t,'admin'));
   const cnts={'ทั้งหมด':scoped.length};
   A_ST.forEach(s=>{cnts[s]=scoped.filter(t=>t.status===s).length;});
@@ -1940,13 +1994,20 @@ function renderAdmin(){
   if(!fil.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">OK</div><div>ไม่มีงาน</div></div></td></tr>';return;}
   tb.innerHTML=fil.map(t=>{
     const pr=t.jobId||'';
-    const linked=jobs.find(j=>j.id===pr);
+    const linked=liveJobs().find(j=>j.id===pr);
     const mid='am-'+t.id;
     const stBadge=statusBadge(t,t.status||'-');
     return `<tr class="task-row${techUpdateRowClass(t)}" onclick="openAdminDetail('${t.id}')"><td class="mono ta" style="font-size:11px;">${mobileCard(pr||'ยังไม่เปิด PR',t.type,t.assign,t.due,stBadge)}${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openReportModal('${pr}')`:`openJobFromAdmin('${t.id}')`}">${techUpdateMark(t)}${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">เปิดคิว</button>`}${adminNeedsQueueBadge(t)?' <span class="queue-pill">รอจัดคิวช่าง</span>':''}${techUpdatePill(t)}</td><td class="tm" style="font-size:11px;">${esc(t.assignedAt||'-')}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td class="task-detail" style="max-width:260px;font-size:12px;">${esc(t.detail)}${t.phone?`<span class="task-phone">เบอร์ติดต่อ: ${esc(t.phone)}</span>`:''}</td><td style="font-size:12px;">${esc(t.client)}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${statusSelectColor(t,t.status,'admin')}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(t)}</td><td class="mono ta" style="font-size:11px;">${esc(t.id)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
   }).join('');
 }
-function setAS(id,s){const t=adminTasks.find(x=>x.id===id);if(t){t.status=s;t.isNew=false;renderAdmin();renderDash();saveState();}}
+async function setAS(id,s){
+  const t=adminTasks.find(x=>x.id===id&&!isDeletedRecord(x));if(!t)return;
+  const before=clonePlain(t);
+  t.status=s;t.isNew=false;
+  const after=clonePlain(t);
+  renderAdmin();renderDash();saveState();
+  await writeAuditLog('update_admin_status','admin_task',id,before,{status:s,isNew:false},after);
+}
 let pdfJsLoading=null;
 let pendingAdminPdfFile=null;
 function currentAdminPdfPR(){
@@ -2292,14 +2353,37 @@ async function saveAdminTask(openQueueAfter=false){
   if(data.assign&&!adminNames.includes(data.assign))adminNames.push(data.assign);
   if(data.jobId&&!prValues.includes(data.jobId))prValues.push(data.jobId);
   let taskId=editAdminId;
-  if(editAdminId){Object.assign(adminTasks.find(t=>t.id===editAdminId),data);}else{taskId='TASK-'+String(aCnt++).padStart(3,'0');adminTasks.unshift({id:taskId,...data,assignedAt:todayISO(),isNew:true,createdAt:Date.now()});}
+  let before=null, after=null, action='create_admin_task';
+  if(editAdminId){
+    const task=adminTasks.find(t=>t.id===editAdminId);
+    if(!task)return;
+    before=clonePlain(task);
+    Object.assign(task,data);
+    after=clonePlain(task);
+    action='update_admin_task';
+  }else{
+    taskId='TASK-'+String(aCnt++).padStart(3,'0');
+    const row={id:taskId,...data,assignedAt:todayISO(),isNew:true,createdAt:Date.now()};
+    adminTasks.unshift(row);
+    after=clonePlain(row);
+  }
   await savePendingAdminPdf(data.jobId,taskId);
   closeM('m-admin');renderAdmin();renderDash();fillSelects();saveState();
+  await writeAuditLog(action,'admin_task',taskId,before,patchFromDiff(before||{},after||{}),after);
   if(openQueueAfter)setTimeout(()=>openJobFromAdmin(taskId),0);
   return taskId;
 }
 function editAdminTask(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;closeM('m-detail');editAdminId=id;fillSelects();document.querySelector('#m-admin .modal-title').textContent='แก้ไขงาน Admin';document.getElementById('fa-type').value=t.type;document.getElementById('fa-client').value=t.client;document.getElementById('fa-phone').value=t.phone||'';document.getElementById('fa-detail').value=t.detail;document.getElementById('fa-assign').value=t.assign;document.getElementById('fa-due').value=t.due;document.getElementById('fa-job').value=t.jobId||'';document.getElementById('fa-pri').value=t.pri;document.getElementById('fa-status').value=t.status||A_ST[0]||'';clearAdminPdfImport();openM('m-admin');}
-function deleteAdminTask(id){if(confirm('ลบงาน Admin นี้?')){adminTasks=adminTasks.filter(t=>t.id!==id);renderAdmin();renderDash();saveState();}}
+async function deleteAdminTask(id){
+  const t=adminTasks.find(x=>x.id===id&&!isDeletedRecord(x));if(!t)return;
+  if(confirm('ลบงาน Admin นี้?')){
+    const before=clonePlain(t);
+    const patch={deletedAt:new Date().toISOString(),deletedBy:getActorName(),deletedDeviceId:getDeviceId()};
+    Object.assign(t,patch);
+    renderAdmin();renderDash();saveState();
+    await writeAuditLog('soft_delete_admin_task','admin_task',id,before,patch,clonePlain(t));
+  }
+}
 function openAdminDetail(id){
   const t=adminTasks.find(x=>x.id===id);if(!t)return;
   document.getElementById('det-title').textContent=t.id+' - '+t.type;
@@ -2312,10 +2396,10 @@ function normalizePR(v){return String(v||'').trim().replace(/\s+/g,'').toUpperCa
 function duplicatePRInfo(pr,{excludeJobId='',excludeTaskId='',includeAdmin=true}={}){
   const key=normalizePR(pr);
   if(!key)return null;
-  const job=jobs.find(j=>normalizePR(j.id)===key&&String(j.id)!==String(excludeJobId));
+  const job=liveJobs().find(j=>normalizePR(j.id)===key&&String(j.id)!==String(excludeJobId));
   if(job)return {kind:'คิวช่าง',id:job.id,detail:`${job.client||'-'} / ${job.branch||'-'} / ${job.status||'-'}`};
   if(includeAdmin){
-    const task=adminTasks.find(t=>normalizePR(t.jobId)===key&&String(t.id)!==String(excludeTaskId));
+    const task=liveAdminTasks().find(t=>normalizePR(t.jobId)===key&&String(t.id)!==String(excludeTaskId));
     if(task)return {kind:'งานแอดมิน',id:task.id,detail:`${task.type||'-'} / ${task.client||'-'} / ${task.status||'-'}`};
   }
   return null;
@@ -2331,7 +2415,7 @@ function addPRValue(){
   if(!prValues.some(x=>normalizePR(x)===normalizePR(v))){prValues.push(v);fillSelects();alert('เพิ่ม PR แล้ว');}
 }
 function openJobFromAdmin(id){
-  const t=adminTasks.find(x=>x.id===id);if(!t)return;
+  const t=adminTasks.find(x=>x.id===id&&!isDeletedRecord(x));if(!t)return;
   pendingJobFromAdminId=id;
   closeM('m-detail');
   openJobModal({id:t.jobId||'',client:t.client,branch:t.client,ref:t.jobId||'',note:t.detail,type:t.type,date:t.due||t.assignedAt||'',fromAdmin:true});
@@ -2339,11 +2423,12 @@ function openJobFromAdmin(id){
 
 // JOB QUEUE
 function renderJobs(){
-  const scoped=jobs.filter(j=>inDateScope(j,'jobs'));
+  const allJobs=liveJobs();
+  const scoped=allJobs.filter(j=>inDateScope(j,'jobs'));
   const cnts={'ทั้งหมด':scoped.length};
   J_ST.forEach(s=>{cnts[s]=scoped.filter(j=>j.status===s).length;});
   buildJobControls(cnts);
-  const rj=jobs.filter(j=>j.status==='Reject'||j.status==='ติดปัญหา');
+  const rj=allJobs.filter(j=>j.status==='Reject'||j.status==='ติดปัญหา');
   const rb=document.getElementById('job-reject-box');
   if(rj.length&&(jobFilter==='ทั้งหมด'||jobFilter==='Reject'||jobFilter==='ติดปัญหา')){rb.style.display='block';document.getElementById('job-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('job-reject-list').innerHTML=rj.map(j=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${esc(j.id)}</span><span>${esc(j.branch)}</span><span class="chip">${esc(j.type)}</span><span class="badge ${SB[j.status]}">${esc(j.status)}</span><span class="tm" style="font-size:11px;">${esc(j.note)}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setJS('${j.id}','รอจัดช่าง')">รีเซ็ต</button></div>`).join('');}
   else rb.style.display='none';
@@ -2356,7 +2441,16 @@ function renderJobs(){
   if(!fil.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีงาน</div></div></td></tr>';return;}
   tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}${techUpdateMark(j)}${esc(j.id)}${techUpdatePill(j)}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="color:${statusSelectColor(j,j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
-function setJS(id,s){const j=jobs.find(x=>x.id===id);if(j){j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;if(s==='รอจ่าย'){j.pay=payStatuses[0]||'รอเก็บเงิน';renderJobs();renderCalendar();renderDash();saveState();goFinanceForJob(id);return;}renderJobs();renderCalendar();renderDash();saveState();}}
+async function setJS(id,s){
+  const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
+  const before=clonePlain(j);
+  j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;
+  if(s==='รอจ่าย')j.pay=payStatuses[0]||'รอเก็บเงิน';
+  const patch=patchFromDiff(before,j);
+  renderJobs();renderCalendar();renderDash();saveState();
+  await writeAuditLog('update_job_status','job',id,before,patch,clonePlain(j));
+  if(s==='รอจ่าย'){goFinanceForJob(id);return;}
+}
 function technicianFormUrl(id){return `technician-submit.html?job=${encodeURIComponent(id)}&rev=${Date.now()}`;}
 async function openTechnicianForm(id){
   const url=new URL(technicianFormUrl(id),location.href).href;
@@ -2369,7 +2463,7 @@ async function copyTechnicianLink(id){
   try{await navigator.clipboard.writeText(url);alert('คัดลอกลิงก์ฟอร์มช่างแล้ว');}catch(e){prompt('คัดลอกลิงก์นี้',url);}
 }
 function openDet(id){
-  const j=jobs.find(x=>x.id===id);if(!j)return;
+  const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
   document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
@@ -2380,14 +2474,22 @@ function calcM(){const c=parseFloat(document.getElementById('fj-pc').value)||0,t
 function saveJob(){
   const data={client:document.getElementById('fj-client').value,ref:document.getElementById('fj-ref').value||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,status:document.getElementById('fj-status').value,pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value};
   let savedJobId=editJobId;
+  let before=null, after=null, action='create_job';
   if(editJobId){
-    Object.assign(jobs.find(j=>j.id===editJobId),data);
+    const job=jobs.find(j=>j.id===editJobId&&!isDeletedRecord(j));
+    if(!job)return;
+    before=clonePlain(job);
+    Object.assign(job,data);
+    after=clonePlain(job);
+    action='update_job';
   }else{
     const id=data.ref&&data.ref!=='N/A'?data.ref:'PR-'+String(jCnt++).padStart(3,'0');
     const dup=duplicatePRInfo(id,{excludeTaskId:pendingJobFromAdminId||'',includeAdmin:false});
     if(dup){alertDuplicatePR(id,dup);document.getElementById('fj-ref').focus();return;}
     savedJobId=id;
-    jobs.unshift({id,...data,assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()});
+    const row={id,...data,assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()};
+    jobs.unshift(row);
+    after=clonePlain(row);
     if(id&&!prValues.includes(id))prValues.push(id);
   }
   const openedFromAdminId=pendingJobFromAdminId;
@@ -2406,11 +2508,12 @@ function saveJob(){
     saveUIState();
   }
   saveState();
+  writeAuditLog(action,'job',savedJobId,before,patchFromDiff(before||{},after||{}),after);
 }
-function editJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;closeM('m-detail');fillSelects();editJobId=id;document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
+function editJob(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;closeM('m-detail');fillSelects();editJobId=id;document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
 function deleteJob(id){
   const key=normalizePR(id);
-  const dupCount=jobs.filter(j=>normalizePR(j.id)===key).length;
+  const dupCount=liveJobs().filter(j=>normalizePR(j.id)===key).length;
   if(dupCount>1){
     const fixed=repairDuplicateJobs();
     renderJobs();renderCalendar();renderDash();fillSelects();saveState();
@@ -2418,8 +2521,12 @@ function deleteJob(id){
     return;
   }
   if(confirm('ลบงานคิวช่างนี้?')){
-    jobs=jobs.filter(j=>normalizePR(j.id)!==key);
+    const j=jobs.find(job=>normalizePR(job.id)===key&&!isDeletedRecord(job));if(!j)return;
+    const before=clonePlain(j);
+    const patch={deletedAt:new Date().toISOString(),deletedBy:getActorName(),deletedDeviceId:getDeviceId()};
+    Object.assign(j,patch);
     renderJobs();renderCalendar();renderDash();fillSelects();saveState();
+    writeAuditLog('soft_delete_job','job',id,before,patch,clonePlain(j));
   }
 }
 function goFinanceForJob(id){closeM('m-detail');finFilter='ทั้งหมด';goTo('finance');setTimeout(()=>openFinanceEdit(id),0);}
@@ -2444,7 +2551,7 @@ function renderCalendar(){
   const days=[];
   for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
     const iso=dateLocalISO(d);
-    const dayJobs=jobs.filter(j=>j.date===iso)
+    const dayJobs=liveJobs().filter(j=>j.date===iso)
       .filter(j=>calendarTeamFilter==='ทั้งหมด'||j.team===calendarTeamFilter)
       .filter(j=>matchText(j,['id','ref','branch','client','type','team','status','note'],calendarSearch));
     const muted=d.getMonth()!==mm-1;
@@ -2456,11 +2563,12 @@ function renderCalendar(){
 // FINANCE
 function setFinFilter(f){finFilter=f;renderFin();}
 function renderFin(){
+  const jRows=liveJobs();
   const fixed=fixedExpenses.reduce((s,x)=>s+x.amount,0);
-  const inc=jobs.reduce((s,j)=>s+j.pc+j.partR,0);
-  const exp=jobs.reduce((s,j)=>s+j.pt+j.partC+j.fuel,0);
+  const inc=jRows.reduce((s,j)=>s+j.pc+j.partR,0);
+  const exp=jRows.reduce((s,j)=>s+j.pt+j.partC+j.fuel,0);
   const pro=inc-exp-fixed;
-  const ar=jobs.filter(j=>payLabel(j.pay)==='รอเก็บเงิน'&&(j.status==='ปิดงาน'||j.status==='เสร็จงาน'||j.status==='รอจ่าย'));
+  const ar=jRows.filter(j=>payLabel(j.pay)==='รอเก็บเงิน'&&(j.status==='ปิดงาน'||j.status==='เสร็จงาน'||j.status==='รอจ่าย'));
   const arA=ar.reduce((s,j)=>s+j.pc+j.partR,0);
   document.getElementById('fin-income').textContent='฿'+inc.toLocaleString();
   document.getElementById('fin-expense').textContent='฿'+(exp+fixed).toLocaleString();
@@ -2468,10 +2576,10 @@ function renderFin(){
   document.getElementById('fin-margin').textContent='margin '+(inc>0?Math.round(pro/inc*100):0)+'%';
   document.getElementById('fin-ar').textContent='฿'+arA.toLocaleString();
   document.getElementById('fin-ar-m').textContent=ar.length+' รายการรอเก็บ';
-  const cnts={'ทั้งหมด':jobs.length};
-  payStatuses.forEach(s=>{const c=jobs.filter(j=>payLabel(j.pay)===s).length;if(c)cnts[s]=c;});
+  const cnts={'ทั้งหมด':jRows.length};
+  payStatuses.forEach(s=>{const c=jRows.filter(j=>payLabel(j.pay)===s).length;if(c)cnts[s]=c;});
   buildFinanceControls(cnts);
-  let fil=finFilter==='ทั้งหมด'?jobs:jobs.filter(j=>payLabel(j.pay)===finFilter);
+  let fil=finFilter==='ทั้งหมด'?jRows:jRows.filter(j=>payLabel(j.pay)===finFilter);
   if(financeDateFilter)fil=fil.filter(j=>(j.date||j.assignedAt||'')===financeDateFilter);
   fil=sortByTechUpdateThenDate(fil.filter(j=>matchText(j,['id','ref','branch','client','team','type','date','status','pay','financeNote'],financeSearch)),'desc');
   document.getElementById('fin-cnt').textContent=fil.length+' รายการ';
@@ -2479,10 +2587,10 @@ function renderFin(){
   document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openFinanceEdit('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${j.pc+j.partR}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button></div></td></tr>`;}).join('');
   renderFixedExpenses();
 }
-function setPay(id,s){const j=jobs.find(x=>x.id===id);if(j){j.pay=s;renderFin();renderDash();saveState();}}
-function updateJobMoney(id,field,value){const j=jobs.find(x=>x.id===id);if(!j)return;const v=parseFloat(value)||0;if(field==='income')j.pc=Math.max(0,v-j.partR);else j[field]=v;renderFin();renderDash();saveState();}
-function openFinanceEdit(id){const j=jobs.find(x=>x.id===id);if(!j)return;fillSelects();document.getElementById('ff-id').value=id;document.getElementById('ff-pc').value=j.pc;document.getElementById('ff-partR').value=j.partR;document.getElementById('ff-pt').value=j.pt;document.getElementById('ff-partC').value=j.partC;document.getElementById('ff-fuel').value=j.fuel;document.getElementById('ff-pay').value=payLabel(j.pay);document.getElementById('ff-note').value=j.financeNote||'';openM('m-finance-edit');}
-function saveFinanceEdit(){const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id);if(!j)return;Object.assign(j,{pc:parseFloat(document.getElementById('ff-pc').value)||0,partR:parseFloat(document.getElementById('ff-partR').value)||0,pt:parseFloat(document.getElementById('ff-pt').value)||0,partC:parseFloat(document.getElementById('ff-partC').value)||0,fuel:parseFloat(document.getElementById('ff-fuel').value)||0,pay:document.getElementById('ff-pay').value,financeNote:document.getElementById('ff-note').value});closeM('m-finance-edit');renderFin();renderDash();saveState();}
+function setPay(id,s){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(j){const before=clonePlain(j);j.pay=s;renderFin();renderDash();saveState();writeAuditLog('update_job_pay','job',id,before,{pay:s},clonePlain(j));}}
+function updateJobMoney(id,field,value){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);const v=parseFloat(value)||0;if(field==='income')j.pc=Math.max(0,v-j.partR);else j[field]=v;renderFin();renderDash();saveState();writeAuditLog('update_job_money','job',id,before,patchFromDiff(before,j),clonePlain(j),{field});}
+function openFinanceEdit(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;fillSelects();document.getElementById('ff-id').value=id;document.getElementById('ff-pc').value=j.pc;document.getElementById('ff-partR').value=j.partR;document.getElementById('ff-pt').value=j.pt;document.getElementById('ff-partC').value=j.partC;document.getElementById('ff-fuel').value=j.fuel;document.getElementById('ff-pay').value=payLabel(j.pay);document.getElementById('ff-note').value=j.financeNote||'';openM('m-finance-edit');}
+function saveFinanceEdit(){const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);Object.assign(j,{pc:parseFloat(document.getElementById('ff-pc').value)||0,partR:parseFloat(document.getElementById('ff-partR').value)||0,pt:parseFloat(document.getElementById('ff-pt').value)||0,partC:parseFloat(document.getElementById('ff-partC').value)||0,fuel:parseFloat(document.getElementById('ff-fuel').value)||0,pay:document.getElementById('ff-pay').value,financeNote:document.getElementById('ff-note').value});closeM('m-finance-edit');renderFin();renderDash();saveState();writeAuditLog('update_job_finance','job',id,before,patchFromDiff(before,j),clonePlain(j));}
 function renderFixedExpenses(){const tb=document.getElementById('fixed-tbody');if(!tb)return;tb.innerHTML=fixedExpenses.map((x,i)=>`<tr><td>${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td class="mono tr">฿${x.amount.toLocaleString()}</td><td class="tm">${esc(x.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fxm-${i}',event)">...</button><div class="action-menu" id="fxm-${i}"><button onclick="openFixedModal(${i})">แก้ไข</button><button onclick="deleteFixedExpense(${i})">ลบ</button><button onclick="alert('${esc(x.note||'ไม่มีรายละเอียด')}')">ดูดีเทล</button></div></td></tr>`).join('');}
 function openFixedModal(i=''){document.getElementById('fx-index').value=i;if(i===''){['fx-name','fx-amount','fx-date','fx-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fx-type').value='Fixed';}else{const x=fixedExpenses[i];document.getElementById('fx-name').value=x.name;document.getElementById('fx-type').value=x.type;document.getElementById('fx-amount').value=x.amount;document.getElementById('fx-date').value=x.date;document.getElementById('fx-note').value=x.note||'';}openM('m-fixed');}
 function saveFixedExpense(){const i=document.getElementById('fx-index').value;const data={name:document.getElementById('fx-name').value,type:document.getElementById('fx-type').value||'Fixed',amount:parseFloat(document.getElementById('fx-amount').value)||0,date:document.getElementById('fx-date').value,note:document.getElementById('fx-note').value};if(i==='')fixedExpenses.push(data);else fixedExpenses[+i]=data;closeM('m-fixed');renderFin();saveState();}
@@ -2492,7 +2600,7 @@ function deleteFixedExpense(i){if(confirm('ลบรายจ่าย Fixed น
 function renderTP(){
   const ts=teams.map(t=>t.name);
   const c=document.getElementById('techpay-list');
-  const h=ts.map(t=>{const tj=sortByTechUpdateThenDate(jobs.filter(j=>j.team===t&&j.status!=='รอเปิดงาน'&&j.status!=='Reject'),'desc');const tot=tj.reduce((s,j)=>s+j.pt,0);if(!tot)return'';return`<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${t}</div><div class="flex g8"><span class="mono fw7 tg">฿${tot.toLocaleString()}</span><button class="btn btn-success btn-sm" onclick="alert('ยืนยันจ่าย ${t}')">✓ จ่ายแล้ว</button></div></div><table><thead><tr><th>PR</th><th>สาขา</th><th>วันที่</th><th>ประเภท</th><th>ค่าแรงช่าง</th><th>สถานะ</th></tr></thead><tbody>${tj.map(j=>`<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${techUpdateMark(j)}${j.id}${techUpdatePill(j)}</td><td style="font-size:12px;">${j.branch}</td><td class="tm" style="font-size:11px;">${j.date}</td><td><span class="chip">${j.type}</span></td><td class="mono fw7 tg">฿${j.pt.toLocaleString()}</td><td>${statusBadge(j,j.status)}</td></tr>`).join('')}</tbody></table></div>`;}).join('');
+  const h=ts.map(t=>{const tj=sortByTechUpdateThenDate(liveJobs().filter(j=>j.team===t&&j.status!=='รอเปิดงาน'&&j.status!=='Reject'),'desc');const tot=tj.reduce((s,j)=>s+j.pt,0);if(!tot)return'';return`<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${t}</div><div class="flex g8"><span class="mono fw7 tg">฿${tot.toLocaleString()}</span><button class="btn btn-success btn-sm" onclick="alert('ยืนยันจ่าย ${t}')">✓ จ่ายแล้ว</button></div></div><table><thead><tr><th>PR</th><th>สาขา</th><th>วันที่</th><th>ประเภท</th><th>ค่าแรงช่าง</th><th>สถานะ</th></tr></thead><tbody>${tj.map(j=>`<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${techUpdateMark(j)}${j.id}${techUpdatePill(j)}</td><td style="font-size:12px;">${j.branch}</td><td class="tm" style="font-size:11px;">${j.date}</td><td><span class="chip">${j.type}</span></td><td class="mono fw7 tg">฿${j.pt.toLocaleString()}</td><td>${statusBadge(j,j.status)}</td></tr>`).join('')}</tbody></table></div>`;}).join('');
   c.innerHTML=h||'<div class="empty"><div class="empty-icon">✅</div><div>ไม่มียอดค้างจ่าย</div></div>';
 }
 
@@ -2589,7 +2697,7 @@ function allWorkOrderPRs(){
 function workOrderBundle(pr){
   ensureDocsShape();
   return {
-    job:jobs.find(j=>j.id===pr),
+    job:liveJobs().find(j=>j.id===pr),
     admin:adminTasks.filter(t=>t.jobId===pr),
     workDocs:docs.workOrders.filter(d=>d.pr===pr),
     quotes:docs.qt.filter(d=>d.jid===pr),
@@ -2684,7 +2792,7 @@ function renderDocs(){
   document.getElementById('iv-tbody').innerHTML=iv.map(d=>{const mid='ivm-'+d.no;return `<tr><td>${mobileCard(d.jid||d.no,'ใบแจ้งหนี้','-',d.due,`<span class="badge b-unpaid">${esc(d.st)}</span>`,`<div><b>เลขที่</b>${esc(d.no)}</div><div><b>ยอด</b>฿${(d.amt||0).toLocaleString()}</div>`)}<input type="checkbox" ${selectedDocs.iv.has(d.no)?'checked':''} onchange="toggleDocSelect('iv','${d.no}',this.checked)"></td><td class="mono ta">${d.no}</td><td class="mono">${d.jid}</td><td>${d.cl}</td><td class="mono fw7">฿${(d.amt||0).toLocaleString()}</td><td class="tm">${d.due}</td><td><span class="badge b-unpaid">${d.st}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="markIV('${d.no}')">รับเงิน</button><button onclick="deleteDoc('iv','${d.no}')">ลบเอกสาร</button></div></td></tr>`;}).join('')||'<tr><td colspan="8"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีเอกสาร</div></div></td></tr>';
   updateDocChecks();
 }
-function printQuoteDoc(no){const d=docs.qt.find(x=>x.no===no);if(!d)return;const j=jobs.find(x=>x.id===d.jid)||{};generateDocWindow(partsQuoteHtml(j,d));}
+function printQuoteDoc(no){const d=docs.qt.find(x=>x.no===no);if(!d)return;const j=liveJobs().find(x=>x.id===d.jid)||{};generateDocWindow(partsQuoteHtml(j,d));}
 function markIV(no){const iv=docs.iv.find(d=>d.no===no);if(iv){iv.st='ชำระแล้ว';renderDocs();saveState();}}
 function switchDoc(t,btn){activeDocTab=t;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('doc-'+t).classList.add('active');renderDocs();saveUIState();}
 function visibleDocNos(type){return filteredDocs(type).map(d=>d.no);}
@@ -2695,7 +2803,7 @@ function updateDocChecks(){['qt','iv'].forEach(type=>{const el=document.getEleme
 function deleteDoc(type,no){if(!confirm('ลบเอกสารนี้?'))return;docs[type]=(docs[type]||[]).filter(d=>d.no!==no);selectedDocs[type].delete(no);renderDocs();saveState();}
 function deleteSelectedDocs(){const type=activeDocTab;const nos=[...selectedDocs[type]];if(!nos.length){alert('ยังไม่ได้เลือกเอกสาร');return;}if(!confirm(`ลบเอกสารที่เลือก ${nos.length} รายการ?`))return;docs[type]=(docs[type]||[]).filter(d=>!selectedDocs[type].has(d.no));selectedDocs[type].clear();renderDocs();saveState();}
 function downloadHtml(filename,html){const blob=new Blob([html],{type:'text/html;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),800);}
-function downloadQuoteDoc(no){const d=docs.qt.find(x=>x.no===no);if(!d)return;const j=jobs.find(x=>x.id===d.jid)||{};downloadHtml(`${no}.html`,partsQuoteHtml(j,d));}
+function downloadQuoteDoc(no){const d=docs.qt.find(x=>x.no===no);if(!d)return;const j=liveJobs().find(x=>x.id===d.jid)||{};downloadHtml(`${no}.html`,partsQuoteHtml(j,d));}
 function downloadSelectedDocs(){const type=activeDocTab;const nos=[...selectedDocs[type]];if(!nos.length){alert('ยังไม่ได้เลือกเอกสาร');return;}if(type!=='qt'){alert('ตอนนี้ดาวน์โหลดรองรับใบเสนอราคา (QT) ก่อน');return;}nos.forEach(no=>downloadQuoteDoc(no));}
 function quoteDocTotal(rows=quoteDraftRows){
   return rows.reduce((s,r)=>s+((Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0))),0);
@@ -3039,7 +3147,7 @@ function reportReviewBadge(st){
 function buildRptControls(counts){
   const b=document.getElementById('rpt-fbar');if(!b)return;
   const reviewCounts={};
-  REPORT_REVIEW_STATUSES.forEach(s=>reviewCounts[s]=jobs.filter(j=>inDateScope(j,'rpt')&&reportReviewStatus(j)===s).length);
+  REPORT_REVIEW_STATUSES.forEach(s=>reviewCounts[s]=liveJobs().filter(j=>inDateScope(j,'rpt')&&reportReviewStatus(j)===s).length);
   b.innerHTML=`<span class="filter-label">สถานะงาน:</span><select class="filter-select" onchange="rptFilter=this.value;renderReports();saveUIState();">${statusOptionHtml(J_ST,counts,rptFilter)}</select><span class="filter-label">สถานะรายงาน:</span><select class="filter-select" onchange="rptReviewFilter=this.value;renderReports();saveUIState();">${statusOptionHtml(REPORT_REVIEW_STATUSES,reviewCounts,rptReviewFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="rpt-search-input" value="${esc(rptSearch)}" placeholder="PR / สาขา / ทีม" onkeydown="if(event.key==='Enter')applyRptSearch()"><button class="btn btn-ghost btn-sm" onclick="applyRptSearch()">ค้นหา</button>`;
   addDateControls('rpt-fbar','rpt');
   addQuickControls('rpt-fbar','rpt');
@@ -3104,7 +3212,7 @@ function renderReportRounds(j){
   return `<div class="form-group"><label>ประวัติรอบงาน</label><div class="text-box">${rounds.map((r,i)=>`${i+1}. ${esc(r.label||r.type||'รอบงาน')} - ${r.submittedAt?new Date(r.submittedAt).toLocaleString('th-TH'):'—'} - ${esc(r.status||'')}`).join('<br>')}</div></div>`;
 }
 function openReportImage(jobId,index){
-  const j=jobs.find(x=>x.id===jobId);if(!j)return;
+  const j=jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));if(!j)return;
   const im=reportImages(j)[index];if(!im||!im.url)return;
   document.getElementById('img-prev-title').textContent=`${j.id} - ${im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน'}`;
   document.getElementById('img-prev-sub').textContent=`${im.name||''}${im.uploadedAt?' | '+new Date(im.uploadedAt).toLocaleString('th-TH'):''}`;
@@ -3112,7 +3220,7 @@ function openReportImage(jobId,index){
   openM('m-image-preview');
 }
 function openReportDocumentImage(jobId,index){
-  const j=jobs.find(x=>x.id===jobId);if(!j)return;
+  const j=jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));if(!j)return;
   const im=reportDocumentImages(j)[index];if(!im||!im.url)return;
   document.getElementById('img-prev-title').textContent=`${j.id} - ${im.label||REPORT_IMAGE_LABELS.documents}`;
   document.getElementById('img-prev-sub').textContent=`${im.name||''}${im.uploadedAt?' | '+new Date(im.uploadedAt).toLocaleString('th-TH'):''}`;
@@ -3120,7 +3228,7 @@ function openReportDocumentImage(jobId,index){
   openM('m-image-preview');
 }
 function renderReports(){
-  const scoped=jobs.filter(j=>inDateScope(j,'rpt'));
+  const scoped=liveJobs().filter(j=>inDateScope(j,'rpt'));
   const cnts={};
   J_ST.forEach(s=>{cnts[s]=scoped.filter(j=>j.status===s).length;});
   buildRptControls(cnts);
@@ -3156,7 +3264,7 @@ function renderReports(){
   }).join('');
 }
 function openReportModal(id){
-  const j=jobs.find(x=>x.id===id);if(!j)return;
+  const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   const hadUnread=hasTechUpdate(j);
   const review=reportReviewStatus(j);
   document.getElementById('mrpt-title').textContent=j.id+' — '+j.branch;
@@ -3218,12 +3326,15 @@ function syncReportFormToJob(){
   return j;
 }
 async function saveReport(){
+  const id=document.getElementById('mrpt-jobid').value;
+  const before=clonePlain(jobs.find(x=>x.id===id));
   const j=syncReportFormToJob();if(!j)return;
   closeM('m-report');
   renderReports();
   renderJobs();
   renderDash();
   saveState();
+  await writeAuditLog('update_report_review','job',j.id,before,patchFromDiff(before||{},j),clonePlain(j));
 }
 function reportDocText(v){
   const s=esc(v||'—');
@@ -3464,6 +3575,7 @@ function closeSurveyJob(){
 async function approveReport(){
   const id=document.getElementById('mrpt-jobid').value;
   const j=jobs.find(x=>x.id===id);if(!j)return;
+  const before=clonePlain(j);
   await saveReport();
   const x=jobs.find(v=>v.id===id);if(!x)return;
   x.reportReviewStatus='ตรวจแล้ว';
@@ -3473,10 +3585,12 @@ async function approveReport(){
   syncAdminTasksFromReport(id,'แอดมินตรวจแล้ว',x.reviewNote);
   x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ตรวจแล้ว',reviewNote:x.reviewNote,reviewedAt:new Date().toISOString()};
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
+  await writeAuditLog('approve_report','job',id,before,patchFromDiff(before||{},x),clonePlain(x));
 }
 async function returnReportForFix(){
   const id=document.getElementById('mrpt-jobid').value;
   const j=jobs.find(x=>x.id===id);if(!j)return;
+  const before=clonePlain(j);
   const note=document.getElementById('mrpt-review-note').value.trim()||prompt('ระบุเหตุผลที่ต้องแก้ไขรายงาน')||'ต้องแก้ไขรายงาน';
   if(!note)return;
   document.getElementById('mrpt-review-note').value=note;
@@ -3495,6 +3609,7 @@ async function returnReportForFix(){
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();
   try{
     await saveStateNow(true);
+    await writeAuditLog('return_report_for_fix','job',id,before,patchFromDiff(before||{},x),clonePlain(x),{note});
   }catch(e){
     alert('ส่งกลับแก้ไขแล้วในหน้าเว็บ แต่ยังบันทึกขึ้น Supabase ไม่สำเร็จ: '+e.message);
   }
@@ -3693,6 +3808,7 @@ function startRemoteRefresh(){
 }
 async function initApp(){
   initAppVersion();
+  initAuditIdentity();
   applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
   loadUIState();
   const hadFastCache=loadFastState();
