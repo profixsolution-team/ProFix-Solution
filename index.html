@@ -1007,7 +1007,7 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.06.11.4';
+const APP_VERSION='2026.06.11.5';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -1214,6 +1214,16 @@ function mergeTechReports(older={},newer={}){
   return merged;
 }
 function mergeJobRecords(a={},b={}){
+  if(isDeletedRecord(a)!==isDeletedRecord(b)){
+    const live=isDeletedRecord(a)?b:a;
+    const deleted=isDeletedRecord(a)?a:b;
+    const merged={...deleted,...live};
+    delete merged.deletedAt;delete merged.deletedBy;delete merged.deletedDeviceId;delete merged.deleted_at;
+    if(deleted.technicianReport||live.technicianReport){
+      merged.technicianReport=mergeTechReports(deleted.technicianReport||{},live.technicianReport||{});
+    }
+    return merged;
+  }
   const aStamp=techReportStamp(a),bStamp=techReportStamp(b);
   const newer=bStamp>=aStamp?b:a;
   const older=newer===b?a:b;
@@ -2487,9 +2497,18 @@ function saveJob(){
     const dup=duplicatePRInfo(id,{excludeTaskId:pendingJobFromAdminId||'',includeAdmin:false});
     if(dup){alertDuplicatePR(id,dup);document.getElementById('fj-ref').focus();return;}
     savedJobId=id;
-    const row={id,...data,assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()};
-    jobs.unshift(row);
-    after=clonePlain(row);
+    const deletedJob=jobs.find(j=>normalizePR(j.id)===normalizePR(id)&&isDeletedRecord(j));
+    if(deletedJob){
+      before=clonePlain(deletedJob);
+      delete deletedJob.deletedAt;delete deletedJob.deletedBy;delete deletedJob.deletedDeviceId;delete deletedJob.deleted_at;
+      Object.assign(deletedJob,{...data,id,assignedAt:deletedJob.assignedAt||todayISO(),partC:deletedJob.partC||0,partR:deletedJob.partR||0,fuel:deletedJob.fuel||0,report:deletedJob.report||'',isNew:true,pay:deletedJob.pay||payStatuses[0]||'รอเก็บเงิน',createdAt:deletedJob.createdAt||Date.now()});
+      after=clonePlain(deletedJob);
+      action='restore_job_from_soft_delete';
+    }else{
+      const row={id,...data,assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()};
+      jobs.unshift(row);
+      after=clonePlain(row);
+    }
     if(id&&!prValues.includes(id))prValues.push(id);
   }
   const openedFromAdminId=pendingJobFromAdminId;
@@ -3737,16 +3756,20 @@ async function restoreTechnicianReportFromEvent(index){
     if(!rr.ok)throw new Error(await rr.text());
     const imageRows=await upsertReportImages(reportId,jobId,report,savedAt);
     let j=jobs.find(x=>normalizePR(x.id)===normalizePR(jobId));
+    const beforeJob=clonePlain(j);
     if(!j){
       const snap=report.jobSnapshot||{};
       j={id:jobId,client:snap.client||'',branch:snap.branch||'',type:snap.type||'',team:snap.team||'',ref:snap.ref||'',date:snap.date||todayISO(),status,note:'',pay:'รอเก็บเงิน',createdAt:Date.now(),assignedAt:todayISO()};
       jobs.unshift(j);
+    }else if(isDeletedRecord(j)){
+      delete j.deletedAt;delete j.deletedBy;delete j.deletedDeviceId;delete j.deleted_at;
     }
     const merged=buildJobFromTechnicianReport(j,{report_id:reportId,job_id:jobId,status,review_status:reviewStatus,is_draft:!!report.isDraft,report_data:report,submitted_at:report.submittedAt||null,draft_saved_at:report.draftSavedAt||null,updated_at:savedAt},imageRows);
     Object.assign(j,merged,{status,reportReviewStatus:reviewStatus,techUpdateUnread:true,techUpdateAt:savedAt,techUpdateType:report.isDraft?'draft_saved':'submitted'});
     ensureMeta();
     renderReports();renderJobs();renderAdmin();renderDash();fillSelects();
     await saveStateNow(true);
+    await writeAuditLog(isDeletedRecord(beforeJob)?'restore_job_from_event':'restore_report_from_event','job',jobId,beforeJob,patchFromDiff(beforeJob||{},j),clonePlain(j),{eventId:row.id,eventType:row.event_type});
     setBackupStatus(`กู้รายงาน ${jobId} สำเร็จจาก event ${eventTypeLabel(row.event_type)}`, 'ok');
     alert('กู้รายงานกลับเข้าระบบแล้ว');
   }catch(e){
