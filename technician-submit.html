@@ -178,7 +178,7 @@ textarea{resize:vertical;min-height:80px;}
 
       <div class="up-group">
         <div class="up-head"><div class="up-label color-before">📸 ตรวจเช็คก่อนดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-before">0 รูป</div></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 50 รูป · ระบบจะข้ามรูปที่ซ้ำ</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 20 รูป · ระบบจะข้ามรูปที่ซ้ำ</div>
         <div class="up-zone" onclick="document.getElementById('inp-before').click()">
           <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูปตรวจเช็คก่อนดำเนินการ</div>
         </div>
@@ -188,7 +188,7 @@ textarea{resize:vertical;min-height:80px;}
 
       <div class="up-group">
         <div class="up-head"><div class="up-label color-during">🔧 ระหว่างดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-during">0 รูป</div></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 6 รูป · สูงสุด 50 รูป</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 6 รูป · สูงสุด 40 รูป</div>
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
           <input type="checkbox" id="f-no-during" onchange="toggleNoPhotos('during')" style="width:18px;height:18px;flex:0 0 auto;">
           ไม่มีรูปภาพระหว่างดำเนินการ
@@ -202,7 +202,7 @@ textarea{resize:vertical;min-height:80px;}
 
       <div class="up-group">
         <div class="up-head"><div class="up-label color-after">✅ หลังดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-after">0 รูป</div></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 50 รูป</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 20 รูป</div>
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
           <input type="checkbox" id="f-no-after" onchange="toggleNoPhotos('after')" style="width:18px;height:18px;flex:0 0 auto;">
           ไม่มีรูปภาพหลังดำเนินการ
@@ -284,7 +284,7 @@ let jobStorageMode = 'app_state';
 let photos = { before: [], during: [], after: [], documents: [] };
 let noPhoto = { during: false, after: false };
 const PHOTO_MIN = { before: 2, during: 6, after: 2 };
-const PHOTO_MAX = { before: 50, during: 50, after: 50 };
+const PHOTO_MAX = { before: 20, during: 40, after: 20 };
 const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนินการ', during: 'ระหว่างดำเนินการ', after: 'หลังดำเนินการ', documents: 'ใบงาน/เอกสาร' };
 
 // ============================================================
@@ -808,7 +808,8 @@ async function collectUploadedImages(report, cats=['before','during','after']){
   const total = uploadTasks.length;
   const uploadedNewImages = await mapWithConcurrency(uploadTasks, PHOTO_UPLOAD_CONCURRENCY, async ({ order, cat, p }, index)=>{
       document.getElementById('upload-detail').textContent = total ? `อัปโหลดรูป ${done+1}/${total}` : '';
-      const uploaded = await uploadPhoto(p.compressed, cat, index, p);
+      const uploadBlob = await ensureUploadBlob(p, cat);
+      const uploaded = await uploadPhoto(uploadBlob, cat, index, p);
       const meta = {
         order,
         id: p.id,
@@ -816,7 +817,7 @@ async function collectUploadedImages(report, cats=['before','during','after']){
         label: CAT_LABEL[cat],
         url: uploaded.url,
         name: p.file?.name || `${cat}_${done+1}.jpg`,
-        size: p.compressed?.size || p.file?.size || 0,
+        size: uploadBlob.size || p.compressed?.size || p.file?.size || 0,
         width: p.width || 0,
         height: p.height || 0,
         orientation: (p.height||0) > (p.width||0) ? 'portrait' : 'landscape',
@@ -836,6 +837,38 @@ async function collectUploadedImages(report, cats=['before','during','after']){
   return [...uploadedImages, ...uploadedNewImages]
     .sort((a,b)=>a.order-b.order)
     .map(({ order, ...meta })=>meta);
+}
+
+function dataUrlToBlob(dataUrl){
+  if(typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return null;
+  const parts = dataUrl.split(',');
+  if(parts.length < 2) return null;
+  const mime = (parts[0].match(/data:([^;]+)/)||[])[1] || 'image/jpeg';
+  const bin = atob(parts[1]);
+  const bytes = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type:mime });
+}
+
+async function ensureUploadBlob(photo, category){
+  if(photo?.compressed instanceof Blob) return photo.compressed;
+  if(photo?.file instanceof Blob){
+    try{
+      const converted = await compressImage(photo.file);
+      photo.compressed = converted.blob;
+      photo.dataUrl = converted.dataUrl;
+      photo.width = converted.width;
+      photo.height = converted.height;
+      photo.status = 'ready';
+      renderThumbs(category);
+      if(photo.compressed instanceof Blob) return photo.compressed;
+    }catch(e){
+      return photo.file;
+    }
+  }
+  const fromDataUrl = dataUrlToBlob(photo?.dataUrl);
+  if(fromDataUrl) return fromDataUrl;
+  throw new Error(`รูป${CAT_LABEL[category]||category}บางรูปยังไม่พร้อมอัปโหลด กรุณาลบรูปนั้นแล้วเลือกใหม่`);
 }
 
 async function saveDraft(){
@@ -1027,6 +1060,9 @@ async function submitJob(){
 async function uploadPhoto(blob, category, index, photo){
   if(!UPLOAD_ENDPOINT.startsWith('http')){
     throw new Error('ยังไม่ได้ตั้งค่า Cloudflare Worker สำหรับอัปโหลดรูป');
+  }
+  if(!(blob instanceof Blob)){
+    throw new Error(`รูป${CAT_LABEL[category]||category}ไม่ใช่ไฟล์รูปที่อัปโหลดได้ กรุณาเลือกรูปใหม่`);
   }
   const fd = new FormData();
   fd.append('file', blob, `${category}_${index}.jpg`);
