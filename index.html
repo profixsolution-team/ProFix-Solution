@@ -1007,7 +1007,7 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.06.11.6';
+const APP_VERSION='2026.06.12.1';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -1154,6 +1154,22 @@ function getActorName({ask=false}={}){
 function initAuditIdentity(){
   getDeviceId();
   getActorName();
+  registerAdminDevice().catch(e=>console.warn('Register admin device failed',e));
+}
+async function registerAdminDevice(){
+  const body=JSON.stringify({
+    device_id:getDeviceId(),
+    actor_name:getActorName(),
+    app_version:APP_VERSION,
+    user_agent:navigator.userAgent||'',
+    last_seen_at:new Date().toISOString()
+  });
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/admin_devices?on_conflict=device_id`,{
+    method:'POST',
+    headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),
+    body
+  });
+  if(!r.ok)throw new Error(await r.text());
 }
 function clonePlain(v){return JSON.parse(JSON.stringify(v??null));}
 function patchFromDiff(before={},after={}){
@@ -1181,6 +1197,20 @@ async function writeAuditLog(action,targetType,targetId,beforeData,patchData,aft
   }catch(e){
     console.warn('Audit log failed',e);
   }
+}
+async function patchJobAfterAdminReview(jobId, patch, { statuses=[], adminTaskNote='', savedAt=new Date().toISOString() } = {}){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_patch_job_after_tech_report`,{
+    method:'POST',
+    headers:sbHeaders(),
+    body:JSON.stringify({
+      p_job_id:jobId,
+      p_patch:patch,
+      p_statuses:statuses,
+      p_admin_task_note:adminTaskNote,
+      p_saved_at:savedAt
+    })
+  });
+  if(!r.ok)throw new Error(await r.text());
 }
 function isDeletedRecord(x){return !!(x?.deletedAt||x?.deleted_at);}
 function liveJobs(){return (jobs||[]).filter(j=>!isDeletedRecord(j)&&isUsableJobId(j?.id));}
@@ -2360,6 +2390,12 @@ function openAdminModal(){
 async function saveAdminTask(openQueueAfter=false){
   const data={type:document.getElementById('fa-type').value,client:document.getElementById('fa-client').value,phone:document.getElementById('fa-phone').value,detail:document.getElementById('fa-detail').value,assign:document.getElementById('fa-assign').value,due:document.getElementById('fa-due').value,jobId:document.getElementById('fa-job').value,pri:document.getElementById('fa-pri').value,status:document.getElementById('fa-status').value};
   if(pendingAdminPdfFile&&!data.jobId){alert('อัปโหลดใบงานแล้ว กรุณาใส่ PR ก่อนบันทึก เพื่อให้ระบบเก็บไฟล์เข้าแฟ้ม PR');return;}
+  const adminDup=duplicateAdminPRInfo(data.jobId,{excludeTaskId:editAdminId||''});
+  if(adminDup){
+    alert(`มีงานซ้ำในงานแอดมิน: ${data.jobId}\nพบใน ${adminDup.id}\n${adminDup.detail||''}`);
+    document.getElementById('fa-job').focus();
+    return;
+  }
   if(data.assign&&!adminNames.includes(data.assign))adminNames.push(data.assign);
   if(data.jobId&&!prValues.includes(data.jobId))prValues.push(data.jobId);
   let taskId=editAdminId;
@@ -2401,17 +2437,39 @@ function openAdminDetail(id){
   document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">Assign</div><div class="detail-val">${esc(t.assign||'-')}</div></div><div class="detail-item"><div class="detail-label">กำหนด</div><div class="detail-val">${esc(t.due||'-')}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status||'-')}</span></div></div><div class="detail-item"><div class="detail-label">PR</div><div class="detail-val">${esc(t.jobId||'-')}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(t.client||'-')}</div></div>${t.phone?`<div class="form-group"><label>เบอร์ติดต่อ</label><div class="text-box">${esc(t.phone)}</div></div>`:''}<div class="form-group"><label>รายละเอียด</label><div class="text-box">${esc(t.detail||'-')}</div></div>${t.reportReviewNote?`<div class="form-group"><label>หมายเหตุจากรายงานช่าง</label><div class="text-box">${esc(t.reportReviewNote)}</div></div>`:''}<div class="form-row"><button class="btn btn-ghost" onclick="editAdminTask('${t.id}')">แก้ไขงาน</button><button class="btn btn-primary" onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button></div>`;
   openM('m-detail');
 }
-function addAdminName(){const v=document.getElementById('fa-assign').value.trim();if(v&&!adminNames.includes(v)){adminNames.push(v);fillSelects();alert('เพิ่มชื่อแอดมินแล้ว');}}
+function addAdminName(){
+  const v=document.getElementById('fa-assign').value.trim();
+  if(v&&!adminNames.includes(v)){
+    const before=[...adminNames];
+    adminNames.push(v);
+    fillSelects();
+    saveState();
+    registerAdminDevice().catch(e=>console.warn('Register admin device failed',e));
+    writeAuditLog('add_admin_name','system','adminNames',before,{name:v},[...adminNames]);
+    alert('เพิ่มชื่อแอดมินแล้ว');
+  }
+}
 function normalizePR(v){return String(v||'').trim().replace(/\s+/g,'').toUpperCase();}
-function duplicatePRInfo(pr,{excludeJobId='',excludeTaskId='',includeAdmin=true}={}){
+function duplicateAdminPRInfo(pr,{excludeTaskId=''}={}){
+  const key=normalizePR(pr);
+  if(!key)return null;
+  const task=liveAdminTasks().find(t=>normalizePR(t.jobId)===key&&String(t.id)!==String(excludeTaskId));
+  if(task)return {kind:'งานแอดมิน',id:task.id,detail:`${task.type||'-'} / ${task.client||'-'} / ${task.status||'-'}`};
+  return null;
+}
+function duplicateQueuePRInfo(pr,{excludeJobId=''}={}){
   const key=normalizePR(pr);
   if(!key)return null;
   const job=liveJobs().find(j=>normalizePR(j.id)===key&&String(j.id)!==String(excludeJobId));
   if(job)return {kind:'คิวช่าง',id:job.id,detail:`${job.client||'-'} / ${job.branch||'-'} / ${job.status||'-'}`};
-  if(includeAdmin){
-    const task=liveAdminTasks().find(t=>normalizePR(t.jobId)===key&&String(t.id)!==String(excludeTaskId));
-    if(task)return {kind:'งานแอดมิน',id:task.id,detail:`${task.type||'-'} / ${task.client||'-'} / ${task.status||'-'}`};
-  }
+  return null;
+}
+function duplicatePRInfo(pr,{excludeJobId='',excludeTaskId='',includeAdmin=true}={}){
+  const key=normalizePR(pr);
+  if(!key)return null;
+  const job=duplicateQueuePRInfo(pr,{excludeJobId});
+  if(job)return job;
+  if(includeAdmin)return duplicateAdminPRInfo(pr,{excludeTaskId});
   return null;
 }
 function alertDuplicatePR(pr,info){
@@ -2420,8 +2478,8 @@ function alertDuplicatePR(pr,info){
 function addPRValue(){
   const v=document.getElementById('fa-job').value.trim();
   if(!v)return;
-  const dup=duplicatePRInfo(v,{excludeTaskId:editAdminId||''});
-  if(dup){alertDuplicatePR(v,dup);return;}
+  const dup=duplicateAdminPRInfo(v,{excludeTaskId:editAdminId||''});
+  if(dup){alert(`มีงานซ้ำในงานแอดมิน: ${v}\nพบใน ${dup.id}\n${dup.detail||''}`);return;}
   if(!prValues.some(x=>normalizePR(x)===normalizePR(v))){prValues.push(v);fillSelects();alert('เพิ่ม PR แล้ว');}
 }
 function openJobFromAdmin(id){
@@ -2458,7 +2516,12 @@ async function setJS(id,s){
   if(s==='รอจ่าย')j.pay=payStatuses[0]||'รอเก็บเงิน';
   const patch=patchFromDiff(before,j);
   renderJobs();renderCalendar();renderDash();saveState();
-  await writeAuditLog('update_job_status','job',id,before,patch,clonePlain(j));
+  try{
+    await patchJobAfterAdminReview(id,patch,{statuses:[s],adminTaskNote:`เปลี่ยนสถานะเป็น ${s}`});
+    await writeAuditLog('update_job_status','job',id,before,patch,clonePlain(j));
+  }catch(e){
+    alert('อัปเดตสถานะขึ้น Supabase ไม่สำเร็จ: '+e.message);
+  }
   if(s==='รอจ่าย'){goFinanceForJob(id);return;}
 }
 function technicianFormUrl(id){return `technician-submit.html?job=${encodeURIComponent(id)}&rev=${Date.now()}`;}
@@ -2494,8 +2557,8 @@ function saveJob(){
     action='update_job';
   }else{
     const id=data.ref&&data.ref!=='N/A'?data.ref:'PR-'+String(jCnt++).padStart(3,'0');
-    const dup=duplicatePRInfo(id,{excludeTaskId:pendingJobFromAdminId||'',includeAdmin:false});
-    if(dup){alertDuplicatePR(id,dup);document.getElementById('fj-ref').focus();return;}
+    const dup=duplicateQueuePRInfo(id);
+    if(dup){alert(`มีงานซ้ำในคิวช่าง: ${id}\nพบใน ${dup.id}\n${dup.detail||''}`);document.getElementById('fj-ref').focus();return;}
     savedJobId=id;
     const deletedJob=jobs.find(j=>normalizePR(j.id)===normalizePR(id)&&isDeletedRecord(j));
     if(deletedJob){
@@ -3344,6 +3407,29 @@ function syncReportFormToJob(){
   j.technicianReport={...(j.technicianReport||{}),dateIn:j.dateIn,timeIn:j.timeIn,dateDone:j.dateDone,timeDone:j.timeDone,symptom:j.symptom,cause:j.cause,fix:j.fix,parts:j.partsUsed,recommendation:j.recommendation,note:j.note2,reviewStatus:j.reportReviewStatus,reviewNote:j.reviewNote,reviewedAt:j.technicianReport?.reviewedAt||''};
   return j;
 }
+function reportReviewPatch(j){
+  return {
+    status:j.status,
+    dateIn:j.dateIn||'',
+    timeIn:j.timeIn||'',
+    dateDone:j.dateDone||'',
+    timeDone:j.timeDone||'',
+    pic:j.pic||'',
+    symptom:j.symptom||'',
+    cause:j.cause||'',
+    fix:j.fix||'',
+    partsUsed:j.partsUsed||'',
+    recommendation:j.recommendation||'',
+    note2:j.note2||'',
+    reviewNote:j.reviewNote||'',
+    report:j.report||'',
+    reportReviewStatus:j.reportReviewStatus||'',
+    techUpdateUnread:!!j.techUpdateUnread,
+    techUpdateAt:j.techUpdateAt||'',
+    techUpdateType:j.techUpdateType||'',
+    technicianReport:j.technicianReport||{}
+  };
+}
 async function saveReport(){
   const id=document.getElementById('mrpt-jobid').value;
   const before=clonePlain(jobs.find(x=>x.id===id));
@@ -3353,6 +3439,11 @@ async function saveReport(){
   renderJobs();
   renderDash();
   saveState();
+  try{
+    await patchJobAfterAdminReview(j.id,reportReviewPatch(j),{statuses:[j.status].filter(Boolean),adminTaskNote:j.reviewNote||'บันทึกการตรวจรายงาน'});
+  }catch(e){
+    alert('บันทึกรายงานขึ้น Supabase ไม่สำเร็จ: '+e.message);
+  }
   await writeAuditLog('update_report_review','job',j.id,before,patchFromDiff(before||{},j),clonePlain(j));
 }
 function reportDocText(v){
@@ -3569,6 +3660,7 @@ function generatePartsQuote(){
 }
 async function approvePartsRepair(){
   const id=document.getElementById('mrpt-jobid').value;
+  const before=clonePlain(jobs.find(x=>x.id===id));
   const j=syncReportFormToJob();if(!j)return;
   j.status='รอช่างเข้าซ่อม';
   j.reportReviewStatus='รอช่างเข้าซ่อม';
@@ -3577,10 +3669,17 @@ async function approvePartsRepair(){
   syncAdminTasksFromReport(id,'รอช่างเข้าซ่อม',j.reviewNote);
   j.technicianReport={...(j.technicianReport||{}),needQuote:false,noPhoto:{during:false,after:false},reviewStatus:'รอช่างเข้าซ่อม',reviewNote:j.reviewNote,approvedForRepairAt:new Date().toISOString()};
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
+  try{
+    await patchJobAfterAdminReview(id,reportReviewPatch(j),{statuses:['รอช่างเข้าซ่อม'],adminTaskNote:j.reviewNote});
+    await writeAuditLog('approve_parts_repair','job',id,before,patchFromDiff(before||{},j),clonePlain(j));
+  }catch(e){
+    alert('บันทึกอนุมัติซ่อมต่อขึ้น Supabase ไม่สำเร็จ: '+e.message);
+  }
   await copyTechnicianLink(id);
 }
-function closeSurveyJob(){
+async function closeSurveyJob(){
   const id=document.getElementById('mrpt-jobid').value;
+  const before=clonePlain(jobs.find(x=>x.id===id));
   const j=syncReportFormToJob();if(!j)return;
   if(!confirm('ปิดงานนี้เป็นงานสำรวจใช่ไหม?'))return;
   j.status='ปิดงานสำรวจ';
@@ -3590,21 +3689,32 @@ function closeSurveyJob(){
   syncAdminTasksFromReport(id,'ปิดงานสำรวจ',j.reviewNote);
   j.technicianReport={...(j.technicianReport||{}),reviewStatus:'ตรวจแล้ว',reviewNote:j.reviewNote,closedSurveyAt:new Date().toISOString()};
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
+  try{
+    await patchJobAfterAdminReview(id,reportReviewPatch(j),{statuses:['ปิดงานสำรวจ'],adminTaskNote:j.reviewNote});
+    await writeAuditLog('close_survey_job','job',id,before,patchFromDiff(before||{},j),clonePlain(j));
+  }catch(e){
+    alert('บันทึกปิดงานสำรวจขึ้น Supabase ไม่สำเร็จ: '+e.message);
+  }
 }
 async function approveReport(){
   const id=document.getElementById('mrpt-jobid').value;
   const j=jobs.find(x=>x.id===id);if(!j)return;
   const before=clonePlain(j);
-  await saveReport();
-  const x=jobs.find(v=>v.id===id);if(!x)return;
+  const x=syncReportFormToJob();if(!x)return;
   x.reportReviewStatus='ตรวจแล้ว';
   x.status='แอดมินตรวจแล้ว';
   x.reviewNote=document.getElementById('mrpt-review-note').value||'อนุมัติรายงานแล้ว';
   ensureJobStatus('แอดมินตรวจแล้ว');
   syncAdminTasksFromReport(id,'แอดมินตรวจแล้ว',x.reviewNote);
   x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ตรวจแล้ว',reviewNote:x.reviewNote,reviewedAt:new Date().toISOString()};
+  closeM('m-report');
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
-  await writeAuditLog('approve_report','job',id,before,patchFromDiff(before||{},x),clonePlain(x));
+  try{
+    await patchJobAfterAdminReview(id,reportReviewPatch(x),{statuses:['แอดมินตรวจแล้ว'],adminTaskNote:x.reviewNote});
+    await writeAuditLog('approve_report','job',id,before,patchFromDiff(before||{},x),clonePlain(x));
+  }catch(e){
+    alert('บันทึกอนุมัติรายงานขึ้น Supabase ไม่สำเร็จ: '+e.message);
+  }
 }
 async function returnReportForFix(){
   const id=document.getElementById('mrpt-jobid').value;
@@ -3613,8 +3723,7 @@ async function returnReportForFix(){
   const note=document.getElementById('mrpt-review-note').value.trim()||prompt('ระบุเหตุผลที่ต้องแก้ไขรายงาน')||'ต้องแก้ไขรายงาน';
   if(!note)return;
   document.getElementById('mrpt-review-note').value=note;
-  await saveReport();
-  const x=jobs.find(v=>v.id===id);if(!x)return;
+  const x=syncReportFormToJob();if(!x)return;
   const returnedAt=new Date().toISOString();
   x.reportReviewStatus='ต้องแก้ไข';
   x.status='ต้องแก้ไข';
@@ -3625,9 +3734,11 @@ async function returnReportForFix(){
   ensureJobStatus('ต้องแก้ไข');
   syncAdminTasksFromReport(id,'ต้องแก้ไข',note,{markUnread:true,updateAt:returnedAt,updateType:'returned_for_fix'});
   x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ต้องแก้ไข',reviewNote:note,reviewedAt:returnedAt,returnedForFixAt:returnedAt};
+  closeM('m-report');
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();
   try{
-    await saveStateNow(true);
+    saveState();
+    await patchJobAfterAdminReview(id,reportReviewPatch(x),{statuses:['ต้องแก้ไข'],adminTaskNote:note,savedAt:returnedAt});
     await writeAuditLog('return_report_for_fix','job',id,before,patchFromDiff(before||{},x),clonePlain(x),{note});
   }catch(e){
     alert('ส่งกลับแก้ไขแล้วในหน้าเว็บ แต่ยังบันทึกขึ้น Supabase ไม่สำเร็จ: '+e.message);
