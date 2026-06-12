@@ -44,11 +44,12 @@ textarea{resize:vertical;min-height:80px;}
 .up-zone:active{border-color:var(--accent);background:var(--accent-dim);}
 .up-icon{font-size:28px;margin-bottom:6px;}
 .up-hint{font-size:12px;color:var(--text2);}
-.thumbs{display:grid;grid-template-columns:repeat(auto-fill,min(80px,1fr));gap:8px;margin-top:10px;}
-.thumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--surface2);}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,72px);gap:8px;margin-top:10px;justify-content:start;}
+.thumb{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--surface2);}
 .thumb img{width:100%;height:100%;object-fit:cover;}
 .thumb .rm{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;border:none;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;}
 .thumb .pct{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-family:var(--mono);}
+@media (min-width:480px){.thumbs{grid-template-columns:repeat(auto-fill,84px);}.thumb{width:84px;height:84px;}}
 .color-before{color:#79b8ff;}.color-during{color:#d29922;}.color-after{color:#3fb950;}.color-documents{color:#a5b4fc;}
 .badge-st{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:var(--mono);}
 .st-open{background:var(--accent-dim);color:var(--accent);}
@@ -246,7 +247,7 @@ textarea{resize:vertical;min-height:80px;}
 <div class="overlay" id="overlay-success">
   <div class="success-ic">✓</div>
   <div style="font-weight:700;font-size:20px;">ส่งงานสำเร็จ!</div>
-  <div style="color:var(--text2);font-size:14px;-width:300px;">แอดมินได้รับข้อมูลแล้ว ขอบคุณครับ 🙏<br>ปิดหน้านี้ได้เลย</div>
+  <div style="color:var(--text2);font-size:14px;max-width:300px;">แอดมินได้รับข้อมูลแล้ว ขอบคุณครับ 🙏<br>ปิดหน้านี้ได้เลย</div>
 </div>
 
 <script>
