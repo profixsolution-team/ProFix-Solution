@@ -792,8 +792,7 @@ select option{background:var(--surface2);}
             <th>เข้าจริง</th>
             <th>เสร็จงาน</th>
             <th>ผู้รับผิดชอบ</th>
-            <th>สถานะงาน</th>
-            <th>สถานะรายงาน</th>
+            <th>สถานะ</th>
             <th>รายงาน</th>
             <th></th>
           </tr></thead>
@@ -1007,7 +1006,7 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.06.12.1';
+const APP_VERSION='2026.06.12.2';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -1078,6 +1077,41 @@ function sortByTechUpdateThenDate(arr,dir,isTask=false){
     const av=itemDateValue(a)||'', bv=itemDateValue(b)||'';
     const c=av.localeCompare(bv)||(Number(a.createdAt||0)-Number(b.createdAt||0));
     return dir==='asc'?c:-c;
+  });
+}
+function recordCreatedTs(item){
+  const direct=Number(item?.createdAt||0);
+  if(Number.isFinite(direct)&&direct>0)return direct;
+  const dateText=item?.assignedAt||item?.date||item?.due||'';
+  const parsed=Date.parse(dateText);
+  return Number.isFinite(parsed)?parsed:0;
+}
+function sortByCreatedThenDate(arr,dir){
+  return [...arr].sort((a,b)=>{
+    const c=recordCreatedTs(a)-recordCreatedTs(b);
+    if(c)return dir==='asc'?c:-c;
+    const av=itemDateValue(a)||'', bv=itemDateValue(b)||'';
+    const d=av.localeCompare(bv);
+    return dir==='asc'?d:-d;
+  });
+}
+function reportSubmittedTs(j){
+  const rounds=[...(j?.reportRounds||[]),...(j?.technicianReport?.rounds||[])];
+  const roundTs=rounds.reduce((max,r)=>Math.max(max,Date.parse(r?.submittedAt||r?.savedAt||r?.createdAt||'')||0),0);
+  return Math.max(
+    Date.parse(j?.techSubmittedAt||'')||0,
+    Date.parse(j?.technicianReport?.submittedAt||'')||0,
+    Date.parse(j?.technicianReport?.draftSavedAt||'')||0,
+    Date.parse(j?.techUpdateAt||'')||0,
+    roundTs
+  );
+}
+function sortReportsBySubmitted(arr,dir){
+  return [...arr].sort((a,b)=>{
+    const c=reportSubmittedTs(a)-reportSubmittedTs(b);
+    if(c)return dir==='asc'?c:-c;
+    const fallback=recordCreatedTs(a)-recordCreatedTs(b);
+    return dir==='asc'?fallback:-fallback;
   });
 }
 function markTechUpdateSeen(jobId,{save=true}={}){
@@ -2027,7 +2061,7 @@ function renderAdmin(){
   if(rj.length){rb.style.display='block';document.getElementById('admin-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('admin-reject-list').innerHTML=rj.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${esc(t.id)}</span><span>${esc(t.type)}</span><span class="tm">-</span><span>${esc(t.client)}</span><span class="badge ${SB[t.status]||'b-reject'}">${esc(t.status)}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setAS('${t.id}','รอดำเนินการ')">รีเซ็ต</button></div>`).join('');}
   else rb.style.display='none';
   let fil=adminFilter==='ทั้งหมด'?scoped:adminFilter==='ติดปัญหา'?scoped.filter(t=>t.status==='ติดปัญหา'||t.status==='Reject'):scoped.filter(t=>t.status===adminFilter);
-  fil=sortByTechUpdateThenDate(fil.filter(t=>matchText(t,['id','jobId','type','detail','client','assign','due','status'],adminSearch)),adminSortDir,true);
+  fil=sortByCreatedThenDate(fil.filter(t=>matchText(t,['id','jobId','type','detail','client','assign','due','status'],adminSearch)),adminSortDir);
   document.getElementById('admin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('admin-tbl-title').textContent='งาน Admin - '+adminFilter+(adminSearch?' / ค้นหา: '+adminSearch:'');
   const tb=document.getElementById('admin-tbody');
@@ -2502,7 +2536,7 @@ function renderJobs(){
   else rb.style.display='none';
   let fil=jobFilter==='ทั้งหมด'?scoped:scoped.filter(j=>j.status===jobFilter);
   if(jobTeamFilter!=='ทั้งหมด')fil=fil.filter(j=>j.team===jobTeamFilter);
-  fil=sortByTechUpdateThenDate(fil.filter(j=>matchText(j,['id','ref','branch','client','type','team','date','status','note'],jobSearch)),jobSortDir);
+  fil=sortByCreatedThenDate(fil.filter(j=>matchText(j,['id','ref','branch','client','type','team','date','status','note'],jobSearch)),jobSortDir);
   document.getElementById('job-cnt').textContent=fil.length+' รายการ';
   document.getElementById('job-tbl-title').textContent='คิวช่าง - '+jobFilter+(jobTeamFilter!=='ทั้งหมด'?' / '+jobTeamFilter:'')+(jobSearch?' / ค้นหา: '+jobSearch:'');
   const tb=document.getElementById('job-tbody');
@@ -3230,7 +3264,7 @@ function buildRptControls(counts){
   const b=document.getElementById('rpt-fbar');if(!b)return;
   const reviewCounts={};
   REPORT_REVIEW_STATUSES.forEach(s=>reviewCounts[s]=liveJobs().filter(j=>inDateScope(j,'rpt')&&reportReviewStatus(j)===s).length);
-  b.innerHTML=`<span class="filter-label">สถานะงาน:</span><select class="filter-select" onchange="rptFilter=this.value;renderReports();saveUIState();">${statusOptionHtml(J_ST,counts,rptFilter)}</select><span class="filter-label">สถานะรายงาน:</span><select class="filter-select" onchange="rptReviewFilter=this.value;renderReports();saveUIState();">${statusOptionHtml(REPORT_REVIEW_STATUSES,reviewCounts,rptReviewFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="rpt-search-input" value="${esc(rptSearch)}" placeholder="PR / สาขา / ทีม" onkeydown="if(event.key==='Enter')applyRptSearch()"><button class="btn btn-ghost btn-sm" onclick="applyRptSearch()">ค้นหา</button>`;
+  b.innerHTML=`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="rptReviewFilter=this.value;renderReports();saveUIState();">${statusOptionHtml(REPORT_REVIEW_STATUSES,reviewCounts,rptReviewFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="rpt-search-input" value="${esc(rptSearch)}" placeholder="PR / สาขา / ทีม" onkeydown="if(event.key==='Enter')applyRptSearch()"><button class="btn btn-ghost btn-sm" onclick="applyRptSearch()">ค้นหา</button>`;
   addDateControls('rpt-fbar','rpt');
   addQuickControls('rpt-fbar','rpt');
 }
@@ -3311,21 +3345,18 @@ function openReportDocumentImage(jobId,index){
 }
 function renderReports(){
   const scoped=liveJobs().filter(j=>inDateScope(j,'rpt'));
-  const cnts={};
-  J_ST.forEach(s=>{cnts[s]=scoped.filter(j=>j.status===s).length;});
-  buildRptControls(cnts);
+  buildRptControls({});
   let fil=[...scoped];
-  if(rptFilter&&rptFilter!=='ทั้งหมด') fil=fil.filter(j=>j.status===rptFilter);
   if(rptReviewFilter&&rptReviewFilter!=='ทั้งหมด') fil=fil.filter(j=>reportReviewStatus(j)===rptReviewFilter);
   if(rptSearch){
     const s=rptSearch.toLowerCase();
     fil=fil.filter(j=>(j.id||'').toLowerCase().includes(s)||(j.branch||'').toLowerCase().includes(s)||(j.team||'').toLowerCase().includes(s)||(j.client||'').toLowerCase().includes(s));
   }
-  fil=sortByTechUpdateThenDate(fil,rptSortDir);
+  fil=sortReportsBySubmitted(fil,rptSortDir);
   document.getElementById('rpt-cnt').textContent=fil.length+' รายการ';
-  document.getElementById('rpt-title').textContent='รายงานช่าง'+(rptFilter&&rptFilter!=='ทั้งหมด'?' — '+rptFilter:'');
+  document.getElementById('rpt-title').textContent='รายงานช่าง'+(rptReviewFilter&&rptReviewFilter!=='ทั้งหมด'?' - '+rptReviewFilter:'');
   const tb=document.getElementById('rpt-tbody');
-  if(!fil.length){tb.innerHTML='<tr><td colspan="12"><div class="empty"><div class="empty-icon">📝</div><div>ไม่พบรายการ</div></div></td></tr>';return;}
+  if(!fil.length){tb.innerHTML='<tr><td colspan="11"><div class="empty"><div class="empty-icon">-</div><div>ไม่พบรายการ</div></div></td></tr>';return;}
   tb.innerHTML=fil.map(j=>{
     const hasReport=j.symptom||j.fix||j.report;
     const review=reportReviewStatus(j);
@@ -3338,7 +3369,6 @@ function renderReports(){
       <td class="tm" style="font-size:11px;">${formatDateTime(j.dateIn,j.timeIn)}</td>
       <td class="tm" style="font-size:11px;">${formatDateTime(j.dateDone,j.timeDone)}</td>
       <td style="font-size:12px;">${j.pic||'—'}</td>
-      <td>${statusBadge(j,j.status)}</td>
       <td>${reportReviewBadge(review)}</td>
       <td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);">${hasReport?(j.symptom||j.technicianReport?.symptom||j.report||'').substring(0,60):'<span style="color:var(--text3);">ยังไม่มีรายงาน</span>'}</td>
       <td><button class="btn ${hasTechUpdate(j)||review==='รอตรวจ'?'btn-success':'btn-ghost'} btn-sm" onclick="event.stopPropagation();openReportModal('${j.id}')">${hasTechUpdate(j)?'ตรวจอัปเดท':review==='รอตรวจ'?'ตรวจงาน':hasReport?'แก้ไข':'+ กรอก'}</button></td>
@@ -3358,9 +3388,8 @@ function openReportModal(id){
     <div class="detail-item"><div class="detail-label">ลูกค้า</div><div class="detail-val">${j.client}</div></div>
     <div class="detail-item"><div class="detail-label">ประเภทงาน</div><div class="detail-val">${j.type}</div></div>
     <div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${j.team}</div></div>
-    <div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div>
+    <div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${reportReviewBadge(review)}</div></div>
     <div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hadUnread?techUpdatePill(j):'—'}</div></div>
-    <div class="detail-item"><div class="detail-label">สถานะรายงาน</div><div class="detail-val">${reportReviewBadge(review)}</div></div>
     <div class="detail-item"><div class="detail-label">วันแจ้งซ่อม</div><div class="detail-val">${j.date||'—'}</div></div>
     <div class="detail-item"><div class="detail-label">Ref ลูกค้า</div><div class="detail-val mono">${j.ref||'—'}</div></div>
     <div class="detail-item"><div class="detail-label">ช่างส่งเมื่อ</div><div class="detail-val">${j.techSubmittedAt?new Date(j.techSubmittedAt).toLocaleString('th-TH'):'—'}</div></div>
