@@ -230,6 +230,30 @@ body[data-theme="light"] .cal-day.muted{background:#eef3f8;}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:90%;max-width:640px;max-height:90vh;overflow-y:auto;}
+.accounting-modal-overlay{align-items:stretch;justify-content:stretch;padding:0;background:var(--bg);}
+.accounting-modal{width:100vw!important;max-width:none!important;height:100vh;max-height:none!important;border-radius:0!important;border:0!important;display:flex;flex-direction:column;}
+.accounting-modal .modal-header{position:sticky;top:0;background:var(--surface);z-index:3;}
+.accounting-modal .modal-body{flex:1;overflow:auto;padding:18px 22px 110px;}
+.accounting-modal .modal-footer{position:fixed;left:0;right:0;bottom:0;background:var(--surface);z-index:4;box-shadow:0 -12px 28px rgba(0,0,0,.18);}
+.accounting-doc{display:grid;grid-template-columns:minmax(360px,1fr) 320px;gap:18px;align-items:start;}
+.accounting-doc>*{min-width:0;}
+.accounting-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;min-width:0;}
+.accounting-panel-title{font-size:13px;font-weight:800;margin-bottom:12px;color:var(--text);}
+.accounting-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.accounting-summary{position:sticky;top:86px;}
+.accounting-total-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);padding:8px 0;font-size:13px;}
+.accounting-total-row strong{font-family:var(--mono);font-size:15px;color:var(--text);}
+.accounting-total-row.grand strong{font-size:20px;color:var(--green);}
+.accounting-status{font-size:12px;color:var(--text2);line-height:1.5;margin-top:8px;min-height:18px;}
+.accounting-status.ok{color:var(--green);}
+.accounting-status.warn{color:var(--yellow);}
+.accounting-status.err{color:var(--red);}
+.accounting-line-table input,.accounting-line-table select{padding:6px 8px;font-size:12px;}
+.accounting-line-table{min-width:980px;}
+.accounting-panel .table-wrap{max-width:100%;overflow-x:auto;}
+.accounting-line-table th,.accounting-line-table td{padding:6px 8px;}
+.attachment-preview{border:1px dashed var(--border2);background:var(--bg);border-radius:8px;padding:12px;color:var(--text2);font-size:12px;line-height:1.5;min-height:78px;}
+.attachment-preview img{max-width:100%;max-height:220px;border-radius:6px;display:block;margin-top:8px;object-fit:contain;}
 #m-quote{align-items:stretch;justify-content:stretch;padding:0;}
 #m-quote .modal{width:100vw;max-width:none;height:100vh;max-height:none;border-radius:0;border:0;display:flex;flex-direction:column;}
 #m-quote .modal-body{flex:1;overflow:auto;}
@@ -319,6 +343,10 @@ select option{background:var(--surface2);}
   .stat-card{padding:12px;}
   .stat-value{font-size:19px;}
   .form-row{grid-template-columns:1fr;}
+  .accounting-doc{grid-template-columns:1fr;}
+  .accounting-modal .modal-footer{left:0;flex-wrap:wrap;}
+  .accounting-modal .modal-footer .btn{flex:1;min-width:130px;}
+  .accounting-summary{position:static;}
   .detail-grid{grid-template-columns:1fr;}
   .fin-grid{grid-template-columns:1fr!important;}
   .dash-grid{grid-template-columns:1fr;}
@@ -942,20 +970,35 @@ select option{background:var(--surface2);}
 </div>
 
 <!-- PURCHASE INVOICE MODAL -->
-<div class="modal-overlay" id="m-purchase">
-  <div class="modal" style="max-width:760px;">
-    <div class="modal-header"><div><div class="modal-title" id="purchase-modal-title">เพิ่มบิลซื้อ / ภาษีซื้อ</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">ข้อมูลบัญชีนี้ทำโดยแอดมินเท่านั้น</div></div><button class="close-btn" onclick="closeM('m-purchase')">×</button></div>
+<div class="modal-overlay accounting-modal-overlay" id="m-purchase">
+  <div class="modal accounting-modal">
+    <div class="modal-header"><div><div class="modal-title" id="purchase-modal-title">เพิ่มบิลซื้อ / ภาษีซื้อ</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">ข้อมูลบัญชีนี้ทำโดยแอดมินเท่านั้น</div></div><div class="accounting-tools"><input type="file" id="pur-upload" accept="application/pdf,image/*,.pdf" style="display:none" onchange="handleAccountingFile('purchase',this.files[0])"><input type="file" id="pur-scan" accept="image/*" capture="environment" style="display:none" onchange="handleAccountingFile('purchase',this.files[0])"><button class="btn btn-ghost" onclick="document.getElementById('pur-upload').click()" type="button">อัปโหลดรูป/PDF</button><button class="btn btn-ghost" onclick="document.getElementById('pur-scan').click()" type="button">สแกน</button><button class="btn btn-primary" onclick="savePurchaseInvoice()">บันทึกเอกสาร</button><button class="close-btn" onclick="closeM('m-purchase')">×</button></div></div>
     <div class="modal-body">
       <input type="hidden" id="pur-id">
-      <div class="form-row"><div class="form-group"><label>เลขที่บิลในระบบ</label><input id="pur-no" placeholder="เช่น PIN-2026-001"></div><div class="form-group"><label>ร้านค้า / Supplier</label><input id="pur-supplier" placeholder="ชื่อร้านค้า"></div></div>
-      <div class="form-row"><div class="form-group"><label>Tax ID Supplier</label><input id="pur-taxid"></div><div class="form-group"><label>เลขที่ใบกำกับภาษี</label><input id="pur-invoice-no"></div></div>
-      <div class="form-row"><div class="form-group"><label>วันที่ใบกำกับภาษี</label><input id="pur-date" type="date"></div><div class="form-group"><label>ประเภทเอกสารภาษี</label><select id="pur-tax-type"><option value="tax_invoice">ใบกำกับภาษีเต็มรูป</option><option value="receipt">ใบเสร็จ/ไม่มี VAT</option><option value="pending_tax_invoice">รอใบกำกับภาษี</option></select></div></div>
-      <div class="form-row"><div class="form-group"><label>สถานะจ่ายเงิน</label><select id="pur-payment"><option value="unpaid">ยังไม่ได้จ่าย</option><option value="paid">จ่ายแล้ว</option><option value="partial">จ่ายบางส่วน</option></select></div><div class="form-group"><label>วิธีจ่ายเงิน</label><input id="pur-method" placeholder="โอน / เงินสด / บัตร"></div></div>
-      <div class="form-group"><label>URL ไฟล์แนบ / รูปบิล / PDF</label><input id="pur-file" placeholder="https://..."></div>
-      <div class="form-group"><label>หมายเหตุ</label><textarea id="pur-note"></textarea></div>
-      <div class="table-wrap" style="margin-top:12px;">
-        <div class="table-header"><div class="table-title">รายการในบิล</div><button class="btn btn-ghost btn-sm" onclick="addPurchaseItemRow()" type="button">+ รายการ</button></div>
-        <div id="purchase-items-editor"></div>
+      <div class="accounting-doc">
+        <div>
+          <div class="accounting-panel mb16">
+            <div class="accounting-panel-title">ข้อมูลผู้จำหน่ายและเอกสาร</div>
+            <div class="form-row"><div class="form-group"><label>เลขที่บิลในระบบ</label><input id="pur-no" placeholder="เช่น PIN-2026-001"></div><div class="form-group"><label>ร้านค้า / Supplier</label><input id="pur-supplier" placeholder="ชื่อร้านค้า"></div></div>
+            <div class="form-row"><div class="form-group"><label>Tax ID Supplier</label><input id="pur-taxid"></div><div class="form-group"><label>เลขที่ใบกำกับภาษี</label><input id="pur-invoice-no"></div></div>
+            <div class="form-row"><div class="form-group"><label>วันที่ใบกำกับภาษี</label><input id="pur-date" type="date"></div><div class="form-group"><label>ประเภทเอกสารภาษี</label><select id="pur-tax-type"><option value="tax_invoice">ใบกำกับภาษีเต็มรูป</option><option value="receipt">ใบเสร็จ/ไม่มี VAT</option><option value="pending_tax_invoice">รอใบกำกับภาษี</option></select></div></div>
+            <div class="form-row"><div class="form-group"><label>สถานะจ่ายเงิน</label><select id="pur-payment"><option value="unpaid">ยังไม่ได้จ่าย</option><option value="paid">จ่ายแล้ว</option><option value="partial">จ่ายบางส่วน</option></select></div><div class="form-group"><label>วิธีจ่ายเงิน</label><input id="pur-method" placeholder="โอน / เงินสด / บัตร"></div></div>
+          </div>
+          <div class="accounting-panel">
+            <div class="table-header" style="padding:0 0 12px;border:0;"><div class="table-title">รายการในบิล</div><button class="btn btn-ghost btn-sm" onclick="addPurchaseItemRow()" type="button">+ เพิ่มแถว</button></div>
+            <div id="purchase-items-editor"></div>
+          </div>
+          <div class="form-row" style="margin-top:16px;"><div class="form-group"><label>หมายเหตุ</label><textarea id="pur-note"></textarea></div><div class="form-group"><label>โน้ตภายในบริษัท</label><textarea id="pur-internal-note" placeholder="ใช้จดรายละเอียดตรวจบิลภายใน"></textarea></div></div>
+        </div>
+        <aside class="accounting-panel accounting-summary">
+          <div class="accounting-panel-title">สรุปบิลซื้อ</div>
+          <div class="accounting-total-row"><span>รวมเป็นเงิน</span><strong id="pur-ui-subtotal">0.00</strong></div>
+          <div class="accounting-total-row"><span>ภาษีซื้อ</span><strong id="pur-ui-vat">0.00</strong></div>
+          <div class="accounting-total-row grand"><span>จำนวนเงินรวมทั้งสิ้น</span><strong id="pur-ui-total">0.00</strong></div>
+          <div class="form-group" style="margin-top:14px;"><label>URL ไฟล์แนบ / รูปบิล / PDF</label><input id="pur-file" placeholder="https://..."></div>
+          <div class="attachment-preview" id="pur-attachment-preview">ยังไม่ได้แนบไฟล์</div>
+          <div class="accounting-status" id="pur-save-status"></div>
+        </aside>
       </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-purchase')">ยกเลิก</button><button class="btn btn-primary" onclick="savePurchaseInvoice()">✓ บันทึกบิลซื้อ</button></div>
@@ -963,17 +1006,36 @@ select option{background:var(--surface2);}
 </div>
 
 <!-- SALES INVOICE MODAL -->
-<div class="modal-overlay" id="m-sales">
-  <div class="modal" style="max-width:720px;">
-    <div class="modal-header"><div><div class="modal-title" id="sales-modal-title">เพิ่มบิลขาย / ภาษีขาย</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">ข้อมูลบัญชีนี้ทำโดยแอดมินเท่านั้น</div></div><button class="close-btn" onclick="closeM('m-sales')">×</button></div>
+<div class="modal-overlay accounting-modal-overlay" id="m-sales">
+  <div class="modal accounting-modal">
+    <div class="modal-header"><div><div class="modal-title" id="sales-modal-title">เพิ่มบิลขาย / ภาษีขาย</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">ข้อมูลบัญชีนี้ทำโดยแอดมินเท่านั้น</div></div><div class="accounting-tools"><input type="file" id="sale-upload" accept="application/pdf,image/*,.pdf" style="display:none" onchange="handleAccountingFile('sales',this.files[0])"><input type="file" id="sale-scan" accept="image/*" capture="environment" style="display:none" onchange="handleAccountingFile('sales',this.files[0])"><button class="btn btn-ghost" onclick="document.getElementById('sale-upload').click()" type="button">อัปโหลดรูป/PDF</button><button class="btn btn-ghost" onclick="document.getElementById('sale-scan').click()" type="button">สแกน</button><button class="btn btn-primary" onclick="saveSalesInvoice()">บันทึกเอกสาร</button><button class="close-btn" onclick="closeM('m-sales')">×</button></div></div>
     <div class="modal-body">
       <input type="hidden" id="sale-id">
-      <div class="form-row"><div class="form-group"><label>เลขที่ใบกำกับภาษีขาย</label><input id="sale-no" placeholder="เช่น SINV-2026-001"></div><div class="form-group"><label>Job ID / PR</label><input id="sale-job" list="sales-job-list" placeholder="PR..." onchange="fillSalesFromJob()"><datalist id="sales-job-list"></datalist></div></div>
-      <div class="form-row"><div class="form-group"><label>ลูกค้า</label><input id="sale-customer" placeholder="ชื่อลูกค้า"></div><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div></div>
-      <div class="form-row"><div class="form-group"><label>ยอดก่อน VAT</label><input id="sale-sub" type="number" min="0" step="0.01" oninput="calcSalesVat()"></div><div class="form-group"><label>VAT</label><input id="sale-vat-input" type="number" min="0" step="0.01" oninput="calcSalesTotal()"></div><div class="form-group"><label>ยอดรวม</label><input id="sale-total-input" type="number" min="0" step="0.01"></div></div>
-      <div class="form-row"><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
-      <div class="form-group"><label>URL ไฟล์บิล / PDF</label><input id="sale-file" placeholder="https://..."></div>
-      <div class="form-group"><label>หมายเหตุ</label><textarea id="sale-note"></textarea></div>
+      <div class="accounting-doc">
+        <div>
+          <div class="accounting-panel mb16">
+            <div class="accounting-panel-title">ข้อมูลลูกค้าและเอกสาร</div>
+            <div class="form-row"><div class="form-group"><label>เลขที่ใบกำกับภาษีขาย</label><input id="sale-no" placeholder="เช่น SINV-2026-001"></div><div class="form-group"><label>Job ID / PR</label><input id="sale-job" list="sales-job-list" placeholder="PR..." onchange="fillSalesFromJob()"><datalist id="sales-job-list"></datalist></div></div>
+            <div class="form-row"><div class="form-group"><label>ลูกค้า</label><input id="sale-customer" placeholder="ชื่อลูกค้า"></div><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div></div>
+            <div class="form-row"><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
+          </div>
+          <div class="accounting-panel">
+            <div class="table-header" style="padding:0 0 12px;border:0;"><div class="table-title">รายการในบิลขาย</div><button class="btn btn-ghost btn-sm" onclick="addSalesItemRow()" type="button">+ เพิ่มแถว</button></div>
+            <div id="sales-items-editor"></div>
+          </div>
+          <div class="form-group" style="margin-top:16px;"><label>หมายเหตุ</label><textarea id="sale-note"></textarea></div>
+          <input id="sale-sub" type="hidden"><input id="sale-vat-input" type="hidden"><input id="sale-total-input" type="hidden">
+        </div>
+        <aside class="accounting-panel accounting-summary">
+          <div class="accounting-panel-title">สรุปบิลขาย</div>
+          <div class="accounting-total-row"><span>รวมเป็นเงิน</span><strong id="sale-ui-subtotal">0.00</strong></div>
+          <div class="accounting-total-row"><span>ภาษีขาย</span><strong id="sale-ui-vat">0.00</strong></div>
+          <div class="accounting-total-row grand"><span>จำนวนเงินรวมทั้งสิ้น</span><strong id="sale-ui-total">0.00</strong></div>
+          <div class="form-group" style="margin-top:14px;"><label>URL ไฟล์บิล / PDF</label><input id="sale-file" placeholder="https://..."></div>
+          <div class="attachment-preview" id="sale-attachment-preview">ยังไม่ได้แนบไฟล์</div>
+          <div class="accounting-status" id="sale-save-status"></div>
+        </aside>
+      </div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-sales')">ยกเลิก</button><button class="btn btn-primary" onclick="saveSalesInvoice()">✓ บันทึกบิลขาย</button></div>
   </div>
@@ -1047,8 +1109,9 @@ let adminSearch='', jobSearch='', jobTeamFilter='ทั้งหมด', calenda
 let financeSearch='', financeDateFilter='', lastDataUpdatedAt='', adminSortDir='desc', jobSortDir='desc', rptSortDir='desc', docSortDir='desc', docSearch='', docDateFilter='', activeDocTab='qt';
 let selectedDocs={qt:new Set(),iv:new Set(),tx:new Set()};
 let editJobId=null, editAdminId=null, pendingJobFromAdminId=null;
-let purchaseInvoices=[], purchaseItems=[], technicianUsedParts=[], jobCostItems=[], salesInvoices=[], purchaseDraftItems=[];
+let purchaseInvoices=[], purchaseItems=[], technicianUsedParts=[], jobCostItems=[], salesInvoices=[], salesInvoiceItems=[], purchaseDraftItems=[], salesDraftItems=[];
 let accountingLoaded=false, accountingLoadingPromise=null;
+let accountingAttachments={purchase:null,sales:null};
 let adminNames=['แอดมิน 1','แอดมิน 2','ทั้งคู่'];
 let adminTypes=['เปิดงานใหม่จากลูกค้า','ทำใบเสนอราคา','ทำใบกำกับภาษี','จัดซื้ออะไหล่','ติดต่อลูกค้า','อื่นๆ'];
 let jobTypes=['ซ่อมแอร์','ซ่อมตู้แช่','PM แอร์','PM ตู้แช่','ติดตั้ง'];
@@ -1088,11 +1151,12 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.06.15.4';
+const APP_VERSION='2026.06.15.5';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
 const WORKORDER_UPLOAD_ENDPOINT='https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload-workorder';
+const ACCOUNTING_UPLOAD_ENDPOINT='https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
 const LS_UI_KEY='svc_admin_tracker_ui_v1';
 const LS_THEME_KEY='svc_admin_tracker_theme';
 const LS_FAST_STATE_KEY='svc_admin_tracker_fast_state_v4';
@@ -2237,6 +2301,7 @@ async function setAS(id,s){
   await writeAuditLog('update_admin_status','admin_task',id,before,{status:s,isNew:false},after);
 }
 let pdfJsLoading=null;
+let tesseractJsLoading=null;
 let pendingAdminPdfFile=null;
 function currentAdminPdfPR(){
   return (document.getElementById('fa-job')?.value||'').trim();
@@ -2268,6 +2333,30 @@ function ensurePdfJs(){
     document.head.appendChild(s);
   });
   return pdfJsLoading;
+}
+function ensureTesseractJs(){
+  if(window.Tesseract)return Promise.resolve(window.Tesseract);
+  if(tesseractJsLoading)return tesseractJsLoading;
+  tesseractJsLoading=new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js';
+    s.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error('OCR library not loaded'));
+    s.onerror=()=>reject(new Error('โหลดระบบ OCR ไม่สำเร็จ'));
+    document.head.appendChild(s);
+  });
+  return tesseractJsLoading;
+}
+async function extractImageText(file,kind){
+  const Tesseract=await ensureTesseractJs();
+  const worker=await Tesseract.createWorker('tha+eng',undefined,{logger:m=>{
+    if(m.status==='recognizing text')setAccountingStatus(kind,`กำลังสแกนข้อความ ${Math.round((m.progress||0)*100)}%`,'warn');
+  }});
+  try{
+    const result=await worker.recognize(file);
+    return result?.data?.text||'';
+  }finally{
+    await worker.terminate();
+  }
 }
 async function extractPdfText(file){
   const lib=await ensurePdfJs();
@@ -2864,22 +2953,123 @@ function openFinanceEdit(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x)
 function saveFinanceEdit(){const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);Object.assign(j,{pc:parseFloat(document.getElementById('ff-pc').value)||0,partR:parseFloat(document.getElementById('ff-partR').value)||0,pt:parseFloat(document.getElementById('ff-pt').value)||0,partC:parseFloat(document.getElementById('ff-partC').value)||0,fuel:parseFloat(document.getElementById('ff-fuel').value)||0,pay:document.getElementById('ff-pay').value,financeNote:document.getElementById('ff-note').value});closeM('m-finance-edit');renderFin();renderDash();saveState();writeAuditLog('update_job_finance','job',id,before,patchFromDiff(before,j),clonePlain(j));}
 function money(v){return Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
 function newAccountingId(prefix){return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;}
+function setAccountingStatus(kind,msg,type=''){
+  const id=kind==='purchase'?'pur-save-status':'sale-save-status';
+  const el=document.getElementById(id);
+  if(el){el.textContent=msg;el.className='accounting-status '+type;}
+}
+function accountingPrefix(kind){return kind==='purchase'?'pur':'sale';}
+function updateAttachmentPreview(kind,file,dataUrl=''){
+  const prefix=accountingPrefix(kind);
+  const el=document.getElementById(prefix+'-attachment-preview');
+  if(!el)return;
+  if(!file){el.textContent='ยังไม่ได้แนบไฟล์';return;}
+  const safeName=esc(file.name||'attachment');
+  const meta=`${safeName}<br><span class="tm">${file.type||'file'} · ${Math.round((file.size||0)/1024).toLocaleString()} KB</span>`;
+  el.innerHTML=file.type?.startsWith('image/')&&dataUrl?`${meta}<img src="${dataUrl}" alt="">`:meta;
+}
+function parseAccountingDocText(text){
+  const flat=normalizePdfText(text).replace(/\s+/g,' ').trim();
+  const lines=pdfLines(text);
+  const amountMatches=[...flat.matchAll(/(?:฿|\bTHB\b)?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/g)].map(m=>Number(m[1].replace(/,/g,''))).filter(n=>Number.isFinite(n)&&n>0);
+  const total=amountMatches.length?Math.max(...amountMatches):0;
+  const vatLabel=flat.match(/(?:VAT|ภาษี(?:มูลค่าเพิ่ม)?)[^\d]{0,20}([0-9,]+(?:\.\d{2})?)/i);
+  const vat=vatLabel?Number(vatLabel[1].replace(/,/g,'')):(total?Math.round((total*7/107)*100)/100:0);
+  const subtotal=total?Math.max(0,Math.round((total-vat)*100)/100):0;
+  const taxId=flat.match(/(?:tax\s*id|เลขประจำตัวผู้เสียภาษี|เลขผู้เสียภาษี)[^\d]{0,20}(\d{10,13})/i)?.[1]||flat.match(/\b(\d{13})\b/)?.[1]||'';
+  const invoiceNo=flat.match(/(?:invoice\s*(?:no|number)?|เลขที่(?:ใบกำกับภาษี|บิล|เอกสาร)?|ใบกำกับภาษีเลขที่)[\s:#-]*([A-Z0-9\-\/]{3,})/i)?.[1]||'';
+  const date=extractDateFromText(flat);
+  const nameLine=lines.find(l=>/(บริษัท|จำกัด|หจก|ร้าน|co\.|ltd|limited)/i.test(l))||'';
+  const pr=flat.match(/\b(PR[-\s]?\d{3,}|PR\d{3,})\b/i)?.[1]?.replace(/\s+/g,'')||'';
+  return {invoiceNo,date,taxId,name:nameLine,subtotal,vat,total,pr};
+}
+async function uploadAccountingAttachment(kind,file,docId){
+  if(!file)return '';
+  const fd=new FormData();
+  fd.append('file',file,file.name||'accounting-file');
+  const category=kind==='purchase'?'purchase_invoice':'sales_invoice';
+  const ref=docId||newAccountingId(kind==='purchase'?'PINV':'SINV');
+  fd.append('job_id',ref);
+  let endpoint=ACCOUNTING_UPLOAD_ENDPOINT;
+  if(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')){
+    endpoint=WORKORDER_UPLOAD_ENDPOINT;
+    fd.append('doc_type',category);
+    fd.append('source','accounting');
+  }else{
+    fd.append('category',category);
+    fd.append('token','admin-accounting');
+  }
+  const r=await fetch(endpoint,{method:'POST',body:fd});
+  if(!r.ok)throw new Error(await r.text());
+  const data=await r.json().catch(()=>({}));
+  return data.url||data.fileUrl||data.publicUrl||'';
+}
+async function handleAccountingFile(kind,file){
+  if(!file)return;
+  const prefix=accountingPrefix(kind);
+  setAccountingStatus(kind,'กำลังอ่านไฟล์เอกสาร...','warn');
+  let dataUrl='';
+  try{
+    if(file.type?.startsWith('image/'))dataUrl=await fileToDataUrl(file);
+    accountingAttachments[kind]={file,dataUrl};
+    updateAttachmentPreview(kind,file,dataUrl);
+    if(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')){
+      const text=await extractPdfText(file);
+      const parsed=parseAccountingDocText(text);
+      applyAccountingParsedData(kind,parsed);
+      setAccountingStatus(kind,'อ่าน PDF แล้ว ลองตรวจตัวเลข/วันที่ก่อนบันทึก','ok');
+    }else if(file.type?.startsWith('image/')){
+      const text=await extractImageText(file,kind);
+      const parsed=parseAccountingDocText(text);
+      applyAccountingParsedData(kind,parsed);
+      setAccountingStatus(kind,'สแกนรูปแล้ว กรุณาตรวจข้อมูลก่อนบันทึก','ok');
+    }else{
+      setAccountingStatus(kind,'แนบไฟล์แล้ว กรุณาตรวจและกรอกข้อมูลก่อนบันทึก','warn');
+    }
+  }catch(e){
+    console.warn('Accounting file read failed',e);
+    setAccountingStatus(kind,'อ่านไฟล์ไม่สำเร็จ: '+e.message,'err');
+  }
+}
+function applyAccountingParsedData(kind,data){
+  if(kind==='purchase'){
+    if(data.invoiceNo)document.getElementById('pur-invoice-no').value=data.invoiceNo;
+    if(data.date)document.getElementById('pur-date').value=data.date;
+    if(data.taxId)document.getElementById('pur-taxid').value=data.taxId;
+    if(data.name&&!document.getElementById('pur-supplier').value)document.getElementById('pur-supplier').value=data.name;
+    if(data.total&&!purchaseDraftItems.some(x=>String(x.item_name||'').trim())){
+      purchaseDraftItems=[{...blankPurchaseItem(),item_name:'รายการจากเอกสาร',quantity:1,unit:'รายการ',unit_price:data.subtotal||data.total,vat_amount:data.vat,total_amount:data.total}];
+      renderPurchaseItemEditor();
+    }
+  }else{
+    if(data.invoiceNo)document.getElementById('sale-no').value=data.invoiceNo;
+    if(data.date)document.getElementById('sale-date').value=data.date;
+    if(data.name&&!document.getElementById('sale-customer').value)document.getElementById('sale-customer').value=data.name;
+    if(data.pr&&!document.getElementById('sale-job').value)document.getElementById('sale-job').value=data.pr;
+    if(data.total&&!salesDraftItems.some(x=>String(x.description||'').trim())){
+      salesDraftItems=[blankSalesItem('รายการจากเอกสาร',1,'รายการ',data.subtotal||data.total)];
+      renderSalesItemEditor();
+    }
+  }
+}
 async function ensureAccountingLoaded(force=false){
   if(accountingLoaded&&!force)return;
   if(accountingLoadingPromise&&!force)return accountingLoadingPromise;
   accountingLoadingPromise=(async()=>{
-    const [purRows,itemRows,techRows,costRows,saleRows]=await Promise.all([
+    const [purRows,itemRows,techRows,costRows,saleRows,saleItemRows]=await Promise.all([
       sbFetchAll('purchase_invoices','?select=*&status=eq.active&order=invoice_date.desc'),
       sbFetchAll('purchase_items','?select=*&status=eq.active&order=created_at.desc'),
       sbFetchAll('technician_used_parts','?select=*&order=created_at.desc'),
       sbFetchAll('job_cost_items','?select=*&status=eq.active&order=created_at.desc'),
-      sbFetchAll('sales_invoices','?select=*&status=eq.active&order=invoice_date.desc')
+      sbFetchAll('sales_invoices','?select=*&status=eq.active&order=invoice_date.desc'),
+      sbFetchAll('sales_invoice_items','?select=*&status=eq.active&order=created_at.desc').catch(e=>{console.warn('Sales item table not ready',e);return [];})
     ]);
     purchaseInvoices=purRows||[];
     purchaseItems=itemRows||[];
     technicianUsedParts=techRows||[];
     jobCostItems=costRows||[];
     salesInvoices=saleRows||[];
+    salesInvoiceItems=saleItemRows||[];
     accountingLoaded=true;
   })().catch(e=>{
     console.warn('Accounting load failed',e);
@@ -2924,6 +3114,10 @@ function openPurchaseModal(id=''){
   document.getElementById('pur-method').value=inv?.payment_method||'';
   document.getElementById('pur-file').value=inv?.file_url||'';
   document.getElementById('pur-note').value=inv?.note||'';
+  document.getElementById('pur-internal-note').value='';
+  accountingAttachments.purchase=null;
+  updateAttachmentPreview('purchase',null);
+  setAccountingStatus('purchase',inv?.file_url?'มีไฟล์แนบเดิมใน URL แล้ว':'','');
   purchaseDraftItems=inv?purchaseItems.filter(x=>x.purchase_invoice_id===inv.id).map(x=>({...x})):[blankPurchaseItem()];
   renderPurchaseItemEditor();
   openM('m-purchase');
@@ -2931,41 +3125,66 @@ function openPurchaseModal(id=''){
 function addPurchaseItemRow(){purchaseDraftItems.push(blankPurchaseItem());renderPurchaseItemEditor();}
 function removePurchaseItemRow(i){purchaseDraftItems.splice(i,1);if(!purchaseDraftItems.length)purchaseDraftItems.push(blankPurchaseItem());renderPurchaseItemEditor();}
 function updatePurchaseDraft(i,field,value){purchaseDraftItems[i][field]=value;renderPurchaseItemEditor();}
+function purchaseDraftTotals(){
+  return purchaseDraftItems.reduce((acc,it)=>{
+    const qty=Number(it.quantity||0),unit=Number(it.unit_price||0),sub=qty*unit;
+    const vat=Math.round(sub*.07*100)/100;
+    acc.subtotal+=sub;acc.vat+=vat;acc.total+=sub+vat;return acc;
+  },{subtotal:0,vat:0,total:0});
+}
+function updatePurchaseSummary(){
+  const t=purchaseDraftTotals();
+  const sub=document.getElementById('pur-ui-subtotal'),vat=document.getElementById('pur-ui-vat'),total=document.getElementById('pur-ui-total');
+  if(sub)sub.textContent=money(t.subtotal);
+  if(vat)vat.textContent=money(t.vat);
+  if(total)total.textContent=money(t.total);
+}
 function renderPurchaseItemEditor(){
   const el=document.getElementById('purchase-items-editor');if(!el)return;
-  el.innerHTML=purchaseDraftItems.map((it,i)=>{
+  el.innerHTML=`<div class="table-wrap" style="border-radius:8px;"><table class="accounting-line-table"><thead><tr><th style="width:42px;">ลำดับ</th><th>รายละเอียด</th><th style="width:130px;">PR</th><th style="width:88px;">จำนวน</th><th style="width:82px;">หน่วย</th><th style="width:120px;">ราคา/หน่วย</th><th style="width:140px;">ประเภท</th><th style="width:120px;">รวม</th><th style="width:46px;"></th></tr></thead><tbody>${purchaseDraftItems.map((it,i)=>{
     const qty=Number(it.quantity||0),unit=Number(it.unit_price||0),sub=qty*unit,vat=Math.round(sub*.07*100)/100,total=sub+vat;
-    return `<div class="card" style="padding:12px;margin:8px 0;background:var(--surface2);">
-      <div class="form-row"><div class="form-group"><label>ชื่อรายการ</label><input value="${esc(it.item_name||'')}" onchange="updatePurchaseDraft(${i},'item_name',this.value)"></div><div class="form-group"><label>ใช้กับ PR</label><input value="${esc(it.job_id||'')}" placeholder="PR ถ้ามี" onchange="updatePurchaseDraft(${i},'job_id',this.value)"></div></div>
-      <div class="form-row"><div class="form-group"><label>จำนวน</label><input type="number" value="${esc(it.quantity||1)}" onchange="updatePurchaseDraft(${i},'quantity',this.value)"></div><div class="form-group"><label>หน่วย</label><input value="${esc(it.unit||'')}" onchange="updatePurchaseDraft(${i},'unit',this.value)"></div><div class="form-group"><label>ราคาต่อหน่วย</label><input type="number" value="${esc(it.unit_price||0)}" onchange="updatePurchaseDraft(${i},'unit_price',this.value)"></div></div>
-      <div class="form-row"><div class="form-group"><label>ประเภทการนำไปใช้</label><select onchange="updatePurchaseDraft(${i},'allocation_type',this.value)"><option value="direct_job"${it.allocation_type==='direct_job'?' selected':''}>ใช้กับ PR โดยตรง</option><option value="stock"${it.allocation_type==='stock'?' selected':''}>เข้า stock กลาง</option><option value="multi_job"${it.allocation_type==='multi_job'?' selected':''}>แบ่งใช้หลาย PR</option><option value="general_expense"${it.allocation_type==='general_expense'?' selected':''}>ค่าใช้จ่ายทั่วไป</option><option value="pending"${!it.allocation_type||it.allocation_type==='pending'?' selected':''}>รอจับคู่ภายหลัง</option></select></div><div class="form-group"><label>รวม</label><input readonly value="ก่อน VAT ${money(sub)} | VAT ${money(vat)} | รวม ${money(total)}"></div></div>
-      <div class="form-group"><label>หมายเหตุรายการ</label><input value="${esc(it.note||'')}" onchange="updatePurchaseDraft(${i},'note',this.value)"></div>
-      <button class="btn btn-danger btn-sm" type="button" onclick="removePurchaseItemRow(${i})">ลบรายการนี้</button>
-    </div>`;
-  }).join('');
+    return `<tr><td class="mono ta">${i+1}</td><td><input value="${esc(it.item_name||'')}" onchange="updatePurchaseDraft(${i},'item_name',this.value)" placeholder="ชื่อสินค้า/อะไหล่"></td><td><input value="${esc(it.job_id||'')}" onchange="updatePurchaseDraft(${i},'job_id',this.value)" placeholder="PR"></td><td><input type="number" value="${esc(it.quantity||1)}" onchange="updatePurchaseDraft(${i},'quantity',this.value)"></td><td><input value="${esc(it.unit||'')}" onchange="updatePurchaseDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td><input type="number" value="${esc(it.unit_price||0)}" onchange="updatePurchaseDraft(${i},'unit_price',this.value)"></td><td><select onchange="updatePurchaseDraft(${i},'allocation_type',this.value)"><option value="direct_job"${it.allocation_type==='direct_job'?' selected':''}>ใช้กับ PR</option><option value="stock"${it.allocation_type==='stock'?' selected':''}>เข้า stock</option><option value="multi_job"${it.allocation_type==='multi_job'?' selected':''}>หลาย PR</option><option value="general_expense"${it.allocation_type==='general_expense'?' selected':''}>ค่าใช้จ่าย</option><option value="pending"${!it.allocation_type||it.allocation_type==='pending'?' selected':''}>รอจับคู่</option></select></td><td class="mono tg">฿${money(total)}</td><td><button class="icon-btn" type="button" onclick="removePurchaseItemRow(${i})">×</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+  updatePurchaseSummary();
 }
 async function savePurchaseInvoice(){
-  const id=document.getElementById('pur-id').value||newAccountingId('PINV');
-  const rows=purchaseDraftItems.filter(x=>String(x.item_name||'').trim()).map(x=>{
-    const qty=Number(x.quantity||0),unit=Number(x.unit_price||0),sub=qty*unit,vat=Math.round(sub*.07*100)/100,total=sub+vat;
-    return {...x,id:x.id||newAccountingId('PITEM'),purchase_invoice_id:id,item_name:String(x.item_name||'').trim(),quantity:qty,unit_price:unit,subtotal:sub,vat_amount:vat,total_amount:total,job_id:String(x.job_id||'').trim(),created_by:getActorName(),updated_by:getActorName()};
-  });
-  if(!rows.length){alert('กรุณาเพิ่มรายการในบิลอย่างน้อย 1 รายการ');return;}
-  const subtotal=rows.reduce((s,x)=>s+x.subtotal,0),vat=rows.reduce((s,x)=>s+x.vat_amount,0),total=rows.reduce((s,x)=>s+x.total_amount,0);
-  const inv={id,purchase_no:document.getElementById('pur-no').value.trim()||id,supplier_name:document.getElementById('pur-supplier').value.trim(),supplier_tax_id:document.getElementById('pur-taxid').value.trim(),invoice_no:document.getElementById('pur-invoice-no').value.trim(),invoice_date:document.getElementById('pur-date').value||todayISO(),tax_invoice_type:document.getElementById('pur-tax-type').value,subtotal,vat_amount:vat,total_amount:total,payment_status:document.getElementById('pur-payment').value,payment_method:document.getElementById('pur-method').value.trim(),file_url:document.getElementById('pur-file').value.trim(),note:document.getElementById('pur-note').value.trim(),status:'active',created_by:getActorName(),updated_by:getActorName()};
-  const ir=await fetch(splitUrl('purchase_invoices'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(inv)});
-  if(!ir.ok){alert('บันทึกบิลซื้อไม่สำเร็จ: '+await ir.text());return;}
-  const old=purchaseItems.filter(x=>x.purchase_invoice_id===id);
-  for(const item of old.filter(x=>!rows.some(r=>r.id===x.id))){
-    await fetch(splitUrl('purchase_items',`?id=eq.${encodeURIComponent(item.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
+  setAccountingStatus('purchase','กำลังบันทึกบิลซื้อ...','warn');
+  try{
+    const id=document.getElementById('pur-id').value||newAccountingId('PINV');
+    const rows=purchaseDraftItems.filter(x=>String(x.item_name||'').trim()).map(x=>{
+      const qty=Number(x.quantity||0),unit=Number(x.unit_price||0),sub=qty*unit,vat=Math.round(sub*.07*100)/100,total=sub+vat;
+      return {...x,id:x.id||newAccountingId('PITEM'),purchase_invoice_id:id,item_name:String(x.item_name||'').trim(),quantity:qty,unit_price:unit,subtotal:sub,vat_amount:vat,total_amount:total,job_id:String(x.job_id||'').trim(),created_by:getActorName(),updated_by:getActorName()};
+    });
+    if(!rows.length){setAccountingStatus('purchase','กรุณาเพิ่มรายการในบิลอย่างน้อย 1 รายการ','err');return;}
+    let fileUrl=document.getElementById('pur-file').value.trim();
+    if(!fileUrl&&accountingAttachments.purchase?.file){
+      setAccountingStatus('purchase','กำลังอัปโหลดไฟล์แนบ...','warn');
+      fileUrl=await uploadAccountingAttachment('purchase',accountingAttachments.purchase.file,id);
+      document.getElementById('pur-file').value=fileUrl;
+    }
+    const subtotal=rows.reduce((s,x)=>s+x.subtotal,0),vat=rows.reduce((s,x)=>s+x.vat_amount,0),total=rows.reduce((s,x)=>s+x.total_amount,0);
+    const internal=document.getElementById('pur-internal-note')?.value.trim();
+    const note=[document.getElementById('pur-note').value.trim(),internal?`[internal] ${internal}`:''].filter(Boolean).join('\n');
+    const inv={id,purchase_no:document.getElementById('pur-no').value.trim()||id,supplier_name:document.getElementById('pur-supplier').value.trim(),supplier_tax_id:document.getElementById('pur-taxid').value.trim(),invoice_no:document.getElementById('pur-invoice-no').value.trim(),invoice_date:document.getElementById('pur-date').value||todayISO(),tax_invoice_type:document.getElementById('pur-tax-type').value,subtotal,vat_amount:vat,total_amount:total,payment_status:document.getElementById('pur-payment').value,payment_method:document.getElementById('pur-method').value.trim(),file_url:fileUrl,note,status:'active',created_by:getActorName(),updated_by:getActorName()};
+    const ir=await fetch(splitUrl('purchase_invoices','?on_conflict=id'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(inv)});
+    if(!ir.ok)throw new Error(await ir.text());
+    const old=purchaseItems.filter(x=>x.purchase_invoice_id===id);
+    for(const item of old.filter(x=>!rows.some(r=>r.id===x.id))){
+      const del=await fetch(splitUrl('purchase_items',`?id=eq.${encodeURIComponent(item.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
+      if(!del.ok)throw new Error(await del.text());
+    }
+    const pr=await fetch(splitUrl('purchase_items','?on_conflict=id'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(rows.map(r=>({...r,status:'active'})))});
+    if(!pr.ok)throw new Error(await pr.text());
+    closeM('m-purchase');
+    accountingLoaded=false;
+    await ensureAccountingLoaded(true);
+    renderPurchaseTax();
+    writeAuditLog('save_purchase_invoice','purchase_invoice',id,null,inv,{...inv,items:rows});
+  }catch(e){
+    console.warn('Save purchase invoice failed',e);
+    setAccountingStatus('purchase','บันทึกบิลซื้อไม่สำเร็จ: '+e.message,'err');
+    alert('บันทึกบิลซื้อไม่สำเร็จ: '+e.message);
   }
-  const pr=await fetch(splitUrl('purchase_items'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(rows.map(r=>({...r,status:'active'})))});
-  if(!pr.ok){alert('บันทึกรายการในบิลไม่สำเร็จ: '+await pr.text());return;}
-  closeM('m-purchase');
-  accountingLoaded=false;
-  await ensureAccountingLoaded(true);
-  renderPurchaseTax();
-  writeAuditLog('save_purchase_invoice','purchase_invoice',id,null,inv,{...inv,items:rows});
 }
 function renderSalesTax(){
   const tb=document.getElementById('sales-tbody');if(!tb)return;
@@ -2986,6 +3205,7 @@ function renderSalesTax(){
   }).join('');
 }
 function openSalesForJob(jobId){openSalesModal('',jobId);}
+function blankSalesItem(description='',quantity=1,unit='',unitPrice=0){return {id:newAccountingId('SITEM'),description,quantity,unit,unit_price:unitPrice,vat_rate:7,note:''};}
 function openSalesModal(id='',prefJobId=''){
   const inv=id?salesInvoices.find(x=>x.id===id):null;
   const nextNo='SINV-'+new Date().getFullYear()+'-'+String(salesInvoices.length+1).padStart(3,'0');
@@ -2997,14 +3217,17 @@ function openSalesModal(id='',prefJobId=''){
   document.getElementById('sale-job').value=inv?.job_id||prefJobId||'';
   document.getElementById('sale-customer').value=inv?.customer_name||'';
   document.getElementById('sale-date').value=inv?.invoice_date||todayISO();
-  document.getElementById('sale-sub').value=inv?.subtotal||'';
-  document.getElementById('sale-vat-input').value=inv?.vat_amount||'';
-  document.getElementById('sale-total-input').value=inv?.total_amount||'';
   document.getElementById('sale-payment').value=inv?.payment_status||'unpaid';
   document.getElementById('sale-payment-date').value=inv?.payment_date||'';
   document.getElementById('sale-file').value=inv?.file_url||'';
   document.getElementById('sale-note').value=inv?.note||'';
+  accountingAttachments.sales=null;
+  updateAttachmentPreview('sales',null);
+  setAccountingStatus('sales',inv?.file_url?'มีไฟล์แนบเดิมใน URL แล้ว':'','');
+  salesDraftItems=inv?salesInvoiceItems.filter(x=>x.sales_invoice_id===inv.id).map(x=>({...x})):[blankSalesItem()];
   if(!inv&&prefJobId)fillSalesFromJob();
+  if(inv&&!salesDraftItems.length)salesDraftItems=[blankSalesItem('ยอดตามบิลเดิม',1,'งาน',Number(inv.subtotal||0))];
+  renderSalesItemEditor();
   openM('m-sales');
 }
 function fillSalesFromJob(){
@@ -3013,50 +3236,85 @@ function fillSalesFromJob(){
   if(!j)return;
   const customer=document.getElementById('sale-customer');
   if(customer&&!customer.value)customer.value=j.client||'';
-  const sub=document.getElementById('sale-sub');
-  if(sub&&!Number(sub.value||0)){
-    const amount=Number(j.pc||0)+Number(j.partR||0);
-    if(amount>0){sub.value=amount;calcSalesVat();}
+  const amount=Number(j.pc||0)+Number(j.partR||0);
+  if(amount>0&&salesDraftItems.length===1&&!String(salesDraftItems[0].description||'').trim()){
+    salesDraftItems=[blankSalesItem(j.type||'ค่าบริการ',1,'งาน',amount)];
+    renderSalesItemEditor();
   }
 }
-function calcSalesVat(){
-  const sub=Number(document.getElementById('sale-sub')?.value||0);
-  const vat=Math.round(sub*.07*100)/100;
-  document.getElementById('sale-vat-input').value=vat||'';
-  document.getElementById('sale-total-input').value=sub+vat||'';
+function addSalesItemRow(){salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
+function removeSalesItemRow(i){salesDraftItems.splice(i,1);if(!salesDraftItems.length)salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
+function updateSalesDraft(i,field,value){salesDraftItems[i][field]=value;renderSalesItemEditor();}
+function salesDraftTotals(){
+  return salesDraftItems.reduce((acc,it)=>{
+    const subtotal=Number(it.quantity||0)*Number(it.unit_price||0);
+    const vat=Math.round(subtotal*Number(it.vat_rate||0)/100*100)/100;
+    acc.subtotal+=subtotal;acc.vat+=vat;acc.total+=subtotal+vat;return acc;
+  },{subtotal:0,vat:0,total:0});
 }
-function calcSalesTotal(){
-  const sub=Number(document.getElementById('sale-sub')?.value||0);
-  const vat=Number(document.getElementById('sale-vat-input')?.value||0);
-  document.getElementById('sale-total-input').value=sub+vat||'';
+function updateSalesSummary(){
+  const t=salesDraftTotals();
+  document.getElementById('sale-sub').value=t.subtotal;
+  document.getElementById('sale-vat-input').value=t.vat;
+  document.getElementById('sale-total-input').value=t.total;
+  const sub=document.getElementById('sale-ui-subtotal'),vat=document.getElementById('sale-ui-vat'),total=document.getElementById('sale-ui-total');
+  if(sub)sub.textContent=money(t.subtotal);if(vat)vat.textContent=money(t.vat);if(total)total.textContent=money(t.total);
+}
+function renderSalesItemEditor(){
+  const el=document.getElementById('sales-items-editor');if(!el)return;
+  el.innerHTML=`<div class="table-wrap" style="border-radius:8px;"><table class="accounting-line-table"><thead><tr><th style="width:42px;">ลำดับ</th><th>รายละเอียด</th><th style="width:90px;">จำนวน</th><th style="width:90px;">หน่วย</th><th style="width:125px;">ราคา/หน่วย</th><th style="width:90px;">VAT %</th><th style="width:130px;">ราคารวม</th><th style="width:46px;"></th></tr></thead><tbody>${salesDraftItems.map((it,i)=>{
+    const subtotal=Number(it.quantity||0)*Number(it.unit_price||0),vat=Math.round(subtotal*Number(it.vat_rate||0)/100*100)/100;
+    return `<tr><td class="mono ta">${i+1}</td><td><input value="${esc(it.description||'')}" onchange="updateSalesDraft(${i},'description',this.value)" placeholder="รายละเอียดสินค้า/บริการ"></td><td><input type="number" value="${esc(it.quantity||1)}" onchange="updateSalesDraft(${i},'quantity',this.value)"></td><td><input value="${esc(it.unit||'')}" onchange="updateSalesDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td><input type="number" value="${esc(it.unit_price||0)}" onchange="updateSalesDraft(${i},'unit_price',this.value)"></td><td><input type="number" value="${esc(it.vat_rate??7)}" onchange="updateSalesDraft(${i},'vat_rate',this.value)"></td><td class="mono tg">฿${money(subtotal+vat)}</td><td><button class="icon-btn" type="button" onclick="removeSalesItemRow(${i})">×</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+  updateSalesSummary();
 }
 async function saveSalesInvoice(){
-  const id=document.getElementById('sale-id').value||newAccountingId('SINV');
-  const jobId=document.getElementById('sale-job').value.trim();
-  if(!jobId){alert('กรุณาระบุ Job ID / PR');return;}
-  const inv={
+  setAccountingStatus('sales','กำลังบันทึกบิลขาย...','warn');
+  try{
+    const id=document.getElementById('sale-id').value||newAccountingId('SINV');
+    const jobId=document.getElementById('sale-job').value.trim();
+    if(!jobId){setAccountingStatus('sales','กรุณาระบุ Job ID / PR','err');return;}
+    const rows=salesDraftItems.filter(x=>String(x.description||'').trim()).map(x=>{
+      const quantity=Number(x.quantity||0),unitPrice=Number(x.unit_price||0),subtotal=quantity*unitPrice,vatRate=Number(x.vat_rate||0),vatAmount=Math.round(subtotal*vatRate/100*100)/100;
+      return {...x,id:x.id||newAccountingId('SITEM'),sales_invoice_id:id,description:String(x.description||'').trim(),quantity,unit_price:unitPrice,vat_rate:vatRate,subtotal,vat_amount:vatAmount,total_amount:subtotal+vatAmount,status:'active',created_by:getActorName(),updated_by:getActorName()};
+    });
+    if(!rows.length){setAccountingStatus('sales','กรุณาเพิ่มรายการในบิลอย่างน้อย 1 รายการ','err');return;}
+    let fileUrl=document.getElementById('sale-file').value.trim();
+    if(!fileUrl&&accountingAttachments.sales?.file){
+      setAccountingStatus('sales','กำลังอัปโหลดไฟล์แนบ...','warn');
+      fileUrl=await uploadAccountingAttachment('sales',accountingAttachments.sales.file,id);
+      document.getElementById('sale-file').value=fileUrl;
+    }
+    const subtotal=rows.reduce((s,x)=>s+x.subtotal,0),vatAmount=rows.reduce((s,x)=>s+x.vat_amount,0),totalAmount=rows.reduce((s,x)=>s+x.total_amount,0);
+    const inv={
     id,
     sales_invoice_no:document.getElementById('sale-no').value.trim()||id,
     job_id:jobId,
     customer_id:document.getElementById('sale-customer').value.trim(),
     customer_name:document.getElementById('sale-customer').value.trim(),
     invoice_date:document.getElementById('sale-date').value||todayISO(),
-    subtotal:Number(document.getElementById('sale-sub').value||0),
-    vat_amount:Number(document.getElementById('sale-vat-input').value||0),
-    total_amount:Number(document.getElementById('sale-total-input').value||0),
+    subtotal,
+    vat_amount:vatAmount,
+    total_amount:totalAmount,
     payment_status:document.getElementById('sale-payment').value,
     payment_date:document.getElementById('sale-payment-date').value||null,
-    file_url:document.getElementById('sale-file').value.trim(),
+    file_url:fileUrl,
     note:document.getElementById('sale-note').value.trim(),
     status:'active',
     created_by:getActorName(),
     updated_by:getActorName()
-  };
-  if(!inv.total_amount&&inv.subtotal){inv.vat_amount=Math.round(inv.subtotal*.07*100)/100;inv.total_amount=inv.subtotal+inv.vat_amount;}
-  const r=await fetch(splitUrl('sales_invoices'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(inv)});
-  if(!r.ok){alert('บันทึกบิลขายไม่สำเร็จ: '+await r.text());return;}
-  const j=jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));
-  if(j){
+    };
+    const r=await fetch(splitUrl('sales_invoices','?on_conflict=id'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(inv)});
+    if(!r.ok)throw new Error(await r.text());
+    const old=salesInvoiceItems.filter(x=>x.sales_invoice_id===id);
+    for(const item of old.filter(x=>!rows.some(row=>row.id===x.id))){
+      const del=await fetch(splitUrl('sales_invoice_items',`?id=eq.${encodeURIComponent(item.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
+      if(!del.ok)throw new Error(await del.text());
+    }
+    const itemResponse=await fetch(splitUrl('sales_invoice_items','?on_conflict=id'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(rows)});
+    if(!itemResponse.ok)throw new Error(await itemResponse.text());
+    const j=jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));
+    if(j){
     const before=clonePlain(j);
     j.accountingStatus=inv.payment_status==='paid'?'payment_received':'sales_invoice_issued';
     j.salesInvoiceNo=inv.sales_invoice_no;
@@ -3064,14 +3322,19 @@ async function saveSalesInvoice(){
     if(inv.payment_status==='paid')j.pay='เก็บแล้ว';
     renderFin();renderDash();saveState();
     writeAuditLog('update_job_sales_invoice','job',jobId,before,patchFromDiff(before,j),clonePlain(j));
+    }
+    closeM('m-sales');
+    accountingLoaded=false;
+    await ensureAccountingLoaded(true);
+    renderSalesTax();
+    const sec=document.getElementById('job-accounting-section');
+    if(sec)renderJobAccountingSection(jobId);
+    writeAuditLog('save_sales_invoice','sales_invoice',id,null,inv,{...inv,items:rows});
+  }catch(e){
+    console.warn('Save sales invoice failed',e);
+    setAccountingStatus('sales','บันทึกบิลขายไม่สำเร็จ: '+e.message,'err');
+    alert('บันทึกบิลขายไม่สำเร็จ: '+e.message);
   }
-  closeM('m-sales');
-  accountingLoaded=false;
-  await ensureAccountingLoaded(true);
-  renderSalesTax();
-  const sec=document.getElementById('job-accounting-section');
-  if(sec)renderJobAccountingSection(jobId);
-  writeAuditLog('save_sales_invoice','sales_invoice',id,null,inv,inv);
 }
 function jobCosts(jobId){return jobCostItems.filter(x=>String(x.job_id)===String(jobId)&&x.status!=='cancelled');}
 function techPartsForJob(jobId){return technicianUsedParts.filter(x=>String(x.job_id)===String(jobId));}
