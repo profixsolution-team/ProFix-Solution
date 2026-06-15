@@ -1076,7 +1076,7 @@ select option{background:var(--surface2);}
             <div class="form-row"><div class="form-group"><label>เลขที่บิลในระบบ</label><input id="pur-no" placeholder="เช่น PIN-2026-001"></div><div class="form-group"><label>ร้านค้า / Supplier</label><input id="pur-supplier" list="supplier-name-list" placeholder="พิมพ์หรือเลือกจากข้อมูลระบบ" oninput="onPurchaseSupplierChange()" onchange="onPurchaseSupplierChange()"></div></div>
             <div class="form-row"><div class="form-group"><label>Tax ID Supplier</label><input id="pur-taxid"></div><div class="form-group"><label>เลขที่ใบกำกับภาษี</label><input id="pur-invoice-no"></div></div>
             <div class="form-row"><div class="form-group"><label>วันที่ใบกำกับภาษี</label><input id="pur-date" type="date"></div><div class="form-group"><label>ประเภทเอกสารภาษี</label><select id="pur-tax-type"><option value="tax_invoice">ใบกำกับภาษีเต็มรูป</option><option value="receipt">ใบเสร็จ/ไม่มี VAT</option><option value="pending_tax_invoice">รอใบกำกับภาษี</option></select></div></div>
-            <div class="form-row"><div class="form-group"><label>สถานะจ่ายเงิน</label><select id="pur-payment"><option value="unpaid">ยังไม่ได้จ่าย</option><option value="paid">จ่ายแล้ว</option><option value="partial">จ่ายบางส่วน</option></select></div><div class="form-group"><label>วิธีจ่ายเงิน</label><input id="pur-method" placeholder="โอน / เงินสด / บัตร"></div></div>
+            <div class="form-row"><div class="form-group"><label>สถานะจ่ายเงิน</label><select id="pur-payment"><option value="unpaid">ยังไม่ได้จ่าย</option><option value="paid">จ่ายแล้ว</option><option value="partial">จ่ายบางส่วน</option></select></div><div class="form-group"><label>วิธีจ่ายเงิน</label><div class="select-tools"><select id="pur-method"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('paymentMethods')" type="button">จัดการ</button></div></div></div>
           </div>
           <div class="accounting-panel">
             <div class="table-header" style="padding:0 0 12px;border:0;"><div class="table-title">รายการในบิล</div><button class="btn btn-ghost btn-sm" onclick="addPurchaseItemRow()" type="button">+ เพิ่มแถว</button></div>
@@ -1214,6 +1214,7 @@ let adminTypes=['เปิดงานใหม่จากลูกค้า','
 let jobTypes=['ซ่อมแอร์','ซ่อมตู้แช่','PM แอร์','PM ตู้แช่','ติดตั้ง'];
 let priorities=['ปกติ','ด่วน','เร่งด่วนมาก'];
 let payStatuses=['รอเก็บเงิน','เก็บแล้ว','เกินกำหนด'];
+let paymentMethods=['โอนเงิน','เงินสด','บัตรเครดิต','เช็ค','เครดิต 7 วัน','เครดิต 15 วัน','เครดิต 30 วัน'];
 let prValues=[];
 let fixedExpenses=[{name:'ค่าเช่าสำนักงาน',type:'Fixed',amount:8000,date:'1 มิ.ย.',note:''},{name:'ค่า Internet + โทรศัพท์',type:'Fixed',amount:1500,date:'1 มิ.ย.',note:''}];
 let editClientIndex='', editTeamIndex='', editBranchIndex='', editSupplierIndex='', editPartIndex='';
@@ -1594,8 +1595,8 @@ function ensurePersistentIds(){
   ensureDocsShape();
   docs.workOrders.forEach((d,i)=>{if(!d.id)d.id='WOD-'+Date.now().toString(36)+'-'+i;});
 }
-function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,docs,jCnt,aCnt,lastDataUpdatedAt};}
-function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
+function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,docs,jCnt,aCnt,lastDataUpdatedAt};}
+function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.paymentMethods)paymentMethods=st.paymentMethods;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
 function lightTechnicianReportForCache(report={}){
   const r={...report};
   const imageCount=Array.isArray(r.images)?r.images.length:Number(r.imageCount||0);
@@ -1687,7 +1688,7 @@ async function sbFetchAll(table,queryBase){
   }
   return all;
 }
-function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,jCnt,aCnt,lastDataUpdatedAt};}
+function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,jCnt,aCnt,lastDataUpdatedAt};}
 function lightWorkOrderDoc(d){
   const x={...d};
   if(x.url||x.fileUrl||x.key||x.storage==='r2')delete x.dataUrl;
@@ -2305,6 +2306,7 @@ function listRef(key){
     jobTypes:{title:'ประเภทงานคิวช่าง',get:()=>jobTypes,set:v=>jobTypes=v},
     priorities:{title:'ความสำคัญ',get:()=>priorities,set:v=>priorities=v},
     payStatuses:{title:'สถานะเงิน',get:()=>payStatuses,set:v=>payStatuses=v},
+    paymentMethods:{title:'วิธีจ่ายเงิน',get:()=>paymentMethods,set:v=>paymentMethods=v},
     clients:{title:'บริษัทลูกค้า',get:()=>clients.map(c=>c.name),set:v=>{clients=v.map((name,i)=>clients.find(c=>c.name===name)||{id:'CLT-'+String(i+1).padStart(3,'0'),name,contact:'',phone:'',payTerm:'30 วัน',credit:0,note:''});}},
     teams:{title:'ทีมช่าง',get:()=>teams.map(t=>t.name),set:v=>{teams=v.map(name=>teams.find(t=>t.name===name)||{name,lead:'',phone:'',skill:'',note:''});}}
   };
@@ -2329,6 +2331,7 @@ function saveList(key,items){
   if(key==='adminStatuses')renderAdmin();
   if(key==='jobStatuses')renderJobs();
   if(key==='payStatuses')renderFin();
+  if(key==='paymentMethods'){const sel=document.getElementById('m-purchase');if(sel&&sel.classList.contains('open'))fillPaymentMethodSelect(document.getElementById('pur-method')?.value||'');}
   if(key==='clients')renderClients();
   if(key==='teams'){renderTeams();renderCalendar();}
 }
@@ -3306,7 +3309,7 @@ function openPurchaseModal(id=''){
   document.getElementById('pur-date').value=inv?.invoice_date||todayISO();
   document.getElementById('pur-tax-type').value=inv?.tax_invoice_type||'tax_invoice';
   document.getElementById('pur-payment').value=inv?.payment_status||'unpaid';
-  document.getElementById('pur-method').value=inv?.payment_method||'';
+  fillPaymentMethodSelect(inv?.payment_method||'');
   document.getElementById('pur-file').value=inv?.file_url||'';
   document.getElementById('pur-note').value=inv?.note||'';
   document.getElementById('pur-internal-note').value='';
@@ -3328,9 +3331,38 @@ function onPurchaseSupplierChange(){
     const tax=sup.taxId||sup.tax_id||'';
     const taxEl=document.getElementById('pur-taxid');
     if(taxEl&&tax)taxEl.value=tax;
-    const methodEl=document.getElementById('pur-method');
-    if(methodEl&&!methodEl.value&&sup.terms)methodEl.value=sup.terms;
   }
+}
+function fillPaymentMethodSelect(current=''){
+  const sel=document.getElementById('pur-method');if(!sel)return;
+  const opts=[...paymentMethods];
+  if(current&&!opts.includes(current))opts.unshift(current);
+  sel.innerHTML='<option value="">— ไม่ระบุ —</option>'+opts.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  sel.value=current||'';
+}
+// บันทึกชื่อร้าน/เลขภาษีที่กรอกในบิลซื้อ เข้าข้อมูลระบบ (ซัพพลายเออร์) อัตโนมัติ
+function upsertSupplierFromBill(name,taxId=''){
+  name=String(name||'').trim();if(!name)return false;
+  taxId=String(taxId||'').trim();
+  let changed=false;
+  const s=suppliers.find(x=>String(x.name||'').trim().toLowerCase()===name.toLowerCase());
+  if(s){
+    if(taxId&&!(s.taxId||s.tax_id)){s.taxId=taxId;changed=true;}
+  }else{
+    suppliers.push({name,type:'อะไหล่ทั่วไป',taxId,contact:'',phone:'',terms:'',lead:'',note:'เพิ่มอัตโนมัติจากบิลซื้อ'});
+    changed=true;
+  }
+  if(changed){if(document.getElementById('page-settings-suppliers')?.classList.contains('active'))renderSuppliers();refreshAccountingDatalists();saveState();}
+  return changed;
+}
+// บันทึกชื่อลูกค้าที่กรอกในบิลขาย เข้าข้อมูลระบบ (ลูกค้า) อัตโนมัติ
+function upsertClientFromBill(name){
+  name=String(name||'').trim();if(!name)return false;
+  if(clients.some(c=>String(c.name||'').trim().toLowerCase()===name.toLowerCase()))return false;
+  clients.push({id:'CLT-'+String(clients.length+1).padStart(3,'0'),name,contact:'',phone:'',payTerm:'30 วัน',credit:0,note:'เพิ่มอัตโนมัติจากบิลขาย'});
+  if(typeof fillSelects==='function')fillSelects();
+  refreshAccountingDatalists();saveState();
+  return true;
 }
 function addPurchaseItemRow(){purchaseDraftItems.push(blankPurchaseItem());renderPurchaseItemEditor();}
 function removePurchaseItemRow(i){purchaseDraftItems.splice(i,1);if(!purchaseDraftItems.length)purchaseDraftItems.push(blankPurchaseItem());renderPurchaseItemEditor();}
@@ -3383,6 +3415,7 @@ async function savePurchaseInvoice(){
     }
     const pr=await fetch(splitUrl('purchase_items','?on_conflict=id'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(rows.map(r=>({...r,status:'active'})))});
     if(!pr.ok)throw new Error(await pr.text());
+    upsertSupplierFromBill(inv.supplier_name,inv.supplier_tax_id);
     closeM('m-purchase');
     accountingLoaded=false;
     await ensureAccountingLoaded(true);
@@ -3522,6 +3555,7 @@ async function saveSalesInvoice(){
     }
     const itemResponse=await fetch(splitUrl('sales_invoice_items','?on_conflict=id'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(rows)});
     if(!itemResponse.ok)throw new Error(await itemResponse.text());
+    upsertClientFromBill(inv.customer_name);
     const j=jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));
     if(j){
     const before=clonePlain(j);
