@@ -392,7 +392,8 @@ select option{background:var(--surface2);}
     <button class="nav-item" data-page="jobs" onclick="goTo('jobs',this)"><span class="nav-icon">📋</span>คิวช่าง<span class="nav-badge" id="nb-new">3</span></button>
     <button class="nav-item" data-page="job-calendar" onclick="goTo('job-calendar',this)"><span class="nav-icon">▦</span>Calendar คิวช่าง</button>
     <div class="nav-section">การเงิน</div>
-    <button class="nav-item" data-page="finance" onclick="goTo('finance',this)"><span class="nav-icon">💰</span>รายรับ-รายจ่าย</button>
+    <button class="nav-item" data-page="finance" onclick="goTo('finance',this)"><span class="nav-icon">💰</span>ภาพรวมการเงิน</button>
+    <button class="nav-item" data-page="purchase-tax" onclick="goTo('purchase-tax',this)"><span class="nav-icon">🧾</span>บิลซื้อ / ภาษีซื้อ</button>
     <button class="nav-item" data-page="tech-pay" onclick="goTo('tech-pay',this)"><span class="nav-icon">👷</span>จ่ายช่าง</button>
     <div class="nav-section">เอกสาร</div>
     <button class="nav-item" data-page="workorders" onclick="goTo('workorders',this)"><span class="nav-icon">🗃</span>ใบงาน / แฟ้ม PR</button>
@@ -523,6 +524,26 @@ select option{background:var(--surface2);}
       <table><thead><tr><th>รายการ</th><th>ประเภท</th><th>จำนวน</th><th>วันที่</th><th></th></tr></thead>
       <tbody id="fixed-tbody"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- PURCHASE TAX -->
+<div class="page" id="page-purchase-tax">
+  <div class="page-header">
+    <div><div class="page-title">บิลซื้อ / ภาษีซื้อ</div><div class="page-sub">แอดมินบันทึกบิลซื้อและรายการต้นทุนจริง ยังไม่เกี่ยวกับช่าง</div></div>
+    <button class="btn btn-primary" onclick="openPurchaseModal()">+ เพิ่มบิลซื้อ</button>
+  </div>
+  <div class="content">
+    <div class="fin-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+      <div class="fin-card"><div class="fin-label">ยอดซื้อก่อน VAT</div><div class="fin-value ta" id="pur-subtotal">—</div><div class="fin-meta">เดือนนี้</div></div>
+      <div class="fin-card"><div class="fin-label">ภาษีซื้อ</div><div class="fin-value ty" id="pur-vat">—</div><div class="fin-meta">ใช้ดู VAT โดยประมาณ</div></div>
+      <div class="fin-card"><div class="fin-label">ยอดรวม</div><div class="fin-value tg" id="pur-total">—</div><div class="fin-meta" id="pur-count">—</div></div>
+      <div class="fin-card"><div class="fin-label">ค้างจ่าย Supplier</div><div class="fin-value tr" id="pur-unpaid">—</div><div class="fin-meta">บิลที่ยังไม่จ่าย</div></div>
+    </div>
+    <div class="table-wrap mobile-list">
+      <div class="table-header"><div class="table-title">รายการบิลซื้อ</div><span class="mono tm" id="pur-table-count" style="font-size:11px;"></span></div>
+      <table><thead><tr><th>เลขบิล</th><th>Supplier</th><th>ใบกำกับภาษี</th><th>วันที่</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th>จ่ายเงิน</th><th></th></tr></thead><tbody id="purchase-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -899,6 +920,27 @@ select option{background:var(--surface2);}
   </div>
 </div>
 
+<!-- PURCHASE INVOICE MODAL -->
+<div class="modal-overlay" id="m-purchase">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header"><div><div class="modal-title" id="purchase-modal-title">เพิ่มบิลซื้อ / ภาษีซื้อ</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">ข้อมูลบัญชีนี้ทำโดยแอดมินเท่านั้น</div></div><button class="close-btn" onclick="closeM('m-purchase')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="pur-id">
+      <div class="form-row"><div class="form-group"><label>เลขที่บิลในระบบ</label><input id="pur-no" placeholder="เช่น PIN-2026-001"></div><div class="form-group"><label>ร้านค้า / Supplier</label><input id="pur-supplier" placeholder="ชื่อร้านค้า"></div></div>
+      <div class="form-row"><div class="form-group"><label>Tax ID Supplier</label><input id="pur-taxid"></div><div class="form-group"><label>เลขที่ใบกำกับภาษี</label><input id="pur-invoice-no"></div></div>
+      <div class="form-row"><div class="form-group"><label>วันที่ใบกำกับภาษี</label><input id="pur-date" type="date"></div><div class="form-group"><label>ประเภทเอกสารภาษี</label><select id="pur-tax-type"><option value="tax_invoice">ใบกำกับภาษีเต็มรูป</option><option value="receipt">ใบเสร็จ/ไม่มี VAT</option><option value="pending_tax_invoice">รอใบกำกับภาษี</option></select></div></div>
+      <div class="form-row"><div class="form-group"><label>สถานะจ่ายเงิน</label><select id="pur-payment"><option value="unpaid">ยังไม่ได้จ่าย</option><option value="paid">จ่ายแล้ว</option><option value="partial">จ่ายบางส่วน</option></select></div><div class="form-group"><label>วิธีจ่ายเงิน</label><input id="pur-method" placeholder="โอน / เงินสด / บัตร"></div></div>
+      <div class="form-group"><label>URL ไฟล์แนบ / รูปบิล / PDF</label><input id="pur-file" placeholder="https://..."></div>
+      <div class="form-group"><label>หมายเหตุ</label><textarea id="pur-note"></textarea></div>
+      <div class="table-wrap" style="margin-top:12px;">
+        <div class="table-header"><div class="table-title">รายการในบิล</div><button class="btn btn-ghost btn-sm" onclick="addPurchaseItemRow()" type="button">+ รายการ</button></div>
+        <div id="purchase-items-editor"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-purchase')">ยกเลิก</button><button class="btn btn-primary" onclick="savePurchaseInvoice()">✓ บันทึกบิลซื้อ</button></div>
+  </div>
+</div>
+
 <!-- FINANCE EDIT MODAL -->
 <div class="modal-overlay" id="m-finance-edit">
   <div class="modal">
@@ -967,6 +1009,8 @@ let adminSearch='', jobSearch='', jobTeamFilter='ทั้งหมด', calenda
 let financeSearch='', financeDateFilter='', lastDataUpdatedAt='', adminSortDir='desc', jobSortDir='desc', rptSortDir='desc', docSortDir='desc', docSearch='', docDateFilter='', activeDocTab='qt';
 let selectedDocs={qt:new Set(),iv:new Set(),tx:new Set()};
 let editJobId=null, editAdminId=null, pendingJobFromAdminId=null;
+let purchaseInvoices=[], purchaseItems=[], technicianUsedParts=[], jobCostItems=[], purchaseDraftItems=[];
+let accountingLoaded=false, accountingLoadingPromise=null;
 let adminNames=['แอดมิน 1','แอดมิน 2','ทั้งคู่'];
 let adminTypes=['เปิดงานใหม่จากลูกค้า','ทำใบเสนอราคา','ทำใบกำกับภาษี','จัดซื้ออะไหล่','ติดต่อลูกค้า','อื่นๆ'];
 let jobTypes=['ซ่อมแอร์','ซ่อมตู้แช่','PM แอร์','PM ตู้แช่','ติดตั้ง'];
@@ -1859,6 +1903,7 @@ function goTo(id, el){
     jobs:renderJobs,
     'job-calendar':renderCalendar,
     finance:renderFin,
+    'purchase-tax':()=>{renderPurchaseTax();ensureAccountingLoaded().then(renderPurchaseTax);},
     'tech-pay':renderTP,
     workorders:()=>{renderWorkOrders();ensureWorkOrdersLoaded().then(renderWorkOrders);ensureDocsLoaded().then(renderWorkOrders);},
     documents:()=>{renderDocs();ensureDocsLoaded().then(renderDocs);},
@@ -2643,7 +2688,8 @@ function openDet(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
-  document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
+  document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
+  ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
   openM('m-detail');
 }
 function openJobModal(pref={}){if(!pref.fromAdmin)pendingJobFromAdminId=null;editJobId=null;fillSelects();document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=pref.date||new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';document.getElementById('fj-type').value=jobTypes[0]||'';document.getElementById('fj-status').value=J_ST[0]||'รอเปิดงาน';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
@@ -2777,6 +2823,166 @@ function setPay(id,s){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(j)
 function updateJobMoney(id,field,value){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);const v=parseFloat(value)||0;if(field==='income')j.pc=Math.max(0,v-j.partR);else j[field]=v;renderFin();renderDash();saveState();writeAuditLog('update_job_money','job',id,before,patchFromDiff(before,j),clonePlain(j),{field});}
 function openFinanceEdit(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;fillSelects();document.getElementById('ff-id').value=id;document.getElementById('ff-pc').value=j.pc;document.getElementById('ff-partR').value=j.partR;document.getElementById('ff-pt').value=j.pt;document.getElementById('ff-partC').value=j.partC;document.getElementById('ff-fuel').value=j.fuel;document.getElementById('ff-pay').value=payLabel(j.pay);document.getElementById('ff-note').value=j.financeNote||'';openM('m-finance-edit');}
 function saveFinanceEdit(){const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);Object.assign(j,{pc:parseFloat(document.getElementById('ff-pc').value)||0,partR:parseFloat(document.getElementById('ff-partR').value)||0,pt:parseFloat(document.getElementById('ff-pt').value)||0,partC:parseFloat(document.getElementById('ff-partC').value)||0,fuel:parseFloat(document.getElementById('ff-fuel').value)||0,pay:document.getElementById('ff-pay').value,financeNote:document.getElementById('ff-note').value});closeM('m-finance-edit');renderFin();renderDash();saveState();writeAuditLog('update_job_finance','job',id,before,patchFromDiff(before,j),clonePlain(j));}
+function money(v){return Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+function newAccountingId(prefix){return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;}
+async function ensureAccountingLoaded(force=false){
+  if(accountingLoaded&&!force)return;
+  if(accountingLoadingPromise&&!force)return accountingLoadingPromise;
+  accountingLoadingPromise=(async()=>{
+    const [purRows,itemRows,techRows,costRows]=await Promise.all([
+      sbFetchAll('purchase_invoices','?select=*&status=eq.active&order=invoice_date.desc'),
+      sbFetchAll('purchase_items','?select=*&status=eq.active&order=created_at.desc'),
+      sbFetchAll('technician_used_parts','?select=*&order=created_at.desc'),
+      sbFetchAll('job_cost_items','?select=*&status=eq.active&order=created_at.desc')
+    ]);
+    purchaseInvoices=purRows||[];
+    purchaseItems=itemRows||[];
+    technicianUsedParts=techRows||[];
+    jobCostItems=costRows||[];
+    accountingLoaded=true;
+  })().catch(e=>{
+    console.warn('Accounting load failed',e);
+    accountingLoaded=true;
+  }).finally(()=>{accountingLoadingPromise=null;});
+  return accountingLoadingPromise;
+}
+function renderPurchaseTax(){
+  const tb=document.getElementById('purchase-tbody');if(!tb)return;
+  const subtotal=purchaseInvoices.reduce((s,x)=>s+Number(x.subtotal||0),0);
+  const vat=purchaseInvoices.reduce((s,x)=>s+Number(x.vat_amount||0),0);
+  const total=purchaseInvoices.reduce((s,x)=>s+Number(x.total_amount||0),0);
+  const unpaid=purchaseInvoices.filter(x=>x.payment_status!=='paid').reduce((s,x)=>s+Number(x.total_amount||0),0);
+  document.getElementById('pur-subtotal').textContent='฿'+money(subtotal);
+  document.getElementById('pur-vat').textContent='฿'+money(vat);
+  document.getElementById('pur-total').textContent='฿'+money(total);
+  document.getElementById('pur-count').textContent=purchaseInvoices.length+' บิล';
+  document.getElementById('pur-unpaid').textContent='฿'+money(unpaid);
+  document.getElementById('pur-table-count').textContent=purchaseInvoices.length+' รายการ';
+  if(!accountingLoaded){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลซื้อ</div></div></td></tr>';return;}
+  if(!purchaseInvoices.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">🧾</div><div>ยังไม่มีบิลซื้อ</div></div></td></tr>';return;}
+  tb.innerHTML=purchaseInvoices.map(inv=>{
+    const rows=purchaseItems.filter(x=>x.purchase_invoice_id===inv.id);
+    return `<tr><td class="mono ta" style="font-size:11px;">${esc(inv.purchase_no)}</td><td>${esc(inv.supplier_name||inv.supplier_id||'-')}<br><span class="tm" style="font-size:10px;">${rows.length} รายการ</span></td><td>${esc(inv.invoice_no||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('pur-${esc(inv.id)}',event)">...</button><div class="action-menu" id="pur-${esc(inv.id)}"><button onclick="openPurchaseModal('${esc(inv.id)}')">แก้ไข/ดูรายการ</button>${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}</div></td></tr>`;
+  }).join('');
+}
+function blankPurchaseItem(){
+  return {id:newAccountingId('PITEM'),item_name:'',quantity:1,unit:'',unit_price:0,allocation_type:'pending',job_id:'',stock_item_id:'',note:''};
+}
+function openPurchaseModal(id=''){
+  const inv=id?purchaseInvoices.find(x=>x.id===id):null;
+  const nextNo='PIN-'+new Date().getFullYear()+'-'+String(purchaseInvoices.length+1).padStart(3,'0');
+  document.getElementById('purchase-modal-title').textContent=inv?'แก้ไขบิลซื้อ / ภาษีซื้อ':'เพิ่มบิลซื้อ / ภาษีซื้อ';
+  document.getElementById('pur-id').value=inv?.id||'';
+  document.getElementById('pur-no').value=inv?.purchase_no||nextNo;
+  document.getElementById('pur-supplier').value=inv?.supplier_name||'';
+  document.getElementById('pur-taxid').value=inv?.supplier_tax_id||'';
+  document.getElementById('pur-invoice-no').value=inv?.invoice_no||'';
+  document.getElementById('pur-date').value=inv?.invoice_date||todayISO();
+  document.getElementById('pur-tax-type').value=inv?.tax_invoice_type||'tax_invoice';
+  document.getElementById('pur-payment').value=inv?.payment_status||'unpaid';
+  document.getElementById('pur-method').value=inv?.payment_method||'';
+  document.getElementById('pur-file').value=inv?.file_url||'';
+  document.getElementById('pur-note').value=inv?.note||'';
+  purchaseDraftItems=inv?purchaseItems.filter(x=>x.purchase_invoice_id===inv.id).map(x=>({...x})):[blankPurchaseItem()];
+  renderPurchaseItemEditor();
+  openM('m-purchase');
+}
+function addPurchaseItemRow(){purchaseDraftItems.push(blankPurchaseItem());renderPurchaseItemEditor();}
+function removePurchaseItemRow(i){purchaseDraftItems.splice(i,1);if(!purchaseDraftItems.length)purchaseDraftItems.push(blankPurchaseItem());renderPurchaseItemEditor();}
+function updatePurchaseDraft(i,field,value){purchaseDraftItems[i][field]=value;renderPurchaseItemEditor();}
+function renderPurchaseItemEditor(){
+  const el=document.getElementById('purchase-items-editor');if(!el)return;
+  el.innerHTML=purchaseDraftItems.map((it,i)=>{
+    const qty=Number(it.quantity||0),unit=Number(it.unit_price||0),sub=qty*unit,vat=Math.round(sub*.07*100)/100,total=sub+vat;
+    return `<div class="card" style="padding:12px;margin:8px 0;background:var(--surface2);">
+      <div class="form-row"><div class="form-group"><label>ชื่อรายการ</label><input value="${esc(it.item_name||'')}" onchange="updatePurchaseDraft(${i},'item_name',this.value)"></div><div class="form-group"><label>ใช้กับ PR</label><input value="${esc(it.job_id||'')}" placeholder="PR ถ้ามี" onchange="updatePurchaseDraft(${i},'job_id',this.value)"></div></div>
+      <div class="form-row"><div class="form-group"><label>จำนวน</label><input type="number" value="${esc(it.quantity||1)}" onchange="updatePurchaseDraft(${i},'quantity',this.value)"></div><div class="form-group"><label>หน่วย</label><input value="${esc(it.unit||'')}" onchange="updatePurchaseDraft(${i},'unit',this.value)"></div><div class="form-group"><label>ราคาต่อหน่วย</label><input type="number" value="${esc(it.unit_price||0)}" onchange="updatePurchaseDraft(${i},'unit_price',this.value)"></div></div>
+      <div class="form-row"><div class="form-group"><label>ประเภทการนำไปใช้</label><select onchange="updatePurchaseDraft(${i},'allocation_type',this.value)"><option value="direct_job"${it.allocation_type==='direct_job'?' selected':''}>ใช้กับ PR โดยตรง</option><option value="stock"${it.allocation_type==='stock'?' selected':''}>เข้า stock กลาง</option><option value="multi_job"${it.allocation_type==='multi_job'?' selected':''}>แบ่งใช้หลาย PR</option><option value="general_expense"${it.allocation_type==='general_expense'?' selected':''}>ค่าใช้จ่ายทั่วไป</option><option value="pending"${!it.allocation_type||it.allocation_type==='pending'?' selected':''}>รอจับคู่ภายหลัง</option></select></div><div class="form-group"><label>รวม</label><input readonly value="ก่อน VAT ${money(sub)} | VAT ${money(vat)} | รวม ${money(total)}"></div></div>
+      <div class="form-group"><label>หมายเหตุรายการ</label><input value="${esc(it.note||'')}" onchange="updatePurchaseDraft(${i},'note',this.value)"></div>
+      <button class="btn btn-danger btn-sm" type="button" onclick="removePurchaseItemRow(${i})">ลบรายการนี้</button>
+    </div>`;
+  }).join('');
+}
+async function savePurchaseInvoice(){
+  const id=document.getElementById('pur-id').value||newAccountingId('PINV');
+  const rows=purchaseDraftItems.filter(x=>String(x.item_name||'').trim()).map(x=>{
+    const qty=Number(x.quantity||0),unit=Number(x.unit_price||0),sub=qty*unit,vat=Math.round(sub*.07*100)/100,total=sub+vat;
+    return {...x,id:x.id||newAccountingId('PITEM'),purchase_invoice_id:id,item_name:String(x.item_name||'').trim(),quantity:qty,unit_price:unit,subtotal:sub,vat_amount:vat,total_amount:total,job_id:String(x.job_id||'').trim(),created_by:getActorName(),updated_by:getActorName()};
+  });
+  if(!rows.length){alert('กรุณาเพิ่มรายการในบิลอย่างน้อย 1 รายการ');return;}
+  const subtotal=rows.reduce((s,x)=>s+x.subtotal,0),vat=rows.reduce((s,x)=>s+x.vat_amount,0),total=rows.reduce((s,x)=>s+x.total_amount,0);
+  const inv={id,purchase_no:document.getElementById('pur-no').value.trim()||id,supplier_name:document.getElementById('pur-supplier').value.trim(),supplier_tax_id:document.getElementById('pur-taxid').value.trim(),invoice_no:document.getElementById('pur-invoice-no').value.trim(),invoice_date:document.getElementById('pur-date').value||todayISO(),tax_invoice_type:document.getElementById('pur-tax-type').value,subtotal,vat_amount:vat,total_amount:total,payment_status:document.getElementById('pur-payment').value,payment_method:document.getElementById('pur-method').value.trim(),file_url:document.getElementById('pur-file').value.trim(),note:document.getElementById('pur-note').value.trim(),status:'active',created_by:getActorName(),updated_by:getActorName()};
+  const ir=await fetch(splitUrl('purchase_invoices'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(inv)});
+  if(!ir.ok){alert('บันทึกบิลซื้อไม่สำเร็จ: '+await ir.text());return;}
+  const old=purchaseItems.filter(x=>x.purchase_invoice_id===id);
+  for(const item of old.filter(x=>!rows.some(r=>r.id===x.id))){
+    await fetch(splitUrl('purchase_items',`?id=eq.${encodeURIComponent(item.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
+  }
+  const pr=await fetch(splitUrl('purchase_items'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(rows.map(r=>({...r,status:'active'})))});
+  if(!pr.ok){alert('บันทึกรายการในบิลไม่สำเร็จ: '+await pr.text());return;}
+  closeM('m-purchase');
+  accountingLoaded=false;
+  await ensureAccountingLoaded(true);
+  renderPurchaseTax();
+  writeAuditLog('save_purchase_invoice','purchase_invoice',id,null,inv,{...inv,items:rows});
+}
+function jobCosts(jobId){return jobCostItems.filter(x=>String(x.job_id)===String(jobId)&&x.status!=='cancelled');}
+function techPartsForJob(jobId){return technicianUsedParts.filter(x=>String(x.job_id)===String(jobId));}
+function purchaseOptionsHtml(){
+  const opts=['<option value="">ไม่เลือก</option>'];
+  purchaseItems.filter(x=>x.status!=='cancelled').forEach(x=>{
+    const inv=purchaseInvoices.find(v=>v.id===x.purchase_invoice_id);
+    opts.push(`<option value="${esc(x.id)}">${esc(inv?.purchase_no||'บิลซื้อ')} - ${esc(x.item_name)} ฿${money(x.total_amount)}</option>`);
+  });
+  return opts.join('');
+}
+function renderJobAccountingSection(jobId){
+  const el=document.getElementById('job-accounting-section');if(!el)return;
+  const techRows=techPartsForJob(jobId);
+  const costs=jobCosts(jobId);
+  const totalCost=costs.reduce((s,x)=>s+Number(x.cost_amount||0),0);
+  const totalVat=costs.reduce((s,x)=>s+Number(x.vat_amount||0),0);
+  const pending=techRows.filter(x=>x.matched_status==='pending').length;
+  el.innerHTML=`<div class="table-wrap" style="margin-top:14px;">
+    <div class="table-header"><div class="table-title">จับคู่อะไหล่และต้นทุน</div><span class="mono tm" style="font-size:11px;">ต้นทุนจริง ฿${money(totalCost)} | VAT ซื้อ ฿${money(totalVat)} | pending ${pending}</span></div>
+    <div class="form-group"><label>อะไหล่ที่ช่างแจ้ง</label>${techRows.length?techRows.map(r=>`<div class="text-box" style="margin-bottom:8px;"><b>${esc(r.part_name_text)}</b> ${esc(r.quantity||'')} ${esc(r.unit||'')}<br><span class="tm">${esc(r.note||'')} | ${esc(r.matched_status)}</span>${r.matched_status==='pending'?`<div class="form-row" style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="openCostMatchModal('${esc(jobId)}','${esc(r.id)}')">จับคู่เป็นต้นทุน</button><button class="btn btn-ghost btn-sm" onclick="ignoreTechnicianPart('${esc(jobId)}','${esc(r.id)}')">ไม่คิดต้นทุน</button></div>`:''}</div>`).join(''):'<div class="text-box">ยังไม่มีอะไหล่ที่ช่างแจ้ง</div>'}</div>
+    <div class="form-group"><label>ต้นทุนจริงของงาน</label>${costs.length?`<table><thead><tr><th>ประเภท</th><th>รายละเอียด</th><th>จำนวน</th><th>ต้นทุน</th><th>VAT</th></tr></thead><tbody>${costs.map(c=>`<tr><td>${esc(c.cost_type)}</td><td>${esc(c.description)}</td><td>${esc(c.quantity)} ${esc(c.unit||'')}</td><td class="mono tr">฿${money(c.cost_amount)}</td><td class="mono tr">฿${money(c.vat_amount)}</td></tr>`).join('')}</tbody></table>`:'<div class="text-box">ยังไม่มีต้นทุนจริงที่แอดมินยืนยัน</div>'}</div>
+  </div>`;
+}
+function openCostMatchModal(jobId,techPartId=''){
+  const part=technicianUsedParts.find(x=>x.id===techPartId)||{};
+  const html=`<div class="modal-overlay open" id="m-cost-match-temp"><div class="modal" style="max-width:620px;"><div class="modal-header"><div><div class="modal-title">จับคู่อะไหล่และต้นทุน</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">PR ${esc(jobId)} | ทำโดยแอดมินเท่านั้น</div></div><button class="close-btn" onclick="document.getElementById('m-cost-match-temp').remove()">×</button></div><div class="modal-body">
+    <input type="hidden" id="cm-job" value="${esc(jobId)}"><input type="hidden" id="cm-tech" value="${esc(techPartId)}">
+    <div class="form-group"><label>รายการจากช่าง</label><div class="text-box">${esc(part.part_name_text||'-')} ${esc(part.quantity||'')} ${esc(part.unit||'')}</div></div>
+    <div class="form-row"><div class="form-group"><label>แหล่งที่มา</label><select id="cm-source"><option value="purchase_item">รายการในบิลซื้อ</option><option value="general_expense">ค่าใช้จ่ายทั่วไป</option><option value="waiting_invoice">รอใบกำกับภาษี</option><option value="manual">บันทึกต้นทุนเอง</option></select></div><div class="form-group"><label>รายการในบิลซื้อ</label><select id="cm-purchase">${purchaseOptionsHtml()}</select></div></div>
+    <div class="form-row"><div class="form-group"><label>คำอธิบาย</label><input id="cm-desc" value="${esc(part.part_name_text||'')}"></div><div class="form-group"><label>จำนวน</label><input type="number" id="cm-qty" value="${esc(part.quantity||1)}"></div><div class="form-group"><label>หน่วย</label><input id="cm-unit" value="${esc(part.unit||'')}"></div></div>
+    <div class="form-row"><div class="form-group"><label>ต้นทุนจริง</label><input type="number" id="cm-cost" value="0"></div><div class="form-group"><label>VAT ซื้อ</label><input type="number" id="cm-vat" value="0"></div></div>
+  </div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('m-cost-match-temp').remove()">ยกเลิก</button><button class="btn btn-primary" onclick="saveCostMatch()">ยืนยันต้นทุน</button></div></div></div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+async function saveCostMatch(){
+  const jobId=document.getElementById('cm-job').value, techId=document.getElementById('cm-tech').value;
+  const source=document.getElementById('cm-source').value, purchaseId=document.getElementById('cm-purchase').value;
+  let cost=Number(document.getElementById('cm-cost').value||0), vat=Number(document.getElementById('cm-vat').value||0);
+  const purchase=purchaseItems.find(x=>x.id===purchaseId);
+  if(source==='purchase_item'&&purchase){cost=cost||Number(purchase.subtotal||0);vat=vat||Number(purchase.vat_amount||0);}
+  const row={id:newAccountingId('JCOST'),job_id:jobId,cost_type:'part',description:document.getElementById('cm-desc').value.trim(),quantity:Number(document.getElementById('cm-qty').value||1),unit:document.getElementById('cm-unit').value.trim(),cost_amount:cost,vat_amount:vat,source_type:source,purchase_item_id:source==='purchase_item'?purchaseId:null,technician_used_part_id:techId||null,status:'active',created_by_admin:getActorName(),updated_by:getActorName()};
+  const r=await fetch(splitUrl('job_cost_items'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(row)});
+  if(!r.ok){alert('บันทึกต้นทุนไม่สำเร็จ: '+await r.text());return;}
+  if(techId){
+    const status=source==='purchase_item'?'matched_purchase':source==='waiting_invoice'?'waiting_invoice':'matched_purchase';
+    await fetch(splitUrl('technician_used_parts',`?id=eq.${encodeURIComponent(techId)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({matched_status:status,updated_by:getActorName()})});
+  }
+  document.getElementById('m-cost-match-temp')?.remove();
+  accountingLoaded=false;await ensureAccountingLoaded(true);renderJobAccountingSection(jobId);
+  writeAuditLog('create_job_cost_item','job_cost_item',row.id,null,row,row,{jobId});
+}
+async function ignoreTechnicianPart(jobId,techId){
+  if(!confirm('ตั้งรายการนี้เป็นไม่คิดต้นทุน / ไม่เกี่ยวข้อง?'))return;
+  const r=await fetch(splitUrl('technician_used_parts',`?id=eq.${encodeURIComponent(techId)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({matched_status:'ignored',updated_by:getActorName()})});
+  if(!r.ok){alert('อัปเดตไม่สำเร็จ: '+await r.text());return;}
+  accountingLoaded=false;await ensureAccountingLoaded(true);renderJobAccountingSection(jobId);
+}
 function renderFixedExpenses(){const tb=document.getElementById('fixed-tbody');if(!tb)return;tb.innerHTML=fixedExpenses.map((x,i)=>`<tr><td>${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td class="mono tr">฿${x.amount.toLocaleString()}</td><td class="tm">${esc(x.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fxm-${i}',event)">...</button><div class="action-menu" id="fxm-${i}"><button onclick="openFixedModal(${i})">แก้ไข</button><button onclick="deleteFixedExpense(${i})">ลบ</button><button onclick="alert('${esc(x.note||'ไม่มีรายละเอียด')}')">ดูดีเทล</button></div></td></tr>`).join('');}
 function openFixedModal(i=''){document.getElementById('fx-index').value=i;if(i===''){['fx-name','fx-amount','fx-date','fx-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fx-type').value='Fixed';}else{const x=fixedExpenses[i];document.getElementById('fx-name').value=x.name;document.getElementById('fx-type').value=x.type;document.getElementById('fx-amount').value=x.amount;document.getElementById('fx-date').value=x.date;document.getElementById('fx-note').value=x.note||'';}openM('m-fixed');}
 function saveFixedExpense(){const i=document.getElementById('fx-index').value;const data={name:document.getElementById('fx-name').value,type:document.getElementById('fx-type').value||'Fixed',amount:parseFloat(document.getElementById('fx-amount').value)||0,date:document.getElementById('fx-date').value,note:document.getElementById('fx-note').value};if(i==='')fixedExpenses.push(data);else fixedExpenses[+i]=data;closeM('m-fixed');renderFin();saveState();}
