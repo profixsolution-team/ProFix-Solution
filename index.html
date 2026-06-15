@@ -979,7 +979,7 @@ select option{background:var(--surface2);}
         <div>
           <div class="accounting-panel mb16">
             <div class="accounting-panel-title">ข้อมูลผู้จำหน่ายและเอกสาร</div>
-            <div class="form-row"><div class="form-group"><label>เลขที่บิลในระบบ</label><input id="pur-no" placeholder="เช่น PIN-2026-001"></div><div class="form-group"><label>ร้านค้า / Supplier</label><input id="pur-supplier" placeholder="ชื่อร้านค้า"></div></div>
+            <div class="form-row"><div class="form-group"><label>เลขที่บิลในระบบ</label><input id="pur-no" placeholder="เช่น PXB-2026-001"></div><div class="form-group"><label>ร้านค้า / Supplier</label><input id="pur-supplier" placeholder="ชื่อร้านค้า"></div></div>
             <div class="form-row"><div class="form-group"><label>Tax ID Supplier</label><input id="pur-taxid"></div><div class="form-group"><label>เลขที่ใบกำกับภาษี</label><input id="pur-invoice-no"></div></div>
             <div class="form-row"><div class="form-group"><label>วันที่ใบกำกับภาษี</label><input id="pur-date" type="date"></div><div class="form-group"><label>ประเภทเอกสารภาษี</label><select id="pur-tax-type"><option value="tax_invoice">ใบกำกับภาษีเต็มรูป</option><option value="receipt">ใบเสร็จ/ไม่มี VAT</option><option value="pending_tax_invoice">รอใบกำกับภาษี</option></select></div></div>
             <div class="form-row"><div class="form-group"><label>สถานะจ่ายเงิน</label><select id="pur-payment"><option value="unpaid">ยังไม่ได้จ่าย</option><option value="paid">จ่ายแล้ว</option><option value="partial">จ่ายบางส่วน</option></select></div><div class="form-group"><label>วิธีจ่ายเงิน</label><input id="pur-method" placeholder="โอน / เงินสด / บัตร"></div></div>
@@ -1015,7 +1015,7 @@ select option{background:var(--surface2);}
         <div>
           <div class="accounting-panel mb16">
             <div class="accounting-panel-title">ข้อมูลลูกค้าและเอกสาร</div>
-            <div class="form-row"><div class="form-group"><label>เลขที่ใบกำกับภาษีขาย</label><input id="sale-no" placeholder="เช่น SINV-2026-001"></div><div class="form-group"><label>Job ID / PR</label><input id="sale-job" list="sales-job-list" placeholder="PR..." onchange="fillSalesFromJob()"><datalist id="sales-job-list"></datalist></div></div>
+            <div class="form-row"><div class="form-group"><label>เลขที่ใบกำกับภาษีขาย</label><input id="sale-no" placeholder="เช่น PXS-2026-001"></div><div class="form-group"><label>Job ID / PR</label><input id="sale-job" list="sales-job-list" placeholder="PR..." onchange="fillSalesFromJob()"><datalist id="sales-job-list"></datalist></div></div>
             <div class="form-row"><div class="form-group"><label>ลูกค้า</label><input id="sale-customer" placeholder="ชื่อลูกค้า"></div><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div></div>
             <div class="form-row"><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
           </div>
@@ -3101,7 +3101,7 @@ function blankPurchaseItem(){
 }
 function openPurchaseModal(id=''){
   const inv=id?purchaseInvoices.find(x=>x.id===id):null;
-  const nextNo='PIN-'+new Date().getFullYear()+'-'+String(purchaseInvoices.length+1).padStart(3,'0');
+  const nextNo='PXB-'+new Date().getFullYear()+'-'+String(purchaseInvoices.length+1).padStart(3,'0');
   document.getElementById('purchase-modal-title').textContent=inv?'แก้ไขบิลซื้อ / ภาษีซื้อ':'เพิ่มบิลซื้อ / ภาษีซื้อ';
   document.getElementById('pur-id').value=inv?.id||'';
   document.getElementById('pur-no').value=inv?.purchase_no||nextNo;
@@ -3208,7 +3208,7 @@ function openSalesForJob(jobId){openSalesModal('',jobId);}
 function blankSalesItem(description='',quantity=1,unit='',unitPrice=0){return {id:newAccountingId('SITEM'),description,quantity,unit,unit_price:unitPrice,vat_rate:7,note:''};}
 function openSalesModal(id='',prefJobId=''){
   const inv=id?salesInvoices.find(x=>x.id===id):null;
-  const nextNo='SINV-'+new Date().getFullYear()+'-'+String(salesInvoices.length+1).padStart(3,'0');
+  const nextNo='PXS-'+new Date().getFullYear()+'-'+String(salesInvoices.length+1).padStart(3,'0');
   const dl=document.getElementById('sales-job-list');
   if(dl)dl.innerHTML=jobs.filter(j=>!isDeletedRecord(j)).map(j=>`<option value="${esc(j.id)}">${esc(j.client||'')} ${esc(j.branch||'')}</option>`).join('');
   document.getElementById('sales-modal-title').textContent=inv?'แก้ไขบิลขาย / ภาษีขาย':'เพิ่มบิลขาย / ภาษีขาย';
