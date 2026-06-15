@@ -1006,14 +1006,14 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.06.12.3';
+const APP_VERSION='2026.06.15.1';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
 const WORKORDER_UPLOAD_ENDPOINT='https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload-workorder';
 const LS_UI_KEY='svc_admin_tracker_ui_v1';
 const LS_THEME_KEY='svc_admin_tracker_theme';
-const LS_FAST_STATE_KEY='svc_admin_tracker_fast_state_v3';
+const LS_FAST_STATE_KEY='svc_admin_tracker_fast_state_v4';
 const LS_APP_VERSION_KEY='svc_admin_tracker_app_version';
 const LS_AUTO_BACKUP_DATE_KEY='svc_admin_tracker_auto_backup_date';
 const LS_ACTOR_NAME_KEY='svc_admin_tracker_actor_name';
@@ -1353,16 +1353,67 @@ function ensurePersistentIds(){
 }
 function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,docs,jCnt,aCnt,lastDataUpdatedAt};}
 function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
+function lightTechnicianReportForCache(report={}){
+  const r={...report};
+  const imageCount=Array.isArray(r.images)?r.images.length:Number(r.imageCount||0);
+  const documentImageCount=Array.isArray(r.documentImages)?r.documentImages.length:Number(r.documentImageCount||0);
+  delete r.images;delete r.documentImages;
+  if(Array.isArray(r.rounds))r.rounds=r.rounds.slice(-3).map(x=>({type:x.type,label:x.label,status:x.status,submittedAt:x.submittedAt,savedAt:x.savedAt}));
+  r.imageCount=imageCount;
+  r.documentImageCount=documentImageCount;
+  return r;
+}
+function lightJobForCache(j={}){
+  const x={...j};
+  if(x.technicianReport)x.technicianReport=lightTechnicianReportForCache(x.technicianReport);
+  if(Array.isArray(x.reportRounds))x.reportRounds=x.reportRounds.slice(-3).map(r=>({id:r.id,type:r.type,label:r.label,status:r.status,submittedAt:r.submittedAt}));
+  if(Array.isArray(x.generatedReports))x.generatedReports=x.generatedReports.slice(-3);
+  return x;
+}
+function lightAdminTaskForCache(t={}){return {...t};}
+function purgeOldFastCaches(){
+  try{
+    Object.keys(localStorage).forEach(k=>{
+      if(k.startsWith('svc_admin_tracker_fast_state')&&k!==LS_FAST_STATE_KEY)localStorage.removeItem(k);
+    });
+  }catch(e){}
+}
 function collectFastState(){
-  const st=collectState();
+  const st={...collectState()};
+  st.jobs=(jobs||[]).map(lightJobForCache);
+  st.adminTasks=(adminTasks||[]).map(lightAdminTaskForCache);
   st.parts=[];
   st.docs={qt:[],iv:[],workOrders:[]};
   st._partsOmitted=true;
   st._docsOmitted=true;
+  st._cacheVersion=4;
+  st._cachedAt=new Date().toISOString();
   return st;
 }
-function cacheFastState(){try{localStorage.setItem(LS_FAST_STATE_KEY,JSON.stringify(collectFastState()));}catch(e){console.warn('Fast cache save failed',e);}}
-function loadFastState(){try{const st=JSON.parse(localStorage.getItem(LS_FAST_STATE_KEY)||'null');if(!st)return false;if(st._partsOmitted)delete st.parts;if(st._docsOmitted)delete st.docs;applyState(st);return true;}catch(e){console.warn('Fast cache load failed',e);return false;}}
+function cacheFastState(){
+  purgeOldFastCaches();
+  try{
+    localStorage.setItem(LS_FAST_STATE_KEY,JSON.stringify(collectFastState()));
+  }catch(e){
+    try{
+      localStorage.removeItem(LS_FAST_STATE_KEY);
+      purgeOldFastCaches();
+    }catch(_){}
+    console.warn('Fast cache save skipped; browser storage is full.',e);
+  }
+}
+function loadFastState(){
+  purgeOldFastCaches();
+  try{
+    const st=JSON.parse(localStorage.getItem(LS_FAST_STATE_KEY)||'null');
+    if(!st)return false;
+    if((!Array.isArray(st.jobs)||!st.jobs.length)&&(!Array.isArray(st.adminTasks)||!st.adminTasks.length))return false;
+    if(st._partsOmitted)delete st.parts;
+    if(st._docsOmitted)delete st.docs;
+    applyState(st);
+    return true;
+  }catch(e){console.warn('Fast cache load failed',e);return false;}
+}
 function renderCurrentPage(){let ui={};try{ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');}catch(e){}goTo(ui.lastPage||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard');updateNavBadges();}
 function refreshAfterDataChange(){
   updateNavBadges();
