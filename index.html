@@ -423,6 +423,7 @@ select option{background:var(--surface2);}
     <button class="nav-item" data-page="finance" onclick="goTo('finance',this)"><span class="nav-icon">💰</span>ภาพรวมการเงิน</button>
     <button class="nav-item" data-page="purchase-tax" onclick="goTo('purchase-tax',this)"><span class="nav-icon">🧾</span>บิลซื้อ / ภาษีซื้อ</button>
     <button class="nav-item" data-page="sales-tax" onclick="goTo('sales-tax',this)"><span class="nav-icon">🧾</span>บิลขาย / ภาษีขาย</button>
+    <button class="nav-item" data-page="stock" onclick="goTo('stock',this)"><span class="nav-icon">📦</span>Stock / คลังอะไหล่<span class="nav-badge-y" id="nb-stock" style="display:none;">0</span></button>
     <button class="nav-item" data-page="tech-pay" onclick="goTo('tech-pay',this)"><span class="nav-icon">👷</span>จ่ายช่าง</button>
     <div class="nav-section">เอกสาร</div>
     <button class="nav-item" data-page="workorders" onclick="goTo('workorders',this)"><span class="nav-icon">🗃</span>ใบงาน / แฟ้ม PR</button>
@@ -597,6 +598,98 @@ select option{background:var(--surface2);}
   </div>
 </div>
 
+<!-- STOCK / คลังอะไหล่ (แอดมินเท่านั้น — ช่างไม่เห็นราคาและจำนวน) -->
+<div class="page" id="page-stock">
+  <div class="page-header">
+    <div><div class="page-title">Stock / คลังอะไหล่</div><div class="page-sub">รับเข้าจากบิลซื้อหลังยืนยัน · เบิกออกผูกกับ PR · ทุกการเคลื่อนไหวมี audit log — แอดมินเท่านั้น</div></div>
+    <div class="flex g8">
+      <button class="btn btn-ghost" onclick="openStockOutModal()">− เบิกออก (ผูก PR)</button>
+      <button class="btn btn-primary" onclick="openStockItemModal()">+ เพิ่มสินค้าคลัง</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="fin-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+      <div class="fin-card"><div class="fin-label">จำนวน SKU ใช้งาน</div><div class="fin-value ta" id="stk-skus">—</div><div class="fin-meta">รายการที่ active</div></div>
+      <div class="fin-card"><div class="fin-label">มูลค่าคงคลัง (ต้นทุน)</div><div class="fin-value tg" id="stk-value">—</div><div class="fin-meta">คงเหลือ × ต้นทุนเฉลี่ย</div></div>
+      <div class="fin-card"><div class="fin-label">ต่ำกว่าขั้นต่ำ</div><div class="fin-value tr" id="stk-low">—</div><div class="fin-meta">ต้องสั่งเพิ่ม</div></div>
+      <div class="fin-card"><div class="fin-label">รอรับเข้าจากบิลซื้อ</div><div class="fin-value ty" id="stk-pending">—</div><div class="fin-meta">บิลที่ยังไม่ยืนยันรับเข้า</div></div>
+    </div>
+
+    <div class="table-wrap mb16" id="stk-pending-wrap" style="display:none;">
+      <div class="table-header"><div class="table-title">บิลซื้อรอยืนยันรับเข้า Stock</div><span class="mono tm" id="stk-pending-count" style="font-size:11px;"></span></div>
+      <table><thead><tr><th>เลขบิล</th><th>Supplier</th><th>วันที่</th><th>รายการเข้า stock</th><th>มูลค่า</th><th></th></tr></thead><tbody id="stk-pending-tbody"></tbody></table>
+    </div>
+
+    <div class="table-wrap mb16">
+      <div class="table-header">
+        <div class="table-title">รายการสินค้าในคลัง</div>
+        <div class="flex g8">
+          <input type="text" id="stk-search" placeholder="ค้นหาสินค้า..." style="width:200px;" value="" oninput="stockSearch=this.value;renderStock();">
+          <label class="tm" style="font-size:12px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="stk-show-inactive" onchange="stockShowInactive=this.checked;renderStock();">แสดงที่ปิดใช้งาน</label>
+        </div>
+      </div>
+      <table><thead><tr><th>SKU</th><th>ชื่อสินค้า</th><th>หมวด</th><th>หน่วย</th><th>คงเหลือ</th><th>ขั้นต่ำ</th><th>ต้นทุนเฉลี่ย</th><th>มูลค่า</th><th>สถานะ</th><th></th></tr></thead><tbody id="stock-tbody"></tbody></table>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header"><div class="table-title">ความเคลื่อนไหวล่าสุด (Stock Movement)</div><span class="mono tm" id="stk-move-count" style="font-size:11px;"></span></div>
+      <table><thead><tr><th>เวลา</th><th>สินค้า</th><th>ประเภท</th><th>จำนวน</th><th>ต้นทุน/หน่วย</th><th>รวม</th><th>PR / อ้างอิง</th><th>โดย</th></tr></thead><tbody id="stock-move-tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: STOCK ITEM (เพิ่ม/แก้ไขสินค้าคลัง) -->
+<div class="modal-overlay" id="m-stock-item">
+  <div class="modal">
+    <div class="modal-header"><div><div class="modal-title" id="stock-item-title">เพิ่มสินค้าคลัง</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">แอดมินเท่านั้น</div></div><button class="close-btn" onclick="closeM('m-stock-item')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="stk-id">
+      <div class="form-row"><div class="form-group"><label>SKU / รหัส</label><input id="stk-sku" placeholder="เช่น SKU-001 (เว้นว่างได้)"></div><div class="form-group"><label>ชื่อสินค้า / อะไหล่</label><input id="stk-name" list="accounting-item-list" placeholder="พิมพ์หรือเลือก"></div></div>
+      <div class="form-row"><div class="form-group"><label>หมวดหมู่</label><input id="stk-cat" placeholder="เช่น น้ำยา/อะไหล่แอร์"></div><div class="form-group"><label>ยี่ห้อ/รุ่น</label><input id="stk-brand" placeholder="เช่น Danfoss SC15G"></div></div>
+      <div class="form-row"><div class="form-group"><label>หน่วย</label><input id="stk-unit" placeholder="เช่น ชิ้น / ปอนด์"></div><div class="form-group"><label>Supplier</label><input id="stk-supplier" list="supplier-name-list" placeholder="ชื่อร้านค้า"></div></div>
+      <div class="form-row"><div class="form-group"><label>สต็อกขั้นต่ำ (แจ้งเตือน)</label><input type="number" id="stk-min" value="0"></div><div class="form-group"><label>ต้นทุนเฉลี่ย (฿)</label><input type="number" id="stk-cost" value="0"></div></div>
+      <div class="form-group" id="stk-qty-group"><label>จำนวนตั้งต้น (เฉพาะตอนสร้างใหม่ — จะสร้าง movement adjustment)</label><input type="number" id="stk-qty" value="0"></div>
+      <div class="form-group"><label>หมายเหตุ</label><input id="stk-note"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-stock-item')">ยกเลิก</button><button class="btn btn-primary" onclick="saveStockItem()">✓ บันทึก</button></div>
+  </div>
+</div>
+
+<!-- MODAL: STOCK OUT (เบิกออก ผูกกับ PR) -->
+<div class="modal-overlay" id="m-stock-out">
+  <div class="modal">
+    <div class="modal-header"><div><div class="modal-title">เบิก Stock ออก (ผูกกับ PR)</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">ต้นทุนจะถูกบันทึกเข้างานของ PR นั้นอัตโนมัติ</div></div><button class="close-btn" onclick="closeM('m-stock-out')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>สินค้าในคลัง</label><select id="so-item" onchange="onStockOutItemChange()"></select></div>
+      <div class="text-box" id="so-info" style="margin-bottom:12px;">เลือกสินค้าเพื่อดูยอดคงเหลือ</div>
+      <div class="form-row"><div class="form-group"><label>PR / Job ID (จำเป็น)</label><input id="so-pr" list="stock-pr-list" placeholder="เช่น PR-2025-001"></div><div class="form-group"><label>จำนวนที่เบิก</label><input type="number" id="so-qty" value="1" min="0" oninput="updateStockOutPreview()"></div></div>
+      <div class="form-group"><label>หมายเหตุ</label><input id="so-note" placeholder="ใช้กับงานอะไร"></div>
+      <div class="accounting-status" id="so-status"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-stock-out')">ยกเลิก</button><button class="btn btn-primary" onclick="saveStockOut()">✓ ยืนยันเบิกออก</button></div>
+  </div>
+</div>
+
+<!-- MODAL: STOCK ADJUST (ปรับยอด) -->
+<div class="modal-overlay" id="m-stock-adjust">
+  <div class="modal">
+    <div class="modal-header"><div><div class="modal-title" id="stock-adjust-title">ปรับยอดคงเหลือ</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">ต้องระบุเหตุผล — มี audit log</div></div><button class="close-btn" onclick="closeM('m-stock-adjust')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="adj-id">
+      <div class="text-box" id="adj-info" style="margin-bottom:12px;"></div>
+      <div class="form-row"><div class="form-group"><label>ยอดคงเหลือใหม่</label><input type="number" id="adj-new-qty" oninput="updateAdjustPreview()"></div><div class="form-group"><label>ส่วนต่าง</label><input id="adj-diff" readonly style="background:var(--surface2);"></div></div>
+      <div class="form-group"><label>เหตุผลการปรับ (จำเป็น)</label><input id="adj-reason" placeholder="เช่น นับสต็อกจริง / ของเสีย / คืนเข้า"></div>
+      <div class="accounting-status" id="adj-status"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-stock-adjust')">ยกเลิก</button><button class="btn btn-primary" onclick="saveStockAdjust()">✓ บันทึกการปรับยอด</button></div>
+  </div>
+</div>
+
+<datalist id="accounting-item-list"></datalist>
+<datalist id="supplier-name-list"></datalist>
+<datalist id="client-name-list"></datalist>
+<datalist id="stock-pr-list"></datalist>
+
 <!-- TECH PAY -->
 <div class="page" id="page-tech-pay">
   <div class="page-header"><div><div class="page-title">จ่ายเงินช่าง Outsource</div><div class="page-sub">ราคาล็อคต่องาน — ช่างไม่เห็นราคากลาง</div></div></div>
@@ -722,7 +815,7 @@ select option{background:var(--surface2);}
   <div class="content">
     <div class="table-wrap mb16">
       <div class="table-header"><div class="table-title">รายชื่อซัพพลายเออร์</div></div>
-      <table><thead><tr><th>ชื่อร้าน</th><th>ประเภท</th><th>ผู้ติดต่อ</th><th>เบอร์</th><th>เงื่อนไข</th><th>หมายเหตุ</th><th></th></tr></thead>
+      <table><thead><tr><th>ชื่อร้าน</th><th>ประเภท</th><th>Tax ID</th><th>ผู้ติดต่อ</th><th>เบอร์</th><th>เงื่อนไข</th><th>หมายเหตุ</th><th></th></tr></thead>
       <tbody id="sup-tbody"></tbody></table>
     </div>
     <div class="table-wrap">
@@ -815,7 +908,8 @@ select option{background:var(--surface2);}
     <div class="modal-header"><div class="modal-title">เพิ่ม/แก้ไขซัพพลายเออร์</div><button class="close-btn" onclick="closeM('m-supplier')">×</button></div>
     <div class="modal-body">
       <div class="form-row"><div class="form-group"><label>ชื่อร้าน/บริษัท</label><input type="text" id="fs-name" placeholder="ชื่อซัพพลายเออร์"></div><div class="form-group"><label>ประเภท</label><select id="fs-type"><option>อะไหล่แอร์</option><option>อะไหล่ตู้แช่</option><option>อะไหล่ทั่วไป</option><option>วัสดุ</option></select></div></div>
-      <div class="form-row"><div class="form-group"><label>ผู้ติดต่อ</label><input type="text" id="fs-contact" placeholder="ชื่อ-นามสกุล"></div><div class="form-group"><label>เบอร์</label><input type="text" id="fs-phone" placeholder="08x-xxx-xxxx"></div></div>
+      <div class="form-row"><div class="form-group"><label>เลขประจำตัวผู้เสียภาษี (Tax ID)</label><input type="text" id="fs-taxid" placeholder="13 หลัก — ใช้ดึงเข้าบิลซื้ออัตโนมัติ"></div><div class="form-group"><label>ผู้ติดต่อ</label><input type="text" id="fs-contact" placeholder="ชื่อ-นามสกุล"></div></div>
+      <div class="form-row"><div class="form-group"><label>เบอร์</label><input type="text" id="fs-phone" placeholder="08x-xxx-xxxx"></div><div class="form-group" style="visibility:hidden;"><label>.</label><input type="text"></div></div>
       <div class="form-row"><div class="form-group"><label>เงื่อนไขการสั่งซื้อ</label><input type="text" id="fs-terms" placeholder="เช่น เงินสด / เครดิต 7 วัน"></div><div class="form-group"><label>เวลาส่ง</label><input type="text" id="fs-lead" placeholder="เช่น 1-2 วัน"></div></div>
       <div class="form-group"><label>หมายเหตุ</label><textarea id="fs-note" placeholder="ข้อมูลเพิ่มเติม..." style="min-height:60px;"></textarea></div>
     </div>
@@ -979,7 +1073,7 @@ select option{background:var(--surface2);}
         <div>
           <div class="accounting-panel mb16">
             <div class="accounting-panel-title">ข้อมูลผู้จำหน่ายและเอกสาร</div>
-            <div class="form-row"><div class="form-group"><label>เลขที่บิลในระบบ</label><input id="pur-no" placeholder="เช่น PXB-2026-001"></div><div class="form-group"><label>ร้านค้า / Supplier</label><input id="pur-supplier" placeholder="ชื่อร้านค้า"></div></div>
+            <div class="form-row"><div class="form-group"><label>เลขที่บิลในระบบ</label><input id="pur-no" placeholder="เช่น PIN-2026-001"></div><div class="form-group"><label>ร้านค้า / Supplier</label><input id="pur-supplier" list="supplier-name-list" placeholder="พิมพ์หรือเลือกจากข้อมูลระบบ" oninput="onPurchaseSupplierChange()" onchange="onPurchaseSupplierChange()"></div></div>
             <div class="form-row"><div class="form-group"><label>Tax ID Supplier</label><input id="pur-taxid"></div><div class="form-group"><label>เลขที่ใบกำกับภาษี</label><input id="pur-invoice-no"></div></div>
             <div class="form-row"><div class="form-group"><label>วันที่ใบกำกับภาษี</label><input id="pur-date" type="date"></div><div class="form-group"><label>ประเภทเอกสารภาษี</label><select id="pur-tax-type"><option value="tax_invoice">ใบกำกับภาษีเต็มรูป</option><option value="receipt">ใบเสร็จ/ไม่มี VAT</option><option value="pending_tax_invoice">รอใบกำกับภาษี</option></select></div></div>
             <div class="form-row"><div class="form-group"><label>สถานะจ่ายเงิน</label><select id="pur-payment"><option value="unpaid">ยังไม่ได้จ่าย</option><option value="paid">จ่ายแล้ว</option><option value="partial">จ่ายบางส่วน</option></select></div><div class="form-group"><label>วิธีจ่ายเงิน</label><input id="pur-method" placeholder="โอน / เงินสด / บัตร"></div></div>
@@ -993,7 +1087,7 @@ select option{background:var(--surface2);}
         <aside class="accounting-panel accounting-summary">
           <div class="accounting-panel-title">สรุปบิลซื้อ</div>
           <div class="accounting-total-row"><span>รวมเป็นเงิน</span><strong id="pur-ui-subtotal">0.00</strong></div>
-          <div class="accounting-total-row"><span>ภาษีซื้อ</span><strong id="pur-ui-vat">0.00</strong></div>
+          <label class="accounting-total-row" style="cursor:pointer;align-items:center;"><span style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="pur-has-vat" checked onchange="purchaseHasVat=this.checked;updatePurchaseSummary();">มี VAT 7%</span><strong id="pur-ui-vat">0.00</strong></label>
           <div class="accounting-total-row grand"><span>จำนวนเงินรวมทั้งสิ้น</span><strong id="pur-ui-total">0.00</strong></div>
           <div class="form-group" style="margin-top:14px;"><label>URL ไฟล์แนบ / รูปบิล / PDF</label><input id="pur-file" placeholder="https://..."></div>
           <div class="attachment-preview" id="pur-attachment-preview">ยังไม่ได้แนบไฟล์</div>
@@ -1015,8 +1109,8 @@ select option{background:var(--surface2);}
         <div>
           <div class="accounting-panel mb16">
             <div class="accounting-panel-title">ข้อมูลลูกค้าและเอกสาร</div>
-            <div class="form-row"><div class="form-group"><label>เลขที่ใบกำกับภาษีขาย</label><input id="sale-no" placeholder="เช่น PXS-2026-001"></div><div class="form-group"><label>Job ID / PR</label><input id="sale-job" list="sales-job-list" placeholder="PR..." onchange="fillSalesFromJob()"><datalist id="sales-job-list"></datalist></div></div>
-            <div class="form-row"><div class="form-group"><label>ลูกค้า</label><input id="sale-customer" placeholder="ชื่อลูกค้า"></div><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div></div>
+            <div class="form-row"><div class="form-group"><label>เลขที่ใบกำกับภาษีขาย</label><input id="sale-no" placeholder="เช่น SINV-2026-001"></div><div class="form-group"><label>Job ID / PR</label><input id="sale-job" list="sales-job-list" placeholder="PR..." onchange="fillSalesFromJob()"><datalist id="sales-job-list"></datalist></div></div>
+            <div class="form-row"><div class="form-group"><label>ลูกค้า</label><input id="sale-customer" list="client-name-list" placeholder="พิมพ์หรือเลือกจากข้อมูลระบบ"></div><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div></div>
             <div class="form-row"><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
           </div>
           <div class="accounting-panel">
@@ -1029,7 +1123,7 @@ select option{background:var(--surface2);}
         <aside class="accounting-panel accounting-summary">
           <div class="accounting-panel-title">สรุปบิลขาย</div>
           <div class="accounting-total-row"><span>รวมเป็นเงิน</span><strong id="sale-ui-subtotal">0.00</strong></div>
-          <div class="accounting-total-row"><span>ภาษีขาย</span><strong id="sale-ui-vat">0.00</strong></div>
+          <label class="accounting-total-row" style="cursor:pointer;align-items:center;"><span style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="sale-has-vat" checked onchange="salesHasVat=this.checked;updateSalesSummary();">มี VAT 7%</span><strong id="sale-ui-vat">0.00</strong></label>
           <div class="accounting-total-row grand"><span>จำนวนเงินรวมทั้งสิ้น</span><strong id="sale-ui-total">0.00</strong></div>
           <div class="form-group" style="margin-top:14px;"><label>URL ไฟล์บิล / PDF</label><input id="sale-file" placeholder="https://..."></div>
           <div class="attachment-preview" id="sale-attachment-preview">ยังไม่ได้แนบไฟล์</div>
@@ -1110,6 +1204,9 @@ let financeSearch='', financeDateFilter='', lastDataUpdatedAt='', adminSortDir='
 let selectedDocs={qt:new Set(),iv:new Set(),tx:new Set()};
 let editJobId=null, editAdminId=null, pendingJobFromAdminId=null;
 let purchaseInvoices=[], purchaseItems=[], technicianUsedParts=[], jobCostItems=[], salesInvoices=[], salesInvoiceItems=[], purchaseDraftItems=[], salesDraftItems=[];
+let purchaseHasVat=true, salesHasVat=true;
+let stockItems=[], stockMovements=[], stockLoaded=false, stockLoadingPromise=null;
+let stockSearch='', stockShowInactive=false, currentDetailJobId='';
 let accountingLoaded=false, accountingLoadingPromise=null;
 let accountingAttachments={purchase:null,sales:null};
 let adminNames=['แอดมิน 1','แอดมิน 2','ทั้งคู่'];
@@ -2007,6 +2104,7 @@ function goTo(id, el){
     finance:renderFin,
     'purchase-tax':()=>{renderPurchaseTax();ensureAccountingLoaded().then(renderPurchaseTax);},
     'sales-tax':()=>{renderSalesTax();ensureAccountingLoaded().then(renderSalesTax);},
+    stock:()=>{renderStock();ensureStockLoaded().then(renderStock);},
     'tech-pay':renderTP,
     workorders:()=>{renderWorkOrders();ensureWorkOrdersLoaded().then(renderWorkOrders);ensureDocsLoaded().then(renderWorkOrders);},
     documents:()=>{renderDocs();ensureDocsLoaded().then(renderDocs);},
@@ -2814,6 +2912,7 @@ async function copyTechnicianLink(id){
 }
 function openDet(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
+  currentDetailJobId=id;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
   document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
@@ -2968,20 +3067,101 @@ function updateAttachmentPreview(kind,file,dataUrl=''){
   const meta=`${safeName}<br><span class="tm">${file.type||'file'} · ${Math.round((file.size||0)/1024).toLocaleString()} KB</span>`;
   el.innerHTML=file.type?.startsWith('image/')&&dataUrl?`${meta}<img src="${dataUrl}" alt="">`:meta;
 }
+function knownItemNames(){
+  const set=new Set();
+  (parts||[]).forEach(p=>{const n=String(p.name||'').trim();if(n)set.add(n);});
+  (stockItems||[]).forEach(s=>{const n=String(s.item_name||'').trim();if(n)set.add(n);});
+  (purchaseItems||[]).forEach(p=>{const n=String(p.item_name||'').trim();if(n)set.add(n);});
+  (salesInvoiceItems||[]).forEach(s=>{const n=String(s.description||'').trim();if(n)set.add(n);});
+  return [...set].sort((a,b)=>a.localeCompare(b,'th'));
+}
+function stockPRList(){
+  const set=new Set();
+  (typeof jobs!=='undefined'?jobs:[]).forEach(j=>{if(j&&j.id&&!(typeof isDeletedRecord==='function'&&isDeletedRecord(j)))set.add(j.id);});
+  (typeof adminTasks!=='undefined'?adminTasks:[]).forEach(t=>{if(t&&t.jobId)set.add(t.jobId);});
+  (typeof prValues!=='undefined'?prValues:[]).forEach(v=>{if(v)set.add(v);});
+  return [...set];
+}
+function refreshAccountingDatalists(){
+  const setList=(id,vals)=>{const el=document.getElementById(id);if(el)el.innerHTML=vals.map(v=>`<option value="${esc(v)}"></option>`).join('');};
+  setList('accounting-item-list',knownItemNames());
+  setList('supplier-name-list',(suppliers||[]).map(s=>s.name).filter(Boolean));
+  setList('client-name-list',(typeof clients!=='undefined'?clients:[]).map(c=>c.name).filter(Boolean));
+  setList('stock-pr-list',stockPRList());
+}
+function parseMoney(v){const n=Number(String(v||'').replace(/[^\d.]/g,''));return Number.isFinite(n)?n:0;}
+function findLabelledAmount(flat,labels){
+  for(const lb of labels){
+    const re=new RegExp(lb.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'[^0-9\\-]{0,18}((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\\.[0-9]{1,2})?)','i');
+    const m=flat.match(re);
+    if(m)return parseMoney(m[1]);
+  }
+  return null;
+}
+function extractInvoiceTaxId(flat){
+  const labelled=flat.match(/(?:tax\s*id|เลขประจำตัวผู้เสียภาษี(?:อากร)?|เลขผู้เสียภาษี|เลขประจำตัวผู้เสีย)[^\d]{0,24}((?:\d[\s.-]?){13})/i);
+  if(labelled){const d=labelled[1].replace(/\D/g,'');if(d.length===13)return d;}
+  const any=flat.match(/\b(\d[\s.-]?){13}\b/);
+  if(any){const d=any[0].replace(/\D/g,'');if(d.length===13)return d;}
+  return '';
+}
+function parseAccountingLineItems(lines){
+  // จับเฉพาะแถวสินค้าจริง โดยยึดราคาที่มีทศนิยม .dd เป็นหลัก แล้วถอยหาจำนวน/ชื่อ
+  const items=[];
+  const stop=/(^|\s)(รวม|ยอด|มูลค่าสินค้า|ภาษี|sub\s*total|grand\s*total|total|vat|จำนวนเงิน|หมายเหตุ|ลายเซ็น|ผู้รับเงิน|ผู้มีอำนาจ|ส่วนลด|discount)/i;
+  const meta=/(เลขที่|เลขประจำตัว|ผู้เสียภาษี|วันที่|date|invoice|tax\s*id|โทร|tel|fax|address|ที่อยู่|สาขา|หน้า\s*\d|page)/i;
+  const priceRe=/(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\.[0-9]{2}/g;
+  for(const raw of lines){
+    const l=cleanPdfValue(raw).replace(/^\s*\d{1,3}[.)]?\s+(?=[ก-๙A-Za-z])/,'');
+    if(!l||stop.test(l)||meta.test(l))continue;
+    const prices=[...l.matchAll(priceRe)];
+    if(!prices.length)continue;
+    const head=l.slice(0,prices[0].index);
+    if(!/[ก-๙A-Za-z]/.test(head))continue; // ต้องมีชื่อสินค้า
+    const ints=[...head.matchAll(/\d+(?:\.\d+)?/g)];
+    let qty=1,desc=head;
+    if(ints.length){const last=ints[ints.length-1];qty=parseMoney(last[0])||1;desc=head.slice(0,last.index);}
+    desc=cleanPdfValue(desc);
+    if(!desc||desc.length<2||/^[\d.,\s]+$/.test(desc))continue;
+    const unitPrice=parseMoney(prices[0][0]);
+    items.push({item_name:desc.slice(0,120),quantity:qty,unit:'',unit_price:Math.round(unitPrice*100)/100});
+    if(items.length>=30)break;
+  }
+  return items;
+}
 function parseAccountingDocText(text){
-  const flat=normalizePdfText(text).replace(/\s+/g,' ').trim();
+  text=normalizePdfText(text||'');
+  const flat=text.replace(/\s+/g,' ').trim();
   const lines=pdfLines(text);
-  const amountMatches=[...flat.matchAll(/(?:฿|\bTHB\b)?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d{2})|[0-9]+\.\d{2})/g)].map(m=>Number(m[1].replace(/,/g,''))).filter(n=>Number.isFinite(n)&&n>0);
-  const total=amountMatches.length?Math.max(...amountMatches):0;
-  const vatLabel=flat.match(/(?:VAT|ภาษี(?:มูลค่าเพิ่ม)?)[^\d]{0,20}([0-9,]+(?:\.\d{2})?)/i);
-  const vat=vatLabel?Number(vatLabel[1].replace(/,/g,'')):(total?Math.round((total*7/107)*100)/100:0);
-  const subtotal=total?Math.max(0,Math.round((total-vat)*100)/100):0;
-  const taxId=flat.match(/(?:tax\s*id|เลขประจำตัวผู้เสียภาษี|เลขผู้เสียภาษี)[^\d]{0,20}(\d{10,13})/i)?.[1]||flat.match(/\b(\d{13})\b/)?.[1]||'';
-  const invoiceNo=flat.match(/(?:invoice\s*(?:no|number)?|เลขที่(?:ใบกำกับภาษี|บิล|เอกสาร)?|ใบกำกับภาษีเลขที่)[\s:#-]*([A-Z0-9\-\/]{3,})/i)?.[1]||'';
-  const date=extractDateFromText(flat);
-  const nameLine=lines.find(l=>/(บริษัท|จำกัด|หจก|ร้าน|co\.|ltd|limited)/i.test(l))||'';
-  const pr=flat.match(/\b(PR[-\s]?\d{3,}|PR\d{3,})\b/i)?.[1]?.replace(/\s+/g,'')||'';
-  return {invoiceNo,date,taxId,name:nameLine,subtotal,vat,total,pr};
+  // ยอดรวม: หา label ก่อน แล้วค่อย fallback เป็นยอดมากสุด
+  let total=findLabelledAmount(flat,['จำนวนเงินรวมทั้งสิ้น','รวมทั้งสิ้น','ยอดรวมสุทธิ','ยอดสุทธิ','grand total','net total','total amount','รวมเงิน']);
+  let vat=findLabelledAmount(flat,['ภาษีมูลค่าเพิ่ม 7%','ภาษีมูลค่าเพิ่ม','ภาษีมูลค่าเพิม','vat 7%','vat 7 %','vat','ภาษีซื้อ','ภาษีขาย']);
+  let subtotal=findLabelledAmount(flat,['รวมเป็นเงิน','มูลค่าสินค้า','ราคารวม','sub total','subtotal','รวมเงิน(ก่อนภาษี)','ยอดก่อนภาษี']);
+  const amounts=[...flat.matchAll(/(?:฿|\bTHB\b)?\s*((?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\.\d{2})/g)].map(m=>parseMoney(m[1])).filter(n=>n>0);
+  if(total==null)total=amounts.length?Math.max(...amounts):0;
+  if(vat==null){
+    // คำนวณ VAT เฉพาะเมื่อมีหลักฐาน (มียอดก่อนภาษีระบุไว้และต่างจากยอดรวมแบบ ~7%) — ไม่งั้นถือว่าไม่มี VAT
+    if(subtotal!=null&&total){const d=Math.round((total-subtotal)*100)/100;vat=(d>0&&Math.abs(d-subtotal*0.07)<Math.max(1,subtotal*0.03))?d:0;}
+    else vat=0;
+  }
+  if(subtotal==null)subtotal=Math.round((total-vat)*100)/100;
+  const hasVat=Number(vat)>0;
+  const taxId=extractInvoiceTaxId(flat);
+  const invoiceNo=pickPdfField(flat,['เลขที่ใบกำกับภาษี','ใบกำกับภาษีเลขที่','เลขที่เอกสาร','เลขที่บิล','เลขที่','invoice no.','invoice no','invoice number','invoice','bill no','no.'],['วันที่','date','tax id','เลขประจำตัว','ลูกค้า','ผู้ซื้อ','due'])?.match(/[A-Z0-9][A-Z0-9\-\/]{2,}/i)?.[0]||'';
+  // วันที่: หาบรรทัดที่มี label วันที่ก่อน
+  let date='';
+  const dateLine=lines.find(l=>/(วันที่|date)/i.test(l)&&/\d{1,4}[\/.\-]\d{1,2}[\/.\-]\d{1,4}|\d{1,2}\s+\S+\s+\d{2,4}/.test(l));
+  if(dateLine)date=extractDateFromText(dateLine);
+  if(!date)date=extractDateFromText(flat);
+  // ชื่อร้าน/ลูกค้า: จับคู่กับ supplier/ลูกค้าในระบบก่อน
+  let name=findKnownName(flat,(suppliers||[]).map(s=>s.name))||findKnownName(flat,(typeof clients!=='undefined'?clients:[]).map(c=>c.name))||'';
+  if(!name){
+    const nameLine=lines.find(l=>/(บริษัท|จำกัด|หจก|ห้างหุ้นส่วน|ร้าน|co\.|ltd|limited)/i.test(l)&&!/(ที่อยู่|เลขที่|โทร|tel|tax)/i.test(l));
+    name=nameLine?cleanPdfValue(nameLine).slice(0,120):'';
+  }
+  const pr=flat.match(/\b(PR[-\s]?\d{3,}[\w-]*)\b/i)?.[1]?.replace(/\s+/g,'')||'';
+  const items=parseAccountingLineItems(lines);
+  return {invoiceNo,date,taxId,name,subtotal,vat,total,pr,hasVat,items};
 }
 async function uploadAccountingAttachment(kind,file,docId){
   if(!file)return '';
@@ -3032,24 +3212,35 @@ async function handleAccountingFile(kind,file){
   }
 }
 function applyAccountingParsedData(kind,data){
+  const hasVat=data.hasVat!==false&&Number(data.vat||0)>0;
   if(kind==='purchase'){
     if(data.invoiceNo)document.getElementById('pur-invoice-no').value=data.invoiceNo;
     if(data.date)document.getElementById('pur-date').value=data.date;
-    if(data.taxId)document.getElementById('pur-taxid').value=data.taxId;
-    if(data.name&&!document.getElementById('pur-supplier').value)document.getElementById('pur-supplier').value=data.name;
-    if(data.total&&!purchaseDraftItems.some(x=>String(x.item_name||'').trim())){
-      purchaseDraftItems=[{...blankPurchaseItem(),item_name:'รายการจากเอกสาร',quantity:1,unit:'รายการ',unit_price:data.subtotal||data.total,vat_amount:data.vat,total_amount:data.total}];
+    if(data.name&&!document.getElementById('pur-supplier').value){document.getElementById('pur-supplier').value=data.name;onPurchaseSupplierChange();}
+    if(data.taxId&&!document.getElementById('pur-taxid').value)document.getElementById('pur-taxid').value=data.taxId;
+    purchaseHasVat=hasVat;const pvc=document.getElementById('pur-has-vat');if(pvc)pvc.checked=hasVat;
+    const empty=!purchaseDraftItems.some(x=>String(x.item_name||'').trim());
+    if(empty&&Array.isArray(data.items)&&data.items.length){
+      purchaseDraftItems=data.items.map(it=>({...blankPurchaseItem(),item_name:it.item_name,quantity:it.quantity,unit:it.unit||'',unit_price:it.unit_price}));
       renderPurchaseItemEditor();
-    }
+    }else if(empty&&data.total){
+      purchaseDraftItems=[{...blankPurchaseItem(),item_name:'รายการจากเอกสาร',quantity:1,unit:'รายการ',unit_price:data.subtotal||data.total}];
+      renderPurchaseItemEditor();
+    }else updatePurchaseSummary();
   }else{
     if(data.invoiceNo)document.getElementById('sale-no').value=data.invoiceNo;
     if(data.date)document.getElementById('sale-date').value=data.date;
     if(data.name&&!document.getElementById('sale-customer').value)document.getElementById('sale-customer').value=data.name;
     if(data.pr&&!document.getElementById('sale-job').value)document.getElementById('sale-job').value=data.pr;
-    if(data.total&&!salesDraftItems.some(x=>String(x.description||'').trim())){
+    salesHasVat=hasVat;const svc=document.getElementById('sale-has-vat');if(svc)svc.checked=hasVat;
+    const empty=!salesDraftItems.some(x=>String(x.description||'').trim());
+    if(empty&&Array.isArray(data.items)&&data.items.length){
+      salesDraftItems=data.items.map(it=>blankSalesItem(it.item_name,it.quantity,it.unit||'',it.unit_price));
+      renderSalesItemEditor();
+    }else if(empty&&data.total){
       salesDraftItems=[blankSalesItem('รายการจากเอกสาร',1,'รายการ',data.subtotal||data.total)];
       renderSalesItemEditor();
-    }
+    }else updateSalesSummary();
   }
 }
 async function ensureAccountingLoaded(force=false){
@@ -3092,8 +3283,12 @@ function renderPurchaseTax(){
   if(!accountingLoaded){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลซื้อ</div></div></td></tr>';return;}
   if(!purchaseInvoices.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">🧾</div><div>ยังไม่มีบิลซื้อ</div></div></td></tr>';return;}
   tb.innerHTML=purchaseInvoices.map(inv=>{
-    const rows=purchaseItems.filter(x=>x.purchase_invoice_id===inv.id);
-    return `<tr><td class="mono ta" style="font-size:11px;">${esc(inv.purchase_no)}</td><td>${esc(inv.supplier_name||inv.supplier_id||'-')}<br><span class="tm" style="font-size:10px;">${rows.length} รายการ</span></td><td>${esc(inv.invoice_no||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('pur-${esc(inv.id)}',event)">...</button><div class="action-menu" id="pur-${esc(inv.id)}"><button onclick="openPurchaseModal('${esc(inv.id)}')">แก้ไข/ดูรายการ</button>${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}</div></td></tr>`;
+    const rows=purchaseItems.filter(x=>x.purchase_invoice_id===inv.id&&x.status!=='cancelled');
+    const stockRows=rows.filter(x=>x.allocation_type==='stock');
+    const stockPending=stockRows.filter(x=>!x.stock_received).length;
+    const stockBadge=stockRows.length?(stockPending?`<br><span class="badge b-unpaid" style="font-size:9px;">รอรับเข้า stock ${stockPending}</span>`:`<br><span class="badge b-paid" style="font-size:9px;">รับเข้า stock แล้ว</span>`):'';
+    const confirmBtn=stockPending?`<button onclick="confirmPurchaseStockIn('${esc(inv.id)}')">✓ ยืนยันรับเข้า Stock</button>`:'';
+    return `<tr><td class="mono ta" style="font-size:11px;">${esc(inv.purchase_no)}</td><td>${esc(inv.supplier_name||inv.supplier_id||'-')}<br><span class="tm" style="font-size:10px;">${rows.length} รายการ</span>${stockBadge}</td><td>${esc(inv.invoice_no||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('pur-${esc(inv.id)}',event)">...</button><div class="action-menu" id="pur-${esc(inv.id)}">${confirmBtn}<button onclick="openPurchaseModal('${esc(inv.id)}')">แก้ไข/ดูรายการ</button>${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}</div></td></tr>`;
   }).join('');
 }
 function blankPurchaseItem(){
@@ -3101,7 +3296,7 @@ function blankPurchaseItem(){
 }
 function openPurchaseModal(id=''){
   const inv=id?purchaseInvoices.find(x=>x.id===id):null;
-  const nextNo='PXB-'+new Date().getFullYear()+'-'+String(purchaseInvoices.length+1).padStart(3,'0');
+  const nextNo='PIN-'+new Date().getFullYear()+'-'+String(purchaseInvoices.length+1).padStart(3,'0');
   document.getElementById('purchase-modal-title').textContent=inv?'แก้ไขบิลซื้อ / ภาษีซื้อ':'เพิ่มบิลซื้อ / ภาษีซื้อ';
   document.getElementById('pur-id').value=inv?.id||'';
   document.getElementById('pur-no').value=inv?.purchase_no||nextNo;
@@ -3119,18 +3314,31 @@ function openPurchaseModal(id=''){
   updateAttachmentPreview('purchase',null);
   setAccountingStatus('purchase',inv?.file_url?'มีไฟล์แนบเดิมใน URL แล้ว':'','');
   purchaseDraftItems=inv?purchaseItems.filter(x=>x.purchase_invoice_id===inv.id).map(x=>({...x})):[blankPurchaseItem()];
+  purchaseHasVat=inv?Number(inv.vat_amount||0)>0:true;
+  const pvc=document.getElementById('pur-has-vat');if(pvc)pvc.checked=purchaseHasVat;
+  refreshAccountingDatalists();
   renderPurchaseItemEditor();
   openM('m-purchase');
+}
+function onPurchaseSupplierChange(){
+  const name=(document.getElementById('pur-supplier')?.value||'').trim();
+  if(!name)return;
+  const sup=suppliers.find(s=>String(s.name||'').trim()===name)||suppliers.find(s=>String(s.name||'').trim().toLowerCase()===name.toLowerCase());
+  if(sup){
+    const tax=sup.taxId||sup.tax_id||'';
+    const taxEl=document.getElementById('pur-taxid');
+    if(taxEl&&tax)taxEl.value=tax;
+    const methodEl=document.getElementById('pur-method');
+    if(methodEl&&!methodEl.value&&sup.terms)methodEl.value=sup.terms;
+  }
 }
 function addPurchaseItemRow(){purchaseDraftItems.push(blankPurchaseItem());renderPurchaseItemEditor();}
 function removePurchaseItemRow(i){purchaseDraftItems.splice(i,1);if(!purchaseDraftItems.length)purchaseDraftItems.push(blankPurchaseItem());renderPurchaseItemEditor();}
 function updatePurchaseDraft(i,field,value){purchaseDraftItems[i][field]=value;renderPurchaseItemEditor();}
 function purchaseDraftTotals(){
-  return purchaseDraftItems.reduce((acc,it)=>{
-    const qty=Number(it.quantity||0),unit=Number(it.unit_price||0),sub=qty*unit;
-    const vat=Math.round(sub*.07*100)/100;
-    acc.subtotal+=sub;acc.vat+=vat;acc.total+=sub+vat;return acc;
-  },{subtotal:0,vat:0,total:0});
+  const subtotal=purchaseDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
+  const vat=purchaseHasVat?Math.round(subtotal*0.07*100)/100:0;
+  return {subtotal,vat,total:subtotal+vat};
 }
 function updatePurchaseSummary(){
   const t=purchaseDraftTotals();
@@ -3141,9 +3349,9 @@ function updatePurchaseSummary(){
 }
 function renderPurchaseItemEditor(){
   const el=document.getElementById('purchase-items-editor');if(!el)return;
-  el.innerHTML=`<div class="table-wrap" style="border-radius:8px;"><table class="accounting-line-table"><thead><tr><th style="width:42px;">ลำดับ</th><th>รายละเอียด</th><th style="width:130px;">PR</th><th style="width:88px;">จำนวน</th><th style="width:82px;">หน่วย</th><th style="width:120px;">ราคา/หน่วย</th><th style="width:140px;">ประเภท</th><th style="width:120px;">รวม</th><th style="width:46px;"></th></tr></thead><tbody>${purchaseDraftItems.map((it,i)=>{
-    const qty=Number(it.quantity||0),unit=Number(it.unit_price||0),sub=qty*unit,vat=Math.round(sub*.07*100)/100,total=sub+vat;
-    return `<tr><td class="mono ta">${i+1}</td><td><input value="${esc(it.item_name||'')}" onchange="updatePurchaseDraft(${i},'item_name',this.value)" placeholder="ชื่อสินค้า/อะไหล่"></td><td><input value="${esc(it.job_id||'')}" onchange="updatePurchaseDraft(${i},'job_id',this.value)" placeholder="PR"></td><td><input type="number" value="${esc(it.quantity||1)}" onchange="updatePurchaseDraft(${i},'quantity',this.value)"></td><td><input value="${esc(it.unit||'')}" onchange="updatePurchaseDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td><input type="number" value="${esc(it.unit_price||0)}" onchange="updatePurchaseDraft(${i},'unit_price',this.value)"></td><td><select onchange="updatePurchaseDraft(${i},'allocation_type',this.value)"><option value="direct_job"${it.allocation_type==='direct_job'?' selected':''}>ใช้กับ PR</option><option value="stock"${it.allocation_type==='stock'?' selected':''}>เข้า stock</option><option value="multi_job"${it.allocation_type==='multi_job'?' selected':''}>หลาย PR</option><option value="general_expense"${it.allocation_type==='general_expense'?' selected':''}>ค่าใช้จ่าย</option><option value="pending"${!it.allocation_type||it.allocation_type==='pending'?' selected':''}>รอจับคู่</option></select></td><td class="mono tg">฿${money(total)}</td><td><button class="icon-btn" type="button" onclick="removePurchaseItemRow(${i})">×</button></td></tr>`;
+  el.innerHTML=`<div class="table-wrap" style="border-radius:8px;"><table class="accounting-line-table"><thead><tr><th style="width:42px;">ลำดับ</th><th>รายละเอียด</th><th style="width:120px;">PR</th><th style="width:80px;">จำนวน</th><th style="width:74px;">หน่วย</th><th style="width:110px;">ราคา/หน่วย</th><th style="width:150px;">ประเภท</th><th style="width:110px;">รวม</th><th style="width:46px;"></th></tr></thead><tbody>${purchaseDraftItems.map((it,i)=>{
+    const qty=Number(it.quantity||0),unit=Number(it.unit_price||0),sub=qty*unit;
+    return `<tr><td class="mono ta">${i+1}</td><td><input list="accounting-item-list" value="${esc(it.item_name||'')}" onchange="updatePurchaseDraft(${i},'item_name',this.value)" placeholder="พิมพ์/เลือกชื่อสินค้า"></td><td><input list="stock-pr-list" value="${esc(it.job_id||'')}" onchange="updatePurchaseDraft(${i},'job_id',this.value)" placeholder="PR"></td><td><input type="number" value="${esc(it.quantity||1)}" onchange="updatePurchaseDraft(${i},'quantity',this.value)"></td><td><input value="${esc(it.unit||'')}" onchange="updatePurchaseDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td><input type="number" value="${esc(it.unit_price||0)}" onchange="updatePurchaseDraft(${i},'unit_price',this.value)"></td><td><select onchange="updatePurchaseDraft(${i},'allocation_type',this.value)"><option value="direct_job"${it.allocation_type==='direct_job'?' selected':''}>ใช้กับ PR</option><option value="stock"${it.allocation_type==='stock'?' selected':''}>เข้า stock</option><option value="multi_job"${it.allocation_type==='multi_job'?' selected':''}>หลาย PR</option><option value="general_expense"${it.allocation_type==='general_expense'?' selected':''}>ค่าใช้จ่าย</option><option value="pending"${!it.allocation_type||it.allocation_type==='pending'?' selected':''}>รอจับคู่</option></select></td><td class="mono tg">฿${money(sub)}</td><td><button class="icon-btn" type="button" onclick="removePurchaseItemRow(${i})">×</button></td></tr>`;
   }).join('')}</tbody></table></div>`;
   updatePurchaseSummary();
 }
@@ -3152,8 +3360,8 @@ async function savePurchaseInvoice(){
   try{
     const id=document.getElementById('pur-id').value||newAccountingId('PINV');
     const rows=purchaseDraftItems.filter(x=>String(x.item_name||'').trim()).map(x=>{
-      const qty=Number(x.quantity||0),unit=Number(x.unit_price||0),sub=qty*unit,vat=Math.round(sub*.07*100)/100,total=sub+vat;
-      return {...x,id:x.id||newAccountingId('PITEM'),purchase_invoice_id:id,item_name:String(x.item_name||'').trim(),quantity:qty,unit_price:unit,subtotal:sub,vat_amount:vat,total_amount:total,job_id:String(x.job_id||'').trim(),created_by:getActorName(),updated_by:getActorName()};
+      const qty=Number(x.quantity||0),unit=Number(x.unit_price||0),sub=qty*unit;
+      return {...x,id:x.id||newAccountingId('PITEM'),purchase_invoice_id:id,item_name:String(x.item_name||'').trim(),quantity:qty,unit_price:unit,subtotal:sub,vat_amount:0,total_amount:sub,job_id:String(x.job_id||'').trim(),created_by:getActorName(),updated_by:getActorName()};
     });
     if(!rows.length){setAccountingStatus('purchase','กรุณาเพิ่มรายการในบิลอย่างน้อย 1 รายการ','err');return;}
     let fileUrl=document.getElementById('pur-file').value.trim();
@@ -3162,7 +3370,7 @@ async function savePurchaseInvoice(){
       fileUrl=await uploadAccountingAttachment('purchase',accountingAttachments.purchase.file,id);
       document.getElementById('pur-file').value=fileUrl;
     }
-    const subtotal=rows.reduce((s,x)=>s+x.subtotal,0),vat=rows.reduce((s,x)=>s+x.vat_amount,0),total=rows.reduce((s,x)=>s+x.total_amount,0);
+    const subtotal=rows.reduce((s,x)=>s+x.subtotal,0),vat=purchaseHasVat?Math.round(subtotal*0.07*100)/100:0,total=subtotal+vat;
     const internal=document.getElementById('pur-internal-note')?.value.trim();
     const note=[document.getElementById('pur-note').value.trim(),internal?`[internal] ${internal}`:''].filter(Boolean).join('\n');
     const inv={id,purchase_no:document.getElementById('pur-no').value.trim()||id,supplier_name:document.getElementById('pur-supplier').value.trim(),supplier_tax_id:document.getElementById('pur-taxid').value.trim(),invoice_no:document.getElementById('pur-invoice-no').value.trim(),invoice_date:document.getElementById('pur-date').value||todayISO(),tax_invoice_type:document.getElementById('pur-tax-type').value,subtotal,vat_amount:vat,total_amount:total,payment_status:document.getElementById('pur-payment').value,payment_method:document.getElementById('pur-method').value.trim(),file_url:fileUrl,note,status:'active',created_by:getActorName(),updated_by:getActorName()};
@@ -3208,7 +3416,7 @@ function openSalesForJob(jobId){openSalesModal('',jobId);}
 function blankSalesItem(description='',quantity=1,unit='',unitPrice=0){return {id:newAccountingId('SITEM'),description,quantity,unit,unit_price:unitPrice,vat_rate:7,note:''};}
 function openSalesModal(id='',prefJobId=''){
   const inv=id?salesInvoices.find(x=>x.id===id):null;
-  const nextNo='PXS-'+new Date().getFullYear()+'-'+String(salesInvoices.length+1).padStart(3,'0');
+  const nextNo='SINV-'+new Date().getFullYear()+'-'+String(salesInvoices.length+1).padStart(3,'0');
   const dl=document.getElementById('sales-job-list');
   if(dl)dl.innerHTML=jobs.filter(j=>!isDeletedRecord(j)).map(j=>`<option value="${esc(j.id)}">${esc(j.client||'')} ${esc(j.branch||'')}</option>`).join('');
   document.getElementById('sales-modal-title').textContent=inv?'แก้ไขบิลขาย / ภาษีขาย':'เพิ่มบิลขาย / ภาษีขาย';
@@ -3225,6 +3433,9 @@ function openSalesModal(id='',prefJobId=''){
   updateAttachmentPreview('sales',null);
   setAccountingStatus('sales',inv?.file_url?'มีไฟล์แนบเดิมใน URL แล้ว':'','');
   salesDraftItems=inv?salesInvoiceItems.filter(x=>x.sales_invoice_id===inv.id).map(x=>({...x})):[blankSalesItem()];
+  salesHasVat=inv?Number(inv.vat_amount||0)>0:true;
+  const svc=document.getElementById('sale-has-vat');if(svc)svc.checked=salesHasVat;
+  refreshAccountingDatalists();
   if(!inv&&prefJobId)fillSalesFromJob();
   if(inv&&!salesDraftItems.length)salesDraftItems=[blankSalesItem('ยอดตามบิลเดิม',1,'งาน',Number(inv.subtotal||0))];
   renderSalesItemEditor();
@@ -3246,11 +3457,9 @@ function addSalesItemRow(){salesDraftItems.push(blankSalesItem());renderSalesIte
 function removeSalesItemRow(i){salesDraftItems.splice(i,1);if(!salesDraftItems.length)salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
 function updateSalesDraft(i,field,value){salesDraftItems[i][field]=value;renderSalesItemEditor();}
 function salesDraftTotals(){
-  return salesDraftItems.reduce((acc,it)=>{
-    const subtotal=Number(it.quantity||0)*Number(it.unit_price||0);
-    const vat=Math.round(subtotal*Number(it.vat_rate||0)/100*100)/100;
-    acc.subtotal+=subtotal;acc.vat+=vat;acc.total+=subtotal+vat;return acc;
-  },{subtotal:0,vat:0,total:0});
+  const subtotal=salesDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
+  const vat=salesHasVat?Math.round(subtotal*0.07*100)/100:0;
+  return {subtotal,vat,total:subtotal+vat};
 }
 function updateSalesSummary(){
   const t=salesDraftTotals();
@@ -3262,9 +3471,9 @@ function updateSalesSummary(){
 }
 function renderSalesItemEditor(){
   const el=document.getElementById('sales-items-editor');if(!el)return;
-  el.innerHTML=`<div class="table-wrap" style="border-radius:8px;"><table class="accounting-line-table"><thead><tr><th style="width:42px;">ลำดับ</th><th>รายละเอียด</th><th style="width:90px;">จำนวน</th><th style="width:90px;">หน่วย</th><th style="width:125px;">ราคา/หน่วย</th><th style="width:90px;">VAT %</th><th style="width:130px;">ราคารวม</th><th style="width:46px;"></th></tr></thead><tbody>${salesDraftItems.map((it,i)=>{
-    const subtotal=Number(it.quantity||0)*Number(it.unit_price||0),vat=Math.round(subtotal*Number(it.vat_rate||0)/100*100)/100;
-    return `<tr><td class="mono ta">${i+1}</td><td><input value="${esc(it.description||'')}" onchange="updateSalesDraft(${i},'description',this.value)" placeholder="รายละเอียดสินค้า/บริการ"></td><td><input type="number" value="${esc(it.quantity||1)}" onchange="updateSalesDraft(${i},'quantity',this.value)"></td><td><input value="${esc(it.unit||'')}" onchange="updateSalesDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td><input type="number" value="${esc(it.unit_price||0)}" onchange="updateSalesDraft(${i},'unit_price',this.value)"></td><td><input type="number" value="${esc(it.vat_rate??7)}" onchange="updateSalesDraft(${i},'vat_rate',this.value)"></td><td class="mono tg">฿${money(subtotal+vat)}</td><td><button class="icon-btn" type="button" onclick="removeSalesItemRow(${i})">×</button></td></tr>`;
+  el.innerHTML=`<div class="table-wrap" style="border-radius:8px;"><table class="accounting-line-table"><thead><tr><th style="width:42px;">ลำดับ</th><th>รายละเอียด</th><th style="width:90px;">จำนวน</th><th style="width:90px;">หน่วย</th><th style="width:125px;">ราคา/หน่วย</th><th style="width:130px;">ราคารวม</th><th style="width:46px;"></th></tr></thead><tbody>${salesDraftItems.map((it,i)=>{
+    const subtotal=Number(it.quantity||0)*Number(it.unit_price||0);
+    return `<tr><td class="mono ta">${i+1}</td><td><input list="accounting-item-list" value="${esc(it.description||'')}" onchange="updateSalesDraft(${i},'description',this.value)" placeholder="พิมพ์/เลือกรายละเอียดสินค้า/บริการ"></td><td><input type="number" value="${esc(it.quantity||1)}" onchange="updateSalesDraft(${i},'quantity',this.value)"></td><td><input value="${esc(it.unit||'')}" onchange="updateSalesDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td><input type="number" value="${esc(it.unit_price||0)}" onchange="updateSalesDraft(${i},'unit_price',this.value)"></td><td class="mono tg">฿${money(subtotal)}</td><td><button class="icon-btn" type="button" onclick="removeSalesItemRow(${i})">×</button></td></tr>`;
   }).join('')}</tbody></table></div>`;
   updateSalesSummary();
 }
@@ -3275,8 +3484,8 @@ async function saveSalesInvoice(){
     const jobId=document.getElementById('sale-job').value.trim();
     if(!jobId){setAccountingStatus('sales','กรุณาระบุ Job ID / PR','err');return;}
     const rows=salesDraftItems.filter(x=>String(x.description||'').trim()).map(x=>{
-      const quantity=Number(x.quantity||0),unitPrice=Number(x.unit_price||0),subtotal=quantity*unitPrice,vatRate=Number(x.vat_rate||0),vatAmount=Math.round(subtotal*vatRate/100*100)/100;
-      return {...x,id:x.id||newAccountingId('SITEM'),sales_invoice_id:id,description:String(x.description||'').trim(),quantity,unit_price:unitPrice,vat_rate:vatRate,subtotal,vat_amount:vatAmount,total_amount:subtotal+vatAmount,status:'active',created_by:getActorName(),updated_by:getActorName()};
+      const quantity=Number(x.quantity||0),unitPrice=Number(x.unit_price||0),subtotal=quantity*unitPrice;
+      return {...x,id:x.id||newAccountingId('SITEM'),sales_invoice_id:id,description:String(x.description||'').trim(),quantity,unit_price:unitPrice,vat_rate:0,subtotal,vat_amount:0,total_amount:subtotal,status:'active',created_by:getActorName(),updated_by:getActorName()};
     });
     if(!rows.length){setAccountingStatus('sales','กรุณาเพิ่มรายการในบิลอย่างน้อย 1 รายการ','err');return;}
     let fileUrl=document.getElementById('sale-file').value.trim();
@@ -3285,7 +3494,7 @@ async function saveSalesInvoice(){
       fileUrl=await uploadAccountingAttachment('sales',accountingAttachments.sales.file,id);
       document.getElementById('sale-file').value=fileUrl;
     }
-    const subtotal=rows.reduce((s,x)=>s+x.subtotal,0),vatAmount=rows.reduce((s,x)=>s+x.vat_amount,0),totalAmount=rows.reduce((s,x)=>s+x.total_amount,0);
+    const subtotal=rows.reduce((s,x)=>s+x.subtotal,0),vatAmount=salesHasVat?Math.round(subtotal*0.07*100)/100:0,totalAmount=subtotal+vatAmount;
     const inv={
     id,
     sales_invoice_no:document.getElementById('sale-no').value.trim()||id,
@@ -3355,12 +3564,15 @@ function renderJobAccountingSection(jobId){
   const totalVat=costs.reduce((s,x)=>s+Number(x.vat_amount||0),0);
   const salesTotal=sales.reduce((s,x)=>s+Number(x.total_amount||0),0);
   const pending=techRows.filter(x=>x.matched_status==='pending').length;
+  const stockMoves=stockMovements.filter(m=>String(m.job_id)===String(jobId)&&m.status!=='cancelled');
   el.innerHTML=`<div class="table-wrap" style="margin-top:14px;">
     <div class="table-header"><div class="table-title">จับคู่อะไหล่และต้นทุน</div><span class="mono tm" style="font-size:11px;">ขาย ฿${money(salesTotal)} | ต้นทุนจริง ฿${money(totalCost)} | VAT ซื้อ ฿${money(totalVat)} | pending ${pending}</span></div>
     <div class="form-group"><label>บิลขาย / ภาษีขาย</label>${sales.length?`<table><thead><tr><th>เลขบิล</th><th>วันที่</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th>รับเงิน</th></tr></thead><tbody>${sales.map(s=>`<tr><td class="mono ta">${esc(s.sales_invoice_no)}</td><td>${esc(s.invoice_date||'-')}</td><td class="mono tr">฿${money(s.subtotal)}</td><td class="mono tr">฿${money(s.vat_amount)}</td><td class="mono tg">฿${money(s.total_amount)}</td><td><span class="badge ${s.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(s.payment_status||'unpaid')}</span></td></tr>`).join('')}</tbody></table>`:`<div class="text-box">ยังไม่มีบิลขายของ PR นี้<br><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="openSalesForJob('${esc(jobId)}')">ออกบิลขาย</button></div>`}</div>
     <div class="form-group"><label>อะไหล่ที่ช่างแจ้ง</label>${techRows.length?techRows.map(r=>`<div class="text-box" style="margin-bottom:8px;"><b>${esc(r.part_name_text)}</b> ${esc(r.quantity||'')} ${esc(r.unit||'')}<br><span class="tm">${esc(r.note||'')} | ${esc(r.matched_status)}</span>${r.matched_status==='pending'?`<div class="form-row" style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="openCostMatchModal('${esc(jobId)}','${esc(r.id)}')">จับคู่เป็นต้นทุน</button><button class="btn btn-ghost btn-sm" onclick="ignoreTechnicianPart('${esc(jobId)}','${esc(r.id)}')">ไม่คิดต้นทุน</button></div>`:''}</div>`).join(''):'<div class="text-box">ยังไม่มีอะไหล่ที่ช่างแจ้ง</div>'}</div>
     <div class="form-group"><label>ต้นทุนจริงของงาน</label>${costs.length?`<table><thead><tr><th>ประเภท</th><th>รายละเอียด</th><th>จำนวน</th><th>ต้นทุน</th><th>VAT</th></tr></thead><tbody>${costs.map(c=>`<tr><td>${esc(c.cost_type)}</td><td>${esc(c.description)}</td><td>${esc(c.quantity)} ${esc(c.unit||'')}</td><td class="mono tr">฿${money(c.cost_amount)}</td><td class="mono tr">฿${money(c.vat_amount)}</td></tr>`).join('')}</tbody></table>`:'<div class="text-box">ยังไม่มีต้นทุนจริงที่แอดมินยืนยัน</div>'}</div>
+    <div class="form-group"><label>เบิกอะไหล่จาก Stock เข้างานนี้</label>${stockMoves.length?`<table><thead><tr><th>เวลา</th><th>สินค้า</th><th>จำนวน</th><th>ต้นทุน</th><th>โดย</th></tr></thead><tbody>${stockMoves.map(m=>{const it=stockItemById(m.stock_item_id);return `<tr><td class="tm" style="font-size:11px;">${esc((m.created_at||'').replace('T',' ').slice(0,16))}</td><td>${esc(it?it.item_name:m.stock_item_id)}</td><td class="mono tr">${esc(Math.abs(Number(m.quantity||0)))} ${esc(it?.unit||'')}</td><td class="mono tr">฿${money(m.total_cost)}</td><td class="tm" style="font-size:11px;">${esc(m.created_by||'-')}</td></tr>`;}).join('')}</tbody></table><div style="margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="openStockOutModal('','${esc(jobId)}')">+ เบิก stock อีก</button></div>`:`<div class="text-box">ยังไม่มีการเบิก stock เข้างานนี้<br><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="openStockOutModal('','${esc(jobId)}')">เบิก stock เข้างานนี้</button></div>`}</div>
   </div>`;
+  if(!stockLoaded)ensureStockLoaded().then(()=>{if(document.getElementById('job-accounting-section'))renderJobAccountingSection(jobId);});
 }
 function openCostMatchModal(jobId,techPartId=''){
   const part=technicianUsedParts.find(x=>x.id===techPartId)||{};
@@ -3395,6 +3607,290 @@ async function ignoreTechnicianPart(jobId,techId){
   const r=await fetch(splitUrl('technician_used_parts',`?id=eq.${encodeURIComponent(techId)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({matched_status:'ignored',updated_by:getActorName()})});
   if(!r.ok){alert('อัปเดตไม่สำเร็จ: '+await r.text());return;}
   accountingLoaded=false;await ensureAccountingLoaded(true);renderJobAccountingSection(jobId);
+}
+
+// ===================== STOCK / คลังอะไหล่ (แอดมินเท่านั้น) =====================
+async function sbInsertRows(table,rows){const r=await fetch(splitUrl(table,'?on_conflict=id'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(rows)});if(!r.ok)throw new Error(await r.text());return r;}
+async function sbPatchById(table,id,patch){const r=await fetch(splitUrl(table,`?id=eq.${encodeURIComponent(id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify(patch)});if(!r.ok)throw new Error(await r.text());return r;}
+function stockMoveTypeLabel(t){return {stock_in:'รับเข้า',stock_out_to_job:'เบิกออก (PR)',adjustment:'ปรับยอด',return_to_stock:'คืนเข้า',waste:'ตัดของเสีย'}[t]||t;}
+function stockItemById(id){return stockItems.find(s=>s.id===id);}
+function findStockItemByName(name){const k=String(name||'').trim().toLowerCase();if(!k)return null;return stockItems.find(s=>String(s.item_name||'').trim().toLowerCase()===k)||null;}
+function stockValue(){return stockItems.filter(s=>s.is_active!==false).reduce((sum,s)=>sum+Number(s.current_quantity||0)*Number(s.average_cost||0),0);}
+function pendingStockBills(){
+  return purchaseInvoices.filter(inv=>inv.status!=='cancelled').map(inv=>{
+    const rows=purchaseItems.filter(x=>x.purchase_invoice_id===inv.id&&x.status!=='cancelled'&&x.allocation_type==='stock'&&!x.stock_received);
+    return {inv,rows};
+  }).filter(x=>x.rows.length);
+}
+async function ensureStockLoaded(force=false){
+  if(stockLoaded&&!force)return;
+  if(stockLoadingPromise&&!force)return stockLoadingPromise;
+  stockLoadingPromise=(async()=>{
+    await ensureAccountingLoaded(force);
+    const [items,moves]=await Promise.all([
+      sbFetchAll('stock_items','?select=*&order=item_name.asc'),
+      sbFetchAll('stock_movements','?select=*&order=created_at.desc')
+    ]);
+    stockItems=items||[];
+    stockMovements=moves||[];
+    stockLoaded=true;
+  })().catch(e=>{console.warn('Stock load failed',e);stockLoaded=true;}).finally(()=>{stockLoadingPromise=null;});
+  return stockLoadingPromise;
+}
+function renderStock(){
+  refreshAccountingDatalists();
+  const active=stockItems.filter(s=>s.is_active!==false);
+  const low=active.filter(s=>Number(s.min_stock||0)>0&&Number(s.current_quantity||0)<=Number(s.min_stock||0));
+  const pend=pendingStockBills();
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('stk-skus',active.length+' รายการ');
+  set('stk-value','฿'+money(stockValue()));
+  set('stk-low',low.length+' รายการ');
+  set('stk-pending',pend.length+' บิล');
+  const nb=document.getElementById('nb-stock');if(nb){if(pend.length){nb.style.display='';nb.textContent=pend.length;}else nb.style.display='none';}
+  // pending bills
+  const pwrap=document.getElementById('stk-pending-wrap'),ptb=document.getElementById('stk-pending-tbody');
+  if(pwrap&&ptb){
+    if(pend.length){
+      pwrap.style.display='';
+      document.getElementById('stk-pending-count').textContent=pend.length+' บิลรอยืนยัน';
+      ptb.innerHTML=pend.map(({inv,rows})=>{
+        const val=rows.reduce((s,r)=>s+Number(r.subtotal||r.total_amount||0),0);
+        const names=rows.map(r=>`${esc(r.item_name)} ×${esc(r.quantity)}`).join(', ');
+        return `<tr><td class="mono ta" style="font-size:11px;">${esc(inv.purchase_no)}</td><td>${esc(inv.supplier_name||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td style="font-size:12px;">${names}</td><td class="mono tg">฿${money(val)}</td><td><button class="btn btn-primary btn-sm" onclick="confirmPurchaseStockIn('${esc(inv.id)}')">✓ ยืนยันรับเข้า</button></td></tr>`;
+      }).join('');
+    }else{pwrap.style.display='none';}
+  }
+  // stock items
+  const tb=document.getElementById('stock-tbody');
+  if(tb){
+    if(!stockLoaded){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดคลัง</div></div></td></tr>';}
+    else{
+      const q=stockSearch.trim().toLowerCase();
+      const list=stockItems.filter(s=>(stockShowInactive||s.is_active!==false)&&(!q||[s.item_name,s.sku,s.category,s.brand_model].some(v=>String(v||'').toLowerCase().includes(q))));
+      tb.innerHTML=list.length?list.map(s=>{
+        const qty=Number(s.current_quantity||0),avg=Number(s.average_cost||0),val=qty*avg;
+        const isLow=Number(s.min_stock||0)>0&&qty<=Number(s.min_stock||0);
+        const inactive=s.is_active===false;
+        return `<tr style="${inactive?'opacity:.5;':''}"><td class="mono ta" style="font-size:11px;">${esc(s.sku||'-')}</td><td style="font-weight:600;">${esc(s.item_name)}</td><td><span class="chip">${esc(s.category||'-')}</span></td><td>${esc(s.unit||'-')}</td><td class="mono ${isLow?'tr':'tg'}" style="font-weight:700;">${esc(qty)}</td><td class="mono tm">${esc(s.min_stock||0)}</td><td class="mono tr">฿${money(avg)}</td><td class="mono tg">฿${money(val)}</td><td>${inactive?'<span class="badge b-unpaid">ปิดใช้งาน</span>':(isLow?'<span class="badge b-unpaid">ต่ำกว่าขั้นต่ำ</span>':'<span class="badge b-paid">ปกติ</span>')}</td>${actionCell('stkm',stockItems.indexOf(s),`<button onclick="openStockOutModal('${esc(s.id)}')">เบิกออก (PR)</button><button onclick="openStockAdjustModal('${esc(s.id)}')">ปรับยอด</button><button onclick="openStockItemModal('${esc(s.id)}')">แก้ไข</button>${inactive?`<button onclick="reactivateStockItem('${esc(s.id)}')">เปิดใช้งาน</button>`:`<button onclick="deactivateStockItem('${esc(s.id)}')">ปิดใช้งาน</button>`}`)}</tr>`;
+      }).join(''):'<tr><td colspan="10"><div class="empty"><div class="empty-icon">📦</div><div>ยังไม่มีสินค้าในคลัง</div></div></td></tr>';
+    }
+  }
+  // movements
+  const mtb=document.getElementById('stock-move-tbody');
+  if(mtb){
+    const moves=stockMovements.filter(m=>m.status!=='cancelled').slice(0,60);
+    document.getElementById('stk-move-count').textContent=stockMovements.length+' รายการ';
+    mtb.innerHTML=moves.length?moves.map(m=>{
+      const it=stockItemById(m.stock_item_id);
+      const sign=m.movement_type==='stock_out_to_job'||m.movement_type==='waste'?'−':(Number(m.quantity||0)<0?'':'+');
+      const cls=m.movement_type==='stock_in'||m.movement_type==='return_to_stock'?'tg':(m.movement_type==='adjustment'?'ty':'tr');
+      return `<tr><td class="tm" style="font-size:11px;">${esc((m.created_at||'').replace('T',' ').slice(0,16))}</td><td>${esc(it?it.item_name:(m.stock_item_id||'-'))}</td><td><span class="chip">${esc(stockMoveTypeLabel(m.movement_type))}</span></td><td class="mono ${cls}" style="font-weight:700;">${sign}${esc(Math.abs(Number(m.quantity||0)))}</td><td class="mono tr">฿${money(m.unit_cost)}</td><td class="mono">฿${money(m.total_cost)}</td><td>${m.job_id?`<button class="btn btn-ghost btn-sm" onclick="openDet('${esc(m.job_id)}')">${esc(m.job_id)}</button>`:esc(m.reason||m.note||'-')}</td><td class="tm" style="font-size:11px;">${esc(m.created_by||'-')}</td></tr>`;
+    }).join(''):'<tr><td colspan="8"><div class="empty"><div class="empty-icon">↕</div><div>ยังไม่มีการเคลื่อนไหว</div></div></td></tr>';
+  }
+}
+// ---- เพิ่ม/แก้ไขสินค้าคลัง ----
+function openStockItemModal(id=''){
+  const s=id?stockItemById(id):null;
+  document.getElementById('stock-item-title').textContent=s?'แก้ไขสินค้าคลัง':'เพิ่มสินค้าคลัง';
+  document.getElementById('stk-id').value=s?.id||'';
+  document.getElementById('stk-sku').value=s?.sku||'';
+  document.getElementById('stk-name').value=s?.item_name||'';
+  document.getElementById('stk-cat').value=s?.category||'';
+  document.getElementById('stk-brand').value=s?.brand_model||'';
+  document.getElementById('stk-unit').value=s?.unit||'';
+  document.getElementById('stk-supplier').value=s?.supplier_id||'';
+  document.getElementById('stk-min').value=s?.min_stock??0;
+  document.getElementById('stk-cost').value=s?.average_cost??0;
+  document.getElementById('stk-qty').value=s?Number(s.current_quantity||0):0;
+  document.getElementById('stk-note').value=s?.note||'';
+  const qg=document.getElementById('stk-qty-group');if(qg)qg.style.display=s?'none':'';
+  refreshAccountingDatalists();
+  openM('m-stock-item');
+}
+async function saveStockItem(){
+  const id=document.getElementById('stk-id').value;
+  const name=document.getElementById('stk-name').value.trim();
+  if(!name){alert('กรุณาใส่ชื่อสินค้า');return;}
+  try{
+    const base={
+      sku:document.getElementById('stk-sku').value.trim()||null,
+      item_name:name,
+      category:document.getElementById('stk-cat').value.trim(),
+      brand_model:document.getElementById('stk-brand').value.trim(),
+      unit:document.getElementById('stk-unit').value.trim(),
+      supplier_id:document.getElementById('stk-supplier').value.trim(),
+      min_stock:Number(document.getElementById('stk-min').value||0),
+      average_cost:Number(document.getElementById('stk-cost').value||0),
+      note:document.getElementById('stk-note').value.trim(),
+      is_active:true,
+      updated_by:getActorName()
+    };
+    if(id){
+      const before=clonePlain(stockItemById(id));
+      await sbPatchById('stock_items',id,base);
+      writeAuditLog('update_stock_item','stock_item',id,before,base,{...before,...base});
+    }else{
+      const newId=newAccountingId('STK');
+      const initQty=Number(document.getElementById('stk-qty').value||0);
+      const row={id:newId,...base,current_quantity:0,last_movement_at:new Date().toISOString(),created_by:getActorName()};
+      await sbInsertRows('stock_items',[row]);
+      writeAuditLog('create_stock_item','stock_item',newId,null,row,row);
+      if(initQty>0){
+        await recordMovement({stock_item_id:newId,movement_type:'adjustment',quantity:initQty,unit_cost:base.average_cost,reason:'ตั้งยอดตั้งต้น',newQuantity:initQty});
+      }
+    }
+    closeM('m-stock-item');
+    await ensureStockLoaded(true);renderStock();
+  }catch(e){alert('บันทึกไม่สำเร็จ: '+e.message);}
+}
+async function deactivateStockItem(id){
+  if(!confirm('ปิดการใช้งานสินค้านี้? (ไม่ลบข้อมูล สามารถเปิดใหม่ได้)'))return;
+  const before=clonePlain(stockItemById(id));
+  try{await sbPatchById('stock_items',id,{is_active:false,updated_by:getActorName()});
+    writeAuditLog('deactivate_stock_item','stock_item',id,before,{is_active:false},{...before,is_active:false});
+    await ensureStockLoaded(true);renderStock();
+  }catch(e){alert('ทำรายการไม่สำเร็จ: '+e.message);}
+}
+async function reactivateStockItem(id){
+  const before=clonePlain(stockItemById(id));
+  try{await sbPatchById('stock_items',id,{is_active:true,updated_by:getActorName()});
+    writeAuditLog('reactivate_stock_item','stock_item',id,before,{is_active:true},{...before,is_active:true});
+    await ensureStockLoaded(true);renderStock();
+  }catch(e){alert('ทำรายการไม่สำเร็จ: '+e.message);}
+}
+// ---- helper: บันทึก movement + อัปเดตยอด/ต้นทุนเฉลี่ย + audit ----
+async function recordMovement({stock_item_id,movement_type,quantity,unit_cost=0,job_id=null,purchase_item_id=null,reason='',note='',job_cost_item_id=null,newQuantity=null,newAvg=null}){
+  const it=stockItemById(stock_item_id);
+  const moveId=newAccountingId('SMOVE');
+  const qtyAbs=Math.abs(Number(quantity||0));
+  const total_cost=Math.round(qtyAbs*Number(unit_cost||0)*100)/100;
+  const balance_after=newQuantity!=null?newQuantity:(Number(it?.current_quantity||0)+Number(quantity||0));
+  const move={id:moveId,stock_item_id,movement_type,quantity:Number(quantity||0),unit_cost:Number(unit_cost||0),total_cost,purchase_item_id,job_id,job_cost_item_id,reason:reason||null,note:note||null,balance_after,status:'active',created_by:getActorName(),updated_by:getActorName()};
+  await sbInsertRows('stock_movements',[move]);
+  const patch={current_quantity:balance_after,last_movement_at:new Date().toISOString(),updated_by:getActorName()};
+  if(newAvg!=null)patch.average_cost=newAvg;
+  await sbPatchById('stock_items',stock_item_id,patch);
+  writeAuditLog('stock_movement','stock_movement',moveId,it?{current_quantity:it.current_quantity,average_cost:it.average_cost}:null,move,{...move,balance_after},{movement_type});
+  return move;
+}
+// ---- รับเข้า stock จากบิลซื้อ (ยืนยันบนบิล) ----
+async function confirmPurchaseStockIn(invId){
+  const inv=purchaseInvoices.find(x=>x.id===invId);if(!inv)return;
+  const rows=purchaseItems.filter(x=>x.purchase_invoice_id===invId&&x.status!=='cancelled'&&x.allocation_type==='stock'&&!x.stock_received);
+  if(!rows.length){alert('บิลนี้ไม่มีรายการที่ตั้งเป็น "เข้า stock" หรือรับเข้าครบแล้ว');return;}
+  if(!confirm(`ยืนยันรับเข้า stock ${rows.length} รายการ จากบิล ${inv.purchase_no}?`))return;
+  try{
+    await ensureStockLoaded(true);
+    for(const r of rows){
+      const inQty=Number(r.quantity||0),inCost=Number(r.unit_price||0);
+      if(inQty<=0)continue;
+      let item=findStockItemByName(r.item_name);
+      if(!item){
+        const newId=newAccountingId('STK');
+        item={id:newId,sku:null,item_name:String(r.item_name||'').trim(),category:'',brand_model:'',supplier_id:inv.supplier_name||'',unit:r.unit||'',min_stock:0,average_cost:0,current_quantity:0,is_active:true,created_by:getActorName()};
+        await sbInsertRows('stock_items',[item]);
+        stockItems.push(item);
+        writeAuditLog('create_stock_item','stock_item',newId,null,item,item,{source:'purchase_stock_in'});
+      }
+      const oldQty=Number(item.current_quantity||0),oldAvg=Number(item.average_cost||0);
+      const newQty=oldQty+inQty;
+      const newAvg=newQty>0?Math.round(((oldQty*oldAvg+inQty*inCost)/newQty)*100)/100:inCost;
+      const move=await recordMovement({stock_item_id:item.id,movement_type:'stock_in',quantity:inQty,unit_cost:inCost,purchase_item_id:r.id,note:`รับเข้าจากบิล ${inv.purchase_no}`,newQuantity:newQty,newAvg});
+      item.current_quantity=newQty;item.average_cost=newAvg;
+      await sbPatchById('purchase_items',r.id,{stock_received:true,stock_movement_id:move.id,stock_item_id:item.id,updated_by:getActorName()});
+    }
+    await sbPatchById('purchase_invoices',invId,{stock_status:'confirmed',stock_confirmed_at:new Date().toISOString(),stock_confirmed_by:getActorName(),updated_by:getActorName()});
+    writeAuditLog('confirm_purchase_stock_in','purchase_invoice',invId,null,{stock_status:'confirmed'},{purchase_no:inv.purchase_no,items:rows.length});
+    accountingLoaded=false;await ensureAccountingLoaded(true);await ensureStockLoaded(true);
+    renderStock();if(document.getElementById('page-purchase-tax')?.classList.contains('active'))renderPurchaseTax();
+    alert('รับเข้า stock เรียบร้อย');
+  }catch(e){alert('รับเข้า stock ไม่สำเร็จ: '+e.message);}
+}
+// ---- เบิกออก (ผูกกับ PR) ----
+function openStockOutModal(prefItemId='',prefPR=''){
+  const sel=document.getElementById('so-item');
+  const list=stockItems.filter(s=>s.is_active!==false);
+  sel.innerHTML=list.map(s=>`<option value="${esc(s.id)}">${esc(s.item_name)} (คงเหลือ ${esc(Number(s.current_quantity||0))} ${esc(s.unit||'')})</option>`).join('');
+  if(prefItemId)sel.value=prefItemId;
+  document.getElementById('so-pr').value=prefPR||'';
+  document.getElementById('so-qty').value=1;
+  document.getElementById('so-note').value='';
+  setStatusEl('so-status','');
+  refreshAccountingDatalists();
+  onStockOutItemChange();
+  openM('m-stock-out');
+}
+function setStatusEl(id,msg,type=''){const el=document.getElementById(id);if(el){el.textContent=msg;el.className='accounting-status '+type;}}
+function onStockOutItemChange(){
+  const s=stockItemById(document.getElementById('so-item').value);
+  const info=document.getElementById('so-info');
+  if(s&&info)info.innerHTML=`คงเหลือ <b>${Number(s.current_quantity||0)}</b> ${esc(s.unit||'')} · ต้นทุนเฉลี่ย <b>฿${money(s.average_cost)}</b>/หน่วย`;
+  updateStockOutPreview();
+}
+function updateStockOutPreview(){
+  const s=stockItemById(document.getElementById('so-item').value);
+  const qty=Number(document.getElementById('so-qty').value||0);
+  if(!s)return;
+  if(qty>Number(s.current_quantity||0))setStatusEl('so-status','⚠ จำนวนที่เบิกมากกว่ายอดคงเหลือ','err');
+  else setStatusEl('so-status',qty>0?`ต้นทุนที่จะลงให้งานนี้ ≈ ฿${money(qty*Number(s.average_cost||0))}`:'','warn');
+}
+async function saveStockOut(){
+  const s=stockItemById(document.getElementById('so-item').value);
+  const pr=document.getElementById('so-pr').value.trim();
+  const qty=Number(document.getElementById('so-qty').value||0);
+  const note=document.getElementById('so-note').value.trim();
+  if(!s){setStatusEl('so-status','เลือกสินค้าก่อน','err');return;}
+  if(!pr){setStatusEl('so-status','ต้องระบุ PR / Job ID','err');return;}
+  if(qty<=0){setStatusEl('so-status','ใส่จำนวนที่เบิก','err');return;}
+  if(qty>Number(s.current_quantity||0)){setStatusEl('so-status','จำนวนที่เบิกมากกว่ายอดคงเหลือ','err');return;}
+  try{
+    const avg=Number(s.average_cost||0),cost=Math.round(qty*avg*100)/100;
+    const jobCostId=newAccountingId('JCOST');
+    const move=await recordMovement({stock_item_id:s.id,movement_type:'stock_out_to_job',quantity:-qty,unit_cost:avg,job_id:pr,job_cost_item_id:jobCostId,note:note||`เบิกใช้งาน ${pr}`,newQuantity:Number(s.current_quantity||0)-qty});
+    const jc={id:jobCostId,job_id:pr,cost_type:'part',description:`${s.item_name}${note?' - '+note:''}`,quantity:qty,unit:s.unit||'',cost_amount:cost,vat_amount:0,source_type:'stock',stock_movement_id:move.id,status:'active',created_by_admin:getActorName(),updated_by:getActorName()};
+    await sbInsertRows('job_cost_items',[jc]);
+    writeAuditLog('stock_out_to_job','job_cost_item',jobCostId,null,jc,jc,{stock_item_id:s.id,pr});
+    s.current_quantity=Number(s.current_quantity||0)-qty;
+    closeM('m-stock-out');
+    accountingLoaded=false;await ensureAccountingLoaded(true);await ensureStockLoaded(true);
+    renderStock();
+    const sec=document.getElementById('job-accounting-section');if(sec&&typeof currentDetailJobId!=='undefined'&&currentDetailJobId===pr)renderJobAccountingSection(pr);
+    alert('เบิกออกเรียบร้อย — ต้นทุนถูกบันทึกเข้างาน '+pr);
+  }catch(e){setStatusEl('so-status','บันทึกไม่สำเร็จ: '+e.message,'err');}
+}
+// ---- ปรับยอด ----
+function openStockAdjustModal(id){
+  const s=stockItemById(id);if(!s)return;
+  document.getElementById('adj-id').value=id;
+  document.getElementById('adj-info').innerHTML=`<b>${esc(s.item_name)}</b> · คงเหลือปัจจุบัน <b>${Number(s.current_quantity||0)}</b> ${esc(s.unit||'')}`;
+  document.getElementById('adj-new-qty').value=Number(s.current_quantity||0);
+  document.getElementById('adj-diff').value='0';
+  document.getElementById('adj-reason').value='';
+  setStatusEl('adj-status','');
+  openM('m-stock-adjust');
+}
+function updateAdjustPreview(){
+  const s=stockItemById(document.getElementById('adj-id').value);
+  const n=Number(document.getElementById('adj-new-qty').value||0);
+  if(!s)return;
+  const diff=n-Number(s.current_quantity||0);
+  document.getElementById('adj-diff').value=(diff>0?'+':'')+diff;
+}
+async function saveStockAdjust(){
+  const s=stockItemById(document.getElementById('adj-id').value);
+  const n=Number(document.getElementById('adj-new-qty').value||0);
+  const reason=document.getElementById('adj-reason').value.trim();
+  if(!s)return;
+  if(!reason){setStatusEl('adj-status','กรุณาระบุเหตุผล','err');return;}
+  const diff=n-Number(s.current_quantity||0);
+  if(diff===0){setStatusEl('adj-status','ยอดไม่เปลี่ยนแปลง','err');return;}
+  try{
+    await recordMovement({stock_item_id:s.id,movement_type:'adjustment',quantity:diff,unit_cost:Number(s.average_cost||0),reason,newQuantity:n});
+    s.current_quantity=n;
+    closeM('m-stock-adjust');
+    await ensureStockLoaded(true);renderStock();
+  }catch(e){setStatusEl('adj-status','บันทึกไม่สำเร็จ: '+e.message,'err');}
 }
 function renderFixedExpenses(){const tb=document.getElementById('fixed-tbody');if(!tb)return;tb.innerHTML=fixedExpenses.map((x,i)=>`<tr><td>${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td class="mono tr">฿${x.amount.toLocaleString()}</td><td class="tm">${esc(x.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fxm-${i}',event)">...</button><div class="action-menu" id="fxm-${i}"><button onclick="openFixedModal(${i})">แก้ไข</button><button onclick="deleteFixedExpense(${i})">ลบ</button><button onclick="alert('${esc(x.note||'ไม่มีรายละเอียด')}')">ดูดีเทล</button></div></td></tr>`).join('');}
 function openFixedModal(i=''){document.getElementById('fx-index').value=i;if(i===''){['fx-name','fx-amount','fx-date','fx-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fx-type').value='Fixed';}else{const x=fixedExpenses[i];document.getElementById('fx-name').value=x.name;document.getElementById('fx-type').value=x.type;document.getElementById('fx-amount').value=x.amount;document.getElementById('fx-date').value=x.date;document.getElementById('fx-note').value=x.note||'';}openM('m-fixed');}
@@ -3802,7 +4298,7 @@ function actionCell(prefix,i,items){return `<td class="action-cell"><button clas
 function openClientModal(i=''){editClientIndex=i;if(i===''){['fc-id','fc-name','fc-contact','fc-phone','fc-credit','fc-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fc-id').value='CLT-'+String(clients.length+1).padStart(3,'0');document.getElementById('fc-pay').value='30 วัน';}else{const c=clients[i];document.getElementById('fc-id').value=c.id;document.getElementById('fc-name').value=c.name;document.getElementById('fc-contact').value=c.contact;document.getElementById('fc-phone').value=c.phone;document.getElementById('fc-pay').value=c.payTerm;document.getElementById('fc-credit').value=c.credit;document.getElementById('fc-note').value=c.note||'';}openM('m-client');}
 function openTeamModal(i=''){editTeamIndex=i;if(i===''){['ft-name','ft-lead','ft-phone','ft-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('ft-skill').value='แอร์';}else{const t=teams[i];document.getElementById('ft-name').value=t.name;document.getElementById('ft-lead').value=t.lead;document.getElementById('ft-phone').value=t.phone;document.getElementById('ft-skill').value=t.skill;document.getElementById('ft-note').value=t.note||'';}openM('m-team');}
 function openBranchModal(i=''){editBranchIndex=i;renderClients();if(i===''){['fb-name','fb-mgr','fb-phone','fb-hours','fb-addr'].forEach(id=>document.getElementById(id).value='');document.getElementById('fb-id').value='BRN-'+String(branches.length+1).padStart(3,'0');}else{const b=branches[i];document.getElementById('fb-id').value=b.id;document.getElementById('fb-name').value=b.name;document.getElementById('fb-client').value=b.client;document.getElementById('fb-mgr').value=b.mgr;document.getElementById('fb-phone').value=b.phone;document.getElementById('fb-hours').value=b.hours;document.getElementById('fb-addr').value=b.addr;}openM('m-branch');}
-function openSupplierModal(i=''){editSupplierIndex=i;if(i===''){['fs-name','fs-contact','fs-phone','fs-terms','fs-lead','fs-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fs-type').value='อะไหล่แอร์';}else{const x=suppliers[i];document.getElementById('fs-name').value=x.name;document.getElementById('fs-type').value=x.type;document.getElementById('fs-contact').value=x.contact;document.getElementById('fs-phone').value=x.phone;document.getElementById('fs-terms').value=x.terms;document.getElementById('fs-lead').value=x.lead;document.getElementById('fs-note').value=x.note||'';}openM('m-supplier');}
+function openSupplierModal(i=''){editSupplierIndex=i;if(i===''){['fs-name','fs-taxid','fs-contact','fs-phone','fs-terms','fs-lead','fs-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('fs-type').value='อะไหล่แอร์';}else{const x=suppliers[i];document.getElementById('fs-name').value=x.name;document.getElementById('fs-type').value=x.type;document.getElementById('fs-taxid').value=x.taxId||x.tax_id||'';document.getElementById('fs-contact').value=x.contact;document.getElementById('fs-phone').value=x.phone;document.getElementById('fs-terms').value=x.terms;document.getElementById('fs-lead').value=x.lead;document.getElementById('fs-note').value=x.note||'';}openM('m-supplier');}
 async function openPartModal(i=''){await ensurePartsLoaded();editPartIndex=i;renderSuppliers();if(i===''){['fpa-code','fpa-cat','fpa-name','fpa-brand','fpa-unit','fpa-cost','fpa-labor','fpa-sell','fpa-margin','fpa-note'].forEach(id=>document.getElementById(id).value='');}else{const x=parts[i];document.getElementById('fpa-code').value=x.code||'';document.getElementById('fpa-cat').value=x.cat||x.category||'';document.getElementById('fpa-name').value=x.name||'';document.getElementById('fpa-brand').value=x.brand||x.spec||'';document.getElementById('fpa-unit').value=x.unit||'';document.getElementById('fpa-sup').value=x.sup||'';document.getElementById('fpa-cost').value=x.cost||0;document.getElementById('fpa-labor').value=x.labor||0;document.getElementById('fpa-sell').value=x.sell||x.price||0;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
 
 function renderClients() {
@@ -3841,7 +4337,7 @@ function renderBranches(){updateSystemUpdated();fillSelects();const q=document.g
 function saveBranch(){const data={id:document.getElementById('fb-id').value,name:document.getElementById('fb-name').value,client:document.getElementById('fb-client').value,mgr:document.getElementById('fb-mgr').value,phone:document.getElementById('fb-phone').value,hours:document.getElementById('fb-hours').value,addr:document.getElementById('fb-addr').value};if(editBranchIndex==='')branches.push(data);else branches[+editBranchIndex]=data;closeM('m-branch');renderBranches();saveState();}
 function delBranch(i){if(confirm('ลบสาขานี้?')){branches.splice(i,1);renderBranches();saveState();}}
 
-function renderSuppliers(){updateSystemUpdated();document.getElementById('sup-tbody').innerHTML=suppliers.map((x,i)=>`<tr><td style="font-weight:600;">${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td>${esc(x.contact)}</td><td class="mono" style="font-size:12px;">${esc(x.phone)}</td><td style="font-size:12px;">${esc(x.terms)}</td><td class="tm" style="font-size:12px;">${esc(x.note||'-')}</td>${actionCell('spm',i,`<button onclick="alert(detailText(suppliers[${i}]))">ดูดีเทล</button><button onclick="openSupplierModal(${i})">แก้ไข</button><button onclick="delSupplier(${i})">ลบ</button>`)}</tr>`).join('');const supOpts=suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');const fpaS=document.getElementById('fpa-sup');if(fpaS)fpaS.innerHTML=supOpts;renderParts();}
+function renderSuppliers(){updateSystemUpdated();document.getElementById('sup-tbody').innerHTML=suppliers.map((x,i)=>`<tr><td style="font-weight:600;">${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td class="mono" style="font-size:12px;">${esc(x.taxId||x.tax_id||'-')}</td><td>${esc(x.contact)}</td><td class="mono" style="font-size:12px;">${esc(x.phone)}</td><td style="font-size:12px;">${esc(x.terms)}</td><td class="tm" style="font-size:12px;">${esc(x.note||'-')}</td>${actionCell('spm',i,`<button onclick="alert(detailText(suppliers[${i}]))">ดูดีเทล</button><button onclick="openSupplierModal(${i})">แก้ไข</button><button onclick="delSupplier(${i})">ลบ</button>`)}</tr>`).join('');const supOpts=suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');const fpaS=document.getElementById('fpa-sup');if(fpaS)fpaS.innerHTML=supOpts;refreshAccountingDatalists();renderParts();}
 function filteredPartIndexes(){const q=document.getElementById('part-search')?.value?.toLowerCase()||'';return parts.map((p,i)=>({p,i})).filter(({p})=>!q||String(p.name||'').toLowerCase().includes(q)||String(p.brand||p.spec||'').toLowerCase().includes(q)||String(p.cat||p.category||'').toLowerCase().includes(q)||String(p.code||'').toLowerCase().includes(q)).map(x=>x.i);}
 function renderParts(){
   const tb=document.getElementById('part-tbody');if(!tb)return;
@@ -3917,7 +4413,7 @@ async function importPartsFile(input){
   }catch(e){alert('นำเข้าไฟล์ไม่สำเร็จ: '+(e.message||e));}
   input.value='';
 }
-function saveSupplier(){const data={name:document.getElementById('fs-name').value,type:document.getElementById('fs-type').value,contact:document.getElementById('fs-contact').value,phone:document.getElementById('fs-phone').value,terms:document.getElementById('fs-terms').value,lead:document.getElementById('fs-lead').value,note:document.getElementById('fs-note').value};if(editSupplierIndex==='')suppliers.push(data);else suppliers[+editSupplierIndex]=data;closeM('m-supplier');renderSuppliers();saveState();}
+function saveSupplier(){const data={name:document.getElementById('fs-name').value,type:document.getElementById('fs-type').value,taxId:document.getElementById('fs-taxid').value.trim(),contact:document.getElementById('fs-contact').value,phone:document.getElementById('fs-phone').value,terms:document.getElementById('fs-terms').value,lead:document.getElementById('fs-lead').value,note:document.getElementById('fs-note').value};if(editSupplierIndex==='')suppliers.push(data);else suppliers[+editSupplierIndex]=data;closeM('m-supplier');renderSuppliers();refreshAccountingDatalists();saveState();}
 function delSupplier(i){if(confirm('ลบซัพพลายเออร์นี้?')){suppliers.splice(i,1);renderSuppliers();saveState();}}
 
 // INIT
