@@ -369,6 +369,46 @@ async function saveAppState(data){
 
 function reportTableId(jobId){ return `${normJobId(jobId)}:latest`; }
 function eventId(prefix){ return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
+function parseUsedPartsText(text){
+  const raw=String(text||'').split(/\n|,/).map(x=>x.trim()).filter(Boolean);
+  if(!raw.length || raw.some(x=>x==='ไม่มีการใช้อะไหล่'))return [];
+  return raw.map((line,i)=>{
+    const m=line.match(/^(.*?)(?:\s+|x|×)(\d+(?:\.\d+)?)\s*([^\d\s]+)?$/i);
+    const name=(m?m[1]:line).trim()||line;
+    return {
+      id:`${reportTableId(JOB_ID)}:part:${i+1}`,
+      part_name_text:name,
+      quantity:m?Number(m[2]||1):1,
+      unit:m?(m[3]||''):'',
+      note:line
+    };
+  });
+}
+
+async function saveTechnicianUsedParts(reportId, jobId, partsText, savedAt){
+  const cleanJobId = jobId || JOB_ID;
+  const del = await fetch(`${SUPABASE_URL}/rest/v1/technician_used_parts?technician_report_id=eq.${encodeURIComponent(reportId)}`, {
+    method:'DELETE',
+    headers: sbHeaders()
+  });
+  if(!del.ok) console.warn('Cannot clear previous technician_used_parts', await del.text());
+  const rows=parseUsedPartsText(partsText).map(p=>({
+    ...p,
+    technician_report_id:reportId,
+    job_id:cleanJobId,
+    matched_status:'pending',
+    created_by:'technician_submit',
+    created_at:savedAt,
+    updated_at:savedAt
+  }));
+  if(!rows.length)return;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/technician_used_parts`, {
+    method:'POST',
+    headers: sbHeaders({ 'Prefer':'resolution=merge-duplicates' }),
+    body: JSON.stringify(rows)
+  });
+  if(!r.ok) throw new Error('บันทึก technician_used_parts ไม่สำเร็จ: ' + await r.text());
+}
 
 async function upsertTechnicianReportTables(job, report, { images=[], documentImages=[], savedAt, status, reviewStatus, isDraft, roundId='', eventType='' }){
   const jobId = job?.id || JOB_ID;
@@ -452,6 +492,7 @@ async function upsertTechnicianReportTables(job, report, { images=[], documentIm
     body: JSON.stringify(eventRow)
   });
   if(!er.ok) throw new Error('บันทึก technician_report_events ไม่สำเร็จ: ' + await er.text());
+  await saveTechnicianUsedParts(reportId, jobId, report.parts, savedAt);
   return { reportId, reportData };
 }
 
