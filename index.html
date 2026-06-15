@@ -1086,8 +1086,9 @@ select option{background:var(--surface2);}
         </div>
         <aside class="accounting-panel accounting-summary">
           <div class="accounting-panel-title">สรุปบิลซื้อ</div>
-          <div class="accounting-total-row"><span>รวมเป็นเงิน</span><strong id="pur-ui-subtotal">0.00</strong></div>
-          <label class="accounting-total-row" style="cursor:pointer;align-items:center;"><span style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="pur-has-vat" checked onchange="purchaseHasVat=this.checked;updatePurchaseSummary();">มี VAT 7%</span><strong id="pur-ui-vat">0.00</strong></label>
+          <div class="form-group" style="margin-bottom:10px;"><label>การคิด VAT</label><select id="pur-vat-mode" onchange="purchaseVatMode=this.value;updatePurchaseSummary();"><option value="add">บวก VAT 7% เพิ่มท้ายบิล</option><option value="inclusive">ราคารวม VAT 7% มาแล้ว</option><option value="none">ไม่มี VAT</option></select></div>
+          <div class="accounting-total-row"><span>รวมเป็นเงิน (ก่อน VAT)</span><strong id="pur-ui-subtotal">0.00</strong></div>
+          <div class="accounting-total-row"><span>ภาษีมูลค่าเพิ่ม 7%</span><strong id="pur-ui-vat">0.00</strong></div>
           <div class="accounting-total-row grand"><span>จำนวนเงินรวมทั้งสิ้น</span><strong id="pur-ui-total">0.00</strong></div>
           <div class="form-group" style="margin-top:14px;"><label>URL ไฟล์แนบ / รูปบิล / PDF</label><input id="pur-file" placeholder="https://..."></div>
           <div class="attachment-preview" id="pur-attachment-preview">ยังไม่ได้แนบไฟล์</div>
@@ -1122,8 +1123,9 @@ select option{background:var(--surface2);}
         </div>
         <aside class="accounting-panel accounting-summary">
           <div class="accounting-panel-title">สรุปบิลขาย</div>
-          <div class="accounting-total-row"><span>รวมเป็นเงิน</span><strong id="sale-ui-subtotal">0.00</strong></div>
-          <label class="accounting-total-row" style="cursor:pointer;align-items:center;"><span style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="sale-has-vat" checked onchange="salesHasVat=this.checked;updateSalesSummary();">มี VAT 7%</span><strong id="sale-ui-vat">0.00</strong></label>
+          <div class="form-group" style="margin-bottom:10px;"><label>การคิด VAT</label><select id="sale-vat-mode" onchange="salesVatMode=this.value;updateSalesSummary();"><option value="add">บวก VAT 7% เพิ่มท้ายบิล</option><option value="inclusive">ราคารวม VAT 7% มาแล้ว</option><option value="none">ไม่มี VAT</option></select></div>
+          <div class="accounting-total-row"><span>รวมเป็นเงิน (ก่อน VAT)</span><strong id="sale-ui-subtotal">0.00</strong></div>
+          <div class="accounting-total-row"><span>ภาษีมูลค่าเพิ่ม 7%</span><strong id="sale-ui-vat">0.00</strong></div>
           <div class="accounting-total-row grand"><span>จำนวนเงินรวมทั้งสิ้น</span><strong id="sale-ui-total">0.00</strong></div>
           <div class="form-group" style="margin-top:14px;"><label>URL ไฟล์บิล / PDF</label><input id="sale-file" placeholder="https://..."></div>
           <div class="attachment-preview" id="sale-attachment-preview">ยังไม่ได้แนบไฟล์</div>
@@ -1204,7 +1206,7 @@ let financeSearch='', financeDateFilter='', lastDataUpdatedAt='', adminSortDir='
 let selectedDocs={qt:new Set(),iv:new Set(),tx:new Set()};
 let editJobId=null, editAdminId=null, pendingJobFromAdminId=null;
 let purchaseInvoices=[], purchaseItems=[], technicianUsedParts=[], jobCostItems=[], salesInvoices=[], salesInvoiceItems=[], purchaseDraftItems=[], salesDraftItems=[];
-let purchaseHasVat=true, salesHasVat=true;
+let purchaseVatMode='add', salesVatMode='add'; // 'add' บวกเพิ่ม | 'inclusive' รวมแล้ว | 'none' ไม่มี
 let stockItems=[], stockMovements=[], stockLoaded=false, stockLoadingPromise=null;
 let stockSearch='', stockShowInactive=false, currentDetailJobId='';
 let accountingLoaded=false, accountingLoadingPromise=null;
@@ -3216,12 +3218,13 @@ async function handleAccountingFile(kind,file){
 }
 function applyAccountingParsedData(kind,data){
   const hasVat=data.hasVat!==false&&Number(data.vat||0)>0;
+  const mode=hasVat?'add':'none';
   if(kind==='purchase'){
     if(data.invoiceNo)document.getElementById('pur-invoice-no').value=data.invoiceNo;
     if(data.date)document.getElementById('pur-date').value=data.date;
     if(data.name&&!document.getElementById('pur-supplier').value){document.getElementById('pur-supplier').value=data.name;onPurchaseSupplierChange();}
     if(data.taxId&&!document.getElementById('pur-taxid').value)document.getElementById('pur-taxid').value=data.taxId;
-    purchaseHasVat=hasVat;const pvc=document.getElementById('pur-has-vat');if(pvc)pvc.checked=hasVat;
+    purchaseVatMode=mode;const pvm=document.getElementById('pur-vat-mode');if(pvm)pvm.value=mode;
     const empty=!purchaseDraftItems.some(x=>String(x.item_name||'').trim());
     if(empty&&Array.isArray(data.items)&&data.items.length){
       purchaseDraftItems=data.items.map(it=>({...blankPurchaseItem(),item_name:it.item_name,quantity:it.quantity,unit:it.unit||'',unit_price:it.unit_price}));
@@ -3235,7 +3238,7 @@ function applyAccountingParsedData(kind,data){
     if(data.date)document.getElementById('sale-date').value=data.date;
     if(data.name&&!document.getElementById('sale-customer').value)document.getElementById('sale-customer').value=data.name;
     if(data.pr&&!document.getElementById('sale-job').value)document.getElementById('sale-job').value=data.pr;
-    salesHasVat=hasVat;const svc=document.getElementById('sale-has-vat');if(svc)svc.checked=hasVat;
+    salesVatMode=mode;const svm=document.getElementById('sale-vat-mode');if(svm)svm.value=mode;
     const empty=!salesDraftItems.some(x=>String(x.description||'').trim());
     if(empty&&Array.isArray(data.items)&&data.items.length){
       salesDraftItems=data.items.map(it=>blankSalesItem(it.item_name,it.quantity,it.unit||'',it.unit_price));
@@ -3317,8 +3320,9 @@ function openPurchaseModal(id=''){
   updateAttachmentPreview('purchase',null);
   setAccountingStatus('purchase',inv?.file_url?'มีไฟล์แนบเดิมใน URL แล้ว':'','');
   purchaseDraftItems=inv?purchaseItems.filter(x=>x.purchase_invoice_id===inv.id).map(x=>({...x})):[blankPurchaseItem()];
-  purchaseHasVat=inv?Number(inv.vat_amount||0)>0:true;
-  const pvc=document.getElementById('pur-has-vat');if(pvc)pvc.checked=purchaseHasVat;
+  const purLineSum=purchaseDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
+  purchaseVatMode=inv?inferVatMode(inv,purLineSum):'add';
+  const pvm=document.getElementById('pur-vat-mode');if(pvm)pvm.value=purchaseVatMode;
   refreshAccountingDatalists();
   renderPurchaseItemEditor();
   openM('m-purchase');
@@ -3367,10 +3371,22 @@ function upsertClientFromBill(name){
 function addPurchaseItemRow(){purchaseDraftItems.push(blankPurchaseItem());renderPurchaseItemEditor();}
 function removePurchaseItemRow(i){purchaseDraftItems.splice(i,1);if(!purchaseDraftItems.length)purchaseDraftItems.push(blankPurchaseItem());renderPurchaseItemEditor();}
 function updatePurchaseDraft(i,field,value){purchaseDraftItems[i][field]=value;renderPurchaseItemEditor();}
+function computeVatTotals(lineSum,mode){
+  lineSum=Number(lineSum||0);
+  if(mode==='inclusive'){const subtotal=Math.round((lineSum/1.07)*100)/100;const vat=Math.round((lineSum-subtotal)*100)/100;return {subtotal,vat,total:lineSum};}
+  if(mode==='add'){const vat=Math.round(lineSum*0.07*100)/100;return {subtotal:lineSum,vat,total:Math.round((lineSum+vat)*100)/100};}
+  return {subtotal:lineSum,vat:0,total:lineSum};
+}
+function inferVatMode(inv,lineSum){
+  const vat=Number(inv?.vat_amount||0);
+  if(vat<=0)return 'none';
+  const total=Number(inv?.total_amount||0);
+  if(total&&Math.abs(Number(lineSum||0)-total)<Math.max(1,total*0.01))return 'inclusive';
+  return 'add';
+}
 function purchaseDraftTotals(){
-  const subtotal=purchaseDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
-  const vat=purchaseHasVat?Math.round(subtotal*0.07*100)/100:0;
-  return {subtotal,vat,total:subtotal+vat};
+  const lineSum=purchaseDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
+  return computeVatTotals(lineSum,purchaseVatMode);
 }
 function updatePurchaseSummary(){
   const t=purchaseDraftTotals();
@@ -3402,7 +3418,8 @@ async function savePurchaseInvoice(){
       fileUrl=await uploadAccountingAttachment('purchase',accountingAttachments.purchase.file,id);
       document.getElementById('pur-file').value=fileUrl;
     }
-    const subtotal=rows.reduce((s,x)=>s+x.subtotal,0),vat=purchaseHasVat?Math.round(subtotal*0.07*100)/100:0,total=subtotal+vat;
+    const purLineSum=rows.reduce((s,x)=>s+x.subtotal,0);
+    const {subtotal,vat,total}=computeVatTotals(purLineSum,purchaseVatMode);
     const internal=document.getElementById('pur-internal-note')?.value.trim();
     const note=[document.getElementById('pur-note').value.trim(),internal?`[internal] ${internal}`:''].filter(Boolean).join('\n');
     const inv={id,purchase_no:document.getElementById('pur-no').value.trim()||id,supplier_name:document.getElementById('pur-supplier').value.trim(),supplier_tax_id:document.getElementById('pur-taxid').value.trim(),invoice_no:document.getElementById('pur-invoice-no').value.trim(),invoice_date:document.getElementById('pur-date').value||todayISO(),tax_invoice_type:document.getElementById('pur-tax-type').value,subtotal,vat_amount:vat,total_amount:total,payment_status:document.getElementById('pur-payment').value,payment_method:document.getElementById('pur-method').value.trim(),file_url:fileUrl,note,status:'active',created_by:getActorName(),updated_by:getActorName()};
@@ -3466,8 +3483,9 @@ function openSalesModal(id='',prefJobId=''){
   updateAttachmentPreview('sales',null);
   setAccountingStatus('sales',inv?.file_url?'มีไฟล์แนบเดิมใน URL แล้ว':'','');
   salesDraftItems=inv?salesInvoiceItems.filter(x=>x.sales_invoice_id===inv.id).map(x=>({...x})):[blankSalesItem()];
-  salesHasVat=inv?Number(inv.vat_amount||0)>0:true;
-  const svc=document.getElementById('sale-has-vat');if(svc)svc.checked=salesHasVat;
+  const saleLineSum=salesDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
+  salesVatMode=inv?inferVatMode(inv,saleLineSum):'add';
+  const svm=document.getElementById('sale-vat-mode');if(svm)svm.value=salesVatMode;
   refreshAccountingDatalists();
   if(!inv&&prefJobId)fillSalesFromJob();
   if(inv&&!salesDraftItems.length)salesDraftItems=[blankSalesItem('ยอดตามบิลเดิม',1,'งาน',Number(inv.subtotal||0))];
@@ -3490,9 +3508,8 @@ function addSalesItemRow(){salesDraftItems.push(blankSalesItem());renderSalesIte
 function removeSalesItemRow(i){salesDraftItems.splice(i,1);if(!salesDraftItems.length)salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
 function updateSalesDraft(i,field,value){salesDraftItems[i][field]=value;renderSalesItemEditor();}
 function salesDraftTotals(){
-  const subtotal=salesDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
-  const vat=salesHasVat?Math.round(subtotal*0.07*100)/100:0;
-  return {subtotal,vat,total:subtotal+vat};
+  const lineSum=salesDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
+  return computeVatTotals(lineSum,salesVatMode);
 }
 function updateSalesSummary(){
   const t=salesDraftTotals();
@@ -3527,7 +3544,8 @@ async function saveSalesInvoice(){
       fileUrl=await uploadAccountingAttachment('sales',accountingAttachments.sales.file,id);
       document.getElementById('sale-file').value=fileUrl;
     }
-    const subtotal=rows.reduce((s,x)=>s+x.subtotal,0),vatAmount=salesHasVat?Math.round(subtotal*0.07*100)/100:0,totalAmount=subtotal+vatAmount;
+    const saleLineSum=rows.reduce((s,x)=>s+x.subtotal,0);
+    const {subtotal,vat:vatAmount,total:totalAmount}=computeVatTotals(saleLineSum,salesVatMode);
     const inv={
     id,
     sales_invoice_no:document.getElementById('sale-no').value.trim()||id,
