@@ -1006,7 +1006,7 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.06.15.1';
+const APP_VERSION='2026.06.15.2';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -2006,6 +2006,25 @@ function setDateFilter(scope,type,value){
   }
   saveUIState();
 }
+function clearTrackerFilters(scope){
+  if(scope==='admin'){
+    adminFilter='ทั้งหมด';adminSearch='';adminDateFilter='';adminMonthFilter='';adminRangeFilter='';
+    renderAdmin();
+  }else if(scope==='jobs'){
+    jobFilter='ทั้งหมด';jobTeamFilter='ทั้งหมด';jobSearch='';jobDateFilter='';jobMonthFilter='';jobRangeFilter='';
+    renderJobs();
+  }else if(scope==='rpt'){
+    rptFilter='ทั้งหมด';rptReviewFilter='ทั้งหมด';rptSearch='';rptDateFilter='';rptMonthFilter='';rptRangeFilter='';
+    renderReports();
+  }
+  saveUIState();
+}
+function trackerEmptyHtml(scope,total,colspan){
+  const hasRows=total>0;
+  const msg=hasRows?'มีงานในระบบ แต่ถูกซ่อนด้วยตัวกรอง/วันที่':'ยังโหลดงานจากฐานข้อมูลไม่ได้ หรือยังไม่มีงานในระบบ';
+  const action=hasRows?`<button class="btn btn-primary btn-sm" onclick="clearTrackerFilters('${scope}')">ล้างตัวกรองทั้งหมด</button>`:`<button class="btn btn-ghost btn-sm" onclick="location.reload()">โหลดใหม่</button>`;
+  return `<tr><td colspan="${colspan}"><div class="empty"><div class="empty-icon">${hasRows?'FILTER':'...'}</div><div>${msg}</div><div style="margin-top:10px;">${action}</div></div></td></tr>`;
+}
 function inDateScope(item,scope){
   const d=item.assignedAt||item.date||item.due||'';
   if(scope==='admin'){
@@ -2116,7 +2135,7 @@ function renderAdmin(){
   document.getElementById('admin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('admin-tbl-title').textContent='งาน Admin - '+adminFilter+(adminSearch?' / ค้นหา: '+adminSearch:'');
   const tb=document.getElementById('admin-tbody');
-  if(!fil.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">OK</div><div>ไม่มีงาน</div></div></td></tr>';return;}
+  if(!fil.length){tb.innerHTML=trackerEmptyHtml('admin',all.length,10);return;}
   tb.innerHTML=fil.map(t=>{
     const pr=t.jobId||'';
     const linked=liveJobs().find(j=>j.id===pr);
@@ -2591,7 +2610,7 @@ function renderJobs(){
   document.getElementById('job-cnt').textContent=fil.length+' รายการ';
   document.getElementById('job-tbl-title').textContent='คิวช่าง - '+jobFilter+(jobTeamFilter!=='ทั้งหมด'?' / '+jobTeamFilter:'')+(jobSearch?' / ค้นหา: '+jobSearch:'');
   const tb=document.getElementById('job-tbody');
-  if(!fil.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">-</div><div>ไม่มีงาน</div></div></td></tr>';return;}
+  if(!fil.length){tb.innerHTML=trackerEmptyHtml('jobs',allJobs.length,9);return;}
   tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}${techUpdateMark(j)}${esc(j.id)}${techUpdatePill(j)}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="color:${statusSelectColor(j,j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
 async function setJS(id,s){
