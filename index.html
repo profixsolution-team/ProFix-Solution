@@ -3031,7 +3031,7 @@ async function copyTechnicianLink(id){
   try{shortUrl=await getOrCreateTechShortLink(j);}catch(e){console.warn('Short link create failed',e);}
   const fullUrl=new URL(technicianFormUrl(id),location.href).href;
   const url=shortUrl||fullUrl;
-  const text=`🔧 งานช่าง ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nกรอกฟอร์มงานช่างที่ลิงก์นี้:\n${url}`;
+  const text=`🔧 งานช่าง ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nลิงค์ใบงาน:\n${url}`;
   try{await navigator.clipboard.writeText(text);alert('คัดลอกฟอร์มลิงก์ช่างแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){prompt('คัดลอกข้อความนี้',text);}
 }
 function openDet(id){
