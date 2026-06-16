@@ -1409,6 +1409,18 @@ let duplicateJobsRepairedSinceSave=0;
 let splitSaveHashes={};
 let splitRowHashes={jobs:{},adminTasks:{},workOrders:{},documents:{},parts:{}};
 let splitKnownIds={jobs:new Set(),adminTasks:new Set(),workOrders:new Set(),documents:new Set(),parts:new Set()};
+// Master data ที่แยกออกจากก้อน system_data เป็นตารางแยกราย row (phase 4) — UI ยังใช้ array เดิม เปลี่ยนแค่ชั้น persistence
+const MASTER_COLLECTIONS=[
+  {key:'clients',     table:'clients',        prefix:'CLT', ref:()=>clients,      keyOf:r=>r.id||r.name},
+  {key:'pricing',     table:'pricing',        prefix:'PRC', ref:()=>pricing,      keyOf:r=>`${r.client||''}|${r.type||''}`},
+  {key:'suppliers',   table:'suppliers',      prefix:'SUP', ref:()=>suppliers,    keyOf:r=>r.name},
+  {key:'teams',       table:'teams',          prefix:'TEAM',ref:()=>teams,        keyOf:r=>r.name},
+  {key:'teamPricing', table:'team_pricing',   prefix:'TMP', ref:()=>teamPricing,  keyOf:r=>`${r.team||''}|${r.type||''}`},
+  {key:'branches',    table:'branches',       prefix:'BRN', ref:()=>branches,     keyOf:r=>r.id||r.name},
+  {key:'fixedExpenses',table:'fixed_expenses',prefix:'FX',  ref:()=>fixedExpenses,keyOf:r=>`${r.name||''}|${r.type||''}|${r.amount||''}`},
+];
+MASTER_COLLECTIONS.forEach(c=>{splitRowHashes[c.key]={};splitKnownIds[c.key]=new Set();});
+let masterCollectionsPersisted=false; // true เมื่อ master tables ถูก seed แล้ว → ถือว่าตารางแยก row เป็นแหล่งข้อมูลจริง (ไม่ย้อนไปอ่าน system_data)
 function applyTheme(theme){
   const t=theme==='light'?'light':'dark';
   document.body.dataset.theme=t;
@@ -1616,6 +1628,7 @@ function ensurePersistentIds(){
   parts.forEach((p,i)=>{if(!p._id)p._id='PART-'+cleanId(p.code||p.name||i,'item')+'-'+i;});
   ensureDocsShape();
   docs.workOrders.forEach((d,i)=>{if(!d.id)d.id='WOD-'+Date.now().toString(36)+'-'+i;});
+  MASTER_COLLECTIONS.forEach(c=>{const list=c.ref();if(Array.isArray(list))list.forEach((r,i)=>{if(r&&!r._id){const k=c.keyOf?String(c.keyOf(r)||'').trim():'';r._id=c.prefix+'-'+(k?cleanId(k,c.prefix):Date.now().toString(36)+'-'+i+'-'+Math.random().toString(36).slice(2,6));}});});
 }
 function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,docs,jCnt,aCnt,lastDataUpdatedAt};}
 function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.paymentMethods)paymentMethods=st.paymentMethods;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
@@ -1725,7 +1738,7 @@ async function sbFetchAll(table,queryBase){
   }
   return all;
 }
-function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,jCnt,aCnt,lastDataUpdatedAt};}
+function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,jCnt,aCnt,lastDataUpdatedAt,masterSplit:masterCollectionsPersisted};}
 function lightWorkOrderDoc(d){
   const x={...d};
   if(x.url||x.fileUrl||x.key||x.storage==='r2')delete x.dataUrl;
@@ -1743,8 +1756,12 @@ function splitStateSnapshot(){
     meta:splitMetaData()
   };
 }
-function splitApplyRows({jobRows=null,adminRows=null,partRows=null,workOrderRows=null,documentRows=null,metaRows=null}={}){
+function splitApplyRows({jobRows=null,adminRows=null,partRows=null,workOrderRows=null,documentRows=null,metaRows=null,masterRowsByKey=null}={}){
   const st={...(Array.isArray(metaRows)?metaRows[0]?.data:null||{})};
+  // Master collections (phase 4): ใช้ข้อมูลจากตารางแยก row เมื่อมี ไม่งั้นคงค่าจาก system_data (legacy)
+  // ถ้า migrate แล้ว (masterSplit) ให้ถือว่าตารางแยก row เป็นจริงเสมอ แม้ว่าง (ป้องกันข้อมูลที่ลบไปแล้วฟื้นจาก legacy blob)
+  const masterMigrated=!!st.masterSplit;
+  if(masterRowsByKey)MASTER_COLLECTIONS.forEach(c=>{const rws=masterRowsByKey[c.key];if(Array.isArray(rws)&&(rws.length||masterMigrated))st[c.key]=rws.map(r=>r.data).filter(Boolean);});
   if(Array.isArray(jobRows))st.jobs=jobRows.map(normalizeLoadedJobRow).filter(j=>j&&isUsableJobId(j.id));
   if(Array.isArray(adminRows))st.adminTasks=adminRows.map(r=>r.data).filter(Boolean);
   if(Array.isArray(documentRows)||Array.isArray(workOrderRows)){
@@ -1808,15 +1825,20 @@ async function loadTechnicianReportTables(){
 }
 async function loadSplitState(){
   if(!SPLIT_TABLES_ENABLED)return false;
-  const [jobRows,adminRows,metaRows]=await Promise.all([
+  const masterFetch=c=>sbFetchAll(c.table,'?select=id,data,updated_at').catch(()=>null);
+  const [jobRows,adminRows,metaRows,...masterResults]=await Promise.all([
     sbFetchAll('jobs','?select=id,data,updated_at&order=updated_at.desc'),
     sbFetchAll('admin_tasks','?select=id,data,updated_at&order=updated_at.desc'),
-    sbFetchJson('system_data','?id=eq.main&select=id,data,updated_at')
+    sbFetchJson('system_data','?id=eq.main&select=id,data,updated_at'),
+    ...MASTER_COLLECTIONS.map(masterFetch)
   ]);
   splitTablesOnline=true;
   const hasData=jobRows.length||adminRows.length;
   if(!hasData)return false;
-  splitApplyRows({jobRows,adminRows,metaRows});
+  const masterRowsByKey={};
+  MASTER_COLLECTIONS.forEach((c,i)=>{masterRowsByKey[c.key]=masterResults[i];});
+  if(metaRows?.[0]?.data?.masterSplit)masterCollectionsPersisted=true;
+  splitApplyRows({jobRows,adminRows,metaRows,masterRowsByKey});
   loadedFromSplitTables=true;
   supabaseOnline=true;
   const snap=splitStateSnapshot();
@@ -1825,6 +1847,19 @@ async function loadSplitState(){
   splitSaveHashes={jobs:stableJson(snap.jobs),adminTasks:stableJson(snap.adminTasks),workOrders:stableJson(snap.workOrders),documents:stableJson(snap.documents),meta:stableJson(snap.meta)};
   splitRowHashes.jobs=rowHashMap(snap.jobs,j=>j.id);
   splitRowHashes.adminTasks=rowHashMap(snap.adminTasks,t=>t.id);
+  MASTER_COLLECTIONS.forEach(c=>{
+    const rws=masterRowsByKey[c.key];
+    if(Array.isArray(rws)&&rws.length){
+      splitKnownIds[c.key]=new Set(rws.map(r=>r.id));
+      splitSaveHashes[c.key]=stableJson(c.ref());
+      splitRowHashes[c.key]=rowHashMap(c.ref(),r=>r._id);
+    }else{
+      // ตารางยังว่าง/ยังไม่ถูกสร้าง → ปล่อยให้บันทึกครั้งถัดไป seed ข้อมูลเดิมจาก system_data ลงตารางใหม่
+      splitKnownIds[c.key]=new Set();
+      delete splitSaveHashes[c.key];
+      splitRowHashes[c.key]={};
+    }
+  });
   return true;
 }
 async function loadAppStateData(){
@@ -2035,7 +2070,19 @@ async function saveSplitStateNow(force=false){
   if(workOrdersLoaded&&(force||splitSaveHashes.workOrders!==woHash)){await syncSplitRowsChanged('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id,force);splitSaveHashes.workOrders=woHash;}
   if(docsLoaded&&(force||splitSaveHashes.documents!==docHash)){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
   if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await syncSplitRowsChanged('parts',snap.parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}),'parts',p=>p._id,force);splitSaveHashes.parts=partsHash;}
-  if(force||splitSaveHashes.meta!==metaHash){await upsertSystemData(snap.meta);splitSaveHashes.meta=metaHash;}
+  // Master collections แยกราย row (phase 4) — บันทึกเฉพาะตารางที่เปลี่ยน, ทนทานต่อตารางที่ยังไม่ถูกสร้าง
+  for(const c of MASTER_COLLECTIONS){
+    const list=(c.ref()||[]).filter(Boolean);
+    const h=stableJson(list);
+    if(!force&&splitSaveHashes[c.key]===h)continue;
+    try{
+      await syncSplitRowsChanged(c.table,list,r=>({id:r._id,data:r,updated_at:now}),c.key,r=>r._id,force);
+      splitSaveHashes[c.key]=h;
+      masterCollectionsPersisted=true; // seed สำเร็จอย่างน้อย 1 ตาราง → ตารางแยก row เป็นแหล่งข้อมูลจริงแล้ว
+    }catch(e){console.warn('[phase4] ข้ามการบันทึก master collection (ตารางอาจยังไม่ถูกสร้าง):',c.table,e?.message||e);}
+  }
+  const metaFinal=splitMetaData();const metaFinalHash=stableJson(metaFinal);
+  if(force||splitSaveHashes.meta!==metaFinalHash){await upsertSystemData(metaFinal);splitSaveHashes.meta=metaFinalHash;}
   splitTablesOnline=true;loadedFromSplitTables=true;supabaseOnline=true;
 }
 async function loadState(opts={}){
@@ -2791,6 +2838,7 @@ async function savePendingAdminPdf(pr,taskId){
 }
 function openAdminModal(){
   editAdminId=null;
+  editBaseline=null;
   fillSelects();
   document.querySelector('#m-admin .modal-title').textContent='เพิ่มงาน Admin';
   ['fa-client','fa-detail','fa-job','fa-phone'].forEach(id=>document.getElementById(id).value='');
@@ -2818,15 +2866,19 @@ async function saveAdminTask(openQueueAfter=false){
   if(editAdminId){
     const task=adminTasks.find(t=>t.id===editAdminId);
     if(!task)return;
+    if(editBaseline&&editBaseline.table==='admin_tasks'&&editBaseline.id===editAdminId&&await hasRemoteEditConflict()&&!confirmOverwriteIfConflict('งานแอดมิน'))return;
     before=clonePlain(task);
     Object.assign(task,data);
     after=clonePlain(task);
     action='update_admin_task';
   }else{
-    taskId='TASK-'+String(aCnt++).padStart(3,'0');
+    taskId=nextAutoId('TASK',adminTasks);
     const row={id:taskId,...data,assignedAt:todayISO(),isNew:true,createdAt:Date.now()};
+    const res=await reserveNumberedRow('admin_tasks','TASK',row);
+    taskId=res.id;
     adminTasks.unshift(row);
     after=clonePlain(row);
+    aCnt=Math.max(Number(aCnt)||1,(numFromId(taskId,'TASK')||0)+1);
   }
   await savePendingAdminPdf(data.jobId,taskId);
   closeM('m-admin');renderAdmin();renderDash();fillSelects();saveState();
@@ -2834,7 +2886,7 @@ async function saveAdminTask(openQueueAfter=false){
   if(openQueueAfter)setTimeout(()=>openJobFromAdmin(taskId),0);
   return taskId;
 }
-function editAdminTask(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;closeM('m-detail');editAdminId=id;fillSelects();document.querySelector('#m-admin .modal-title').textContent='แก้ไขงาน Admin';document.getElementById('fa-type').value=t.type;document.getElementById('fa-client').value=t.client;document.getElementById('fa-phone').value=t.phone||'';document.getElementById('fa-detail').value=t.detail;document.getElementById('fa-assign').value=t.assign;document.getElementById('fa-due').value=t.due;document.getElementById('fa-job').value=t.jobId||'';document.getElementById('fa-pri').value=t.pri;document.getElementById('fa-status').value=t.status||A_ST[0]||'';clearAdminPdfImport();openM('m-admin');}
+function editAdminTask(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;closeM('m-detail');editAdminId=id;captureEditBaseline('admin_tasks',id,t);fillSelects();document.querySelector('#m-admin .modal-title').textContent='แก้ไขงาน Admin';document.getElementById('fa-type').value=t.type;document.getElementById('fa-client').value=t.client;document.getElementById('fa-phone').value=t.phone||'';document.getElementById('fa-detail').value=t.detail;document.getElementById('fa-assign').value=t.assign;document.getElementById('fa-due').value=t.due;document.getElementById('fa-job').value=t.jobId||'';document.getElementById('fa-pri').value=t.pri;document.getElementById('fa-status').value=t.status||A_ST[0]||'';clearAdminPdfImport();openM('m-admin');}
 async function deleteAdminTask(id){
   const t=adminTasks.find(x=>x.id===id&&!isDeletedRecord(x));if(!t)return;
   if(confirm('ลบงาน Admin นี้?')){
@@ -2959,25 +3011,70 @@ function openDet(id){
   ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
   openM('m-detail');
 }
-function openJobModal(pref={}){if(!pref.fromAdmin)pendingJobFromAdminId=null;editJobId=null;fillSelects();document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=pref.date||new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';document.getElementById('fj-type').value=jobTypes[0]||'';document.getElementById('fj-status').value=J_ST[0]||'รอเปิดงาน';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
+function openJobModal(pref={}){if(!pref.fromAdmin)pendingJobFromAdminId=null;editJobId=null;editBaseline=null;fillSelects();document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=pref.date||new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';document.getElementById('fj-type').value=jobTypes[0]||'';document.getElementById('fj-status').value=J_ST[0]||'รอเปิดงาน';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
 function calcM(){const c=parseFloat(document.getElementById('fj-pc').value)||0,t=parseFloat(document.getElementById('fj-pt').value)||0;if(c>0||t>0){document.getElementById('m-profit').style.display='flex';document.getElementById('m-profit-v').textContent='฿'+(c-t).toLocaleString();}}
-function saveJob(){
+// ===== กันเลข PR/TASK ออกซ้ำข้ามเครื่อง: จองเลขแบบ atomic ที่ฝั่ง DB =====
+function numFromId(id,prefix){const m=String(id||'').match(new RegExp('^'+prefix+'-?0*(\\d+)$'));return m?parseInt(m[1],10):null;}
+function nextAutoId(prefix,list){
+  let mx=0;(list||[]).forEach(x=>{const n=numFromId(x&&x.id,prefix);if(n!=null)mx=Math.max(mx,n);});
+  if(prefix==='PR')mx=Math.max(mx,(Number(jCnt)||1)-1);
+  if(prefix==='TASK')mx=Math.max(mx,(Number(aCnt)||1)-1);
+  return `${prefix}-${String(mx+1).padStart(3,'0')}`;
+}
+// แทรกแถวจริงลงตารางแยก row แบบ insert ปกติ (ไม่ merge) — ถ้าเลขชนกับเครื่องอื่นจะเลื่อนเป็นเลขถัดไปแล้วลองใหม่จนกว่าจะว่าง
+async function reserveNumberedRow(table,prefix,row){
+  if(!(splitTablesOnline||loadedFromSplitTables))return {id:row.id,online:false};
+  let n=numFromId(row.id,prefix)||1;
+  for(let tries=0;tries<300;tries++){
+    const candidate=`${prefix}-${String(n).padStart(3,'0')}`;
+    row.id=candidate;
+    let r;
+    try{
+      r=await fetch(splitUrl(table),{method:'POST',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify({id:candidate,data:row,updated_at:new Date().toISOString()})});
+    }catch(e){return {id:candidate,online:false};}
+    if(r.ok)return {id:candidate,online:true};
+    const txt=await r.text().catch(()=>'');
+    if(r.status===409||/duplicate key|already exists|23505|conflict/i.test(txt)){n+=1;continue;}
+    return {id:candidate,online:false};
+  }
+  return {id:row.id,online:false};
+}
+// ===== กันแก้ทับ (#3): เก็บ baseline ตอนเปิดฟอร์มแก้ไข แล้วเช็คก่อนบันทึกว่ามีคนอื่นแก้ไประหว่างนั้นไหม =====
+let editBaseline=null;
+const CONFLICT_FIELDS={jobs:['client','ref','branch','type','team','date','status','pc','pt','note'],admin_tasks:['type','client','phone','detail','assign','due','jobId','pri','status']};
+function pickFields(o,keys){const r={};keys.forEach(k=>{r[k]=o?o[k]:undefined;});return JSON.stringify(r);}
+function captureEditBaseline(table,id,record){editBaseline={table,id,fields:CONFLICT_FIELDS[table]||[],hash:pickFields(record,CONFLICT_FIELDS[table]||[])};}
+async function hasRemoteEditConflict(){
+  if(!editBaseline||!(splitTablesOnline||loadedFromSplitTables))return false;
+  try{
+    const r=await fetch(splitUrl(editBaseline.table,`?id=eq.${encodeURIComponent(editBaseline.id)}&select=data`),{headers:sbHeaders()});
+    if(!r.ok)return false;
+    const rows=await r.json();const d=rows?.[0]?.data;
+    if(!d)return false;
+    return pickFields(d,editBaseline.fields)!==editBaseline.hash;
+  }catch(e){return false;}
+}
+function confirmOverwriteIfConflict(label){
+  return confirm(`⚠️ มีแอดมินอีกเครื่องเพิ่งแก้${label}นี้ไประหว่างที่คุณกำลังแก้อยู่\n\nกด "ตกลง" = เขียนทับด้วยข้อมูลของคุณ (ข้อมูลของอีกฝั่งจะหาย)\nกด "ยกเลิก" = หยุดก่อน แล้วปิดฟอร์มเพื่อรีเฟรชดูข้อมูลล่าสุด`);
+}
+async function saveJob(){
   const data={client:document.getElementById('fj-client').value,ref:document.getElementById('fj-ref').value||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,status:document.getElementById('fj-status').value,pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value};
   let savedJobId=editJobId;
   let before=null, after=null, action='create_job';
   if(editJobId){
     const job=jobs.find(j=>j.id===editJobId&&!isDeletedRecord(j));
     if(!job)return;
+    if(editBaseline&&editBaseline.table==='jobs'&&editBaseline.id===editJobId&&await hasRemoteEditConflict()&&!confirmOverwriteIfConflict('งานคิวช่าง'))return;
     before=clonePlain(job);
     Object.assign(job,data);
     after=clonePlain(job);
     action='update_job';
   }else{
-    const id=data.ref&&data.ref!=='N/A'?data.ref:'PR-'+String(jCnt++).padStart(3,'0');
+    const isAuto=!(data.ref&&data.ref!=='N/A');
+    let id=isAuto?nextAutoId('PR',jobs):data.ref;
     const dup=duplicateQueuePRInfo(id);
     if(dup){alert(`มีงานซ้ำในคิวช่าง: ${id}\nพบใน ${dup.id}\n${dup.detail||''}`);document.getElementById('fj-ref').focus();return;}
-    savedJobId=id;
-    const deletedJob=jobs.find(j=>normalizePR(j.id)===normalizePR(id)&&isDeletedRecord(j));
+    const deletedJob=isAuto?null:jobs.find(j=>normalizePR(j.id)===normalizePR(id)&&isDeletedRecord(j));
     if(deletedJob){
       before=clonePlain(deletedJob);
       delete deletedJob.deletedAt;delete deletedJob.deletedBy;delete deletedJob.deletedDeviceId;delete deletedJob.deleted_at;
@@ -2986,10 +3083,13 @@ function saveJob(){
       action='restore_job_from_soft_delete';
     }else{
       const row={id,...data,assignedAt:todayISO(),partC:0,partR:0,fuel:0,report:'',isNew:true,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()};
+      if(isAuto){const res=await reserveNumberedRow('jobs','PR',row);id=res.id;}
       jobs.unshift(row);
       after=clonePlain(row);
     }
+    savedJobId=id;
     if(id&&!prValues.includes(id))prValues.push(id);
+    if(isAuto)jCnt=Math.max(Number(jCnt)||1,(numFromId(id,'PR')||0)+1);
   }
   const openedFromAdminId=pendingJobFromAdminId;
   if(openedFromAdminId&&savedJobId){
@@ -3009,7 +3109,7 @@ function saveJob(){
   saveState();
   writeAuditLog(action,'job',savedJobId,before,patchFromDiff(before||{},after||{}),after);
 }
-function editJob(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;closeM('m-detail');fillSelects();editJobId=id;document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
+function editJob(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;closeM('m-detail');fillSelects();editJobId=id;captureEditBaseline('jobs',id,j);document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
 function deleteJob(id){
   const key=normalizePR(id);
   const dupCount=liveJobs().filter(j=>normalizePR(j.id)===key).length;
@@ -5464,8 +5564,9 @@ async function runDailyBackupIfNeeded(){
 }
 function clearRptFilter(){rptSearch='';rptDateFilter='';rptMonthFilter='';rptFilter='ทั้งหมด';rptReviewFilter='ทั้งหมด';renderReports();saveUIState();}
 let remoteRefreshTimer=null, remoteRefreshRunning=false;
-const REMOTE_AUTO_REFRESH_ENABLED=false;
+const REMOTE_AUTO_REFRESH_ENABLED=true;
 function canAutoRefreshRemote(){
+  // ไม่รีเฟรชตอนเปิด modal (กันรบกวนการแก้ไข), ตอนมีงานค้างบันทึก (กันทับงานที่ยังไม่ขึ้น server), หรือยังไม่ hydrate
   return REMOTE_AUTO_REFRESH_ENABLED && isHydrated && !hasUnsyncedLocalChanges && !document.querySelector('.modal-overlay.open');
 }
 async function refreshRemoteIfIdle(){
@@ -5474,6 +5575,9 @@ async function refreshRemoteIfIdle(){
   try{
     await loadState({silent:true});
     ensureMeta();
+    // รีเฟรชข้อมูลบัญชี/สต็อกที่โหลดไว้แล้ว เพื่อให้หน้าบิลขาย/บิลซื้อ/สต็อกอัปเดตตามเครื่องอื่นด้วย
+    if(typeof accountingLoaded!=='undefined'&&accountingLoaded){try{await ensureAccountingLoaded(true);}catch(e){}}
+    if(typeof stockLoaded!=='undefined'&&stockLoaded){try{await ensureStockLoaded(true);}catch(e){}}
     cacheFastState();
     fillSelects();
     refreshAfterDataChange();
@@ -5488,6 +5592,7 @@ function startRemoteRefresh(){
   if(remoteRefreshTimer)return;
   remoteRefreshTimer=setInterval(refreshRemoteIfIdle,30000);
   window.addEventListener('focus',()=>setTimeout(refreshRemoteIfIdle,400));
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(refreshRemoteIfIdle,400);});
 }
 async function initApp(){
   initAppVersion();
