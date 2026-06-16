@@ -1331,7 +1331,17 @@ function statusBadge(item,status){
 }
 // ===== ระดับงาน (Level) จากใบ PR/work order =====
 function parseLevelValue(v){const m=String(v||'').match(/(?:level\s*)?\b([1-3])\b/i);return m?m[1]:'';}
-function jobLevel(item){if(!item)return '';return String(item.level||'').trim()||parseLevelValue(item.pri||item.priority||'');}
+function jobLevel(item){
+  if(!item)return '';
+  const own=String(item.level||'').trim()||parseLevelValue(item.pri||item.priority||'');
+  if(own)return own;
+  // งานเดิมยังไม่มีค่า level ในตัว → ดึงจากงานแอดมิน (ใบ work order) ที่ผูก PR เดียวกัน
+  if(item.id&&Array.isArray(adminTasks)){
+    const t=adminTasks.find(t=>t.jobId&&normalizePR(t.jobId)===normalizePR(item.id)&&!isDeletedRecord(t));
+    if(t)return parseLevelValue(t.level||t.pri||'');
+  }
+  return '';
+}
 function isLevel1(item){return jobLevel(item)==='1';}
 function level1Badge(item){return isLevel1(item)?'<span class="urgent-pill" title="งานเร่งด่วนระดับ 1 จากใบ PR">⚠ URGENT LEVEL-1</span>':'';}
 function statusSelectColor(item,status,kind='job'){
@@ -1743,6 +1753,20 @@ async function sbFetchAll(table,queryBase){
   }
   return all;
 }
+// ตารางเสริม (phase 3-5) ที่อาจยังไม่ถูกสร้าง — จำว่าตารางไหนยังไม่มี จะได้ไม่ยิงซ้ำทุกรอบ auto-refresh (ลด error 400 + เร็วขึ้น)
+const knownMissingTables=new Set();
+async function sbFetchAllOptional(table,queryBase){
+  if(knownMissingTables.has(table))return [];
+  try{return await sbFetchAll(table,queryBase);}
+  catch(e){
+    const msg=e?.message||String(e);
+    if(/find the table|does not exist|42P01|PGRST205|schema cache|relation/i.test(msg)){
+      knownMissingTables.add(table);
+      console.warn(`[skip] ตาราง ${table} ยังไม่ถูกสร้าง — ข้ามจนกว่าจะรัน migration แล้วรีโหลด`);
+    }
+    return [];
+  }
+}
 function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,jCnt,aCnt,lastDataUpdatedAt,masterSplit:masterCollectionsPersisted};}
 function lightWorkOrderDoc(d){
   const x={...d};
@@ -1830,7 +1854,7 @@ async function loadTechnicianReportTables(){
 }
 async function loadSplitState(){
   if(!SPLIT_TABLES_ENABLED)return false;
-  const masterFetch=c=>sbFetchAll(c.table,'?select=id,data,updated_at').catch(()=>null);
+  const masterFetch=c=>knownMissingTables.has(c.table)?Promise.resolve(null):sbFetchAll(c.table,'?select=id,data,updated_at').catch(e=>{const m=e?.message||'';if(/find the table|does not exist|42P01|PGRST205|schema cache|relation/i.test(m)){knownMissingTables.add(c.table);console.warn(`[skip] ตาราง ${c.table} ยังไม่ถูกสร้าง — รัน migration phase 4 แล้วรีโหลด`);}return null;});
   const [jobRows,adminRows,metaRows,...masterResults]=await Promise.all([
     sbFetchAll('jobs','?select=id,data,updated_at&order=updated_at.desc'),
     sbFetchAll('admin_tasks','?select=id,data,updated_at&order=updated_at.desc'),
@@ -3031,7 +3055,7 @@ async function copyTechnicianLink(id){
   try{shortUrl=await getOrCreateTechShortLink(j);}catch(e){console.warn('Short link create failed',e);}
   const fullUrl=new URL(technicianFormUrl(id),location.href).href;
   const url=shortUrl||fullUrl;
-  const text=`🔧 งานช่าง ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nลิงค์ใบงาน:\n${url}`;
+  const text=`🔧 งานช่าง ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nกรอกฟอร์มงานช่างที่ลิงก์นี้:\n${url}`;
   try{await navigator.clipboard.writeText(text);alert('คัดลอกฟอร์มลิงก์ช่างแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){prompt('คัดลอกข้อความนี้',text);}
 }
 function openDet(id){
@@ -3427,7 +3451,7 @@ async function ensureAccountingLoaded(force=false){
       sbFetchAll('job_cost_items','?select=*&status=eq.active&order=created_at.desc'),
       sbFetchAll('sales_invoices','?select=*&status=eq.active&order=invoice_date.desc'),
       sbFetchAll('sales_invoice_items','?select=*&status=eq.active&order=created_at.desc').catch(e=>{console.warn('Sales item table not ready',e);return [];}),
-      sbFetchAll('master_price_items','?select=*&is_active=eq.true&order=category.asc,item_name.asc').catch(e=>{console.warn('Master price table not ready (รัน migration phase 3 ก่อน)',e);return [];})
+      sbFetchAllOptional('master_price_items','?select=*&is_active=eq.true&order=category.asc,item_name.asc')
     ]);
     purchaseInvoices=purRows||[];
     purchaseItems=itemRows||[];
@@ -5607,9 +5631,10 @@ async function refreshRemoteIfIdle(){
   try{
     await loadState({silent:true});
     ensureMeta();
-    // รีเฟรชข้อมูลบัญชี/สต็อกที่โหลดไว้แล้ว เพื่อให้หน้าบิลขาย/บิลซื้อ/สต็อกอัปเดตตามเครื่องอื่นด้วย
-    if(typeof accountingLoaded!=='undefined'&&accountingLoaded){try{await ensureAccountingLoaded(true);}catch(e){}}
-    if(typeof stockLoaded!=='undefined'&&stockLoaded){try{await ensureStockLoaded(true);}catch(e){}}
+    // รีเฟรชบัญชี/สต็อกเฉพาะตอนกำลังดูหน้านั้นจริง (ไม่ดึงทุกรอบทุกหน้า เพื่อไม่ให้หน่วง)
+    const active=document.querySelector('.page.active')?.id||'';
+    if(accountingLoaded&&/sales-tax|purchase-tax|finance|documents/.test(active)){try{await ensureAccountingLoaded(true);}catch(e){}}
+    if(stockLoaded&&/stock/.test(active)){try{await ensureStockLoaded(true);}catch(e){}}
     cacheFastState();
     fillSelects();
     refreshAfterDataChange();
