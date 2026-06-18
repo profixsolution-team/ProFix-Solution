@@ -87,16 +87,22 @@ textarea{resize:vertical;min-height:80px;}
     <div style="font-weight:700;font-size:18px;margin-bottom:8px;" id="error-title">ไม่พบงานนี้</div>
     <div style="color:var(--text2);font-size:14px;" id="error-msg">ลิงก์อาจไม่ถูกต้อง หรือหมดอายุแล้ว กรุณาติดต่อแอดมิน</div>
     <div style="margin-top:16px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="retryLoadJob()" style="width:auto;padding:0 16px;">🔄 ลองอีกครั้ง</button>
       <input id="manual-job" placeholder="กรอก PR เช่น PR-001" onkeydown="if(event.key==='Enter')openManualJob()" style="width:min(100%,220px);height:44px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);padding:0 12px;font-size:15px;font-weight:700;text-align:center;">
-      <button class="btn btn-primary" onclick="openManualJob()" style="width:auto;padding:0 16px;">เปิดงาน</button>
+      <button class="btn btn-ghost" onclick="openManualJob()" style="width:auto;padding:0 16px;">เปิดงาน</button>
     </div>
   </div>
 
   <!-- ALREADY SUBMITTED -->
   <div id="state-done" class="msg-box hidden">
     <div class="ic">✅</div>
-    <div style="font-weight:700;font-size:18px;margin-bottom:8px;">ส่งงานนี้แล้ว</div>
-    <div style="color:var(--text2);font-size:14px;">งานนี้ถูกส่งเรียบร้อยแล้ว รอแอดมินตรวจสอบ</div>
+    <div style="font-weight:700;font-size:18px;margin-bottom:6px;">งานนี้ส่งรายงานแล้ว</div>
+    <div class="job-id" id="done-job-id" style="margin:6px 0;">—</div>
+    <div style="color:var(--text2);font-size:14px;" id="done-job-sub">—</div>
+    <div style="color:var(--text2);font-size:13px;margin-top:10px;">ถ้าต้องแก้ไขหรือส่งข้อมูลเพิ่มเติม กดปุ่มด้านล่างเพื่อเปิดฟอร์มอีกครั้ง</div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="reopenSubmittedForm()" style="width:auto;padding:0 18px;">📝 แก้ไข / ส่งรายงานเพิ่มเติม</button>
+    </div>
   </div>
 
   <!-- FORM STATE -->
@@ -295,30 +301,53 @@ async function loadJob(){
   if(!JOB_ID){ showError('ไม่พบเลขงาน','ลิงก์ไม่ถูกต้อง กรุณาติดต่อแอดมิน'); return; }
   try{
     const job = await loadJobRecord(JOB_ID);
-    if(!job){ showError('ไม่พบงานนี้','ลิงก์อาจหมดอายุ หรือยังไม่มีงานนี้ในระบบหลัก'); return; }
-    // ถ้าส่งแล้ว
-    if(job.status === 'ช่างส่งงานแล้ว' || job.status === 'แอดมินตรวจแล้ว' || job.status === 'ปิดงานสมบูรณ์' || job.status === 'ปิดงาน'){
+    if(!job){ showError('ไม่พบงานนี้',`ค้นหา PR: ${JOB_ID} แล้วไม่พบในระบบหลัก — กด "ลองอีกครั้ง" หรือกรอก PR ใหม่`); return; }
+    jobData = job; // เก็บไว้ก่อนเสมอ เผื่อกดเปิดฟอร์มซ้ำจากหน้า "ส่งแล้ว"
+    // สถานะจริงล่าสุดยึดจาก technician_reports (เหมือน tracker) กัน jobs.data.status ค้างไม่ตรงกัน
+    const latest = await loadLatestReportState(job.id || JOB_ID);
+    const submitted = latest
+      ? (latest.is_draft === false)
+      : ['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','ปิดงานสมบูรณ์','ปิดงาน'].includes(job.status);
+    const needsFix = (latest && latest.review_status === 'ต้องแก้ไข') || job.status === 'ต้องแก้ไข';
+    const realStatus = latest ? (latest.is_draft ? 'ช่างบันทึกร่าง' : (latest.status || job.status)) : job.status;
+    // ส่งแล้วและไม่ได้ถูกตีกลับ → หน้าสรุป (กดกลับไปแก้ได้) ; ไม่งั้น (ร่าง/ต้องแก้ไข/ยังไม่ทำ) → เปิดฟอร์ม
+    if(submitted && !needsFix){
       document.getElementById('state-loading').classList.add('hidden');
+      document.getElementById('done-job-id').textContent = job.id || JOB_ID;
+      document.getElementById('done-job-sub').textContent = `${job.client||'—'} · ${job.branch||'—'} · สถานะ: ${realStatus||'—'}`;
       document.getElementById('state-done').classList.remove('hidden');
       return;
     }
-    jobData = job;
     showForm();
   }catch(e){ showError('เกิดข้อผิดพลาด', e.message); }
 }
 
+// ดึงสถานะรายงานช่างฉบับล่าสุดจาก technician_reports (report_id = <normId>:latest มีตัวเดียวต่องาน)
+async function loadLatestReportState(jobId){
+  try{
+    const reportId = `${normJobId(jobId)}:latest`;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/technician_reports?report_id=eq.${encodeURIComponent(reportId)}&select=report_id,job_id,is_draft,status,review_status,submitted_at,draft_saved_at,updated_at&limit=1`, { headers: sbHeaders() });
+    if(r.ok){ const rows = await r.json(); if(rows?.[0]) return rows[0]; }
+  }catch(e){ console.warn('latest report state fetch failed', e); }
+  return null;
+}
 async function loadJobRecord(jobId){
   const cleanJobId = String(jobId||'').trim();
-  try{
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(cleanJobId)}&select=id,data`, { headers: sbHeaders() });
-    if(r.ok){
-      const rows = await r.json();
-      if(rows?.[0]?.data){
-        jobStorageMode = 'split';
-        return rows[0].data;
+  // ลองหาในตาราง jobs แบบ exact match — retry กัน fetch พลาดชั่วคราว (กันขึ้น "ไม่พบงาน" ทั้งที่งานมีจริง)
+  for(let attempt=0; attempt<2; attempt++){
+    try{
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(cleanJobId)}&select=id,data`, { headers: sbHeaders() });
+      if(r.ok){
+        const rows = await r.json();
+        if(rows?.[0]?.data){
+          jobStorageMode = 'split';
+          return rows[0].data;
+        }
+        break; // เชื่อมต่อได้แต่ไม่มีแถว → ไปลองแบบ case-insensitive ต่อ
       }
-    }
-  }catch(e){ console.warn('Split job load failed, falling back to app_state', e); }
+    }catch(e){ console.warn('Split job load attempt failed', e); }
+    await new Promise(res=>setTimeout(res, 500)); // หน่วงก่อน retry
+  }
   try{
     const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=ilike.${encodeURIComponent(cleanJobId)}&select=id,data`, { headers: sbHeaders() });
     if(r.ok){
@@ -330,6 +359,21 @@ async function loadJobRecord(jobId){
       }
     }
   }catch(e){ console.warn('Split case-insensitive job load failed, falling back to app_state', e); }
+  // เผื่อ id ในลิงก์ต่างรูปแบบเล็กน้อย (ขีด/ช่องว่าง/ตัวพิมพ์ เช่น PR402749 ↔ PR-402749) — ค้นด้วยเลขแล้วจับคู่แบบ normalize
+  try{
+    const digits = (cleanJobId.match(/\d+/g) || []).sort((a,b)=>b.length-a.length)[0] || '';
+    if(digits.length >= 3){
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=ilike.*${encodeURIComponent(digits)}*&select=id,data`, { headers: sbHeaders() });
+      if(r.ok){
+        const rows = await r.json();
+        const row = rows.find(x=>sameJobId(x.id, cleanJobId)) || (rows.length === 1 ? rows[0] : null);
+        if(row?.data){
+          jobStorageMode = 'split';
+          return row.data;
+        }
+      }
+    }
+  }catch(e){ console.warn('Split fuzzy job load failed, falling back to app_state', e); }
   try{
     const rr = await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_get_job_from_app_state`, {
       method: 'POST',
@@ -626,8 +670,20 @@ function showError(title, msg){
   document.getElementById('error-title').textContent = title;
   document.getElementById('error-msg').textContent = msg;
 }
+// เปิดฟอร์มอีกครั้งจากหน้า "ส่งแล้ว" (กรณีต้องแก้ไข/ส่งรอบเพิ่ม) — prefill ข้อมูลรอบล่าสุดให้
+function reopenSubmittedForm(){
+  if(!jobData)return;
+  document.getElementById('state-done').classList.add('hidden');
+  showForm();
+}
+// ลองโหลดงานใหม่ (กรณี fetch พลาดชั่วคราว)
+function retryLoadJob(){
+  document.getElementById('state-error').classList.add('hidden');
+  document.getElementById('state-loading').classList.remove('hidden');
+  loadJob();
+}
 
-function showForm(){
+async function showForm(){
   document.getElementById('state-loading').classList.add('hidden');
   document.getElementById('state-form').classList.remove('hidden');
   document.getElementById('j-id').textContent = jobData.id;
@@ -662,9 +718,29 @@ function showForm(){
   oldDocumentImages.forEach(im=>{
     photos.documents.push({id:im.id||('old-doc-'+Math.random().toString(36).slice(2)),existing:true,uploadedMeta:im,dataUrl:im.url,url:im.url,status:'ready',width:im.width||0,height:im.height||0,fileKey:im.name||im.url});
   });
+  // โหลดรูปเดิมจาก technician_report_images (รูปที่อัปไว้รอบก่อน/ฉบับร่าง) — job data เก็บแค่จำนวน ไม่ได้เก็บรูปจริง
+  await loadExistingPhotosIntoForm(jobData.id || JOB_ID);
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
   renderThumbs('documents');
   toggleQuoteMode();
+}
+// ดึงรูปที่อัปไว้แล้วจากตาราง technician_report_images มาแสดงในฟอร์ม (ช่างจะได้เห็นว่าอัปอะไรไปแล้ว)
+async function loadExistingPhotosIntoForm(jobId){
+  try{
+    const reportId = `${normJobId(jobId)}:latest`;
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/technician_report_images?report_id=eq.${encodeURIComponent(reportId)}&select=id,category,url,data&order=updated_at.asc`, { headers: sbHeaders() });
+    if(!r.ok) return;
+    const rows = await r.json();
+    rows.forEach(row=>{
+      const im = row.data || {};
+      const cat = row.category || im.category || (im.documentOnly ? 'documents' : 'before');
+      if(!photos[cat]) return;
+      const url = row.url || im.url || '';
+      if(!url) return;
+      if(photos[cat].some(p=>(p.url||p.fileKey)===url)) return; // กันซ้ำกับรูปที่มีอยู่แล้ว
+      photos[cat].push({ id: row.id || im.id || ('old-'+Math.random().toString(36).slice(2)), existing:true, uploadedMeta:im, dataUrl:url, url, status:'ready', width:im.width||0, height:im.height||0, fileKey: im.name || url });
+    });
+  }catch(e){ console.warn('load existing photos failed', e); }
 }
 
 // ============================================================
