@@ -1425,14 +1425,15 @@ let splitSaveHashes={};
 let splitRowHashes={jobs:{},adminTasks:{},workOrders:{},documents:{},parts:{}};
 let splitKnownIds={jobs:new Set(),adminTasks:new Set(),workOrders:new Set(),documents:new Set(),parts:new Set()};
 // Master data ที่แยกออกจากก้อน system_data เป็นตารางแยกราย row (phase 4) — UI ยังใช้ array เดิม เปลี่ยนแค่ชั้น persistence
+// ใช้ prefix profix_ กันชื่อชนกับตารางเดิมในฐานข้อมูล (clients/pricing/suppliers/teams/branches มีอยู่แล้วคนละสคีมา)
 const MASTER_COLLECTIONS=[
-  {key:'clients',     table:'clients',        prefix:'CLT', ref:()=>clients,      keyOf:r=>r.id||r.name},
-  {key:'pricing',     table:'pricing',        prefix:'PRC', ref:()=>pricing,      keyOf:r=>`${r.client||''}|${r.type||''}`},
-  {key:'suppliers',   table:'suppliers',      prefix:'SUP', ref:()=>suppliers,    keyOf:r=>r.name},
-  {key:'teams',       table:'teams',          prefix:'TEAM',ref:()=>teams,        keyOf:r=>r.name},
-  {key:'teamPricing', table:'team_pricing',   prefix:'TMP', ref:()=>teamPricing,  keyOf:r=>`${r.team||''}|${r.type||''}`},
-  {key:'branches',    table:'branches',       prefix:'BRN', ref:()=>branches,     keyOf:r=>r.id||r.name},
-  {key:'fixedExpenses',table:'fixed_expenses',prefix:'FX',  ref:()=>fixedExpenses,keyOf:r=>`${r.name||''}|${r.type||''}|${r.amount||''}`},
+  {key:'clients',     table:'profix_clients',       prefix:'CLT', ref:()=>clients,      keyOf:r=>r.id||r.name},
+  {key:'pricing',     table:'profix_pricing',       prefix:'PRC', ref:()=>pricing,      keyOf:r=>`${r.client||''}|${r.type||''}`},
+  {key:'suppliers',   table:'profix_suppliers',     prefix:'SUP', ref:()=>suppliers,    keyOf:r=>r.name},
+  {key:'teams',       table:'profix_teams',         prefix:'TEAM',ref:()=>teams,        keyOf:r=>r.name},
+  {key:'teamPricing', table:'profix_team_pricing',  prefix:'TMP', ref:()=>teamPricing,  keyOf:r=>`${r.team||''}|${r.type||''}`},
+  {key:'branches',    table:'profix_branches',      prefix:'BRN', ref:()=>branches,     keyOf:r=>r.id||r.name},
+  {key:'fixedExpenses',table:'profix_fixed_expenses',prefix:'FX', ref:()=>fixedExpenses,keyOf:r=>`${r.name||''}|${r.type||''}|${r.amount||''}`},
 ];
 MASTER_COLLECTIONS.forEach(c=>{splitRowHashes[c.key]={};splitKnownIds[c.key]=new Set();});
 let masterCollectionsPersisted=false; // true เมื่อ master tables ถูก seed แล้ว → ถือว่าตารางแยก row เป็นแหล่งข้อมูลจริง (ไม่ย้อนไปอ่าน system_data)
@@ -2572,7 +2573,7 @@ async function extractImageText(file,kind){
     await worker.terminate();
   }
 }
-async function extractPdfText(file){
+async function extractPdfText(file,kind){
   const lib=await ensurePdfJs();
   const buf=await file.arrayBuffer();
   const pdf=await lib.getDocument({data:buf}).promise;
@@ -2590,7 +2591,37 @@ async function extractPdfText(file){
     });
     pages.push(lines.sort((a,b)=>b.y-a.y).map(line=>line.items.sort((a,b)=>(a.transform?.[4]||0)-(b.transform?.[4]||0)).map(item=>item.str).join(' ')).join('\n'));
   }
-  return normalizePdfText(pages.join('\n').replace(/[ \t]+/g,' ').normalize('NFKC')).trim();
+  let text=normalizePdfText(pages.join('\n').replace(/[ \t]+/g,' ').normalize('NFKC')).trim();
+  // PDF ที่สแกนมา (ภาพล้วน) จะไม่มี text layer → ได้ข้อความน้อยมาก → OCR หน้ากระดาษด้วย Tesseract
+  if(text.replace(/\s/g,'').length<25){
+    try{
+      if(kind)setAccountingStatus(kind,'ไฟล์นี้เป็น PDF สแกน กำลัง OCR...','warn');
+      const ocr=await ocrPdfViaCanvas(pdf,maxPages,kind);
+      if(ocr&&ocr.replace(/\s/g,'').length>text.replace(/\s/g,'').length)text=ocr;
+    }catch(e){console.warn('PDF OCR fallback failed',e);}
+  }
+  return text;
+}
+// แปลงหน้า PDF เป็นรูปแล้ว OCR (สำหรับ PDF สแกนที่ไม่มี text layer)
+async function ocrPdfViaCanvas(pdf,maxPages,kind){
+  const Tesseract=await ensureTesseractJs();
+  const worker=await Tesseract.createWorker('tha+eng',undefined,{logger:m=>{
+    if(m.status==='recognizing text'&&kind)setAccountingStatus(kind,`กำลัง OCR ไฟล์สแกน ${Math.round((m.progress||0)*100)}%`,'warn');
+  }});
+  try{
+    const out=[];
+    for(let i=1;i<=maxPages;i++){
+      const page=await pdf.getPage(i);
+      const viewport=page.getViewport({scale:2});
+      const canvas=document.createElement('canvas');
+      canvas.width=viewport.width;canvas.height=viewport.height;
+      const ctx=canvas.getContext('2d');
+      await page.render({canvasContext:ctx,viewport}).promise;
+      const res=await worker.recognize(canvas);
+      out.push(res?.data?.text||'');
+    }
+    return normalizePdfText(out.join('\n')).trim();
+  }finally{await worker.terminate();}
 }
 function normalizePdfText(v){
   return String(v||'')
@@ -3029,17 +3060,17 @@ async function openTechnicianForm(id){
 // ===== ลิงก์ย่อบน Supabase (แชร์ง่ายเหมือนแชร์ลิงก์ TikTok) =====
 function genShortCode(len=6){const a='abcdefghjkmnpqrstuvwxyz23456789';let s='';for(let i=0;i<len;i++)s+=a[Math.floor(Math.random()*a.length)];return s;}
 function shortLinkUrl(code){return new URL('go.html',location.href).href+'?c='+encodeURIComponent(code);}
-async function getOrCreateTechShortLink(job){
+async function getOrCreateShortLink(job,docType,targetFile){
   // เป้าหมายแบบคงที่ (ไม่มี rev) เพื่อให้ลิงก์ย่อใช้ได้ถาวรต่อ 1 งาน
-  const target=new URL('technician-submit.html?job='+encodeURIComponent(job.id),location.href).href;
+  const target=new URL(`${targetFile}?job=`+encodeURIComponent(job.id),location.href).href;
   try{
-    const r=await fetch(splitUrl('short_links',`?job_id=eq.${encodeURIComponent(job.id)}&doc_type=eq.tech&select=code&limit=1`),{headers:sbHeaders()});
+    const r=await fetch(splitUrl('short_links',`?job_id=eq.${encodeURIComponent(job.id)}&doc_type=eq.${encodeURIComponent(docType)}&select=code&limit=1`),{headers:sbHeaders()});
     if(r.ok){const rows=await r.json();if(rows?.[0]?.code)return shortLinkUrl(rows[0].code);}
   }catch(e){/* ตารางอาจยังไม่ถูกสร้าง → ใช้ลิงก์เต็ม */}
   for(let i=0;i<5;i++){
     const code=genShortCode();
     try{
-      const r=await fetch(splitUrl('short_links'),{method:'POST',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify({code,target,job_id:job.id,doc_type:'tech',created_by:getActorName()})});
+      const r=await fetch(splitUrl('short_links'),{method:'POST',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify({code,target,job_id:job.id,doc_type:docType,created_by:getActorName()})});
       if(r.ok)return shortLinkUrl(code);
       const t=await r.text().catch(()=>'');
       if(/duplicate|23505/i.test(t))continue; // โค้ดชน → สุ่มใหม่
@@ -3048,6 +3079,7 @@ async function getOrCreateTechShortLink(job){
   }
   return null; // สร้างไม่ได้ → ให้ผู้เรียกใช้ลิงก์เต็มแทน
 }
+async function getOrCreateTechShortLink(job){return getOrCreateShortLink(job,'tech','technician-submit.html');}
 async function copyTechnicianLink(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||jobs.find(x=>x.id===id)||{id,branch:''};
   try{await saveStateNow(false);}catch(e){console.warn('Copy technician link before remote save completed',e);}
@@ -3058,12 +3090,27 @@ async function copyTechnicianLink(id){
   const text=`🔧 งานช่าง ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nกรอกฟอร์มงานช่างที่ลิงก์นี้:\n${url}`;
   try{await navigator.clipboard.writeText(text);alert('คัดลอกฟอร์มลิงก์ช่างแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){prompt('คัดลอกข้อความนี้',text);}
 }
+// ===== หน้าแจ้งเข้าซ่อม / เซ็นออนไลน์ (checkin.html) — แยกอิสระจากฟอร์มช่าง =====
+function checkinFormUrl(id){return `checkin.html?job=${encodeURIComponent(id)}`;}
+function openCheckinForm(id){
+  const url=new URL(checkinFormUrl(id),location.href).href;
+  window.open(url,'_blank');
+}
+async function copyCheckinLink(id){
+  const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||jobs.find(x=>x.id===id)||{id,branch:''};
+  let shortUrl=null;
+  try{shortUrl=await getOrCreateShortLink(j,'checkin','checkin.html');}catch(e){console.warn('Checkin short link create failed',e);}
+  const fullUrl=new URL(checkinFormUrl(id),location.href).href;
+  const url=shortUrl||fullUrl;
+  const text=`📝 แจ้งเข้าซ่อม ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nยืนยันเข้างาน + เซ็นชื่อที่ลิงก์นี้:\n${url}`;
+  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งเข้าซ่อมแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){prompt('คัดลอกข้อความนี้',text);}
+}
 function openDet(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   currentDetailJobId=id;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
-  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
+  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
   ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
   openM('m-detail');
 }
@@ -3390,15 +3437,17 @@ async function handleAccountingFile(kind,file){
     accountingAttachments[kind]={file,dataUrl};
     updateAttachmentPreview(kind,file,dataUrl);
     if(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')){
-      const text=await extractPdfText(file);
+      const text=await extractPdfText(file,kind);
       const parsed=parseAccountingDocText(text);
       applyAccountingParsedData(kind,parsed);
-      setAccountingStatus(kind,'อ่าน PDF แล้ว ลองตรวจตัวเลข/วันที่ก่อนบันทึก','ok');
+      if(text.replace(/\s/g,'').length<10)setAccountingStatus(kind,'อ่านไฟล์ไม่ได้ข้อความ (อาจเป็นไฟล์สแกนคุณภาพต่ำ) กรุณากรอกข้อมูลเอง','err');
+      else setAccountingStatus(kind,'อ่าน PDF แล้ว ลองตรวจตัวเลข/วันที่ก่อนบันทึก','ok');
     }else if(file.type?.startsWith('image/')){
       const text=await extractImageText(file,kind);
       const parsed=parseAccountingDocText(text);
       applyAccountingParsedData(kind,parsed);
-      setAccountingStatus(kind,'สแกนรูปแล้ว กรุณาตรวจข้อมูลก่อนบันทึก','ok');
+      if(text.replace(/\s/g,'').length<10)setAccountingStatus(kind,'OCR ไม่พบข้อความในรูป กรุณาถ่าย/สแกนให้ชัดขึ้น หรือกรอกเอง','err');
+      else setAccountingStatus(kind,'สแกนรูปแล้ว กรุณาตรวจข้อมูลก่อนบันทึก','ok');
     }else{
       setAccountingStatus(kind,'แนบไฟล์แล้ว กรุณาตรวจและกรอกข้อมูลก่อนบันทึก','warn');
     }
