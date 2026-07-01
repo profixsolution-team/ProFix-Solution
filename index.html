@@ -3091,6 +3091,47 @@ async function copyTechnicianLink(id){
   try{await navigator.clipboard.writeText(text);alert('คัดลอกฟอร์มลิงก์ช่างแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){prompt('คัดลอกข้อความนี้',text);}
 }
 // ===== หน้าแจ้งเข้าซ่อม / เซ็นออนไลน์ (checkin.html) — แยกอิสระจากฟอร์มช่าง =====
+async function openCheckinViewModal(id){
+  const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||{id,client:'',branch:''};
+  document.getElementById('ckv-sub').textContent=`${esc(j.id)} · ${esc(j.client||'-')} · ${esc(j.branch||'-')}`;
+  const body=document.getElementById('ckv-body');
+  body.innerHTML='<div class="text-box">กำลังโหลด...</div>';
+  openM('m-checkin-view');
+  let rows=[];
+  try{
+    rows=await sbFetchAll('job_checkins',`?job_id=eq.${encodeURIComponent(id)}&select=*&order=created_at.desc`);
+  }catch(e){
+    const msg=e?.message||String(e);
+    if(/find the table|does not exist|42P01|PGRST205|schema cache|relation/i.test(msg)){
+      body.innerHTML='<div class="text-box">ยังไม่มีตาราง job_checkins — รัน migration checkin_phase6_table.txt ใน Supabase ก่อน</div>';
+      return;
+    }
+    body.innerHTML='<div class="text-box">โหลดข้อมูลไม่สำเร็จ: '+esc(msg)+'</div>';
+    return;
+  }
+  if(!rows.length){
+    body.innerHTML=`<div class="empty"><div class="empty-icon">📝</div><div>ยังไม่มีข้อมูลแจ้งเข้าซ่อม / เซ็นยืนยันสำหรับ PR นี้</div></div>`;
+    return;
+  }
+  body.innerHTML=rows.map(r=>{
+    const types=(Array.isArray(r.job_type)?r.job_type:[]).map(t=>`<span class="chip">${esc(t)}</span>`).join(' ')||'-';
+    const doneTxt=r.date_done?`${esc(r.date_done)} ${esc(r.time_done||'')}`:'ยังไม่เสร็จ ณ ตอนเซ็น';
+    return `<div class="card" style="margin-bottom:12px;">
+      <div class="detail-grid mb12">
+        <div class="detail-item"><div class="detail-label">ประเภทงาน</div><div class="detail-val">${types}</div></div>
+        <div class="detail-item"><div class="detail-label">เวลาเข้า</div><div class="detail-val">${esc(r.date_in||'-')} ${esc(r.time_in||'')}</div></div>
+        <div class="detail-item"><div class="detail-label">เวลาเสร็จ</div><div class="detail-val">${doneTxt}</div></div>
+        <div class="detail-item"><div class="detail-label">บันทึกเมื่อ</div><div class="detail-val">${esc((r.created_at||'').replace('T',' ').slice(0,16))}</div></div>
+      </div>
+      ${r.reported_note?`<div class="form-group"><label>รายละเอียดที่แจ้งซ่อม</label><div class="text-box">${esc(r.reported_note)}</div></div>`:''}
+      ${r.note?`<div class="form-group"><label>หมายเหตุเพิ่มเติม</label><div class="text-box">${esc(r.note)}</div></div>`:''}
+      <div class="form-group" style="margin-bottom:0;">
+        <label>ลายเซ็นยืนยัน — ${esc(r.signer_name||'-')} (${esc(r.signer_role||'-')})</label>
+        ${r.signature_data?`<div style="background:#fff;border-radius:8px;padding:8px;border:1px solid var(--border);"><img src="${esc(r.signature_data)}" style="max-width:100%;height:auto;display:block;"></div>`:'<div class="text-box">ไม่มีลายเซ็น</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
 function checkinFormUrl(id){return `checkin.html?job=${encodeURIComponent(id)}`;}
 function openCheckinForm(id){
   const url=new URL(checkinFormUrl(id),location.href).href;
@@ -3110,7 +3151,7 @@ function openDet(id){
   currentDetailJobId=id;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
-  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
+  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-success" onclick="openCheckinViewModal('${j.id}')">เช็คข้อมูลแจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
   ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
   openM('m-detail');
 }
@@ -5817,6 +5858,25 @@ initApp();
       <button class="btn btn-ghost" onclick="returnReportForFix()">ส่งกลับแก้ไข</button>
       <button class="btn btn-success" onclick="approveReport()">อนุมัติรายงาน</button>
       <button class="btn btn-primary" onclick="saveReport()">✓ บันทึกรายงาน</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CHECKIN VIEWER (อ่านอย่างเดียว — ข้อมูลจากหน้า checkin.html ที่แยกอิสระ) -->
+<div class="modal-overlay" id="m-checkin-view">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">ประวัติแจ้งเข้าซ่อม / เซ็นยืนยัน</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;" id="ckv-sub"></div>
+      </div>
+      <button class="close-btn" onclick="closeM('m-checkin-view')">×</button>
+    </div>
+    <div class="modal-body" id="ckv-body">
+      <div class="text-box">กำลังโหลด...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeM('m-checkin-view')">ปิด</button>
     </div>
   </div>
 </div>
