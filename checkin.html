@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>แจ้งเข้าซ่อม — ProFix</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2358a6ff'/><text x='50' y='72' font-size='60' font-family='Arial' font-weight='bold' fill='%230d1117' text-anchor='middle'>P</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#1f2937;--surface3:#273344;--border:#30363d;--border2:#3d4754;--accent:#58a6ff;--accent-dim:#1a3a5c;--green:#3fb950;--green-dim:#1a3a1f;--yellow:#d29922;--yellow-dim:#3a2a0a;--red:#f85149;--red-dim:#3a0f0f;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--mono:"IBM Plex Mono",monospace;--sans:"Noto Sans Thai",sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;min-height:100vh;padding-bottom:40px;}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px;position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;}
+.logo-badge{width:32px;height:32px;border-radius:8px;background:var(--accent);color:#0d1117;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:18px;font-family:var(--mono);}
+.logo-txt{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--accent);letter-spacing:1px;}
+.logo-sub{font-size:11px;color:var(--text3);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:16px;}
+.job-head{background:linear-gradient(135deg,#1a2a3a,#161b22);border:1px solid var(--accent-dim);}
+.job-id{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--accent);}
+.job-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.meta-label{font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;}
+.meta-val{font-size:14px;font-weight:600;}
+.sec-title{font-weight:700;font-size:15px;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.sec-sub{font-size:12px;color:var(--text2);margin-bottom:14px;}
+label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600;}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-family:var(--sans);font-size:15px;outline:none;transition:border-color .15s;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:64px;}
+.form-group{margin-bottom:16px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:13px 20px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s;width:100%;}
+.btn-primary{background:var(--accent);color:#0d1117;}
+.btn-primary:active{transform:scale(.98);}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2);}
+.req-star{color:var(--red);}
+.type-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.type-chip{border:1px solid var(--border2);background:var(--bg);color:var(--text2);border-radius:20px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer;user-select:none;transition:all .15s;}
+.type-chip.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+.sig-wrap{border:1px solid var(--border2);border-radius:10px;background:#fff;position:relative;overflow:hidden;touch-action:none;}
+.sig-wrap canvas{display:block;width:100%;height:200px;touch-action:none;}
+.sig-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;pointer-events:none;}
+.sig-tools{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+.sig-hint{font-size:11px;color:var(--text3);}
+.readonly-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 13px;font-size:13px;color:var(--text2);white-space:pre-wrap;min-height:20px;}
+.msg-box{max-width:420px;margin:60px auto;text-align:center;padding:0 20px;}
+.msg-box .ic{font-size:48px;margin-bottom:16px;}
+.hidden{display:none !important;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(13,17,23,.92);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:20px;text-align:center;}
+.overlay.show{display:flex;}
+.big-spin{width:44px;height:44px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+.spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.2);border-top-color:#0d1117;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.summary-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.summary-row:last-child{border-bottom:0;}
+.summary-row .k{color:var(--text3);}
+.summary-row .v{font-weight:600;text-align:right;}
+</style>
+</head>
+<body>
+
+<div class="topbar wrap" style="max-width:100%;">
+  <div class="logo-badge">P</div>
+  <div>
+    <div class="logo-txt">PROFIX</div>
+    <div class="logo-sub">แจ้งเข้าซ่อม (ทดสอบ)</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- LOADING -->
+  <div id="state-loading" class="msg-box">
+    <div class="big-spin" style="margin:0 auto 16px;"></div>
+    <div style="color:var(--text2);">กำลังโหลดข้อมูลงาน...</div>
+  </div>
+
+  <!-- MANUAL JOB LOOKUP (no ?job= or not found) -->
+  <div id="state-manual" class="msg-box hidden">
+    <div class="ic">🔧</div>
+    <div style="font-weight:700;font-size:18px;margin-bottom:8px;" id="manual-title">ระบุเลขงาน</div>
+    <div style="color:var(--text2);font-size:14px;margin-bottom:16px;" id="manual-msg">กรอกเลข PR เพื่อดึงข้อมูลงาน หรือกรอกข้อมูลเองได้เลย</div>
+    <div style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;">
+      <input id="manual-job" placeholder="เช่น PR-001" onkeydown="if(event.key==='Enter')openManualJob()" style="width:min(100%,220px);height:44px;text-align:center;font-weight:700;">
+      <button class="btn btn-primary" onclick="openManualJob()" style="width:auto;padding:0 16px;">ค้นหา</button>
+    </div>
+    <div style="margin-top:14px;">
+      <button class="btn btn-ghost" onclick="skipToForm()" style="width:auto;padding:0 16px;">ไม่มีเลข PR — กรอกเอง</button>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="state-done" class="msg-box hidden">
+    <div class="ic">✅</div>
+    <div style="font-weight:700;font-size:20px;margin-bottom:6px;">ยืนยันการเข้างานแล้ว</div>
+    <div style="color:var(--text2);font-size:14px;margin-bottom:18px;">บันทึกข้อมูลและลายเซ็นเรียบร้อย</div>
+    <div class="card" style="text-align:left;" id="done-summary"></div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-ghost" onclick="location.reload()" style="width:auto;padding:0 16px;">แจ้งเข้าซ่อมงานใหม่</button>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div id="state-form" class="hidden">
+
+    <div class="card job-head">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div class="job-id" id="j-id">— ไม่ผูกกับ PR —</div>
+      </div>
+      <div class="job-meta">
+        <div><div class="meta-label">ลูกค้า</div><div class="meta-val" id="j-client">—</div></div>
+        <div><div class="meta-label">สาขา</div><div class="meta-val" id="j-branch">—</div></div>
+        <div><div class="meta-label">ทีมช่าง</div><div class="meta-val" id="j-team">—</div></div>
+        <div><div class="meta-label">วันนัด</div><div class="meta-val" id="j-date">—</div></div>
+      </div>
+      <div class="form-group" id="j-note-wrap" style="margin-top:14px;margin-bottom:0;">
+        <label>รายละเอียดที่แจ้งซ่อม (จากแอดมิน)</label>
+        <div class="readonly-box" id="j-note">—</div>
+      </div>
+    </div>
+
+    <div class="card" id="manual-fields" style="display:none;">
+      <div class="sec-title">📋 ข้อมูลงาน</div>
+      <div class="sec-sub">ไม่พบ PR ในระบบ กรุณากรอกข้อมูลเอง</div>
+      <div class="form-group"><label>PR / เลขงาน</label><input id="m-job-id" placeholder="เช่น PR-001"></div>
+      <div class="form-row">
+        <div class="form-group"><label>ลูกค้า</label><input id="m-client" placeholder="ชื่อลูกค้า"></div>
+        <div class="form-group"><label>สาขา</label><input id="m-branch" placeholder="ชื่อสาขา"></div>
+      </div>
+      <div class="form-group"><label>รายละเอียดที่แจ้งซ่อม</label><textarea id="m-note" placeholder="อาการ / สิ่งที่ลูกค้าแจ้ง"></textarea></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">🛠️ ประเภทงาน <span class="req-star">*</span></div>
+      <div class="sec-sub">แตะเลือกได้มากกว่า 1 ประเภท</div>
+      <div class="type-grid" id="type-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">🕐 เวลาเข้า-ออกหน้างาน</div>
+      <div class="sec-sub">ยืนยันช่วงเวลาที่เข้าปฏิบัติงาน</div>
+      <div class="form-row">
+        <div class="form-group"><label>วันที่เข้า <span class="req-star">*</span></label><input type="date" id="f-date-in"></div>
+        <div class="form-group"><label>เวลาเข้า <span class="req-star">*</span></label><input type="time" id="f-time-in" step="300"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);margin-bottom:14px;cursor:pointer;">
+        <input type="checkbox" id="f-done-toggle" style="width:auto;" onchange="toggleDoneFields()"> งานเสร็จแล้ว ณ ตอนนี้
+      </label>
+      <div class="form-row" id="done-fields" style="display:none;">
+        <div class="form-group"><label>วันที่เสร็จ</label><input type="date" id="f-date-done"></div>
+        <div class="form-group"><label>เวลาเสร็จ</label><input type="time" id="f-time-done" step="300"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">📝 หมายเหตุเพิ่มเติม</div>
+      <div class="sec-sub">ไม่บังคับ — ระบุสั้น ๆ ถ้ามี</div>
+      <div class="form-group" style="margin-bottom:0;"><textarea id="f-note" placeholder="เช่น รออะไหล่, นัดเข้าซ่อมรอบถัดไป ฯลฯ"></textarea></div>
+    </div>
+
+    <div class="card">
+      <div class="sec-title">✍️ ลายเซ็นยืนยัน <span class="req-star">*</span></div>
+      <div class="sec-sub">ให้ผู้แจ้ง/ลูกค้าเซ็นยืนยันการเข้างานบนหน้าจอ</div>
+      <div class="form-row">
+        <div class="form-group"><label>ชื่อผู้เซ็น <span class="req-star">*</span></label><input id="f-signer-name" placeholder="ชื่อ-นามสกุล"></div>
+        <div class="form-group">
+          <label>บทบาท</label>
+          <select id="f-signer-role">
+            <option value="ลูกค้า/ผู้แจ้ง">ลูกค้า/ผู้แจ้ง</option>
+            <option value="ผจก.สาขา">ผจก.สาขา</option>
+            <option value="ช่างผู้เข้างาน">ช่างผู้เข้างาน</option>
+            <option value="อื่นๆ">อื่นๆ</option>
+          </select>
+        </div>
+      </div>
+      <div class="sig-wrap" id="sig-wrap">
+        <canvas id="sig-canvas"></canvas>
+        <div class="sig-placeholder" id="sig-placeholder">แตะ/ลากนิ้วเพื่อเซ็นชื่อ</div>
+      </div>
+      <div class="sig-tools">
+        <div class="sig-hint">ใช้นิ้วหรือเมาส์วาดลายเซ็นด้านบน</div>
+        <button class="btn btn-ghost" type="button" onclick="clearSignature()" style="width:auto;padding:8px 14px;font-size:13px;">ล้างลายเซ็น</button>
+      </div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <button class="btn btn-primary" id="btn-submit" onclick="submitCheckin()">✓ ยืนยันการเข้างาน</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="big-spin"></div>
+  <div style="font-weight:700;">กำลังบันทึก...</div>
+</div>
+
+<script>
+// ============================================================
+// STANDALONE PAGE — แจ้งเข้าซ่อม / เซ็นยืนยันการเข้างาน
+// ไม่เชื่อมกับ technician-submit.html หรือ jobs.status ใด ๆ ทั้งสิ้น
+// อ่าน jobs table แบบ read-only (ถ้ามี ?job=) แล้วบันทึกลงตาราง job_checkins ของตัวเอง
+// ============================================================
+const SUPABASE_URL = 'https://cfikdkytopyqxvaytiks.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
+function sbHeaders(extra={}){ return { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer '+SUPABASE_ANON_KEY, 'Content-Type':'application/json', ...extra }; }
+function normId(v){ return String(v||'').trim().replace(/\s+/g,'').toUpperCase(); }
+
+const params = new URLSearchParams(location.search);
+let JOB_ID = params.get('job') || params.get('pr') || '';
+let jobRecord = null; // ข้อมูล job ที่อ่านมาโชว์เฉย ๆ (read-only)
+let manualMode = false;
+
+const JOB_TYPES = ['ตรวจเช็ก','ซ่อม','บำรุงรักษา (PM)','ติดตั้ง','เปลี่ยนอะไหล่','อื่นๆ'];
+let selectedTypes = new Set();
+
+function renderTypeGrid(){
+  const box = document.getElementById('type-grid');
+  box.innerHTML = JOB_TYPES.map(t=>`<div class="type-chip" data-t="${t}" onclick="toggleType('${t.replace(/'/g,"\\'")}')">${t}</div>`).join('');
+}
+function toggleType(t){
+  if(selectedTypes.has(t)) selectedTypes.delete(t); else selectedTypes.add(t);
+  [...document.querySelectorAll('.type-chip')].forEach(el=>el.classList.toggle('active', selectedTypes.has(el.dataset.t)));
+}
+function toggleDoneFields(){
+  document.getElementById('done-fields').style.display = document.getElementById('f-done-toggle').checked ? 'grid' : 'none';
+}
+
+// ---------- โหลดข้อมูลงาน (read-only, ค้นหาแบบยืดหยุ่นเหมือนฟอร์มช่าง) ----------
+async function findJobById(id){
+  const clean = String(id||'').trim();
+  if(!clean) return null;
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(clean)}&select=id,data`, { headers: sbHeaders() });
+    if(r.ok){ const rows = await r.json(); if(rows?.[0]?.data) return rows[0].data; }
+  }catch(e){ console.warn('exact lookup failed', e); }
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=ilike.${encodeURIComponent(clean)}&select=id,data`, { headers: sbHeaders() });
+    if(r.ok){ const rows = await r.json(); const row = rows.find(x=>normId(x.id)===normId(clean)); if(row?.data) return row.data; }
+  }catch(e){ console.warn('ilike lookup failed', e); }
+  try{
+    const digits = (clean.match(/\d+/g)||[]).sort((a,b)=>b.length-a.length)[0] || '';
+    if(digits.length >= 3){
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=ilike.*${encodeURIComponent(digits)}*&select=id,data`, { headers: sbHeaders() });
+      if(r.ok){
+        const rows = await r.json();
+        const row = rows.find(x=>normId(x.id)===normId(clean)) || (rows.length===1 ? rows[0] : null);
+        if(row?.data) return row.data;
+      }
+    }
+  }catch(e){ console.warn('fuzzy lookup failed', e); }
+  return null;
+}
+
+async function init(){
+  renderTypeGrid();
+  setupSignaturePad();
+  const now = new Date();
+  document.getElementById('f-date-in').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  document.getElementById('f-time-in').value = `${String(now.getHours()).padStart(2,'0')}:${String(Math.floor(now.getMinutes()/5)*5).padStart(2,'0')}`;
+
+  if(!JOB_ID){
+    document.getElementById('state-loading').classList.add('hidden');
+    document.getElementById('manual-title').textContent = 'ระบุเลขงาน';
+    document.getElementById('manual-msg').textContent = 'กรอกเลข PR เพื่อดึงข้อมูลงาน หรือกรอกข้อมูลเองได้เลย';
+    document.getElementById('state-manual').classList.remove('hidden');
+    return;
+  }
+  const job = await findJobById(JOB_ID);
+  if(!job){
+    document.getElementById('state-loading').classList.add('hidden');
+    document.getElementById('manual-title').textContent = 'ไม่พบงานนี้';
+    document.getElementById('manual-msg').textContent = `ค้นหา PR: ${JOB_ID} แล้วไม่พบ — ลองใหม่หรือกรอกข้อมูลเอง`;
+    document.getElementById('manual-job').value = JOB_ID;
+    document.getElementById('state-manual').classList.remove('hidden');
+    return;
+  }
+  jobRecord = job;
+  showFormFromJob(job);
+}
+
+function openManualJob(){
+  const v = document.getElementById('manual-job').value.trim();
+  if(!v){ alert('กรุณากรอกเลข PR'); return; }
+  location.href = `${location.pathname}?job=${encodeURIComponent(v)}`;
+}
+function skipToForm(){
+  manualMode = true;
+  document.getElementById('state-manual').classList.add('hidden');
+  document.getElementById('state-form').classList.remove('hidden');
+  document.getElementById('manual-fields').style.display = 'block';
+  document.getElementById('j-note-wrap').style.display = 'none';
+}
+
+function showFormFromJob(job){
+  document.getElementById('state-loading').classList.add('hidden');
+  document.getElementById('state-form').classList.remove('hidden');
+  document.getElementById('j-id').textContent = job.id || JOB_ID;
+  document.getElementById('j-client').textContent = job.client || '—';
+  document.getElementById('j-branch').textContent = job.branch || '—';
+  document.getElementById('j-team').textContent = job.team || '—';
+  document.getElementById('j-date').textContent = job.date || '—';
+  document.getElementById('j-note').textContent = job.note || 'ไม่มีรายละเอียดจากแอดมิน';
+  if(job.type && JOB_TYPES.includes(job.type)) toggleType(job.type);
+}
+
+// ---------- ลายเซ็น (canvas, รองรับนิ้ว/เมาส์) ----------
+let sigCtx, sigDrawing = false, sigHasStroke = false, sigLastPt = null;
+function setupSignaturePad(){
+  const canvas = document.getElementById('sig-canvas');
+  const wrap = document.getElementById('sig-wrap');
+  function resize(){
+    const rect = wrap.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    const prevData = sigHasStroke ? canvas.toDataURL() : null;
+    canvas.width = rect.width * ratio;
+    canvas.height = 200 * ratio;
+    sigCtx = canvas.getContext('2d');
+    sigCtx.scale(ratio, ratio);
+    sigCtx.lineWidth = 2.4;
+    sigCtx.lineCap = 'round';
+    sigCtx.lineJoin = 'round';
+    sigCtx.strokeStyle = '#111827';
+    if(prevData){
+      const img = new Image();
+      img.onload = ()=> sigCtx.drawImage(img, 0, 0, rect.width, 200);
+      img.src = prevData;
+    }
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  function getPt(e){
+    const rect = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+  }
+  function start(e){ e.preventDefault(); sigDrawing = true; sigLastPt = getPt(e); document.getElementById('sig-placeholder').style.display='none'; }
+  function move(e){
+    if(!sigDrawing) return;
+    e.preventDefault();
+    const pt = getPt(e);
+    sigCtx.beginPath();
+    sigCtx.moveTo(sigLastPt.x, sigLastPt.y);
+    sigCtx.lineTo(pt.x, pt.y);
+    sigCtx.stroke();
+    sigLastPt = pt;
+    sigHasStroke = true;
+  }
+  function end(){ sigDrawing = false; }
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive:false });
+  canvas.addEventListener('touchmove', move, { passive:false });
+  canvas.addEventListener('touchend', end);
+}
+function clearSignature(){
+  const canvas = document.getElementById('sig-canvas');
+  const rect = canvas.getBoundingClientRect();
+  sigCtx.clearRect(0, 0, rect.width, 200);
+  sigHasStroke = false;
+  document.getElementById('sig-placeholder').style.display = 'flex';
+}
+
+// ---------- บันทึก ----------
+function eventId(){ return 'CHK-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
+
+async function submitCheckin(){
+  if(!selectedTypes.size){ alert('กรุณาเลือกประเภทงานอย่างน้อย 1 ประเภท'); return; }
+  if(!document.getElementById('f-date-in').value || !document.getElementById('f-time-in').value){ alert('กรุณาระบุวันที่และเวลาเข้า'); return; }
+  const signerName = document.getElementById('f-signer-name').value.trim();
+  if(!signerName){ alert('กรุณากรอกชื่อผู้เซ็น'); document.getElementById('f-signer-name').focus(); return; }
+  if(!sigHasStroke){ alert('กรุณาเซ็นชื่อยืนยันก่อนบันทึก'); return; }
+
+  const jobId = manualMode ? (document.getElementById('m-job-id').value.trim() || '') : (jobRecord?.id || JOB_ID || '');
+  const client = manualMode ? document.getElementById('m-client').value.trim() : (jobRecord?.client || '');
+  const branch = manualMode ? document.getElementById('m-branch').value.trim() : (jobRecord?.branch || '');
+  const reportedNote = manualMode ? document.getElementById('m-note').value.trim() : (jobRecord?.note || '');
+
+  const doneToggled = document.getElementById('f-done-toggle').checked;
+  const row = {
+    id: eventId(),
+    job_id: jobId || null,
+    client_snapshot: client || null,
+    branch_snapshot: branch || null,
+    reported_note: reportedNote || null,
+    job_type: [...selectedTypes],
+    date_in: document.getElementById('f-date-in').value,
+    time_in: document.getElementById('f-time-in').value,
+    date_done: doneToggled ? (document.getElementById('f-date-done').value || null) : null,
+    time_done: doneToggled ? (document.getElementById('f-time-done').value || null) : null,
+    note: document.getElementById('f-note').value.trim() || null,
+    signer_name: signerName,
+    signer_role: document.getElementById('f-signer-role').value,
+    signature_data: document.getElementById('sig-canvas').toDataURL('image/png'),
+    source: 'checkin_page'
+  };
+
+  document.getElementById('overlay').classList.add('show');
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/job_checkins`, {
+      method: 'POST',
+      headers: sbHeaders({ 'Prefer':'return=minimal' }),
+      body: JSON.stringify(row)
+    });
+    if(!r.ok) throw new Error(await r.text());
+    showDone(row);
+  }catch(e){
+    console.error('save checkin failed', e);
+    alert('บันทึกไม่สำเร็จ: ' + e.message + '\n\nหมายเหตุ: ถ้าเห็นข้อความเกี่ยวกับตาราง job_checkins ไม่พบ แปลว่ายังไม่ได้รัน migration checkin_phase6_table.txt');
+  }finally{
+    document.getElementById('overlay').classList.remove('show');
+  }
+}
+
+function showDone(row){
+  document.getElementById('state-form').classList.add('hidden');
+  document.getElementById('state-done').classList.remove('hidden');
+  const rows = [
+    ['PR', row.job_id || '—'],
+    ['ลูกค้า / สาขา', `${row.client_snapshot||'—'} / ${row.branch_snapshot||'—'}`],
+    ['ประเภทงาน', row.job_type.join(', ')],
+    ['เข้า', `${row.date_in} ${row.time_in}`],
+    ['เสร็จ', row.date_done ? `${row.date_done} ${row.time_done||''}` : 'ยังไม่เสร็จ'],
+    ['ผู้เซ็น', `${row.signer_name} (${row.signer_role})`],
+  ];
+  document.getElementById('done-summary').innerHTML = rows.map(([k,v])=>`<div class="summary-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+}
+
+init();
+</script>
+</body>
+</html>
