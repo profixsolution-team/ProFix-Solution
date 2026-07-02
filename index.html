@@ -3140,9 +3140,13 @@ async function openCheckinViewModal(id){
       </div>
       ${r.reported_note?`<div class="form-group"><label>รายละเอียดที่แจ้งซ่อม</label><div class="text-box">${esc(r.reported_note)}</div></div>`:''}
       ${r.note?`<div class="form-group"><label>หมายเหตุเพิ่มเติม</label><div class="text-box">${esc(r.note)}</div></div>`:''}
-      <div class="form-group" style="margin-bottom:0;">
-        <label>ลายเซ็นยืนยัน — ${esc(r.signer_name||'-')} (${esc(r.signer_role||'-')})</label>
+      <div class="form-group">
+        <label>ลายเซ็นลูกค้า/ผู้แจ้ง — ${esc(r.signer_name||'-')} (${esc(r.signer_role||'-')})</label>
         ${r.signature_data?`<div style="background:#fff;border-radius:8px;padding:8px;border:1px solid var(--border);"><img src="${esc(r.signature_data)}" style="max-width:100%;height:auto;display:block;"></div>`:'<div class="text-box">ไม่มีลายเซ็น</div>'}
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>ลายเซ็นช่าง — ${esc(r.tech_name||'-')}</label>
+        ${r.tech_signature_data?`<div style="background:#fff;border-radius:8px;padding:8px;border:1px solid var(--border);"><img src="${esc(r.tech_signature_data)}" style="max-width:100%;height:auto;display:block;"></div>`:'<div class="text-box">ไม่มีลายเซ็นช่าง</div>'}
       </div>
     </div>`;
   }).join('');
