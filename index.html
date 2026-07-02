@@ -1420,6 +1420,9 @@ function setAppLoading(on,msg='กำลังโหลด...',sub='กำลั
   if(small)small.textContent=sub;
 }
 let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, docsLoaded=false, workOrdersLoaded=false, partsLoadingPromise=null, docsLoadingPromise=null, workOrdersLoadingPromise=null, hasUnsyncedLocalChanges=false, lastSaveErrorAt=0;
+// true เฉพาะเมื่อโหลดข้อมูลจาก server สำเร็จจริงในเซสชันนี้ (ไม่ใช่แค่ isHydrated ซึ่งอาจ true ได้แม้โหลดล้มเหลวทั้งหมด)
+// ใช้กันการ sync master collections (ลูกค้า/ทีม/ราคากลาง ฯลฯ) ทับ DB ด้วยค่า default/ค่าที่ยังไม่ได้โหลดจริง
+let masterMetaTrusted=false;
 let duplicateJobsRepairedSinceSave=0;
 let splitSaveHashes={};
 let splitRowHashes={jobs:{},adminTasks:{},workOrders:{},documents:{},parts:{}};
@@ -1436,7 +1439,10 @@ const MASTER_COLLECTIONS=[
   {key:'fixedExpenses',table:'profix_fixed_expenses',prefix:'FX', ref:()=>fixedExpenses,keyOf:r=>`${r.name||''}|${r.type||''}|${r.amount||''}`},
 ];
 MASTER_COLLECTIONS.forEach(c=>{splitRowHashes[c.key]={};splitKnownIds[c.key]=new Set();});
-let masterCollectionsPersisted=false; // true เมื่อ master tables ถูก seed แล้ว → ถือว่าตารางแยก row เป็นแหล่งข้อมูลจริง (ไม่ย้อนไปอ่าน system_data)
+// เก็บเฉพาะ "รายชื่อตาราง" ที่ sync สำเร็จแล้วจริง (ไม่ใช่ flag เดียวรวมทุกตาราง)
+// บั๊กเดิม: ใช้ boolean เดียว พอตารางใดตารางหนึ่ง sync สำเร็จ ระบบเข้าใจว่าตารางอื่นที่ยังไม่ทัน sync
+// เป็น "ว่างเพราะถูกลบ" แล้วเขียนทับข้อมูลลูกค้า/ทีมช่างในแอปให้กลายเป็นค่าว่างจริง — ห้ามกลับไปทำแบบนั้นอีก
+let masterSplitKeys=new Set();
 function applyTheme(theme){
   const t=theme==='light'?'light':'dark';
   document.body.dataset.theme=t;
@@ -1768,7 +1774,7 @@ async function sbFetchAllOptional(table,queryBase){
     return [];
   }
 }
-function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,jCnt,aCnt,lastDataUpdatedAt,masterSplit:masterCollectionsPersisted};}
+function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,jCnt,aCnt,lastDataUpdatedAt,masterSplitKeys:[...masterSplitKeys]};}
 function lightWorkOrderDoc(d){
   const x={...d};
   if(x.url||x.fileUrl||x.key||x.storage==='r2')delete x.dataUrl;
@@ -1789,9 +1795,10 @@ function splitStateSnapshot(){
 function splitApplyRows({jobRows=null,adminRows=null,partRows=null,workOrderRows=null,documentRows=null,metaRows=null,masterRowsByKey=null}={}){
   const st={...(Array.isArray(metaRows)?metaRows[0]?.data:null||{})};
   // Master collections (phase 4): ใช้ข้อมูลจากตารางแยก row เมื่อมี ไม่งั้นคงค่าจาก system_data (legacy)
-  // ถ้า migrate แล้ว (masterSplit) ให้ถือว่าตารางแยก row เป็นจริงเสมอ แม้ว่าง (ป้องกันข้อมูลที่ลบไปแล้วฟื้นจาก legacy blob)
-  const masterMigrated=!!st.masterSplit;
-  if(masterRowsByKey)MASTER_COLLECTIONS.forEach(c=>{const rws=masterRowsByKey[c.key];if(Array.isArray(rws)&&(rws.length||masterMigrated))st[c.key]=rws.map(r=>r.data).filter(Boolean);});
+  // เชื่อว่าตารางแยก row ว่างจริง (ไม่ใช่ยังไม่ทัน sync) ได้เฉพาะตารางที่เคย sync สำเร็จแล้วจริง ๆ เท่านั้น (ต่อตาราง ไม่รวมกันทุกตัว)
+  // หมายเหตุ: ไม่อ่าน st.masterSplit (flag เดิมที่เคยมีบั๊ก) โดยเจตนา — เริ่มนับใหม่จาก masterSplitKeys เท่านั้น
+  const migratedKeys=new Set(Array.isArray(st.masterSplitKeys)?st.masterSplitKeys:[]);
+  if(masterRowsByKey)MASTER_COLLECTIONS.forEach(c=>{const rws=masterRowsByKey[c.key];if(Array.isArray(rws)&&(rws.length||migratedKeys.has(c.key)))st[c.key]=rws.map(r=>r.data).filter(Boolean);});
   if(Array.isArray(jobRows))st.jobs=jobRows.map(normalizeLoadedJobRow).filter(j=>j&&isUsableJobId(j.id));
   if(Array.isArray(adminRows))st.adminTasks=adminRows.map(r=>r.data).filter(Boolean);
   if(Array.isArray(documentRows)||Array.isArray(workOrderRows)){
@@ -1865,9 +1872,11 @@ async function loadSplitState(){
   splitTablesOnline=true;
   const hasData=jobRows.length||adminRows.length;
   if(!hasData)return false;
+  masterMetaTrusted=true; // เชื่อมต่อ server สำเร็จจริง (jobs/admin/system_data โหลดได้) — ปลอดภัยที่จะ sync master collections
   const masterRowsByKey={};
   MASTER_COLLECTIONS.forEach((c,i)=>{masterRowsByKey[c.key]=masterResults[i];});
-  if(metaRows?.[0]?.data?.masterSplit)masterCollectionsPersisted=true;
+  const loadedMigratedKeys=metaRows?.[0]?.data?.masterSplitKeys;
+  if(Array.isArray(loadedMigratedKeys))masterSplitKeys=new Set(loadedMigratedKeys);
   splitApplyRows({jobRows,adminRows,metaRows,masterRowsByKey});
   loadedFromSplitTables=true;
   supabaseOnline=true;
@@ -2101,15 +2110,21 @@ async function saveSplitStateNow(force=false){
   if(docsLoaded&&(force||splitSaveHashes.documents!==docHash)){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
   if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await syncSplitRowsChanged('parts',snap.parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}),'parts',p=>p._id,force);splitSaveHashes.parts=partsHash;}
   // Master collections แยกราย row (phase 4) — บันทึกเฉพาะตารางที่เปลี่ยน, ทนทานต่อตารางที่ยังไม่ถูกสร้าง
-  for(const c of MASTER_COLLECTIONS){
-    const list=(c.ref()||[]).filter(Boolean);
-    const h=stableJson(list);
-    if(!force&&splitSaveHashes[c.key]===h)continue;
-    try{
-      await syncSplitRowsChanged(c.table,list,r=>({id:r._id,data:r,updated_at:now}),c.key,r=>r._id,force);
-      splitSaveHashes[c.key]=h;
-      masterCollectionsPersisted=true; // seed สำเร็จอย่างน้อย 1 ตาราง → ตารางแยก row เป็นแหล่งข้อมูลจริงแล้ว
-    }catch(e){console.warn('[phase4] ข้ามการบันทึก master collection (ตารางอาจยังไม่ถูกสร้าง):',c.table,e?.message||e);}
+  // ห้าม sync ถ้ายังไม่เคยโหลดข้อมูลจาก server สำเร็จในเซสชันนี้ (กันเขียนทับด้วยค่า default/ค่าที่ยังไม่ได้โหลดจริง)
+  if(masterMetaTrusted){
+    for(const c of MASTER_COLLECTIONS){
+      const list=(c.ref()||[]).filter(Boolean);
+      const h=stableJson(list);
+      if(!force&&splitSaveHashes[c.key]===h)continue;
+      // sync ครั้งแรกของตารางนี้ (ยังไม่เคย confirm ว่า migrate แล้ว) ต้องมีข้อมูลจริงอย่างน้อย 1 แถว
+      // กันกรณี list ว่างชั่วคราวจากปัญหา load แล้วทำให้ตารางถูก mark ว่า "migrated" ทั้งที่ยังไม่เคยมีข้อมูลจริง
+      if(!list.length&&!masterSplitKeys.has(c.key))continue;
+      try{
+        await syncSplitRowsChanged(c.table,list,r=>({id:r._id,data:r,updated_at:now}),c.key,r=>r._id,force);
+        splitSaveHashes[c.key]=h;
+        masterSplitKeys.add(c.key); // ยืนยันเฉพาะตารางนี้ว่า sync สำเร็จแล้วจริง (ไม่กระทบตารางอื่นที่ยังไม่ confirm)
+      }catch(e){console.warn('[phase4] ข้ามการบันทึก master collection (ตารางอาจยังไม่ถูกสร้าง):',c.table,e?.message||e);}
+    }
   }
   const metaFinal=splitMetaData();const metaFinalHash=stableJson(metaFinal);
   if(force||splitSaveHashes.meta!==metaFinalHash){await upsertSystemData(metaFinal);splitSaveHashes.meta=metaFinalHash;}
@@ -2132,7 +2147,7 @@ async function loadState(opts={}){
   try{
     const data=await loadAppStateData();
     if(data){
-      applyState(data);supabaseOnline=true;if(Array.isArray(data.parts))partsLoaded=true;if(data.docs){docsLoaded=true;workOrdersLoaded=true;}
+      applyState(data);supabaseOnline=true;masterMetaTrusted=true;if(Array.isArray(data.parts))partsLoaded=true;if(data.docs){docsLoaded=true;workOrdersLoaded=true;}
       try{await loadTechnicianReportTables();}catch(reportErr){console.warn('Technician report table load failed after app_state fallback',reportErr);}
       if(splitTablesOnline){try{await saveSplitStateNow(true);}catch(migErr){console.warn('Auto migration to split tables failed',migErr);}}
     }
