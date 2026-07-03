@@ -1144,16 +1144,15 @@ select option{background:var(--surface2);}
             <div class="form-row"><div class="form-group"><label>ลูกค้า</label><input id="sale-customer" list="client-name-list" placeholder="พิมพ์หรือเลือกจากข้อมูลระบบ"></div><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div></div>
             <div class="form-row"><div class="form-group"><label>ที่อยู่ลูกค้า</label><textarea id="sale-customer-address" style="min-height:54px;"></textarea></div><div class="form-group"><label>Tax ID ลูกค้า</label><input id="sale-customer-taxid" placeholder="เลขประจำตัวผู้เสียภาษีลูกค้า"><label style="margin-top:8px;">โทรศัพท์ลูกค้า</label><input id="sale-customer-phone"></div></div>
             <div class="form-row"><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
-            <details style="margin-top:10px;">
-              <summary style="cursor:pointer;font-weight:800;color:var(--text2);">ตั้งค่าหัวเอกสาร / บัญชี / ลายเซ็น</summary>
-              <div style="margin-top:10px;">
-                <div class="form-row"><div class="form-group"><label>ชื่อแบรนด์</label><input id="sale-company-display" placeholder="ProFix Solution"></div><div class="form-group"><label>ชื่อบริษัท</label><input id="sale-company-name"></div></div>
-                <div class="form-row"><div class="form-group"><label>สถานะสาขา</label><input id="sale-company-branch" placeholder="สำนักงานใหญ่ / สาขา"></div><div class="form-group"><label>Tax ID บริษัท</label><input id="sale-company-taxid"></div></div>
-                <div class="form-row"><div class="form-group"><label>ที่อยู่บริษัท</label><textarea id="sale-company-address" style="min-height:54px;"></textarea></div><div class="form-group"><label>โลโก้บริษัท (URL รูป)</label><input id="sale-company-logo" placeholder="assets/profix-logo-dark.svg หรือ URL รูป"><label style="margin-top:8px;">โทรศัพท์บริษัท</label><input id="sale-company-phone"></div></div>
-                <div class="form-row"><div class="form-group"><label>อีเมลบริษัท</label><input id="sale-company-email"></div><div class="form-group"><label>เลขบัญชี / ข้อมูลชำระเงิน</label><textarea id="sale-bank-account" style="min-height:54px;"></textarea></div></div>
-                <div class="form-row"><div class="form-group"><label>ลายเซ็นผู้เสนอราคา</label><input id="sale-seller-signature" placeholder="URL รูปลายเซ็น หรืออัปโหลด"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-seller-signature')" style="margin-top:6px;"></div><div class="form-group"><label>ลายเซ็นผู้อนุมัติ / ลูกค้า</label><input id="sale-customer-signature" placeholder="URL รูปลายเซ็น หรืออัปโหลด"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-customer-signature')" style="margin-top:6px;"></div></div>
-              </div>
-            </details>
+            <div class="accounting-panel" style="margin-top:12px;">
+              <div class="accounting-panel-title">หัวเอกสาร / บริษัท / โลโก้ / ลายเซ็น</div>
+              <div class="form-row"><div class="form-group"><label>เลือกบริษัทผู้ออกเอกสาร</label><select id="sale-company-profile" onchange="applySalesCompanyProfile(this.value)"></select></div><div class="form-group"><label>โลโก้บริษัท</label><input id="sale-company-logo" placeholder="assets/profix-logo-dark.svg หรือ URL รูป"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-company-logo')" style="margin-top:6px;"></div></div>
+              <div class="form-row"><div class="form-group"><label>ชื่อแบรนด์</label><input id="sale-company-display" placeholder="ProFix Solution"></div><div class="form-group"><label>ชื่อบริษัท</label><input id="sale-company-name"></div></div>
+              <div class="form-row"><div class="form-group"><label>สถานะสาขา</label><input id="sale-company-branch" placeholder="สำนักงานใหญ่ / สาขา"></div><div class="form-group"><label>Tax ID บริษัท</label><input id="sale-company-taxid"></div></div>
+              <div class="form-row"><div class="form-group"><label>ที่อยู่บริษัท</label><textarea id="sale-company-address" style="min-height:54px;"></textarea></div><div class="form-group"><label>โทรศัพท์บริษัท</label><input id="sale-company-phone"><label style="margin-top:8px;">อีเมลบริษัท</label><input id="sale-company-email"></div></div>
+              <div class="form-group"><label>เลขบัญชี / ข้อมูลชำระเงิน</label><textarea id="sale-bank-account" style="min-height:54px;"></textarea></div>
+              <div class="form-row"><div class="form-group"><label>ลายเซ็นผู้เสนอราคา</label><input id="sale-seller-signature" placeholder="URL รูปลายเซ็น หรืออัปโหลด"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-seller-signature')" style="margin-top:6px;"></div><div class="form-group"><label>ลายเซ็นผู้อนุมัติ / ลูกค้า</label><input id="sale-customer-signature" placeholder="URL รูปลายเซ็น หรืออัปโหลด"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-customer-signature')" style="margin-top:6px;"></div></div>
+            </div>
           </div>
           <div class="accounting-panel">
             <div class="table-header" style="padding:0 0 10px;border:0;flex-wrap:wrap;gap:8px;"><div class="table-title">รายการในบิลขาย</div><div style="position:relative;display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" type="button" onclick="openItemPicker('master',event)">＋ ราคากลาง</button><button class="btn btn-ghost btn-sm" type="button" onclick="openItemPicker('stock',event)">＋ อะไหล่/สต็อก</button><button class="btn btn-ghost btn-sm" type="button" onclick="addSalesItemRow()">＋ พิมพ์เอง</button><div id="sales-item-picker" class="job-picker" style="display:none;"></div></div></div>
@@ -4121,6 +4120,40 @@ function salesDocCustomerInfo(inv={}){
   return {taxId:inv.customer_tax_id||'',address:inv.customer_address||'',phone:inv.customer_phone||''};
 }
 function salesDocImageUrl(v){return quoteImageUrl(v);}
+function salesCompanyProfiles(){
+  const d=quoteCompanyDefaults();
+  return [
+    {id:'profix',label:'ProFix Solution',displayName:d.displayName,name:d.name,branch:d.branch,address:d.address,phone:d.phone,taxId:d.taxId,email:d.email,logoUrl:d.logoUrl,bankAccount:d.bankAccount},
+    {id:'pt-accoolity',label:'บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด',displayName:'ProFix Solution',name:'บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด',branch:'สำนักงานใหญ่',address:'88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120',phone:'098-6266622',taxId:'0245557002535',email:'profixsolution.team@gmail.com',logoUrl:d.logoUrl,bankAccount:''},
+    {id:'custom',label:'กำหนดเอง / Custom'},
+  ];
+}
+function renderSalesCompanyProfileOptions(selected='custom'){
+  const sel=document.getElementById('sale-company-profile');if(!sel)return;
+  sel.innerHTML=salesCompanyProfiles().map(p=>`<option value="${esc(p.id)}"${p.id===selected?' selected':''}>${esc(p.label)}</option>`).join('');
+}
+function inferSalesCompanyProfile(company){
+  const profiles=salesCompanyProfiles().filter(p=>p.id!=='custom');
+  const hit=profiles.find(p=>
+    String(p.name||'')===String(company.name||'')&&
+    String(p.taxId||'')===String(company.taxId||'')&&
+    String(p.logoUrl||'')===String(company.logoUrl||'')
+  );
+  return hit?.id||'custom';
+}
+function applySalesCompanyProfile(id){
+  const p=salesCompanyProfiles().find(x=>x.id===id);
+  if(!p||p.id==='custom')return;
+  document.getElementById('sale-company-display').value=p.displayName||'';
+  document.getElementById('sale-company-name').value=p.name||'';
+  document.getElementById('sale-company-branch').value=p.branch||'';
+  document.getElementById('sale-company-taxid').value=p.taxId||'';
+  document.getElementById('sale-company-address').value=p.address||'';
+  document.getElementById('sale-company-logo').value=p.logoUrl||'';
+  document.getElementById('sale-company-phone').value=p.phone||'';
+  document.getElementById('sale-company-email').value=p.email||'';
+  document.getElementById('sale-bank-account').value=p.bankAccount||'';
+}
 function blankSalesItem(description='',quantity=1,unit='',unitPrice=0,extra={}){return {id:newAccountingId('SITEM'),item_code:'',category:'',description,quantity,unit,unit_price:unitPrice,discount:0,vat_rate:7,source_type:'manual',source_ref_id:'',note:'',...extra};}
 const SALES_DOC_META={
   quotation:{label:'ใบเสนอราคา / Quotation',prefix:'QT',title:'ใบเสนอราคา',addLabel:'+ เพิ่มใบเสนอราคา'},
@@ -4159,6 +4192,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-note').value=inv?.note||'';
   const saleCompany=salesDocCompanyInfo(inv||{});
   const saleCustomer=salesDocCustomerInfo(inv||{});
+  renderSalesCompanyProfileOptions(inferSalesCompanyProfile(saleCompany));
   document.getElementById('sale-customer-address').value=saleCustomer.address;
   document.getElementById('sale-customer-taxid').value=saleCustomer.taxId;
   document.getElementById('sale-customer-phone').value=saleCustomer.phone;
