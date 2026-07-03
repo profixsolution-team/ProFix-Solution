@@ -60,7 +60,7 @@
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
 const UPLOAD_ENDPOINT='https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
-const CUSTOMER_EMAIL_ENDPOINT=''; // ใส่ URL Worker ส่งเมล เช่น https://profix-customer-request-email.profixsolution-team.workers.dev/
+const CUSTOMER_EMAIL_ENDPOINT=''; // ใส่ URL Worker ส่งเมล เช่น https://profix-customer-request-email.<subdomain>.workers.dev
 const UPLOAD_CONCURRENCY=3;
 function sbHeaders(extra={}){return {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',...extra};}
 let photos=[];
