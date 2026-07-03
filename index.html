@@ -4982,12 +4982,18 @@ async function openQuoteModal(no){
   document.getElementById('q-overhead').value=d.overhead??10;
   document.getElementById('q-travel').value=d.travel??j.fuel??0;
   const company=quoteCompanyInfo(d);
+  const customer=quoteCustomerInfo(d,j);
+  document.getElementById('q-company-display').value=company.displayName;
   document.getElementById('q-company-name').value=company.name;
   document.getElementById('q-company-branch').value=company.branch;
   document.getElementById('q-company-address').value=company.address;
   document.getElementById('q-company-logo').value=company.logoUrl;
   document.getElementById('q-company-phone').value=company.phone;
   document.getElementById('q-company-taxid').value=company.taxId;
+  document.getElementById('q-company-email').value=company.email;
+  document.getElementById('q-customer-taxid').value=customer.taxId;
+  document.getElementById('q-customer-address').value=customer.address;
+  document.getElementById('q-customer-phone').value=customer.phone;
   document.getElementById('q-bank-account').value=company.bankAccount;
   renderQuoteModalRows();
   openM('m-quote');
@@ -5041,12 +5047,17 @@ function saveQuoteDoc(printAfter=false){
   d.preparedBy=document.getElementById('q-prepared').value;
   d.overhead=Number(document.getElementById('q-overhead').value)||0;
   d.travel=Number(document.getElementById('q-travel').value)||0;
+  d.companyDisplayName=document.getElementById('q-company-display').value.trim();
   d.companyName=document.getElementById('q-company-name').value.trim();
   d.companyBranch=document.getElementById('q-company-branch').value.trim();
   d.companyAddress=document.getElementById('q-company-address').value.trim();
   d.companyLogoUrl=document.getElementById('q-company-logo').value.trim();
   d.companyPhone=document.getElementById('q-company-phone').value.trim();
   d.companyTaxId=document.getElementById('q-company-taxid').value.trim();
+  d.companyEmail=document.getElementById('q-company-email').value.trim();
+  d.customerTaxId=document.getElementById('q-customer-taxid').value.trim();
+  d.customerAddress=document.getElementById('q-customer-address').value.trim();
+  d.customerPhone=document.getElementById('q-customer-phone').value.trim();
   d.bankAccount=document.getElementById('q-bank-account').value.trim();
   d.rows=quoteDraftRows.map(r=>({partId:r.partId||'',cat:r.cat||'',code:r.code||'',desc:r.desc||'',unit:r.unit||'',qty:Number(r.qty)||0,mat:Number(r.mat)||0,labor:Number(r.labor)||0}));
   d.amt=quoteDocTotal(d.rows);
@@ -5644,11 +5655,13 @@ function generatePhotoBillingReport(){
 }
 function quoteCompanyDefaults(){
   return {
-    name:'บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด',
+    displayName:'ProFix Solution',
+    name:'บริษัท โปรฟิกซ์ โซลูชั่น จำกัด',
     branch:'สำนักงานใหญ่',
     address:'88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120',
     phone:'098-6266622',
     taxId:'0245557002535',
+    email:'profixsolution.team@gmail.com',
     logoUrl:new URL('assets/profix-logo-dark.svg',location.href).href,
     bankAccount:'',
   };
@@ -5659,14 +5672,55 @@ function quoteCompanyInfo(doc={}){
   let logoUrl=logo;
   try{logoUrl=new URL(logo,location.href).href;}catch(e){logoUrl=d.logoUrl;}
   return {
+    displayName:doc.companyDisplayName||doc.brandName||d.displayName,
     name:doc.companyName||d.name,
     branch:doc.companyBranch||d.branch,
     address:doc.companyAddress||d.address,
     phone:doc.companyPhone||d.phone,
     taxId:doc.companyTaxId||doc.taxId||d.taxId,
+    email:doc.companyEmail||d.email,
     logoUrl,
     bankAccount:doc.bankAccount||doc.bankNo||'',
   };
+}
+function quoteCustomerInfo(doc={},j={}){
+  return {
+    name:doc.cl||j.client||'',
+    address:doc.customerAddress||[doc.branch||j.branch||'',doc.province||j.province||''].filter(Boolean).join(' '),
+    taxId:doc.customerTaxId||'',
+    phone:doc.customerPhone||'',
+  };
+}
+function thaiBahtText(num){
+  num=Math.round((Number(num)||0)*100)/100;
+  if(!num)return 'ศูนย์บาทถ้วน';
+  const nums=['ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
+  const units=['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
+  function readInt(n){
+    n=String(Math.floor(n));
+    if(n.length>6){
+      const left=n.slice(0,-6),right=n.slice(-6);
+      return readInt(left)+'ล้าน'+(Number(right)?readInt(right):'');
+    }
+    let out='';
+    for(let i=0;i<n.length;i++){
+      const d=Number(n[i]),pos=n.length-i-1;
+      if(!d)continue;
+      if(pos===1&&d===1)out+='สิบ';
+      else if(pos===1&&d===2)out+='ยี่สิบ';
+      else if(pos===0&&d===1&&n.length>1)out+='เอ็ด';
+      else out+=nums[d]+units[pos];
+    }
+    return out;
+  }
+  const baht=Math.floor(num);
+  const satang=Math.round((num-baht)*100);
+  return readInt(baht)+'บาท'+(satang?readInt(satang)+'สตางค์':'ถ้วน');
+}
+function quoteDateText(v){
+  const s=String(v||todayISO());
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m?`${m[3]}/${m[2]}/${m[1]}`:s;
 }
 function quoteRowsFromJob(j){
   const rows=[];
@@ -5687,8 +5741,10 @@ function partsQuoteHtml(j,doc={}){
   const overheadAmt=subtotal*overhead/100;
   const travel=Number(doc.travel ?? j.fuel ?? 0);
   const preVat=subtotal+overheadAmt+travel;
-  const vat=preVat*.07;
-  const grand=preVat+vat;
+  const discount=Number(doc.discount||0);
+  const vatBase=Math.max(0,preVat-discount);
+  const vat=vatBase*.07;
+  const grand=vatBase+vat;
   const blankRows=Math.max(0,10-rows.length);
   const branch=doc.branch||j.branch||'';
   const province=doc.province||j.province||'';
@@ -5700,20 +5756,26 @@ function partsQuoteHtml(j,doc={}){
   const term=doc.term||'';
   const preparedBy=doc.preparedBy||j.pic||'';
   const company=quoteCompanyInfo(doc);
+  const customer=quoteCustomerInfo(doc,j);
   const companyBranch=company.branch?` (${company.branch})`:'';
-  const companyContact=[company.phone?`โทร ${company.phone}`:'',company.taxId?`เลขประจำตัวผู้เสียภาษี ${company.taxId}`:''].filter(Boolean).join(' · ');
-  const bankBlock=company.bankAccount?`<br><br><span class="bold">ข้อมูลชำระเงิน :</span><br>${esc(company.bankAccount)}`:'';
+  const companyEmail=company.email?`อีเมล: ${company.email}`:'';
+  const bankText=company.bankAccount||'';
+  const noteLines=[note,term,bankText?`ชำระเงิน: ${bankText}`:''].filter(Boolean).join('\n');
+  const amountText=doc.amountText||thaiBahtText(grand);
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(no)}</title><style>
-  *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:11px;line-height:1.28}.toolbar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#175fff;color:#fff}.page{width:297mm;min-height:210mm;margin:18px auto;padding:7mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16)}table{width:100%;border-collapse:collapse}td,th{border:1px solid #333;padding:2px 4px;vertical-align:middle}.company{text-align:center;font-weight:800;line-height:1.42}.company-logo{width:112px;max-height:38px;object-fit:contain;margin-bottom:2px}.doc-title{font-size:18px;font-weight:900;text-align:center}.small{font-size:10px}.center{text-align:center}.right{text-align:right}.bold{font-weight:800}.detail{height:26px}.boq{margin-top:5px;font-size:10.5px}.boq th{font-weight:800;text-align:center;background:#f1f5f9}.boq td{height:17px}.summary{margin-top:5px}.summary td{height:18px}.note-box{height:70px;vertical-align:top;white-space:pre-wrap}.sum-label{font-weight:800}.signs{margin-top:7px}.signs td{height:44px;text-align:center;vertical-align:bottom}.muted{color:#64748b}.nowrap{white-space:nowrap}@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;box-shadow:none;padding:6mm}}@page{size:A4 landscape;margin:6mm}</style></head><body><div class="toolbar"><b>${esc(no)}</b><button onclick="window.print()">พิมพ์ / Save PDF</button></div><main class="page">
-  <table><tr><td rowspan="5" style="width:28px;"></td><td rowspan="5" class="company"><img class="company-logo" src="${esc(company.logoUrl)}" alt="${esc(company.name)}"><div class="doc-title">ใบเสนอราคา / BOQ</div>${esc(company.name)}${esc(companyBranch)}<br><span class="small">${esc(company.address)}</span><br><span class="small">${esc(companyContact)}</span></td><td class="center bold">Work Order NO.</td><td class="center">${esc(ref)}</td></tr><tr><td class="center bold">JOB / PR</td><td class="center">${esc(j.id||doc.jid||'')}</td></tr><tr><td class="center bold">Quotation NO.</td><td class="center">${esc(no)}</td></tr><tr><td class="center bold">Date Issued</td><td class="center">${esc(doc.date||todayISO())}</td></tr><tr><td class="center bold">Customer</td><td class="center">${esc(client)}</td></tr>
-  <tr><td colspan="2" class="detail"><span class="bold">รายละเอียดงาน :</span> ${esc(workDetail)}</td><td class="center bold">สาขา : ${esc(branch)}</td><td class="center bold">จังหวัด : ${esc(province)}</td></tr>
-  <tr><td colspan="2"><span class="bold">ผู้จัดทำ :</span> ${esc(preparedBy)} <span class="muted">| Generated ${esc(generatedAt)}</span></td><td class="center bold">ทีม/ศูนย์ : ${esc(team)}</td><td class="center bold">สถานะ : ${esc(doc.st||'ร่าง')}</td></tr></table>
-  <table class="boq"><thead><tr><th style="width:36px;">NO.</th><th style="width:80px;">หมวด</th><th>Bill Of Quantities</th><th style="width:70px;">หน่วย</th><th style="width:90px;">ปริมาณ</th><th style="width:90px;">ค่าของ</th><th style="width:90px;">ค่าแรง</th><th style="width:90px;">รวม</th></tr></thead><tbody>${rows.map((r,i)=>{
-    const total=(Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0));
-    return `<tr><td class="center">${i+1}</td><td class="center">${esc(r.cat||'')}</td><td>${esc(r.desc||'')}</td><td class="center">${esc(r.unit||'')}</td><td class="center">${esc(r.qty||'')}</td><td class="right">${r.mat?Number(r.mat).toLocaleString(): '-'}</td><td class="right">${r.labor?Number(r.labor).toLocaleString(): '-'}</td><td class="right">${total?total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}): '-'}</td></tr>`;
-  }).join('')}${Array.from({length:blankRows}).map(()=>'<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="right">-</td></tr>').join('')}</tbody></table>
-  <table class="summary"><tr><td rowspan="8" class="note-box" style="width:62%;"><span class="bold">หมายเหตุ :</span><br>${esc(note)}<br><br><span class="bold">เงื่อนไข :</span><br>${esc(term)}<br><br><span class="bold">ค่าเดินทาง :</span> ${esc(branch)}${bankBlock}</td><td class="sum-label">รวม</td><td class="right">${subtotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">Overhead ${overhead}%</td><td class="right">${overheadAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">ราคารวม Overhead</td><td class="right">${(subtotal+overheadAmt).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>ค่าดำเนินการปกติ</td><td class="right">0.00</td></tr><tr><td>ค่าดำเนินการเร่งด่วน</td><td class="right">0.00</td></tr><tr><td class="sum-label">ค่าเดินทาง</td><td class="right">${travel.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">รวมทั้งหมด</td><td class="right">${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">VAT 7%</td><td class="right">${vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td colspan="2" class="center bold">เอกสารนี้สร้างจากระบบ ProFix Service Console</td><td class="sum-label">รวมราคาทั้งสิ้น</td><td class="right bold">${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table>
-  <table class="signs"><tr><td>ผู้จัดทำ<br><br>${esc(preparedBy)}</td><td>ผู้ตรวจสอบ</td><td>ผู้อนุมัติ</td><td>ลูกค้า / ผู้รับเอกสาร</td></tr></table>
+  *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111820;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:12px;line-height:1.35}.toolbar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#175fff;color:#fff}.page{position:relative;width:210mm;min-height:297mm;margin:18px auto;padding:16mm 15mm 12mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16)}.top{display:grid;grid-template-columns:1fr 78mm;align-items:start;gap:10mm}.brand-logo{width:56mm;max-height:28mm;object-fit:contain;object-position:left top}.doc-title{text-align:right;font-size:20px;font-weight:900;color:#05070a}.doc-meta{margin-top:12px;display:grid;grid-template-columns:1fr 36mm;gap:7px 10px;text-align:right;font-size:15px}.doc-meta b{font-size:16px}.party{display:grid;grid-template-columns:1fr 1fr;gap:18mm;margin-top:18mm}.party h3{margin:0 0 10px;color:#6b7280;font-size:13px}.party .name{font-weight:800;color:#111827;margin-bottom:6px}.party div{color:#6b7280;margin:6px 0}.party .strong{font-weight:800;color:#111827}.items{width:100%;border-collapse:collapse;margin-top:13mm;table-layout:fixed}.items th{background:#666;color:#fff;font-weight:800;font-size:13px;padding:5px 4px;border:1px solid #d4dbe5}.items td{height:8mm;border:1px solid #d4dbe5;padding:4px 5px;vertical-align:middle}.items tbody tr:nth-child(odd){background:#f2f5f9}.items .no{width:8mm;text-align:center}.items .desc{width:auto}.items .qty{width:25mm;text-align:right}.items .unit{width:19mm;text-align:center}.items .price,.items .amount{width:29mm;text-align:right}.note-total{display:grid;grid-template-columns:1fr 58mm;gap:16mm;margin-top:8mm}.note h3{margin:0 0 10px;color:#6b7280;font-size:13px}.note .box{white-space:pre-wrap;color:#697386;line-height:1.45}.total table{width:100%;border-collapse:collapse}.total td{padding:4px 4px;font-size:13px}.total .label{font-weight:800}.total .right{text-align:right}.grand td{background:#666;color:#fff;font-size:16px;font-weight:900;border:1px solid #fff}.amount-text{display:grid;grid-template-columns:28mm 1fr;gap:8px;margin-top:8mm;font-weight:800}.signs{position:absolute;left:15mm;right:15mm;bottom:24mm;display:grid;grid-template-columns:1fr 1fr;gap:34mm;color:#6b7280;font-size:11px}.sign-line{margin-top:20px;color:#111;text-align:center}.footer{position:absolute;left:15mm;right:15mm;bottom:10mm;text-align:center;color:#7b8492;font-size:10px;font-style:italic}@media print{body{background:#fff}.toolbar{display:none}.page{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:14mm 13mm 11mm}}@page{size:A4 portrait;margin:0}</style></head><body><div class="toolbar"><b>${esc(no)}</b><button onclick="window.print()">พิมพ์ / Save PDF</button></div><main class="page">
+  <section class="top"><div><img class="brand-logo" src="${esc(company.logoUrl)}" alt="${esc(company.displayName)}"></div><div><div class="doc-title">Quotation/ใบเสนอราคา</div><div class="doc-meta"><span>เลขที่ :</span><b>${esc(no)}</b><span>วันที่ :</span><b>${esc(quoteDateText(doc.date||todayISO()))}</b></div></div></section>
+  <section class="party"><div><h3>จากบริษัท</h3><div class="name">${esc(company.displayName)}</div><div>${esc(company.name)}${esc(companyBranch)}</div><div>${esc(company.address)}</div><div>TAX ID : ${esc(company.taxId||'-')}</div>${companyEmail?`<div>${esc(companyEmail)}</div>`:''}</div><div><h3>ลูกค้า</h3><div class="name">${esc(customer.name||client||'-')}</div><div>${esc(customer.address||'-')}</div><div>TAX ID : ${esc(customer.taxId||'-')}</div><div>${customer.phone?`โทร ${esc(customer.phone)}`:''}</div></div></section>
+  <table class="items"><thead><tr><th class="no">ลำดับ</th><th class="desc">รายการ</th><th class="qty">จำนวน</th><th class="unit">หน่วย</th><th class="price">ราคา</th><th class="amount">ราคา</th></tr></thead><tbody>${rows.map((r,i)=>{
+    const qty=Number(r.qty)||0;
+    const unitPrice=(Number(r.mat)||0)+(Number(r.labor)||0);
+    const total=qty*unitPrice;
+    return `<tr><td class="no">${i+1}</td><td class="desc">${esc(r.desc||'')}</td><td class="qty">${qty?qty.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):''}</td><td class="unit">${esc(r.unit||'')}</td><td class="price">${unitPrice?unitPrice.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):''}</td><td class="amount">${total?total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):''}</td></tr>`;
+  }).join('')}${Array.from({length:blankRows}).map(()=>'<tr><td class="no"></td><td class="desc"></td><td class="qty"></td><td class="unit"></td><td class="price"></td><td class="amount"></td></tr>').join('')}</tbody></table>
+  <section class="note-total"><div class="note"><h3>หมายเหตุ / เงื่อนไข</h3><div class="box">${esc(noteLines||'-')}</div></div><div class="total"><table><tr><td class="label">รวมเป็นเงิน</td><td class="right">${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>ภาษีมูลค่าเพิ่ม<br>7%(VAT)</td><td class="right">${vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>หักส่วนลด</td><td class="right">${discount.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr class="grand"><td>ยอดรวมทั้งสิ้น</td><td class="right">${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table></div></section>
+  <div class="amount-text"><div>ตัวอักษร</div><div>(${esc(amountText)})</div></div>
+  <section class="signs"><div>ลงชื่อผู้เสนอราคา<div class="sign-line">( ........................................ )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="sign-line">( ........................................ )</div></div></section>
+  <div class="footer">${esc(company.displayName)} Team&nbsp;&nbsp;|&nbsp;&nbsp;ขอบคุณที่ใช้บริการ</div>
   </main></body></html>`;
 }
 function generatePartsQuote(){
@@ -6225,19 +6287,25 @@ initApp();
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>ชื่อบริษัทบนหัวเอกสาร</label>
-          <input id="q-company-name" placeholder="ชื่อบริษัท">
+          <label>ชื่อแบรนด์บนหัวเอกสาร</label>
+          <input id="q-company-display" placeholder="ProFix Solution">
         </div>
         <div class="form-group">
-          <label>สถานะสาขา</label>
-          <input id="q-company-branch" placeholder="สำนักงานใหญ่ / สาขา">
+          <label>ชื่อบริษัทบนหัวเอกสาร</label>
+          <input id="q-company-name" placeholder="ชื่อบริษัท">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
+          <label>สถานะสาขา</label>
+          <input id="q-company-branch" placeholder="สำนักงานใหญ่ / สาขา">
+        </div>
+        <div class="form-group">
           <label>ที่อยู่บริษัท</label>
           <textarea id="q-company-address" style="min-height:58px;"></textarea>
         </div>
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label>โลโก้บริษัท (URL รูป)</label>
           <input id="q-company-logo" placeholder="assets/profix-logo-dark.svg หรือ URL รูป">
@@ -6252,6 +6320,26 @@ initApp();
         <div class="form-group">
           <label>Tax ID บริษัท</label>
           <input id="q-company-taxid" placeholder="เลขประจำตัวผู้เสียภาษี">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>อีเมลบริษัท</label>
+          <input id="q-company-email">
+        </div>
+        <div class="form-group">
+          <label>Tax ID ลูกค้า</label>
+          <input id="q-customer-taxid" placeholder="เลขประจำตัวผู้เสียภาษีลูกค้า">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ที่อยู่ลูกค้า</label>
+          <textarea id="q-customer-address" style="min-height:58px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>โทรศัพท์ลูกค้า</label>
+          <input id="q-customer-phone">
         </div>
       </div>
       <div class="form-group">
