@@ -239,7 +239,7 @@ textarea{resize:vertical;min-height:64px;}
 const SUPABASE_URL = 'https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
 function sbHeaders(extra={}){ return { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer '+SUPABASE_ANON_KEY, 'Content-Type':'application/json', ...extra }; }
-function normId(v){ return String(v||'').trim().replace(/\s+/g,'').toUpperCase(); }
+function normId(v){ return String(v||'').trim().toUpperCase().replace(/[^A-Z0-9ก-๙]/g,''); }
 // Cloudflare Worker endpoint สำหรับอัปรูปเข้า R2 — ระบบเดียวกับหน้า submit
 const UPLOAD_ENDPOINT = 'https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
 let checkinPhotos = []; // {id, file, dataUrl, status, url, width, height, existing} — ไม่จำกัดจำนวน
@@ -307,6 +307,17 @@ async function init(){
   }
   const job = await findJobById(JOB_ID);
   if(!job){
+    const rec = await loadLatestCheckin(JOB_ID, { prefill:false });
+    if(rec){
+      manualMode = true;
+      document.getElementById('state-loading').classList.add('hidden');
+      document.getElementById('state-form').classList.remove('hidden');
+      document.getElementById('manual-fields').style.display = 'block';
+      document.getElementById('j-note-wrap').style.display = 'none';
+      prefillFromCheckin(rec);
+      resizeSigPads();
+      return;
+    }
     document.getElementById('state-loading').classList.add('hidden');
     document.getElementById('manual-title').textContent = 'ไม่พบงานนี้';
     document.getElementById('manual-msg').textContent = `ค้นหา PR: ${JOB_ID} แล้วไม่พบ — ลองใหม่หรือกรอกข้อมูลเอง`;
@@ -321,17 +332,39 @@ async function init(){
 }
 
 // โหลด checkin ครั้งล่าสุดของ job นี้ แล้วเติมข้อมูลกลับเข้าฟอร์ม
-async function loadLatestCheckin(jobId){
-  if(!jobId) return;
+async function loadLatestCheckin(jobId, opts={}){
+  if(!jobId) return null;
+  const shouldPrefill = opts.prefill !== false;
+  const clean = String(jobId||'').trim();
+  const digitKey = (clean.match(/\d+/g) || []).sort((a,b)=>b.length-a.length)[0] || '';
+  const fetchRows = async query => {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/job_checkins${query}`, { headers: sbHeaders() });
+    if(!r.ok) throw new Error(await r.text());
+    return await r.json();
+  };
   try{
-    const rows = await (await fetch(`${SUPABASE_URL}/rest/v1/job_checkins?job_id=eq.${encodeURIComponent(jobId)}&select=*&order=created_at.desc&limit=1`, { headers: sbHeaders() })).json();
+    let rows = await fetchRows(`?job_id=eq.${encodeURIComponent(clean)}&select=*&order=created_at.desc&limit=1`);
+    if(!rows?.length && digitKey.length >= 3){
+      rows = await fetchRows(`?job_id=ilike.*${encodeURIComponent(digitKey)}*&select=*&order=created_at.desc&limit=20`);
+      rows = rows.filter(r=>normId(r.job_id)===normId(clean) || (rows.length===1 && String(r.job_id||'').includes(digitKey)));
+    }
     const rec = Array.isArray(rows) ? rows[0] : null;
-    if(!rec) return;
+    if(!rec) return null;
     existingCheckin = rec;
-    prefillFromCheckin(rec);
-  }catch(e){ console.warn('load latest checkin failed', e); }
+    if(shouldPrefill) prefillFromCheckin(rec);
+    return rec;
+  }catch(e){ console.warn('load latest checkin failed', e); return null; }
 }
 function prefillFromCheckin(rec){
+  const jobId = rec.job_id || JOB_ID || '';
+  document.getElementById('j-id').textContent = jobId || '— ไม่ผูกกับ PR —';
+  document.getElementById('j-client').textContent = rec.client_snapshot || jobRecord?.client || '—';
+  document.getElementById('j-branch').textContent = rec.branch_snapshot || jobRecord?.branch || '—';
+  document.getElementById('j-note').textContent = rec.reported_note || jobRecord?.note || 'ไม่มีรายละเอียดจากแอดมิน';
+  const manualJob = document.getElementById('m-job-id'); if(manualJob) manualJob.value = jobId;
+  const manualClient = document.getElementById('m-client'); if(manualClient) manualClient.value = rec.client_snapshot || '';
+  const manualBranch = document.getElementById('m-branch'); if(manualBranch) manualBranch.value = rec.branch_snapshot || '';
+  const manualNote = document.getElementById('m-note'); if(manualNote) manualNote.value = rec.reported_note || '';
   // ประเภทงาน
   selectedTypes = new Set();
   (Array.isArray(rec.job_type)?rec.job_type:[]).forEach(t=>{ if(JOB_TYPES.includes(t)) selectedTypes.add(t); });
@@ -354,10 +387,11 @@ function prefillFromCheckin(rec){
   loadSignatureIntoPad('customer', rec.signature_data);
   loadSignatureIntoPad('tech', rec.tech_signature_data);
   // รูปตรวจเช็กเดิม (existing → ไม่อัปซ้ำตอนบันทึก)
+  checkinPhotos = [];
   const ph = Array.isArray(rec.photos) ? rec.photos : [];
   ph.forEach((p,i)=>{
     if(!p || !p.url) return;
-    checkinPhotos.push({ id:'old-'+i, url:p.url, dataUrl:p.url, status:'ready', existing:true, width:p.width||0, height:p.height||0 });
+    checkinPhotos.push({ id:'old-'+i, url:p.url, dataUrl:p.url, status:'ready', existing:true, width:p.width||0, height:p.height||0, storage:p.storage||'external' });
   });
   renderCheckinThumbs();
 }
@@ -390,6 +424,11 @@ function skipToForm(){
   document.getElementById('manual-fields').style.display = 'block';
   document.getElementById('j-note-wrap').style.display = 'none';
   resizeSigPads();
+  const manualJob = document.getElementById('manual-job').value.trim();
+  if(manualJob){
+    document.getElementById('m-job-id').value = manualJob;
+    loadLatestCheckin(manualJob);
+  }
 }
 
 function showFormFromJob(job){
@@ -559,7 +598,7 @@ async function submitCheckin(){
     const toUpload = readyAll.filter(p=>!p.existing && p.blob).length;
     let order = 0, done = 0;
     for(const p of readyAll){
-      if(p.existing && p.url){ photos.push({ order:order++, url:p.url, width:p.width||0, height:p.height||0, storage:'external' }); continue; }
+      if(p.existing && p.url){ photos.push({ order:order++, url:p.url, width:p.width||0, height:p.height||0, storage:p.storage||'external' }); continue; }
       done++;
       document.querySelector('#overlay div:last-child').textContent = `กำลังอัปรูป ${done}/${toUpload}...`;
       const up = await uploadCheckinPhoto(p, order, jobId);
