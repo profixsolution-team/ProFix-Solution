@@ -428,6 +428,7 @@ select option{background:var(--surface2);}
     <button class="nav-item active" data-page="dashboard" onclick="goTo('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</button>
     <div class="nav-section">Tracker</div>
     <button class="nav-item" data-page="admin-tracker" onclick="goTo('admin-tracker',this)"><span class="nav-icon">🗂</span>Admin Tracker<span class="nav-badge-y" id="nb-admin">2</span></button>
+    <button class="nav-item" data-page="customer-requests" onclick="goTo('customer-requests',this)"><span class="nav-icon">☑</span>งานจากลูกค้า<span class="nav-badge-y" id="nb-customer-requests" style="display:none;">0</span></button>
     <button class="nav-item" data-page="jobs" onclick="goTo('jobs',this)"><span class="nav-icon">📋</span>คิวช่าง<span class="nav-badge" id="nb-new">3</span></button>
     <button class="nav-item" data-page="job-calendar" onclick="goTo('job-calendar',this)"><span class="nav-icon">▦</span>Calendar คิวช่าง</button>
     <div class="nav-section">การเงิน</div>
@@ -499,6 +500,21 @@ select option{background:var(--surface2);}
     <div class="table-wrap mobile-list">
       <div class="table-header"><div class="table-title" id="admin-tbl-title">งาน Admin</div><span class="mono tm" style="font-size:11px;" id="admin-cnt"></span></div>
       <table><thead><tr><th>PR</th><th>วันที่ Assign</th><th>ประเภท</th><th>รายละเอียด</th><th>ลูกค้า/สาขา</th><th>Assign</th><th>กำหนด</th><th>สถานะ</th><th>JOB ID</th><th></th></tr></thead><tbody id="admin-tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMER REQUESTS -->
+<div class="page" id="page-customer-requests">
+  <div class="page-header">
+    <div><div class="page-title">งานจากลูกค้า</div><div class="page-sub">รายการที่ลูกค้าส่งเข้ามาเอง — ตรวจรับก่อนเข้า Admin Tracker</div></div>
+    <button class="btn btn-ghost" onclick="copyCustomerRequestLink()">คัดลอกลิงก์ลูกค้า</button>
+  </div>
+  <div class="filter-bar" id="customer-request-fbar"></div>
+  <div class="content" style="padding-top:16px;">
+    <div class="table-wrap mobile-list">
+      <div class="table-header"><div class="table-title" id="customer-request-title">รายการแจ้งงานจากลูกค้า</div><span class="mono tm" style="font-size:11px;" id="customer-request-count"></span></div>
+      <table><thead><tr><th>เลขรับเรื่อง</th><th>เวลา</th><th>ลูกค้า/สาขา</th><th>ผู้ติดต่อ</th><th>ประเภท</th><th>รายละเอียด</th><th>สถานะ</th><th></th></tr></thead><tbody id="customer-request-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -1205,6 +1221,8 @@ let jobs = [
   {id:'PR-007',client:'บริษัท B',ref:'SV-5503',branch:'BigC ฟิวเจอร์',type:'ซ่อมตู้แช่',team:'ทีม G',date:'2025-06-05',status:'รอเปิดงาน',pc:3200,pt:2100,partC:0,partR:0,fuel:0,note:'',report:'',isNew:true,pay:'unpaid'},
   {id:'PR-008',client:'บริษัท A',ref:'WO-2004',branch:'เซ็นทรัลบางนา',type:'ซ่อมแอร์',team:'ทีม H',date:'2025-06-06',status:'Reject',pc:1500,pt:0,partC:0,partR:0,fuel:0,note:'ลูกค้ายกเลิก',report:'',isNew:false,pay:'unpaid'},
 ];
+
+let customerJobRequests=[], customerRequestFilter='new', customerRequestLoaded=false, customerRequestLoadingPromise=null;
 
 let adminTasks = [
   {id:'TASK-001',type:'ทำใบกำกับภาษี',client:'บริษัท C — โลตัสบางนา',detail:'ออก IV สำหรับ PR-005',assign:'แอดมิน 1',due:'2025-06-10',jobId:'PR-005',pri:'ด่วน',status:'รอดำเนินการ'},
@@ -2229,6 +2247,7 @@ function goTo(id, el){
   const m={
     dashboard:renderDash,
     'admin-tracker':renderAdmin,
+    'customer-requests':()=>{renderCustomerRequests();ensureCustomerRequestsLoaded(true).then(renderCustomerRequests);},
     jobs:renderJobs,
     'job-calendar':renderCalendar,
     finance:renderFin,
@@ -2978,6 +2997,109 @@ function openAdminDetail(id){
   document.getElementById('det-sub').textContent=(t.client||'-')+' | Assign: '+(t.assign||'-');
   document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">Assign</div><div class="detail-val">${esc(t.assign||'-')}</div></div><div class="detail-item"><div class="detail-label">กำหนด</div><div class="detail-val">${esc(t.due||'-')}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status||'-')}</span></div></div><div class="detail-item"><div class="detail-label">PR</div><div class="detail-val">${esc(t.jobId||'-')}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(t.client||'-')}</div></div>${t.phone?`<div class="form-group"><label>เบอร์ติดต่อ</label><div class="text-box">${esc(t.phone)}</div></div>`:''}<div class="form-group"><label>รายละเอียด</label><div class="text-box">${esc(t.detail||'-')}</div></div>${t.reportReviewNote?`<div class="form-group"><label>หมายเหตุจากรายงานช่าง</label><div class="text-box">${esc(t.reportReviewNote)}</div></div>`:''}<div class="form-row"><button class="btn btn-ghost" onclick="editAdminTask('${t.id}')">แก้ไขงาน</button><button class="btn btn-primary" onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button></div>`;
   openM('m-detail');
+}
+function customerRequestStatusLabel(st){return {new:'รอรับงาน',accepted:'รับเข้าแล้ว',rejected:'ปฏิเสธ',cancelled:'ยกเลิก'}[st]||st||'-';}
+function customerRequestPriorityLabel(p){return {normal:'ปกติ',urgent:'ด่วน',critical:'เร่งด่วนมาก'}[p]||p||'ปกติ';}
+function customerRequestPriorityToAdmin(p){return p==='critical'?'เร่งด่วนมาก':p==='urgent'?'ด่วน':'ปกติ';}
+function customerRequestAdminDetail(r){
+  return [
+    `ลูกค้าแจ้งงานเอง (${r.request_no||r.id})`,
+    `ประเภท: ${r.job_type||'-'} / ความเร่งด่วน: ${customerRequestPriorityLabel(r.priority)}`,
+    `ผู้ติดต่อ: ${r.contact_name||'-'} ${r.contact_phone||''}${r.contact_email?' / '+r.contact_email:''}`,
+    r.preferred_date?`วันที่สะดวก: ${r.preferred_date} ${r.preferred_time||''}`:'',
+    r.location_text?`สถานที่: ${r.location_text}`:'',
+    `รายละเอียด: ${r.problem_detail||'-'}`,
+    Array.isArray(r.photos)&&r.photos.length?`รูปประกอบ: ${r.photos.length} รูป`:''
+  ].filter(Boolean).join('\n');
+}
+async function ensureCustomerRequestsLoaded(force=false){
+  if(customerRequestLoaded&&!force)return customerJobRequests;
+  if(customerRequestLoadingPromise&&!force)return customerRequestLoadingPromise;
+  customerRequestLoadingPromise=(async()=>{
+    try{
+      customerJobRequests=await sbFetchAllOptional('customer_job_requests','?select=*&order=created_at.desc');
+      customerRequestLoaded=true;
+      updateCustomerRequestBadge();
+    }catch(e){
+      console.warn('Customer requests load failed',e);
+      customerRequestLoaded=true;
+    }
+    return customerJobRequests;
+  })().finally(()=>{customerRequestLoadingPromise=null;});
+  return customerRequestLoadingPromise;
+}
+function updateCustomerRequestBadge(){
+  const nb=document.getElementById('nb-customer-requests');
+  if(!nb)return;
+  const count=(customerJobRequests||[]).filter(r=>r.status==='new').length;
+  if(count){nb.style.display='';nb.textContent=count;}else nb.style.display='none';
+}
+function buildCustomerRequestControls(counts){
+  const b=document.getElementById('customer-request-fbar');if(!b)return;
+  const statuses=['new','accepted','rejected','ทั้งหมด'];
+  b.innerHTML=`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="customerRequestFilter=this.value;renderCustomerRequests();">${statuses.map(s=>`<option value="${s}"${customerRequestFilter===s?' selected':''}>${s==='ทั้งหมด'?'ทั้งหมด':customerRequestStatusLabel(s)} (${counts[s]||0})</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="ensureCustomerRequestsLoaded(true).then(renderCustomerRequests)">รีเฟรช</button>`;
+}
+function renderCustomerRequests(){
+  ensureCustomerRequestsLoaded();
+  updateCustomerRequestBadge();
+  const rows=customerJobRequests||[];
+  const counts={ทั้งหมด:rows.length,new:0,accepted:0,rejected:0,cancelled:0};
+  rows.forEach(r=>{counts[r.status]=(counts[r.status]||0)+1;});
+  buildCustomerRequestControls(counts);
+  const fil=(customerRequestFilter==='ทั้งหมด'?rows:rows.filter(r=>r.status===customerRequestFilter));
+  const cnt=document.getElementById('customer-request-count');if(cnt)cnt.textContent=fil.length+' รายการ';
+  const tb=document.getElementById('customer-request-tbody');if(!tb)return;
+  if(!customerRequestLoaded){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดรายการจากลูกค้า</div></div></td></tr>';return;}
+  if(!rows.length){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-icon">—</div><div>ยังไม่มีรายการจากลูกค้า หรือยังไม่ได้รัน customer_requests_phase7_table.txt</div></div></td></tr>';return;}
+  if(!fil.length){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-icon">—</div><div>ไม่มีรายการในสถานะนี้</div></div></td></tr>';return;}
+  tb.innerHTML=fil.map(r=>{
+    const mid='crq-'+r.id;
+    const statusClass=r.status==='accepted'?'b-paid':r.status==='rejected'?'b-reject':'b-working';
+    const client=[r.customer_name,r.branch_name].filter(Boolean).join(' / ')||'-';
+    const phone=r.contact_phone?`<span class="task-phone">${esc(r.contact_phone)}</span>`:'';
+    const actions=r.status==='new'?`<button onclick="acceptCustomerRequest('${esc(r.id)}')">รับเข้า Admin Tracker</button><button onclick="rejectCustomerRequest('${esc(r.id)}')">ปฏิเสธ</button>`:`<button onclick="openCustomerRequestDetail('${esc(r.id)}')">ดูรายละเอียด</button>`;
+    return `<tr><td class="mono ta" style="font-size:11px;">${esc(r.request_no||r.id)}</td><td class="tm" style="font-size:11px;">${esc((r.created_at||'').replace('T',' ').slice(0,16))}</td><td>${esc(client)}</td><td>${esc(r.contact_name||'-')}${phone}</td><td><span class="chip">${esc(r.job_type||'-')}</span><br><span class="tm" style="font-size:11px;">${esc(customerRequestPriorityLabel(r.priority))}</span></td><td class="task-detail" style="max-width:280px;font-size:12px;">${esc(r.problem_detail||'-')}</td><td><span class="badge ${statusClass}">${esc(customerRequestStatusLabel(r.status))}</span>${r.admin_task_id?`<br><span class="mono tm" style="font-size:10px;">${esc(r.admin_task_id)}</span>`:''}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openCustomerRequestDetail('${esc(r.id)}')">ดูรายละเอียด</button>${actions}</div></td></tr>`;
+  }).join('');
+}
+function openCustomerRequestDetail(id){
+  const r=customerJobRequests.find(x=>x.id===id);if(!r)return;
+  document.getElementById('det-title').textContent=(r.request_no||r.id)+' - '+(r.customer_name||'ลูกค้า');
+  document.getElementById('det-sub').textContent=`${customerRequestStatusLabel(r.status)} | ${esc((r.created_at||'').replace('T',' ').slice(0,16))}`;
+  const photos=Array.isArray(r.photos)?r.photos.filter(p=>p&&p.url):[];
+  document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ลูกค้า</div><div class="detail-val">${esc(r.customer_name||'-')}</div></div><div class="detail-item"><div class="detail-label">สาขา</div><div class="detail-val">${esc(r.branch_name||'-')}</div></div><div class="detail-item"><div class="detail-label">ผู้ติดต่อ</div><div class="detail-val">${esc(r.contact_name||'-')}</div></div><div class="detail-item"><div class="detail-label">เบอร์</div><div class="detail-val">${esc(r.contact_phone||'-')}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(r.job_type||'-')}</div></div><div class="detail-item"><div class="detail-label">ความเร่งด่วน</div><div class="detail-val">${esc(customerRequestPriorityLabel(r.priority))}</div></div></div><div class="form-group"><label>รายละเอียดปัญหา</label><div class="text-box">${esc(r.problem_detail||'-')}</div></div>${r.location_text?`<div class="form-group"><label>สถานที่</label><div class="text-box">${esc(r.location_text)}</div></div>`:''}${photos.length?`<div class="form-group"><label>รูปประกอบ (${photos.length} รูป)</label><div style="display:flex;flex-wrap:wrap;gap:6px;">${photos.map(p=>`<a href="${esc(p.url)}" target="_blank"><img src="${esc(p.url)}" style="width:86px;height:86px;object-fit:cover;border-radius:6px;border:1px solid var(--border);"></a>`).join('')}</div></div>`:''}<div class="form-row">${r.status==='new'?`<button class="btn btn-primary" onclick="acceptCustomerRequest('${esc(r.id)}')">รับเข้า Admin Tracker</button><button class="btn btn-ghost" onclick="rejectCustomerRequest('${esc(r.id)}')">ปฏิเสธ</button>`:''}</div>`;
+  openM('m-detail');
+}
+async function acceptCustomerRequest(id){
+  const r=customerJobRequests.find(x=>x.id===id);if(!r||r.status!=='new')return;
+  const row={id:nextAutoId('TASK',adminTasks),type:r.job_type||'เปิดงานใหม่จากลูกค้า',client:[r.customer_name,r.branch_name].filter(Boolean).join(' — '),phone:r.contact_phone||'',detail:customerRequestAdminDetail(r),assign:adminNames[0]||'แอดมิน 1',due:r.preferred_date||todayISO(),jobId:'',pri:customerRequestPriorityToAdmin(r.priority),status:A_ST[0]||'รอดำเนินการ',assignedAt:todayISO(),isNew:true,createdAt:Date.now(),sourceRequestId:r.id};
+  try{
+    const res=await reserveNumberedRow('admin_tasks','TASK',row);
+    row.id=res.id;
+    adminTasks.unshift(row);
+    aCnt=Math.max(Number(aCnt)||1,(numFromId(row.id,'TASK')||0)+1);
+    await sbPatchById('customer_job_requests',r.id,{status:'accepted',admin_task_id:row.id,note:'accepted by '+getActorName()});
+    Object.assign(r,{status:'accepted',admin_task_id:row.id});
+    renderCustomerRequests();renderAdmin();renderDash();saveState();
+    await writeAuditLog('accept_customer_request','customer_job_request',r.id,null,{adminTaskId:row.id},clonePlain(r));
+    closeM('m-detail');
+    goTo('admin-tracker');
+  }catch(e){alert('รับงานไม่สำเร็จ: '+e.message);}
+}
+async function rejectCustomerRequest(id){
+  const r=customerJobRequests.find(x=>x.id===id);if(!r||r.status!=='new')return;
+  const note=prompt('เหตุผลที่ปฏิเสธ / หมายเหตุ',r.note||'')||'';
+  try{
+    await sbPatchById('customer_job_requests',id,{status:'rejected',note});
+    Object.assign(r,{status:'rejected',note});
+    renderCustomerRequests();updateCustomerRequestBadge();
+    await writeAuditLog('reject_customer_request','customer_job_request',id,null,{note},clonePlain(r));
+    closeM('m-detail');
+  }catch(e){alert('ปฏิเสธไม่สำเร็จ: '+e.message);}
+}
+async function copyCustomerRequestLink(){
+  const url=new URL('customer-request.html',location.href).href;
+  const text=`แจ้งงานซ่อม/บริการให้ ProFix ได้ที่ลิงก์นี้:\n${url}`;
+  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งงานลูกค้าแล้ว');}catch(e){prompt('คัดลอกลิงก์นี้',text);}
 }
 function addAdminName(){
   const v=document.getElementById('fa-assign').value.trim();
@@ -5817,6 +5939,7 @@ async function refreshRemoteIfIdle(){
   remoteRefreshRunning=true;
   try{
     await loadState({silent:true});
+    if(customerRequestLoaded){try{await ensureCustomerRequestsLoaded(true);}catch(e){}}
     ensureMeta();
     // รีเฟรชบัญชี/สต็อกเฉพาะตอนกำลังดูหน้านั้นจริง (ไม่ดึงทุกรอบทุกหน้า เพื่อไม่ให้หน่วง)
     const active=document.querySelector('.page.active')?.id||'';
