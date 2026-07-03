@@ -1142,7 +1142,18 @@ select option{background:var(--surface2);}
             <div class="form-row"><div class="form-group"><label>ประเภทเอกสาร</label><select id="sale-doc-type" onchange="onSalesDocTypeChange(this.value)"><option value="quotation">ใบเสนอราคา / Quotation</option><option value="invoice">ใบแจ้งหนี้ / Invoice</option><option value="tax_invoice">ใบกำกับภาษี / Tax Invoice</option><option value="receipt">ใบเสร็จรับเงิน / Receipt</option></select></div><div class="form-group"><label>เลขที่เอกสาร</label><input id="sale-no" placeholder="เช่น QT-2026-001 / SINV-2026-001"></div></div>
             <div class="form-row"><div class="form-group" style="flex:1;"><label>Job ID / PR (คลิกเลือกได้หลายตัว)</label><div style="position:relative;"><input id="sale-job-input" autocomplete="off" placeholder="ค้นหา PR / ลูกค้า / สาขา แล้วคลิกเลือก" oninput="renderSalesJobPicker(this.value)" onfocus="renderSalesJobPicker(this.value)" onkeydown="handleSalesJobKey(event)"><div id="sale-job-picker" class="job-picker" style="display:none;"></div></div><div id="sale-job-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div><input type="hidden" id="sale-job"></div></div>
             <div class="form-row"><div class="form-group"><label>ลูกค้า</label><input id="sale-customer" list="client-name-list" placeholder="พิมพ์หรือเลือกจากข้อมูลระบบ"></div><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div></div>
+            <div class="form-row"><div class="form-group"><label>ที่อยู่ลูกค้า</label><textarea id="sale-customer-address" style="min-height:54px;"></textarea></div><div class="form-group"><label>Tax ID ลูกค้า</label><input id="sale-customer-taxid" placeholder="เลขประจำตัวผู้เสียภาษีลูกค้า"><label style="margin-top:8px;">โทรศัพท์ลูกค้า</label><input id="sale-customer-phone"></div></div>
             <div class="form-row"><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
+            <details style="margin-top:10px;">
+              <summary style="cursor:pointer;font-weight:800;color:var(--text2);">ตั้งค่าหัวเอกสาร / บัญชี / ลายเซ็น</summary>
+              <div style="margin-top:10px;">
+                <div class="form-row"><div class="form-group"><label>ชื่อแบรนด์</label><input id="sale-company-display" placeholder="ProFix Solution"></div><div class="form-group"><label>ชื่อบริษัท</label><input id="sale-company-name"></div></div>
+                <div class="form-row"><div class="form-group"><label>สถานะสาขา</label><input id="sale-company-branch" placeholder="สำนักงานใหญ่ / สาขา"></div><div class="form-group"><label>Tax ID บริษัท</label><input id="sale-company-taxid"></div></div>
+                <div class="form-row"><div class="form-group"><label>ที่อยู่บริษัท</label><textarea id="sale-company-address" style="min-height:54px;"></textarea></div><div class="form-group"><label>โลโก้บริษัท (URL รูป)</label><input id="sale-company-logo" placeholder="assets/profix-logo-dark.svg หรือ URL รูป"><label style="margin-top:8px;">โทรศัพท์บริษัท</label><input id="sale-company-phone"></div></div>
+                <div class="form-row"><div class="form-group"><label>อีเมลบริษัท</label><input id="sale-company-email"></div><div class="form-group"><label>เลขบัญชี / ข้อมูลชำระเงิน</label><textarea id="sale-bank-account" style="min-height:54px;"></textarea></div></div>
+                <div class="form-row"><div class="form-group"><label>ลายเซ็นผู้เสนอราคา</label><input id="sale-seller-signature" placeholder="URL รูปลายเซ็น หรืออัปโหลด"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-seller-signature')" style="margin-top:6px;"></div><div class="form-group"><label>ลายเซ็นผู้อนุมัติ / ลูกค้า</label><input id="sale-customer-signature" placeholder="URL รูปลายเซ็น หรืออัปโหลด"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-customer-signature')" style="margin-top:6px;"></div></div>
+              </div>
+            </details>
           </div>
           <div class="accounting-panel">
             <div class="table-header" style="padding:0 0 10px;border:0;flex-wrap:wrap;gap:8px;"><div class="table-title">รายการในบิลขาย</div><div style="position:relative;display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" type="button" onclick="openItemPicker('master',event)">＋ ราคากลาง</button><button class="btn btn-ghost btn-sm" type="button" onclick="openItemPicker('stock',event)">＋ อะไหล่/สต็อก</button><button class="btn btn-ghost btn-sm" type="button" onclick="addSalesItemRow()">＋ พิมพ์เอง</button><div id="sales-item-picker" class="job-picker" style="display:none;"></div></div></div>
@@ -4023,6 +4034,20 @@ function convertSalesDoc(id,toType){
   toType=toType||SALES_DOC_NEXT[inv.doc_type||'tax_invoice']||'tax_invoice';
   openSalesModal('','',toType);
   document.getElementById('sale-customer').value=inv.customer_name||inv.customer_id||'';
+  document.getElementById('sale-customer-address').value=inv.customer_address||'';
+  document.getElementById('sale-customer-taxid').value=inv.customer_tax_id||'';
+  document.getElementById('sale-customer-phone').value=inv.customer_phone||'';
+  document.getElementById('sale-company-display').value=inv.company_display_name||quoteCompanyDefaults().displayName;
+  document.getElementById('sale-company-name').value=inv.company_name||quoteCompanyDefaults().name;
+  document.getElementById('sale-company-branch').value=inv.company_branch||quoteCompanyDefaults().branch;
+  document.getElementById('sale-company-address').value=inv.company_address||quoteCompanyDefaults().address;
+  document.getElementById('sale-company-logo').value=inv.company_logo_url||quoteCompanyDefaults().logoUrl;
+  document.getElementById('sale-company-phone').value=inv.company_phone||quoteCompanyDefaults().phone;
+  document.getElementById('sale-company-taxid').value=inv.company_tax_id||quoteCompanyDefaults().taxId;
+  document.getElementById('sale-company-email').value=inv.company_email||quoteCompanyDefaults().email;
+  document.getElementById('sale-bank-account').value=inv.bank_account||'';
+  document.getElementById('sale-seller-signature').value=inv.seller_signature_url||'';
+  document.getElementById('sale-customer-signature').value=inv.customer_signature_url||'';
   document.getElementById('sale-date').value=todayISO();
   document.getElementById('sale-note').value=inv.note||'';
   salesDraftJobs=salesInvoiceJobs(inv).slice();renderSalesJobChips();
@@ -4042,32 +4067,60 @@ function printSalesDoc(id){
 }
 function salesDocHtml(inv,items){
   const meta=SALES_DOC_META[inv.doc_type||'tax_invoice']||SALES_DOC_META.tax_invoice;
-  const rows=items.map((it,i)=>`<tr><td class="c">${i+1}</td><td class="c">${esc(it.item_code||'-')}</td><td>${esc(it.description||'')}${it.category?`<div class="muted">${esc(it.category)}</div>`:''}</td><td class="r">${money(it.quantity||0)}</td><td class="c">${esc(it.unit||'')}</td><td class="r">${money(it.unit_price||0)}</td><td class="r">${money(it.discount||0)}</td><td class="r">${money(it.subtotal||0)}</td></tr>`).join('');
+  const company=salesDocCompanyInfo(inv);
+  const customer=salesDocCustomerInfo(inv);
+  const rows=items.map((it,i)=>`<tr><td class="no">${i+1}</td><td class="desc">${esc(it.description||'')}${it.category?`<div class="muted">${esc(it.category)}</div>`:''}</td><td class="qty">${money(it.quantity||0)}</td><td class="unit">${esc(it.unit||'')}</td><td class="price">${money(it.unit_price||0)}</td><td class="amount">${money(it.subtotal||0)}</td></tr>`).join('');
   const jobs=salesInvoiceJobs(inv).join(', ');
   const showVat=Number(inv.vat_amount||0)>0||(inv.doc_type!=='quotation');
+  const blankRows=Math.max(0,10-items.length);
+  const discount=Number(inv.discount_total||0);
+  const totalText=thaiBahtText(inv.total_amount||0);
+  const companyBranch=company.branch?` (${company.branch})`:'';
+  const companyEmail=company.email?`อีเมล: ${company.email}`:'';
+  const noteLines=[inv.note||'',company.bankAccount?`ชำระเงิน: ${company.bankAccount}`:''].filter(Boolean).join('\n');
+  const sellerSignature=salesDocImageUrl(inv.seller_signature_url||'');
+  const customerSignature=salesDocImageUrl(inv.customer_signature_url||'');
+  const sellerSignatureHtml=sellerSignature?`<img class="signature-img" src="${esc(sellerSignature)}" alt="ลายเซ็นผู้เสนอราคา">`:'';
+  const customerSignatureHtml=customerSignature?`<img class="signature-img" src="${esc(customerSignature)}" alt="ลายเซ็นผู้อนุมัติ / ลูกค้า">`:'';
   return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>${esc(meta.title)} ${esc(inv.doc_no||inv.sales_invoice_no||'')}</title>
-<style>@page{size:A4;margin:14mm;}*{box-sizing:border-box;font-family:'Noto Sans Thai',sans-serif;}body{color:#16202d;font-size:13px;}
-.toolbar{position:fixed;top:0;left:0;right:0;background:#1f2937;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;}
+<style>@page{size:A4 portrait;margin:0;}*{box-sizing:border-box;font-family:Arial,'Noto Sans Thai',sans-serif;}body{margin:0;background:#edf2f7;color:#111820;font-size:12px;line-height:1.35;}
+.toolbar{position:fixed;top:0;left:0;right:0;background:#1f2937;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;z-index:2;}
 .toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;}.btn-print{background:#3fb950;color:#fff;}.btn-ghost{background:#374151;color:#fff;margin-right:6px;}
-@media print{.toolbar{display:none;}}.sheet{margin-top:56px;}
-.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #16202d;padding-bottom:10px;margin-bottom:14px;}
-.company{font-size:12px;line-height:1.5;}.company b{font-size:15px;}.title{text-align:right;}.title h1{font-size:22px;margin:0;}.title .no{font-size:13px;color:#536173;margin-top:4px;}
-.meta{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;}.meta div b{display:block;color:#536173;font-weight:500;}
-table.items{width:100%;border-collapse:collapse;margin-top:6px;}table.items th,table.items td{border:1px solid #c7d0db;padding:6px 8px;font-size:12px;}
-table.items th{background:#eef3f8;}.c{text-align:center;}.r{text-align:right;}.muted{color:#7b8795;font-size:10px;}
-.sum{width:46%;margin-left:auto;margin-top:10px;font-size:13px;}.sum tr td{padding:4px 8px;}.sum .grand td{border-top:2px solid #16202d;font-weight:700;font-size:15px;}
-.sign{display:flex;justify-content:space-between;margin-top:48px;font-size:12px;text-align:center;}.sign div{width:40%;border-top:1px solid #16202d;padding-top:6px;}
-.note{margin-top:14px;font-size:12px;color:#536173;white-space:pre-wrap;}</style></head>
+.sheet{position:relative;width:210mm;min-height:297mm;margin:56px auto 18px;padding:16mm 15mm 12mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);}
+.top{display:grid;grid-template-columns:1fr 78mm;align-items:start;gap:10mm}.brand-logo{width:56mm;max-height:28mm;object-fit:contain;object-position:left top}.doc-title{text-align:right;font-size:20px;font-weight:900;color:#05070a}.doc-meta{margin-top:12px;display:grid;grid-template-columns:1fr 36mm;gap:7px 10px;text-align:right;font-size:15px}.doc-meta b{font-size:16px}
+.party{display:grid;grid-template-columns:1fr 1fr;gap:18mm;margin-top:18mm}.party h3{margin:0 0 10px;color:#6b7280;font-size:13px}.party .name{font-weight:800;color:#111827;margin-bottom:6px}.party div{color:#6b7280;margin:6px 0}
+.items{width:100%;border-collapse:collapse;margin-top:13mm;table-layout:fixed}.items th{background:#666;color:#fff;font-weight:800;font-size:13px;padding:5px 4px;border:1px solid #d4dbe5}.items td{height:8mm;border:1px solid #d4dbe5;padding:4px 5px;vertical-align:middle}.items tbody tr:nth-child(odd){background:#f2f5f9}.items .no{width:8mm;text-align:center}.items .desc{width:auto}.items .qty{width:25mm;text-align:right}.items .unit{width:19mm;text-align:center}.items .price,.items .amount{width:29mm;text-align:right}
+.note-total{display:grid;grid-template-columns:1fr 58mm;gap:16mm;margin-top:8mm}.note h3{margin:0 0 10px;color:#6b7280;font-size:13px}.note .box{white-space:pre-wrap;color:#697386;line-height:1.45}.total table{width:100%;border-collapse:collapse}.total td{padding:4px 4px;font-size:13px}.total .label{font-weight:800}.total .right{text-align:right}.grand td{background:#666;color:#fff;font-size:16px;font-weight:900;border:1px solid #fff}.amount-text{display:grid;grid-template-columns:28mm 1fr;gap:8px;margin-top:8mm;font-weight:800}
+.signs{position:absolute;left:15mm;right:15mm;bottom:24mm;display:grid;grid-template-columns:1fr 1fr;gap:34mm;color:#6b7280;font-size:11px}.signature-box{height:22mm;display:flex;align-items:flex-end;justify-content:center}.signature-img{max-width:54mm;max-height:20mm;object-fit:contain;display:block}.sign-line{color:#111;text-align:center}.footer{position:absolute;left:15mm;right:15mm;bottom:10mm;text-align:center;color:#7b8492;font-size:10px;font-style:italic}.muted{color:#7b8795;font-size:10px}
+@media print{body{background:#fff}.toolbar{display:none}.sheet{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:14mm 13mm 11mm}}</style></head>
 <body><div class="toolbar"><div>${esc(meta.title)} · ${esc(inv.doc_no||inv.sales_invoice_no||'')}</div><div><button class="btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
-<div class="sheet"><div class="head"><div class="company"><b>บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด</b> (สำนักงานใหญ่)<br>88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120<br>โทร 098-6266622 · เลขประจำตัวผู้เสียภาษี 0245557002535</div>
-<div class="title"><h1>${esc(meta.title)}</h1><div style="font-size:11px;color:#7b8795;">${esc(meta.label.split(' / ')[1]||'')}</div><div class="no">เลขที่ ${esc(inv.doc_no||inv.sales_invoice_no||'')}</div></div></div>
-<div class="meta"><div><b>ลูกค้า</b>${esc(inv.customer_name||inv.customer_id||'-')}</div><div><b>Job / PR</b>${esc(jobs||'-')}</div><div><b>วันที่</b>${esc(inv.invoice_date||todayISO())}</div><div><b>สถานะ</b>${esc(inv.payment_status||'-')}</div></div>
-<table class="items"><thead><tr><th class="c" style="width:32px;">ลำดับ</th><th class="c" style="width:70px;">รหัส</th><th>รายการ</th><th class="r" style="width:56px;">จำนวน</th><th class="c" style="width:50px;">หน่วย</th><th class="r" style="width:80px;">ราคา/หน่วย</th><th class="r" style="width:70px;">ส่วนลด</th><th class="r" style="width:90px;">ยอดก่อน VAT</th></tr></thead><tbody>${rows||'<tr><td colspan="8" class="c muted">ไม่มีรายการ</td></tr>'}</tbody></table>
-<table class="sum"><tr><td>รวมเป็นเงิน (ก่อน VAT)</td><td class="r">${money(inv.subtotal||0)}</td></tr>${Number(inv.discount_total||0)?`<tr><td>ส่วนลดรวม</td><td class="r">${money(inv.discount_total||0)}</td></tr>`:''}${showVat?`<tr><td>ภาษีมูลค่าเพิ่ม 7%</td><td class="r">${money(inv.vat_amount||0)}</td></tr>`:''}<tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td class="r">฿${money(inv.total_amount||0)}</td></tr></table>
-${inv.note?`<div class="note"><b>หมายเหตุ:</b> ${esc(inv.note)}</div>`:''}
-<div class="sign"><div>ผู้รับเอกสาร / ลูกค้า</div><div>ผู้มีอำนาจลงนาม<br>ProFix Solution</div></div>
-<div class="note" style="text-align:center;margin-top:20px;color:#9aa6b2;">เอกสารนี้สร้างจากระบบ ProFix Service Console</div></div></body></html>`;
+<div class="sheet"><section class="top"><div><img class="brand-logo" src="${esc(company.logoUrl)}" alt="${esc(company.displayName)}"></div><div><div class="doc-title">${esc(meta.label.split(' / ')[1]||'Quotation')}/${esc(meta.title)}</div><div class="doc-meta"><span>เลขที่ :</span><b>${esc(inv.doc_no||inv.sales_invoice_no||'')}</b><span>วันที่ :</span><b>${esc(quoteDateText(inv.invoice_date||todayISO()))}</b></div></div></section>
+<section class="party"><div><h3>จากบริษัท</h3><div class="name">${esc(company.displayName)}</div><div>${esc(company.name)}${esc(companyBranch)}</div><div>${esc(company.address)}</div><div>TAX ID : ${esc(company.taxId||'-')}</div>${companyEmail?`<div>${esc(companyEmail)}</div>`:''}</div><div><h3>ลูกค้า</h3><div class="name">${esc(inv.customer_name||inv.customer_id||'-')}</div><div>${esc(customer.address||'-')}</div><div>TAX ID : ${esc(customer.taxId||'-')}</div><div>${customer.phone?`โทร ${esc(customer.phone)}`:''}</div><div>${jobs?`Job / PR : ${esc(jobs)}`:''}</div></div></section>
+<table class="items"><thead><tr><th class="no">ลำดับ</th><th class="desc">รายการ</th><th class="qty">จำนวน</th><th class="unit">หน่วย</th><th class="price">ราคา</th><th class="amount">ราคา</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="no muted">ไม่มีรายการ</td></tr>'}${Array.from({length:blankRows}).map(()=>'<tr><td class="no"></td><td class="desc"></td><td class="qty"></td><td class="unit"></td><td class="price"></td><td class="amount"></td></tr>').join('')}</tbody></table>
+<section class="note-total"><div class="note"><h3>หมายเหตุ / เงื่อนไข</h3><div class="box">${esc(noteLines||'-')}</div></div><div class="total"><table><tr><td class="label">รวมเป็นเงิน</td><td class="right">${money(inv.subtotal||0)}</td></tr>${showVat?`<tr><td>ภาษีมูลค่าเพิ่ม<br>7%(VAT)</td><td class="right">${money(inv.vat_amount||0)}</td></tr>`:''}<tr><td>หักส่วนลด</td><td class="right">${money(discount)}</td></tr><tr class="grand"><td>ยอดรวมทั้งสิ้น</td><td class="right">${money(inv.total_amount||0)}</td></tr></table></div></section>
+<div class="amount-text"><div>ตัวอักษร</div><div>(${esc(totalText)})</div></div>
+<section class="signs"><div>ลงชื่อผู้เสนอราคา<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ........................................ )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ........................................ )</div></div></section>
+<div class="footer">${esc(company.displayName)} Team&nbsp;&nbsp;|&nbsp;&nbsp;ขอบคุณที่ใช้บริการ</div></div></body></html>`;
 }
+function salesDocCompanyInfo(inv={}){
+  const d=quoteCompanyDefaults();
+  const logo=inv.company_logo_url||d.logoUrl;
+  return {
+    displayName:inv.company_display_name||d.displayName,
+    name:inv.company_name||d.name,
+    branch:inv.company_branch||d.branch,
+    address:inv.company_address||d.address,
+    phone:inv.company_phone||d.phone,
+    taxId:inv.company_tax_id||d.taxId,
+    email:inv.company_email||d.email,
+    logoUrl:salesDocImageUrl(logo)||d.logoUrl,
+    bankAccount:inv.bank_account||d.bankAccount,
+  };
+}
+function salesDocCustomerInfo(inv={}){
+  return {taxId:inv.customer_tax_id||'',address:inv.customer_address||'',phone:inv.customer_phone||''};
+}
+function salesDocImageUrl(v){return quoteImageUrl(v);}
 function blankSalesItem(description='',quantity=1,unit='',unitPrice=0,extra={}){return {id:newAccountingId('SITEM'),item_code:'',category:'',description,quantity,unit,unit_price:unitPrice,discount:0,vat_rate:7,source_type:'manual',source_ref_id:'',note:'',...extra};}
 const SALES_DOC_META={
   quotation:{label:'ใบเสนอราคา / Quotation',prefix:'QT',title:'ใบเสนอราคา',addLabel:'+ เพิ่มใบเสนอราคา'},
@@ -4104,6 +4157,22 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-payment-date').value=inv?.payment_date||'';
   document.getElementById('sale-file').value=inv?.file_url||'';
   document.getElementById('sale-note').value=inv?.note||'';
+  const saleCompany=salesDocCompanyInfo(inv||{});
+  const saleCustomer=salesDocCustomerInfo(inv||{});
+  document.getElementById('sale-customer-address').value=saleCustomer.address;
+  document.getElementById('sale-customer-taxid').value=saleCustomer.taxId;
+  document.getElementById('sale-customer-phone').value=saleCustomer.phone;
+  document.getElementById('sale-company-display').value=saleCompany.displayName;
+  document.getElementById('sale-company-name').value=saleCompany.name;
+  document.getElementById('sale-company-branch').value=saleCompany.branch;
+  document.getElementById('sale-company-taxid').value=saleCompany.taxId;
+  document.getElementById('sale-company-address').value=saleCompany.address;
+  document.getElementById('sale-company-logo').value=saleCompany.logoUrl;
+  document.getElementById('sale-company-phone').value=saleCompany.phone;
+  document.getElementById('sale-company-email').value=saleCompany.email;
+  document.getElementById('sale-bank-account').value=saleCompany.bankAccount;
+  document.getElementById('sale-seller-signature').value=inv?.seller_signature_url||'';
+  document.getElementById('sale-customer-signature').value=inv?.customer_signature_url||'';
   accountingAttachments.sales=null;
   updateAttachmentPreview('sales',null);
   setAccountingStatus('sales',inv?.file_url?'มีไฟล์แนบเดิมใน URL แล้ว':'','');
@@ -4322,6 +4391,20 @@ async function saveSalesInvoice(){
     payment_date:document.getElementById('sale-payment-date').value||null,
     file_url:fileUrl,
     note:document.getElementById('sale-note').value.trim(),
+    customer_tax_id:document.getElementById('sale-customer-taxid').value.trim(),
+    customer_address:document.getElementById('sale-customer-address').value.trim(),
+    customer_phone:document.getElementById('sale-customer-phone').value.trim(),
+    company_display_name:document.getElementById('sale-company-display').value.trim(),
+    company_name:document.getElementById('sale-company-name').value.trim(),
+    company_branch:document.getElementById('sale-company-branch').value.trim(),
+    company_address:document.getElementById('sale-company-address').value.trim(),
+    company_logo_url:document.getElementById('sale-company-logo').value.trim(),
+    company_phone:document.getElementById('sale-company-phone').value.trim(),
+    company_tax_id:document.getElementById('sale-company-taxid').value.trim(),
+    company_email:document.getElementById('sale-company-email').value.trim(),
+    bank_account:document.getElementById('sale-bank-account').value.trim(),
+    seller_signature_url:document.getElementById('sale-seller-signature').value.trim(),
+    customer_signature_url:document.getElementById('sale-customer-signature').value.trim(),
     status:'active',
     created_by:getActorName(),
     updated_by:getActorName()
