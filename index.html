@@ -273,7 +273,7 @@ body[data-theme="light"] .cal-day.muted{background:#eef3f8;}
 .modal-title{font-size:16px;font-weight:700;}
 .modal-body{padding:18px 22px;}
 .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
-.quote-line{display:grid;grid-template-columns:120px minmax(360px,1fr) 76px 82px 96px 96px 58px;gap:8px;align-items:start;margin-bottom:8px;}
+.quote-line{display:grid;grid-template-columns:96px minmax(300px,1fr) 64px 72px 82px 82px 54px;gap:6px;align-items:start;margin-bottom:6px;}
 .quote-line input[readonly]{background:var(--surface2);color:var(--text2);}
 .quote-total{margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);font-weight:700;text-align:right;}
 @media(max-width:900px){.quote-line{grid-template-columns:1fr 1fr;}.quote-line textarea{grid-column:1/-1;}.modal-footer{flex-wrap:wrap;}.modal-footer .btn{flex:1;min-width:120px;}}
@@ -4981,6 +4981,14 @@ async function openQuoteModal(no){
   document.getElementById('q-prepared').value=d.preparedBy||j.pic||'';
   document.getElementById('q-overhead').value=d.overhead??10;
   document.getElementById('q-travel').value=d.travel??j.fuel??0;
+  const company=quoteCompanyInfo(d);
+  document.getElementById('q-company-name').value=company.name;
+  document.getElementById('q-company-branch').value=company.branch;
+  document.getElementById('q-company-address').value=company.address;
+  document.getElementById('q-company-logo').value=company.logoUrl;
+  document.getElementById('q-company-phone').value=company.phone;
+  document.getElementById('q-company-taxid').value=company.taxId;
+  document.getElementById('q-bank-account').value=company.bankAccount;
   renderQuoteModalRows();
   openM('m-quote');
 }
@@ -5033,6 +5041,13 @@ function saveQuoteDoc(printAfter=false){
   d.preparedBy=document.getElementById('q-prepared').value;
   d.overhead=Number(document.getElementById('q-overhead').value)||0;
   d.travel=Number(document.getElementById('q-travel').value)||0;
+  d.companyName=document.getElementById('q-company-name').value.trim();
+  d.companyBranch=document.getElementById('q-company-branch').value.trim();
+  d.companyAddress=document.getElementById('q-company-address').value.trim();
+  d.companyLogoUrl=document.getElementById('q-company-logo').value.trim();
+  d.companyPhone=document.getElementById('q-company-phone').value.trim();
+  d.companyTaxId=document.getElementById('q-company-taxid').value.trim();
+  d.bankAccount=document.getElementById('q-bank-account').value.trim();
   d.rows=quoteDraftRows.map(r=>({partId:r.partId||'',cat:r.cat||'',code:r.code||'',desc:r.desc||'',unit:r.unit||'',qty:Number(r.qty)||0,mat:Number(r.mat)||0,labor:Number(r.labor)||0}));
   d.amt=quoteDocTotal(d.rows);
   quoteEditNo=d.no;
@@ -5627,6 +5642,32 @@ function generatePhotoBillingReport(){
   saveState();
   generateDocWindow(photoBillingReportHtml(j));
 }
+function quoteCompanyDefaults(){
+  return {
+    name:'บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด',
+    branch:'สำนักงานใหญ่',
+    address:'88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120',
+    phone:'098-6266622',
+    taxId:'0245557002535',
+    logoUrl:new URL('assets/profix-logo-dark.svg',location.href).href,
+    bankAccount:'',
+  };
+}
+function quoteCompanyInfo(doc={}){
+  const d=quoteCompanyDefaults();
+  const logo=doc.companyLogoUrl||doc.logoUrl||d.logoUrl;
+  let logoUrl=logo;
+  try{logoUrl=new URL(logo,location.href).href;}catch(e){logoUrl=d.logoUrl;}
+  return {
+    name:doc.companyName||d.name,
+    branch:doc.companyBranch||d.branch,
+    address:doc.companyAddress||d.address,
+    phone:doc.companyPhone||d.phone,
+    taxId:doc.companyTaxId||doc.taxId||d.taxId,
+    logoUrl,
+    bankAccount:doc.bankAccount||doc.bankNo||'',
+  };
+}
 function quoteRowsFromJob(j){
   const rows=[];
   const detail=(j.partsUsed||j.technicianReport?.parts||j.fix||j.report||j.note||'รายการอะไหล่/งานซ่อม').split('\n').map(x=>x.trim()).filter(Boolean);
@@ -5658,16 +5699,20 @@ function partsQuoteHtml(j,doc={}){
   const note=doc.note||'';
   const term=doc.term||'';
   const preparedBy=doc.preparedBy||j.pic||'';
+  const company=quoteCompanyInfo(doc);
+  const companyBranch=company.branch?` (${company.branch})`:'';
+  const companyContact=[company.phone?`โทร ${company.phone}`:'',company.taxId?`เลขประจำตัวผู้เสียภาษี ${company.taxId}`:''].filter(Boolean).join(' · ');
+  const bankBlock=company.bankAccount?`<br><br><span class="bold">ข้อมูลชำระเงิน :</span><br>${esc(company.bankAccount)}`:'';
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(no)}</title><style>
-  *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:12px;line-height:1.35}.toolbar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#175fff;color:#fff}.page{width:297mm;min-height:210mm;margin:18px auto;padding:9mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16)}table{width:100%;border-collapse:collapse}td,th{border:1px solid #333;padding:4px 6px;vertical-align:middle}.company{text-align:center;font-weight:800;line-height:1.65}.doc-title{font-size:20px;font-weight:900;text-align:center}.small{font-size:11px}.center{text-align:center}.right{text-align:right}.bold{font-weight:800}.detail{height:34px}.boq{margin-top:6px}.boq th{font-weight:800;text-align:center;background:#f1f5f9}.boq td{height:22px}.summary{margin-top:6px}.summary td{height:22px}.note-box{height:78px;vertical-align:top;white-space:pre-wrap}.sum-label{font-weight:800}.signs{margin-top:10px}.signs td{height:54px;text-align:center;vertical-align:bottom}.muted{color:#64748b}.nowrap{white-space:nowrap}@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;box-shadow:none;padding:8mm}}@page{size:A4 landscape;margin:7mm}</style></head><body><div class="toolbar"><b>${esc(no)}</b><button onclick="window.print()">พิมพ์ / Save PDF</button></div><main class="page">
-  <table><tr><td rowspan="5" style="width:34px;"></td><td rowspan="5" class="company"><div class="doc-title">ใบเสนอราคา / BOQ</div>บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด (สำนักงานใหญ่)<br><span class="small">88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120</span><br><span class="small">โทร 098-6266622 เลขประจำตัวผู้เสียภาษี 0245557002535</span></td><td class="center bold">Work Order NO.</td><td class="center">${esc(ref)}</td></tr><tr><td class="center bold">JOB / PR</td><td class="center">${esc(j.id||doc.jid||'')}</td></tr><tr><td class="center bold">Quotation NO.</td><td class="center">${esc(no)}</td></tr><tr><td class="center bold">Date Issued</td><td class="center">${esc(doc.date||todayISO())}</td></tr><tr><td class="center bold">Customer</td><td class="center">${esc(client)}</td></tr>
+  *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:11px;line-height:1.28}.toolbar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#175fff;color:#fff}.page{width:297mm;min-height:210mm;margin:18px auto;padding:7mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16)}table{width:100%;border-collapse:collapse}td,th{border:1px solid #333;padding:2px 4px;vertical-align:middle}.company{text-align:center;font-weight:800;line-height:1.42}.company-logo{width:112px;max-height:38px;object-fit:contain;margin-bottom:2px}.doc-title{font-size:18px;font-weight:900;text-align:center}.small{font-size:10px}.center{text-align:center}.right{text-align:right}.bold{font-weight:800}.detail{height:26px}.boq{margin-top:5px;font-size:10.5px}.boq th{font-weight:800;text-align:center;background:#f1f5f9}.boq td{height:17px}.summary{margin-top:5px}.summary td{height:18px}.note-box{height:70px;vertical-align:top;white-space:pre-wrap}.sum-label{font-weight:800}.signs{margin-top:7px}.signs td{height:44px;text-align:center;vertical-align:bottom}.muted{color:#64748b}.nowrap{white-space:nowrap}@media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;box-shadow:none;padding:6mm}}@page{size:A4 landscape;margin:6mm}</style></head><body><div class="toolbar"><b>${esc(no)}</b><button onclick="window.print()">พิมพ์ / Save PDF</button></div><main class="page">
+  <table><tr><td rowspan="5" style="width:28px;"></td><td rowspan="5" class="company"><img class="company-logo" src="${esc(company.logoUrl)}" alt="${esc(company.name)}"><div class="doc-title">ใบเสนอราคา / BOQ</div>${esc(company.name)}${esc(companyBranch)}<br><span class="small">${esc(company.address)}</span><br><span class="small">${esc(companyContact)}</span></td><td class="center bold">Work Order NO.</td><td class="center">${esc(ref)}</td></tr><tr><td class="center bold">JOB / PR</td><td class="center">${esc(j.id||doc.jid||'')}</td></tr><tr><td class="center bold">Quotation NO.</td><td class="center">${esc(no)}</td></tr><tr><td class="center bold">Date Issued</td><td class="center">${esc(doc.date||todayISO())}</td></tr><tr><td class="center bold">Customer</td><td class="center">${esc(client)}</td></tr>
   <tr><td colspan="2" class="detail"><span class="bold">รายละเอียดงาน :</span> ${esc(workDetail)}</td><td class="center bold">สาขา : ${esc(branch)}</td><td class="center bold">จังหวัด : ${esc(province)}</td></tr>
   <tr><td colspan="2"><span class="bold">ผู้จัดทำ :</span> ${esc(preparedBy)} <span class="muted">| Generated ${esc(generatedAt)}</span></td><td class="center bold">ทีม/ศูนย์ : ${esc(team)}</td><td class="center bold">สถานะ : ${esc(doc.st||'ร่าง')}</td></tr></table>
   <table class="boq"><thead><tr><th style="width:36px;">NO.</th><th style="width:80px;">หมวด</th><th>Bill Of Quantities</th><th style="width:70px;">หน่วย</th><th style="width:90px;">ปริมาณ</th><th style="width:90px;">ค่าของ</th><th style="width:90px;">ค่าแรง</th><th style="width:90px;">รวม</th></tr></thead><tbody>${rows.map((r,i)=>{
     const total=(Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0));
     return `<tr><td class="center">${i+1}</td><td class="center">${esc(r.cat||'')}</td><td>${esc(r.desc||'')}</td><td class="center">${esc(r.unit||'')}</td><td class="center">${esc(r.qty||'')}</td><td class="right">${r.mat?Number(r.mat).toLocaleString(): '-'}</td><td class="right">${r.labor?Number(r.labor).toLocaleString(): '-'}</td><td class="right">${total?total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}): '-'}</td></tr>`;
   }).join('')}${Array.from({length:blankRows}).map(()=>'<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="right">-</td></tr>').join('')}</tbody></table>
-  <table class="summary"><tr><td rowspan="8" class="note-box" style="width:62%;"><span class="bold">หมายเหตุ :</span><br>${esc(note)}<br><br><span class="bold">เงื่อนไข :</span><br>${esc(term)}<br><br><span class="bold">ค่าเดินทาง :</span> ${esc(branch)}</td><td class="sum-label">รวม</td><td class="right">${subtotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">Overhead ${overhead}%</td><td class="right">${overheadAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">ราคารวม Overhead</td><td class="right">${(subtotal+overheadAmt).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>ค่าดำเนินการปกติ</td><td class="right">0.00</td></tr><tr><td>ค่าดำเนินการเร่งด่วน</td><td class="right">0.00</td></tr><tr><td class="sum-label">ค่าเดินทาง</td><td class="right">${travel.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">รวมทั้งหมด</td><td class="right">${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">VAT 7%</td><td class="right">${vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td colspan="2" class="center bold">เอกสารนี้สร้างจากระบบ ProFix Service Console</td><td class="sum-label">รวมราคาทั้งสิ้น</td><td class="right bold">${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table>
+  <table class="summary"><tr><td rowspan="8" class="note-box" style="width:62%;"><span class="bold">หมายเหตุ :</span><br>${esc(note)}<br><br><span class="bold">เงื่อนไข :</span><br>${esc(term)}<br><br><span class="bold">ค่าเดินทาง :</span> ${esc(branch)}${bankBlock}</td><td class="sum-label">รวม</td><td class="right">${subtotal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">Overhead ${overhead}%</td><td class="right">${overheadAmt.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">ราคารวม Overhead</td><td class="right">${(subtotal+overheadAmt).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>ค่าดำเนินการปกติ</td><td class="right">0.00</td></tr><tr><td>ค่าดำเนินการเร่งด่วน</td><td class="right">0.00</td></tr><tr><td class="sum-label">ค่าเดินทาง</td><td class="right">${travel.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">รวมทั้งหมด</td><td class="right">${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td class="sum-label">VAT 7%</td><td class="right">${vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td colspan="2" class="center bold">เอกสารนี้สร้างจากระบบ ProFix Service Console</td><td class="sum-label">รวมราคาทั้งสิ้น</td><td class="right bold">${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table>
   <table class="signs"><tr><td>ผู้จัดทำ<br><br>${esc(preparedBy)}</td><td>ผู้ตรวจสอบ</td><td>ผู้อนุมัติ</td><td>ลูกค้า / ผู้รับเอกสาร</td></tr></table>
   </main></body></html>`;
 }
@@ -6177,6 +6222,41 @@ initApp();
           <label>ผู้จัดทำ</label>
           <input id="q-prepared">
         </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ชื่อบริษัทบนหัวเอกสาร</label>
+          <input id="q-company-name" placeholder="ชื่อบริษัท">
+        </div>
+        <div class="form-group">
+          <label>สถานะสาขา</label>
+          <input id="q-company-branch" placeholder="สำนักงานใหญ่ / สาขา">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ที่อยู่บริษัท</label>
+          <textarea id="q-company-address" style="min-height:58px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>โลโก้บริษัท (URL รูป)</label>
+          <input id="q-company-logo" placeholder="assets/profix-logo-dark.svg หรือ URL รูป">
+          <div style="font-size:11px;color:var(--text2);margin-top:4px;">ถ้าไม่ใส่ จะใช้โลโก้ ProFix เดิม</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>โทรศัพท์บริษัท</label>
+          <input id="q-company-phone">
+        </div>
+        <div class="form-group">
+          <label>Tax ID บริษัท</label>
+          <input id="q-company-taxid" placeholder="เลขประจำตัวผู้เสียภาษี">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>เลขบัญชี / ข้อมูลชำระเงิน</label>
+        <textarea id="q-bank-account" style="min-height:58px;" placeholder="เช่น ธนาคาร / ชื่อบัญชี / เลขบัญชี"></textarea>
       </div>
       <div class="form-group">
         <label>รายละเอียดงาน</label>
