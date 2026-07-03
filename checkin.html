@@ -242,7 +242,8 @@ function sbHeaders(extra={}){ return { apikey: SUPABASE_ANON_KEY, Authorization:
 function normId(v){ return String(v||'').trim().replace(/\s+/g,'').toUpperCase(); }
 // Cloudflare Worker endpoint สำหรับอัปรูปเข้า R2 — ระบบเดียวกับหน้า submit
 const UPLOAD_ENDPOINT = 'https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
-let checkinPhotos = []; // {id, file, dataUrl, status, url, width, height} — ไม่จำกัดจำนวน
+let checkinPhotos = []; // {id, file, dataUrl, status, url, width, height, existing} — ไม่จำกัดจำนวน
+let existingCheckin = null; // record checkin ล่าสุดของงานนี้ (ถ้ามี) → บันทึกทับ ไม่สร้างซ้ำ
 
 const params = new URLSearchParams(location.search);
 let JOB_ID = params.get('job') || params.get('pr') || '';
@@ -315,6 +316,66 @@ async function init(){
   }
   jobRecord = job;
   showFormFromJob(job);
+  // ดึง checkin ครั้งล่าสุดของงานนี้มา prefill (รูป/ลายเซ็น/ข้อมูล) — จะได้ไม่ต้องอัปซ้ำ/เซ็นใหม่
+  await loadLatestCheckin(job.id || JOB_ID);
+}
+
+// โหลด checkin ครั้งล่าสุดของ job นี้ แล้วเติมข้อมูลกลับเข้าฟอร์ม
+async function loadLatestCheckin(jobId){
+  if(!jobId) return;
+  try{
+    const rows = await (await fetch(`${SUPABASE_URL}/rest/v1/job_checkins?job_id=eq.${encodeURIComponent(jobId)}&select=*&order=created_at.desc&limit=1`, { headers: sbHeaders() })).json();
+    const rec = Array.isArray(rows) ? rows[0] : null;
+    if(!rec) return;
+    existingCheckin = rec;
+    prefillFromCheckin(rec);
+  }catch(e){ console.warn('load latest checkin failed', e); }
+}
+function prefillFromCheckin(rec){
+  // ประเภทงาน
+  selectedTypes = new Set();
+  (Array.isArray(rec.job_type)?rec.job_type:[]).forEach(t=>{ if(JOB_TYPES.includes(t)) selectedTypes.add(t); });
+  [...document.querySelectorAll('.type-chip')].forEach(el=>el.classList.toggle('active', selectedTypes.has(el.dataset.t)));
+  // วัน/เวลา
+  if(rec.date_in) document.getElementById('f-date-in').value = rec.date_in;
+  if(rec.time_in) document.getElementById('f-time-in').value = rec.time_in;
+  if(rec.date_done || rec.time_done){
+    document.getElementById('f-done-toggle').checked = true;
+    toggleDoneFields();
+    if(rec.date_done) document.getElementById('f-date-done').value = rec.date_done;
+    if(rec.time_done) document.getElementById('f-time-done').value = rec.time_done;
+  }
+  if(rec.note) document.getElementById('f-note').value = rec.note;
+  // ผู้เซ็น + ช่าง
+  if(rec.signer_name) document.getElementById('f-signer-name').value = rec.signer_name;
+  if(rec.signer_role) document.getElementById('f-signer-role').value = rec.signer_role;
+  if(rec.tech_name) document.getElementById('f-tech-name').value = rec.tech_name;
+  // ลายเซ็น (วาดรูปเดิมลง canvas + mark ว่ามีลายเซ็นแล้ว)
+  loadSignatureIntoPad('customer', rec.signature_data);
+  loadSignatureIntoPad('tech', rec.tech_signature_data);
+  // รูปตรวจเช็กเดิม (existing → ไม่อัปซ้ำตอนบันทึก)
+  const ph = Array.isArray(rec.photos) ? rec.photos : [];
+  ph.forEach((p,i)=>{
+    if(!p || !p.url) return;
+    checkinPhotos.push({ id:'old-'+i, url:p.url, dataUrl:p.url, status:'ready', existing:true, width:p.width||0, height:p.height||0 });
+  });
+  renderCheckinThumbs();
+}
+function loadSignatureIntoPad(key, dataUrl){
+  const pad = sigPads[key];
+  if(!pad || !dataUrl) return;
+  const draw = ()=>{
+    const rect = pad.canvas.getBoundingClientRect();
+    if(!rect.width || !pad.ctx){ setTimeout(draw, 120); return; } // ฟอร์มยังไม่ได้ขนาด รอแล้วลองใหม่
+    const img = new Image();
+    img.onload = ()=>{
+      pad.ctx.drawImage(img, 0, 0, rect.width, 200);
+      pad.hasStroke = true;
+      const p = document.getElementById('sig-placeholder-'+key); if(p) p.style.display = 'none';
+    };
+    img.src = dataUrl;
+  };
+  draw();
 }
 
 function openManualJob(){
@@ -488,17 +549,21 @@ async function submitCheckin(){
   const reportedNote = manualMode ? document.getElementById('m-note').value.trim() : (jobRecord?.note || '');
 
   if(checkinPhotos.some(p=>p.status==='compressing')){ alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
-  if(!checkinPhotos.some(p=>p.status==='ready'&&p.blob)){ alert('กรุณาถ่าย/อัปรูปตรวจเช็กอย่างน้อย 1 รูปก่อนบันทึก'); return; }
+  if(!checkinPhotos.some(p=>p.status==='ready'&&(p.blob||p.url))){ alert('กรุณาถ่าย/อัปรูปตรวจเช็กอย่างน้อย 1 รูปก่อนบันทึก'); return; }
 
   document.getElementById('overlay').classList.add('show');
-  // อัปรูปขึ้น Cloudflare R2 ก่อนบันทึก
+  // อัปเฉพาะรูปใหม่ขึ้น Cloudflare R2 ; รูปเดิม (existing) ใช้ url เดิม ไม่อัปซ้ำ
   let photos = [];
   try{
-    const ready = checkinPhotos.filter(p=>p.status==='ready'&&p.blob);
-    for(let i=0;i<ready.length;i++){
-      document.querySelector('#overlay div:last-child').textContent = `กำลังอัปรูป ${i+1}/${ready.length}...`;
-      const up = await uploadCheckinPhoto(ready[i], i, jobId);
-      photos.push({ order:i, url:up.url, width:up.width, height:up.height, storage:up.storage });
+    const readyAll = checkinPhotos.filter(p=>p.status==='ready'&&(p.blob||p.url));
+    const toUpload = readyAll.filter(p=>!p.existing && p.blob).length;
+    let order = 0, done = 0;
+    for(const p of readyAll){
+      if(p.existing && p.url){ photos.push({ order:order++, url:p.url, width:p.width||0, height:p.height||0, storage:'external' }); continue; }
+      done++;
+      document.querySelector('#overlay div:last-child').textContent = `กำลังอัปรูป ${done}/${toUpload}...`;
+      const up = await uploadCheckinPhoto(p, order, jobId);
+      photos.push({ order:order++, url:up.url, width:up.width, height:up.height, storage:up.storage });
     }
   }catch(e){
     document.getElementById('overlay').classList.remove('show');
@@ -509,7 +574,7 @@ async function submitCheckin(){
 
   const doneToggled = document.getElementById('f-done-toggle').checked;
   const row = {
-    id: eventId(),
+    id: existingCheckin?.id || eventId(), // มีของเดิม → บันทึกทับ record เดิม ไม่สร้างซ้ำ
     job_id: jobId || null,
     photos,
     client_snapshot: client || null,
@@ -530,12 +595,13 @@ async function submitCheckin(){
   };
 
   try{
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/job_checkins`, {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/job_checkins?on_conflict=id`, {
       method: 'POST',
-      headers: sbHeaders({ 'Prefer':'return=minimal' }),
+      headers: sbHeaders({ 'Prefer':'resolution=merge-duplicates,return=minimal' }),
       body: JSON.stringify(row)
     });
     if(!r.ok) throw new Error(await r.text());
+    existingCheckin = row; // กันสร้างซ้ำถ้ากดบันทึกอีกครั้งในเซสชันเดียว
     showDone(row);
   }catch(e){
     console.error('save checkin failed', e);
