@@ -164,13 +164,13 @@ textarea{resize:vertical;min-height:64px;}
     </div>
 
     <div class="card">
-      <div class="sec-title">📷 รูปตรวจเช็ก</div>
-      <div class="sec-sub">ถ่าย/อัปรูปตอนตรวจเช็กหน้างาน (ไม่บังคับ)</div>
+      <div class="sec-title">📷 รูปตรวจเช็ก <span class="req-star">*</span></div>
+      <div class="sec-sub">ถ่าย/อัปรูปตอนตรวจเช็กหน้างาน (บังคับ อย่างน้อย 1 รูป · เลือกได้หลายรูป ไม่จำกัด)</div>
       <div class="up-zone" onclick="document.getElementById('inp-checkin').click()">
         <div class="up-icon">📸</div>
-        <div class="up-hint">แตะเพื่อถ่ายรูป หรือเลือกรูปจากเครื่อง</div>
+        <div class="up-hint">แตะเพื่อถ่ายรูป หรือเลือกหลายรูปจากเครื่อง</div>
       </div>
-      <input type="file" id="inp-checkin" accept="image/*" multiple capture="environment" style="display:none" onchange="addCheckinPhotos(this.files);this.value='';">
+      <input type="file" id="inp-checkin" accept="image/*" multiple style="display:none" onchange="addCheckinPhotos(Array.from(this.files));this.value='';">
       <div class="thumbs" id="th-checkin"></div>
     </div>
 
@@ -242,8 +242,7 @@ function sbHeaders(extra={}){ return { apikey: SUPABASE_ANON_KEY, Authorization:
 function normId(v){ return String(v||'').trim().replace(/\s+/g,'').toUpperCase(); }
 // Cloudflare Worker endpoint สำหรับอัปรูปเข้า R2 — ระบบเดียวกับหน้า submit
 const UPLOAD_ENDPOINT = 'https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
-const CHECKIN_PHOTO_MAX = 30;
-let checkinPhotos = []; // {id, file, dataUrl, status, url, width, height}
+let checkinPhotos = []; // {id, file, dataUrl, status, url, width, height} — ไม่จำกัดจำนวน
 
 const params = new URLSearchParams(location.search);
 let JOB_ID = params.get('job') || params.get('pr') || '';
@@ -442,9 +441,9 @@ function renderCheckinThumbs(){
 }
 function removeCheckinPhoto(id){ checkinPhotos = checkinPhotos.filter(p=>p.id!==id); renderCheckinThumbs(); }
 async function addCheckinPhotos(files){
-  for(const file of files){
+  const list = Array.from(files || []); // สำเนาเป็น array ก่อน กัน FileList ถูกล้างระหว่างอ่านแบบ async
+  for(const file of list){
     if(!file.type.startsWith('image/')) continue;
-    if(checkinPhotos.length >= CHECKIN_PHOTO_MAX){ alert(`อัปรูปได้สูงสุด ${CHECKIN_PHOTO_MAX} รูป`); break; }
     const id = Date.now()+'-'+Math.random().toString(36).slice(2,7);
     const entry = { id, file, dataUrl:null, status:'compressing', url:'' };
     checkinPhotos.push(entry);
@@ -489,6 +488,7 @@ async function submitCheckin(){
   const reportedNote = manualMode ? document.getElementById('m-note').value.trim() : (jobRecord?.note || '');
 
   if(checkinPhotos.some(p=>p.status==='compressing')){ alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
+  if(!checkinPhotos.some(p=>p.status==='ready'&&p.blob)){ alert('กรุณาถ่าย/อัปรูปตรวจเช็กอย่างน้อย 1 รูปก่อนบันทึก'); return; }
 
   document.getElementById('overlay').classList.add('show');
   // อัปรูปขึ้น Cloudflare R2 ก่อนบันทึก
@@ -565,4 +565,3 @@ init();
 </script>
 </body>
 </html>
- 
