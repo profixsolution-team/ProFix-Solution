@@ -60,6 +60,7 @@
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
 const UPLOAD_ENDPOINT='https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
+const CUSTOMER_EMAIL_ENDPOINT=''; // ใส่ URL Worker ส่งเมล เช่น https://profix-customer-request-email.profixsolution-team.workers.dev/
 const UPLOAD_CONCURRENCY=3;
 function sbHeaders(extra={}){return {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',...extra};}
 let photos=[];
@@ -94,6 +95,37 @@ async function saveCustomerRequest(row){
   await saveFallbackInbox({...inbox,requests,lastUpdatedAt:new Date().toISOString()});
   return 'fallback';
 }
+async function patchCustomerRequestEmailStatus(row, storageMode, patch){
+  Object.assign(row, patch);
+  if(storageMode==='table'){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/customer_job_requests?id=eq.${encodeURIComponent(row.id)}`,{method:'PATCH',headers:sbHeaders(),body:JSON.stringify(patch)});
+      if(!r.ok)console.warn('email status patch failed',await r.text());
+    }catch(e){console.warn('email status patch failed',e);}
+    return;
+  }
+  try{
+    const inbox=await loadFallbackInbox();
+    const requests=Array.isArray(inbox.requests)?inbox.requests:[];
+    const idx=requests.findIndex(x=>x.id===row.id);
+    if(idx>=0)requests[idx]={...requests[idx],...patch};
+    await saveFallbackInbox({...inbox,requests,lastUpdatedAt:new Date().toISOString()});
+  }catch(e){console.warn('fallback email status patch failed',e);}
+}
+async function notifyCustomerByEmail(row, storageMode){
+  if(!row.contact_email)return;
+  if(!CUSTOMER_EMAIL_ENDPOINT){
+    await patchCustomerRequestEmailStatus(row,storageMode,{email_notice_status:'pending',email_notice_error:'email worker endpoint not configured'});
+    return;
+  }
+  try{
+    const r=await fetch(CUSTOMER_EMAIL_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(row)});
+    if(!r.ok)throw new Error(await r.text());
+    await patchCustomerRequestEmailStatus(row,storageMode,{email_notice_status:'sent',email_notice_sent_at:new Date().toISOString(),email_notice_error:null});
+  }catch(e){
+    await patchCustomerRequestEmailStatus(row,storageMode,{email_notice_status:'failed',email_notice_error:String(e.message||e).slice(0,500)});
+  }
+}
 async function submitRequest(){
   const required=[['customer','ชื่อลูกค้า/บริษัท'],['contact','ชื่อผู้ติดต่อ'],['phone','เบอร์โทร'],['detail','รายละเอียดปัญหา']];
   for(const [id,label] of required){if(!val(id)){alert('กรุณากรอก '+label);document.getElementById(id).focus();return;}}
@@ -103,8 +135,9 @@ async function submitRequest(){
   try{
     const ready=photos.filter(p=>p.status==='ready'&&p.blob);
     const uploaded=await mapWithConcurrency(ready,UPLOAD_CONCURRENCY,async(p,i)=>({order:i,...await uploadPhoto(p,i,id)}));
-    const row={id,request_no:no,customer_name:val('customer'),branch_name:val('branch')||null,contact_name:val('contact'),contact_phone:val('phone'),contact_email:val('email')||null,job_type:val('job-type')||null,priority:val('priority')||'normal',preferred_date:val('preferred-date')||null,preferred_time:val('preferred-time')||null,location_text:val('location')||null,problem_detail:val('detail'),photos:uploaded,status:'new',source:'customer_request_page'};
-    await saveCustomerRequest(row);
+    const row={id,request_no:no,customer_name:val('customer'),branch_name:val('branch')||null,contact_name:val('contact'),contact_phone:val('phone'),contact_email:val('email')||null,job_type:val('job-type')||null,priority:val('priority')||'normal',preferred_date:val('preferred-date')||null,preferred_time:val('preferred-time')||null,location_text:val('location')||null,problem_detail:val('detail'),photos:uploaded,email_notice_status:val('email')?'pending':'none',status:'new',source:'customer_request_page'};
+    const storageMode=await saveCustomerRequest(row);
+    notifyCustomerByEmail(row,storageMode);
     document.getElementById('form-wrap').style.display='none';document.getElementById('done-no').textContent=no;document.getElementById('done').classList.add('show');
   }catch(e){console.error(e);alert('ส่งงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือติดต่อทีม ProFix');btn.disabled=false;btn.textContent='ส่งงานให้ ProFix';}
 }
