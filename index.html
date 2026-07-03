@@ -3017,7 +3017,9 @@ async function ensureCustomerRequestsLoaded(force=false){
   if(customerRequestLoadingPromise&&!force)return customerRequestLoadingPromise;
   customerRequestLoadingPromise=(async()=>{
     try{
-      customerJobRequests=await sbFetchAllOptional('customer_job_requests','?select=*&order=created_at.desc');
+      const tableRows=await sbFetchAllOptional('customer_job_requests','?select=*&order=created_at.desc');
+      const fallbackRows=await loadCustomerRequestFallbackRows();
+      customerJobRequests=mergeUniqueBy([...tableRows,...fallbackRows],r=>r.id);
       customerRequestLoaded=true;
       updateCustomerRequestBadge();
     }catch(e){
@@ -3027,6 +3029,18 @@ async function ensureCustomerRequestsLoaded(force=false){
     return customerJobRequests;
   })().finally(()=>{customerRequestLoadingPromise=null;});
   return customerRequestLoadingPromise;
+}
+async function loadCustomerRequestFallbackRows(){
+  try{
+    const rows=await sbFetchJson('app_state','?key=eq.customer_job_requests_inbox&select=data');
+    const requests=rows?.[0]?.data?.requests;
+    return Array.isArray(requests)?requests.map(r=>({...r,_fallback:true})):[];
+  }catch(e){console.warn('Customer request fallback load failed',e);return [];}
+}
+async function saveCustomerRequestFallbackRows(rows){
+  const fallbackRows=(rows||customerJobRequests||[]).filter(r=>r._fallback);
+  const r=await fetch(splitUrl('app_state'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify({key:'customer_job_requests_inbox',data:{requests:fallbackRows,lastUpdatedAt:new Date().toISOString()},updated_at:new Date().toISOString()})});
+  if(!r.ok)throw new Error(await r.text());
 }
 function updateCustomerRequestBadge(){
   const nb=document.getElementById('nb-customer-requests');
@@ -3077,8 +3091,9 @@ async function acceptCustomerRequest(id){
     row.id=res.id;
     adminTasks.unshift(row);
     aCnt=Math.max(Number(aCnt)||1,(numFromId(row.id,'TASK')||0)+1);
-    await sbPatchById('customer_job_requests',r.id,{status:'accepted',admin_task_id:row.id,note:'accepted by '+getActorName()});
     Object.assign(r,{status:'accepted',admin_task_id:row.id});
+    if(r._fallback)await saveCustomerRequestFallbackRows();
+    else await sbPatchById('customer_job_requests',r.id,{status:'accepted',admin_task_id:row.id,note:'accepted by '+getActorName()});
     renderCustomerRequests();renderAdmin();renderDash();saveState();
     await writeAuditLog('accept_customer_request','customer_job_request',r.id,null,{adminTaskId:row.id},clonePlain(r));
     closeM('m-detail');
@@ -3089,8 +3104,9 @@ async function rejectCustomerRequest(id){
   const r=customerJobRequests.find(x=>x.id===id);if(!r||r.status!=='new')return;
   const note=prompt('เหตุผลที่ปฏิเสธ / หมายเหตุ',r.note||'')||'';
   try{
-    await sbPatchById('customer_job_requests',id,{status:'rejected',note});
     Object.assign(r,{status:'rejected',note});
+    if(r._fallback)await saveCustomerRequestFallbackRows();
+    else await sbPatchById('customer_job_requests',id,{status:'rejected',note});
     renderCustomerRequests();updateCustomerRequestBadge();
     await writeAuditLog('reject_customer_request','customer_job_request',id,null,{note},clonePlain(r));
     closeM('m-detail');
