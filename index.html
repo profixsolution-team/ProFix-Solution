@@ -4995,6 +4995,8 @@ async function openQuoteModal(no){
   document.getElementById('q-customer-address').value=customer.address;
   document.getElementById('q-customer-phone').value=customer.phone;
   document.getElementById('q-bank-account').value=company.bankAccount;
+  document.getElementById('q-seller-signature').value=d.sellerSignatureUrl||d.sellerSignature||'';
+  document.getElementById('q-customer-signature').value=d.customerSignatureUrl||d.customerSignature||'';
   renderQuoteModalRows();
   openM('m-quote');
 }
@@ -5030,6 +5032,15 @@ function removeQuoteLine(i){
   quoteDraftRows.splice(i,1);
   renderQuoteModalRows();
 }
+function loadQuoteSignatureFile(input,targetId){
+  const file=input?.files?.[0];
+  if(!file)return;
+  if(!file.type.startsWith('image/')){alert('กรุณาเลือกไฟล์รูปภาพลายเซ็น');input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=()=>{const el=document.getElementById(targetId);if(el)el.value=reader.result||'';input.value='';};
+  reader.onerror=()=>alert('อ่านไฟล์ลายเซ็นไม่สำเร็จ');
+  reader.readAsDataURL(file);
+}
 function saveQuoteDoc(printAfter=false){
   const d=docs.qt.find(x=>x.no===quoteEditNo);if(!d)return;
   d.no=document.getElementById('q-no').value.trim()||d.no;
@@ -5059,6 +5070,8 @@ function saveQuoteDoc(printAfter=false){
   d.customerAddress=document.getElementById('q-customer-address').value.trim();
   d.customerPhone=document.getElementById('q-customer-phone').value.trim();
   d.bankAccount=document.getElementById('q-bank-account').value.trim();
+  d.sellerSignatureUrl=document.getElementById('q-seller-signature').value.trim();
+  d.customerSignatureUrl=document.getElementById('q-customer-signature').value.trim();
   d.rows=quoteDraftRows.map(r=>({partId:r.partId||'',cat:r.cat||'',code:r.code||'',desc:r.desc||'',unit:r.unit||'',qty:Number(r.qty)||0,mat:Number(r.mat)||0,labor:Number(r.labor)||0}));
   d.amt=quoteDocTotal(d.rows);
   quoteEditNo=d.no;
@@ -5722,6 +5735,12 @@ function quoteDateText(v){
   const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return m?`${m[3]}/${m[2]}/${m[1]}`:s;
 }
+function quoteImageUrl(v){
+  v=String(v||'').trim();
+  if(!v)return '';
+  if(/^data:image\//i.test(v))return v;
+  try{return new URL(v,location.href).href;}catch(e){return v;}
+}
 function quoteRowsFromJob(j){
   const rows=[];
   const detail=(j.partsUsed||j.technicianReport?.parts||j.fix||j.report||j.note||'รายการอะไหล่/งานซ่อม').split('\n').map(x=>x.trim()).filter(Boolean);
@@ -6345,6 +6364,18 @@ initApp();
       <div class="form-group">
         <label>เลขบัญชี / ข้อมูลชำระเงิน</label>
         <textarea id="q-bank-account" style="min-height:58px;" placeholder="เช่น ธนาคาร / ชื่อบัญชี / เลขบัญชี"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ลายเซ็นผู้เสนอราคา</label>
+          <input id="q-seller-signature" placeholder="URL รูปลายเซ็น หรืออัปโหลดด้านล่าง">
+          <input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'q-seller-signature')" style="margin-top:6px;">
+        </div>
+        <div class="form-group">
+          <label>ลายเซ็นผู้อนุมัติ / ลูกค้า</label>
+          <input id="q-customer-signature" placeholder="URL รูปลายเซ็น หรืออัปโหลดด้านล่าง">
+          <input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'q-customer-signature')" style="margin-top:6px;">
+        </div>
       </div>
       <div class="form-group">
         <label>รายละเอียดงาน</label>
