@@ -72,6 +72,28 @@ function compressImage(file,maxW=1100,quality=.68){return new Promise((resolve,r
 async function addPhotos(files){for(const file of Array.from(files||[])){if(!file.type.startsWith('image/'))continue;const entry={id:eventId(),status:'compressing'};photos.push(entry);renderThumbs();try{const c=await compressImage(file);Object.assign(entry,c,{status:'ready'});}catch(e){entry.status='error';console.warn(e);}renderThumbs();}}
 async function mapWithConcurrency(items,limit,mapper){const results=new Array(items.length);let next=0;const workers=Array.from({length:Math.min(limit,items.length)},async()=>{while(next<items.length){const i=next++;results[i]=await mapper(items[i],i);}});await Promise.all(workers);return results;}
 async function uploadPhoto(p,index,reqId){const fd=new FormData();fd.append('file',p.blob,`customer_request_${index}.jpg`);fd.append('job_id',reqId);fd.append('category','customer-request');fd.append('token','');const r=await fetch(UPLOAD_ENDPOINT,{method:'POST',body:fd});if(!r.ok)throw new Error('อัปโหลดรูปไม่สำเร็จ');const data=await r.json();const url=data.url||data.fileUrl||'';if(!url)throw new Error('ไม่ได้รับ URL รูป');return {url,storage:data.storage||'external',width:p.width||0,height:p.height||0};}
+function isMissingTableError(msg){return /PGRST205|schema cache|Could not find the table|does not exist|42P01/i.test(String(msg||''));}
+async function loadFallbackInbox(){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/app_state?key=eq.customer_job_requests_inbox&select=data`,{headers:sbHeaders()});
+  if(!r.ok)throw new Error(await r.text());
+  const rows=await r.json();
+  return rows?.[0]?.data || {requests:[]};
+}
+async function saveFallbackInbox(data){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/app_state`,{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify({key:'customer_job_requests_inbox',data,updated_at:new Date().toISOString()})});
+  if(!r.ok)throw new Error(await r.text());
+}
+async function saveCustomerRequest(row){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/customer_job_requests`,{method:'POST',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify(row)});
+  if(r.ok)return 'table';
+  const msg=await r.text();
+  if(!isMissingTableError(msg))throw new Error(msg);
+  const inbox=await loadFallbackInbox();
+  const requests=Array.isArray(inbox.requests)?inbox.requests:[];
+  requests.unshift({...row,_fallback:true});
+  await saveFallbackInbox({...inbox,requests,lastUpdatedAt:new Date().toISOString()});
+  return 'fallback';
+}
 async function submitRequest(){
   const required=[['customer','ชื่อลูกค้า/บริษัท'],['contact','ชื่อผู้ติดต่อ'],['phone','เบอร์โทร'],['detail','รายละเอียดปัญหา']];
   for(const [id,label] of required){if(!val(id)){alert('กรุณากรอก '+label);document.getElementById(id).focus();return;}}
@@ -82,10 +104,9 @@ async function submitRequest(){
     const ready=photos.filter(p=>p.status==='ready'&&p.blob);
     const uploaded=await mapWithConcurrency(ready,UPLOAD_CONCURRENCY,async(p,i)=>({order:i,...await uploadPhoto(p,i,id)}));
     const row={id,request_no:no,customer_name:val('customer'),branch_name:val('branch')||null,contact_name:val('contact'),contact_phone:val('phone'),contact_email:val('email')||null,job_type:val('job-type')||null,priority:val('priority')||'normal',preferred_date:val('preferred-date')||null,preferred_time:val('preferred-time')||null,location_text:val('location')||null,problem_detail:val('detail'),photos:uploaded,status:'new',source:'customer_request_page'};
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/customer_job_requests`,{method:'POST',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify(row)});
-    if(!r.ok)throw new Error(await r.text());
+    await saveCustomerRequest(row);
     document.getElementById('form-wrap').style.display='none';document.getElementById('done-no').textContent=no;document.getElementById('done').classList.add('show');
-  }catch(e){alert('ส่งงานไม่สำเร็จ: '+e.message+'\nกรุณาลองใหม่อีกครั้ง');btn.disabled=false;btn.textContent='ส่งงานให้ ProFix';}
+  }catch(e){console.error(e);alert('ส่งงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือติดต่อทีม ProFix');btn.disabled=false;btn.textContent='ส่งงานให้ ProFix';}
 }
 </script>
 </body>
