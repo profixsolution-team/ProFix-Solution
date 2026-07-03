@@ -56,6 +56,16 @@ textarea{resize:vertical;min-height:64px;}
 .summary-row:last-child{border-bottom:0;}
 .summary-row .k{color:var(--text3);}
 .summary-row .v{font-weight:600;text-align:right;}
+.up-zone{border:2px dashed var(--border2);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg);}
+.up-zone:active{border-color:var(--accent);background:var(--accent-dim);}
+.up-icon{font-size:28px;margin-bottom:6px;}
+.up-hint{font-size:12px;color:var(--text2);}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,72px);gap:8px;margin-top:12px;justify-content:start;}
+.thumb{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--surface2);}
+.thumb img{width:100%;height:100%;object-fit:cover;}
+.thumb .rm{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;border:none;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;}
+.thumb .pct{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-family:var(--mono);}
+@media (min-width:480px){.thumbs{grid-template-columns:repeat(auto-fill,84px);}.thumb{width:84px;height:84px;}}
 </style>
 </head>
 <body>
@@ -154,6 +164,17 @@ textarea{resize:vertical;min-height:64px;}
     </div>
 
     <div class="card">
+      <div class="sec-title">📷 รูปตรวจเช็ก</div>
+      <div class="sec-sub">ถ่าย/อัปรูปตอนตรวจเช็กหน้างาน (ไม่บังคับ)</div>
+      <div class="up-zone" onclick="document.getElementById('inp-checkin').click()">
+        <div class="up-icon">📸</div>
+        <div class="up-hint">แตะเพื่อถ่ายรูป หรือเลือกรูปจากเครื่อง</div>
+      </div>
+      <input type="file" id="inp-checkin" accept="image/*" multiple capture="environment" style="display:none" onchange="addCheckinPhotos(this.files);this.value='';">
+      <div class="thumbs" id="th-checkin"></div>
+    </div>
+
+    <div class="card">
       <div class="sec-title">📝 หมายเหตุเพิ่มเติม</div>
       <div class="sec-sub">ไม่บังคับ — ระบุสั้น ๆ ถ้ามี</div>
       <div class="form-group" style="margin-bottom:0;"><textarea id="f-note" placeholder="เช่น รออะไหล่, นัดเข้าซ่อมรอบถัดไป ฯลฯ"></textarea></div>
@@ -219,6 +240,10 @@ const SUPABASE_URL = 'https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
 function sbHeaders(extra={}){ return { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer '+SUPABASE_ANON_KEY, 'Content-Type':'application/json', ...extra }; }
 function normId(v){ return String(v||'').trim().replace(/\s+/g,'').toUpperCase(); }
+// Cloudflare Worker endpoint สำหรับอัปรูปเข้า R2 — ระบบเดียวกับหน้า submit
+const UPLOAD_ENDPOINT = 'https://profix-r2-upload-worker.profixsolution-team.workers.dev/upload';
+const CHECKIN_PHOTO_MAX = 30;
+let checkinPhotos = []; // {id, file, dataUrl, status, url, width, height}
 
 const params = new URLSearchParams(location.search);
 let JOB_ID = params.get('job') || params.get('pr') || '';
@@ -386,6 +411,65 @@ function clearSignature(key){
   document.getElementById('sig-placeholder-'+key).style.display = 'flex';
 }
 
+// ---------- รูปตรวจเช็ก (บีบอัด + อัปเข้า Cloudflare R2 เหมือน submit) ----------
+function compressImage(file, maxW=1100, quality=0.68){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = e => { img.src = e.target.result; };
+    reader.onerror = reject;
+    img.onload = ()=>{
+      let { width, height } = img;
+      if(width > maxW){ height = Math.round(height * maxW / width); width = maxW; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob=>{
+        resolve({ blob, dataUrl: canvas.toDataURL('image/jpeg', quality), width, height });
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function renderCheckinThumbs(){
+  document.getElementById('th-checkin').innerHTML = checkinPhotos.map(p=>`
+    <div class="thumb">
+      ${p.dataUrl ? `<img src="${p.dataUrl}">` : ''}
+      ${p.status==='compressing' ? '<div class="pct">...</div>' : ''}
+      <button class="rm" type="button" onclick="removeCheckinPhoto('${p.id}')">×</button>
+    </div>`).join('');
+}
+function removeCheckinPhoto(id){ checkinPhotos = checkinPhotos.filter(p=>p.id!==id); renderCheckinThumbs(); }
+async function addCheckinPhotos(files){
+  for(const file of files){
+    if(!file.type.startsWith('image/')) continue;
+    if(checkinPhotos.length >= CHECKIN_PHOTO_MAX){ alert(`อัปรูปได้สูงสุด ${CHECKIN_PHOTO_MAX} รูป`); break; }
+    const id = Date.now()+'-'+Math.random().toString(36).slice(2,7);
+    const entry = { id, file, dataUrl:null, status:'compressing', url:'' };
+    checkinPhotos.push(entry);
+    renderCheckinThumbs();
+    try{
+      const { blob, dataUrl, width, height } = await compressImage(file);
+      entry.blob = blob; entry.dataUrl = dataUrl; entry.width = width; entry.height = height; entry.status = 'ready';
+    }catch(e){ entry.status='error'; console.warn('compress failed', e); }
+    renderCheckinThumbs();
+  }
+}
+async function uploadCheckinPhoto(entry, index, jobId){
+  const fd = new FormData();
+  fd.append('file', entry.blob, `checkin_${index}.jpg`);
+  fd.append('job_id', jobId || 'checkin');
+  fd.append('category', 'checkin');
+  fd.append('token', '');
+  const res = await fetch(UPLOAD_ENDPOINT, { method:'POST', body:fd });
+  if(!res.ok) throw new Error('อัปโหลดรูปไม่สำเร็จ');
+  const data = await res.json();
+  const url = data.url || data.fileUrl || '';
+  if(!url) throw new Error('อัปโหลดรูปสำเร็จแต่ไม่ได้รับ URL');
+  return { url, storage: data.storage || 'external', width: entry.width||0, height: entry.height||0 };
+}
+
 // ---------- บันทึก ----------
 function eventId(){ return 'CHK-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
 
@@ -404,10 +488,30 @@ async function submitCheckin(){
   const branch = manualMode ? document.getElementById('m-branch').value.trim() : (jobRecord?.branch || '');
   const reportedNote = manualMode ? document.getElementById('m-note').value.trim() : (jobRecord?.note || '');
 
+  if(checkinPhotos.some(p=>p.status==='compressing')){ alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
+
+  document.getElementById('overlay').classList.add('show');
+  // อัปรูปขึ้น Cloudflare R2 ก่อนบันทึก
+  let photos = [];
+  try{
+    const ready = checkinPhotos.filter(p=>p.status==='ready'&&p.blob);
+    for(let i=0;i<ready.length;i++){
+      document.querySelector('#overlay div:last-child').textContent = `กำลังอัปรูป ${i+1}/${ready.length}...`;
+      const up = await uploadCheckinPhoto(ready[i], i, jobId);
+      photos.push({ order:i, url:up.url, width:up.width, height:up.height, storage:up.storage });
+    }
+  }catch(e){
+    document.getElementById('overlay').classList.remove('show');
+    alert('อัปโหลดรูปไม่สำเร็จ: '+e.message+'\nลองใหม่อีกครั้ง หรือลบรูปที่มีปัญหาออก');
+    return;
+  }
+  document.querySelector('#overlay div:last-child').textContent = 'กำลังบันทึก...';
+
   const doneToggled = document.getElementById('f-done-toggle').checked;
   const row = {
     id: eventId(),
     job_id: jobId || null,
+    photos,
     client_snapshot: client || null,
     branch_snapshot: branch || null,
     reported_note: reportedNote || null,
@@ -425,7 +529,6 @@ async function submitCheckin(){
     source: 'checkin_page'
   };
 
-  document.getElementById('overlay').classList.add('show');
   try{
     const r = await fetch(`${SUPABASE_URL}/rest/v1/job_checkins`, {
       method: 'POST',
@@ -453,6 +556,7 @@ function showDone(row){
     ['เสร็จ', row.date_done ? `${row.date_done} ${row.time_done||''}` : 'ยังไม่เสร็จ'],
     ['ลูกค้า/ผู้แจ้ง', `${row.signer_name} (${row.signer_role})`],
     ['ช่างผู้เข้างาน', row.tech_name || '—'],
+    ['รูปตรวจเช็ก', `${(row.photos||[]).length} รูป`],
   ];
   document.getElementById('done-summary').innerHTML = rows.map(([k,v])=>`<div class="summary-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
 }
