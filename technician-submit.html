@@ -64,6 +64,14 @@ textarea{resize:vertical;min-height:80px;}
 .hidden{display:none!important;}
 .req-star{color:var(--red);}
 .step-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--surface3);color:var(--text2);font-family:var(--mono);font-size:11px;font-weight:700;margin-bottom:10px;}
+.parts-editor{display:flex;flex-direction:column;gap:8px;}
+.part-row{display:grid;grid-template-columns:minmax(0,1fr) 82px 82px 36px;gap:6px;align-items:start;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px;}
+.part-row input{padding:9px 10px;font-size:14px;}
+.part-row .rm-part{width:36px;height:38px;border:0;border-radius:8px;background:var(--red-dim);color:var(--red);font-size:18px;font-weight:800;cursor:pointer;}
+.part-tools{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;}
+.part-add{width:auto;padding:9px 12px;border-radius:8px;background:var(--surface3);color:var(--text);border:1px solid var(--border);font-weight:700;cursor:pointer;}
+.part-hint{font-size:11px;color:var(--text3);line-height:1.45;}
+@media(max-width:430px){.part-row{grid-template-columns:1fr 70px 70px 34px;gap:5px;padding:7px;}.part-row input{font-size:13px;padding:9px 8px;}}
 </style>
 </head>
 <body>
@@ -162,7 +170,13 @@ textarea{resize:vertical;min-height:80px;}
       </div>
       <div class="form-group">
         <label>อะไหล่ที่ใช้ <span class="req-star">*</span></label>
-        <textarea id="f-parts" placeholder="เช่น น้ำยา R22 x2, แผงคอยล์เย็น x1" style="min-height:60px;"></textarea>
+        <input type="hidden" id="f-parts">
+        <datalist id="tech-part-options"></datalist>
+        <div class="parts-editor" id="tech-parts-editor"></div>
+        <div class="part-tools">
+          <button type="button" class="part-add" onclick="addTechPartRow()">+ เพิ่มแถวอะไหล่</button>
+          <div class="part-hint">พิมพ์ค้นหาชื่ออะไหล่จากระบบได้ หรือพิมพ์รายการใหม่เองได้ ราคาไม่แสดงให้ช่างเห็น</div>
+        </div>
         <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
           <input type="checkbox" id="f-noparts" onchange="toggleNoParts()" style="width:18px;height:18px;flex:0 0 auto;">
           ไม่มีการใช้อะไหล่
@@ -277,6 +291,9 @@ function sbHeaders(extra={}){return {'apikey':SUPABASE_KEY,'Authorization':'Bear
 const params = new URLSearchParams(location.search);
 const JOB_ID = params.get('job') || params.get('pr') || '';
 const TOKEN = params.get('token') || '';
+let masterPartOptions = [];
+let techPartRows = [];
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function normJobId(v){ return String(v||'').trim().replace(/\s+/g,'').toUpperCase(); }
 function sameJobId(a,b){ return normJobId(a) === normJobId(b); }
 function openManualJob(){
@@ -318,6 +335,7 @@ async function loadJob(){
       document.getElementById('state-done').classList.remove('hidden');
       return;
     }
+    await loadMasterPartOptions();
     showForm();
   }catch(e){ showError('เกิดข้อผิดพลาด', e.message); }
 }
@@ -413,7 +431,113 @@ async function saveAppState(data){
 
 function reportTableId(jobId){ return `${normJobId(jobId)}:latest`; }
 function eventId(prefix){ return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
-function parseUsedPartsText(text){
+async function loadMasterPartOptions(){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/master_price_items?select=id,item_code,item_name,category,default_unit&is_active=eq.true&order=category.asc,item_name.asc`,{headers:sbHeaders()});
+    if(!r.ok)throw new Error(await r.text());
+    const rows=await r.json();
+    masterPartOptions=(rows||[]).filter(x=>String(x.item_name||'').trim()).map(x=>({
+      id:x.id||'',code:x.item_code||'',name:x.item_name||'',category:x.category||'',unit:x.default_unit||''
+    }));
+  }catch(e){
+    console.warn('load master part options failed',e);
+    masterPartOptions=[];
+  }
+  renderTechPartOptions();
+}
+function renderTechPartOptions(){
+  const dl=document.getElementById('tech-part-options');if(!dl)return;
+  dl.innerHTML=masterPartOptions.map(p=>`<option value="${esc(p.name)}" label="${esc([p.category,p.code].filter(Boolean).join(' · '))}"></option>`).join('');
+}
+function findMasterPartByName(name){
+  const k=String(name||'').trim().toLowerCase();
+  if(!k)return null;
+  return masterPartOptions.find(p=>String(p.name||'').trim().toLowerCase()===k)||null;
+}
+function parsePartsTextToRows(text){
+  const raw=String(text||'').split(/\n|,/).map(x=>x.trim()).filter(Boolean);
+  return raw.filter(x=>x!=='ไม่มีการใช้อะไหล่').map(line=>{
+    const m=line.match(/^(.*?)(?:\s+|x|×)(\d+(?:\.\d+)?)\s*([^\d\s]+)?$/i);
+    const name=(m?m[1]:line).trim()||line;
+    const hit=findMasterPartByName(name);
+    return {masterId:hit?.id||'',name,qty:m?Number(m[2]||1):1,unit:m?(m[3]||hit?.unit||''):(hit?.unit||''),custom:!hit};
+  });
+}
+function setTechPartRows(rows){
+  techPartRows=(rows&&rows.length?rows:[{masterId:'',name:'',qty:1,unit:'',custom:false}]).map(r=>({...r}));
+  renderTechPartRows();
+}
+function syncTechPartsText(){
+  const lines=techPartRows.map(r=>{
+    const name=String(r.name||'').trim();
+    if(!name)return '';
+    const qty=Number(r.qty||1)||1;
+    const unit=String(r.unit||'').trim();
+    return `${name} x${qty}${unit?' '+unit:''}`;
+  }).filter(Boolean);
+  const el=document.getElementById('f-parts');if(el)el.value=lines.join('\n');
+  return lines.join('\n');
+}
+function renderTechPartRows(){
+  const box=document.getElementById('tech-parts-editor');if(!box)return;
+  box.innerHTML=techPartRows.map((r,i)=>`<div class="part-row">
+    <input list="tech-part-options" value="${esc(r.name||'')}" placeholder="ค้นหา/พิมพ์ชื่ออะไหล่" oninput="updateTechPartRow(${i},'name',this.value)" onchange="selectTechPartByName(${i},this.value)">
+    <input type="number" min="0" step="any" value="${esc(r.qty??1)}" placeholder="จำนวน" oninput="updateTechPartRow(${i},'qty',this.value)">
+    <input value="${esc(r.unit||'')}" placeholder="หน่วย" oninput="updateTechPartRow(${i},'unit',this.value)">
+    <button type="button" class="rm-part" onclick="removeTechPartRow(${i})">×</button>
+  </div>`).join('');
+  syncTechPartsText();
+}
+function updateTechPartRow(i,field,value){
+  if(!techPartRows[i])return;
+  techPartRows[i][field]=value;
+  if(field==='name'){
+    const hit=findMasterPartByName(value);
+    techPartRows[i].masterId=hit?.id||'';
+    techPartRows[i].custom=!hit&&!!String(value||'').trim();
+    if(hit&&!techPartRows[i].unit)techPartRows[i].unit=hit.unit||'';
+  }
+  syncTechPartsText();
+}
+function selectTechPartByName(i,value){
+  const hit=findMasterPartByName(value);
+  if(hit&&techPartRows[i]){
+    techPartRows[i].masterId=hit.id;
+    techPartRows[i].name=hit.name;
+    techPartRows[i].unit=techPartRows[i].unit||hit.unit||'';
+    techPartRows[i].custom=false;
+    renderTechPartRows();
+  }else syncTechPartsText();
+}
+function addTechPartRow(){
+  techPartRows.push({masterId:'',name:'',qty:1,unit:'',custom:false});
+  renderTechPartRows();
+}
+function removeTechPartRow(i){
+  techPartRows.splice(i,1);
+  if(!techPartRows.length)techPartRows.push({masterId:'',name:'',qty:1,unit:'',custom:false});
+  renderTechPartRows();
+}
+function collectTechPartRows(){
+  return techPartRows.map(r=>{
+    const hit=findMasterPartByName(r.name);
+    return {masterId:hit?.id||r.masterId||'',code:hit?.code||'',name:String(r.name||'').trim(),qty:Number(r.qty||1)||1,unit:String(r.unit||hit?.unit||'').trim(),category:hit?.category||'',custom:!hit};
+  }).filter(r=>r.name);
+}
+function parseUsedPartsText(text, structured=[]){
+  if(Array.isArray(structured)&&structured.length){
+    return structured.filter(r=>String(r.name||r.part_name_text||'').trim()).map((r,i)=>({
+      id:`${reportTableId(JOB_ID)}:part:${i+1}`,
+      part_name_text:String(r.name||r.part_name_text||'').trim(),
+      quantity:Number(r.qty||r.quantity||1)||1,
+      unit:String(r.unit||'').trim(),
+      note:`${String(r.name||r.part_name_text||'').trim()} x${Number(r.qty||r.quantity||1)||1}${r.unit?' '+r.unit:''}`,
+      master_price_item_id:r.masterId||r.master_price_item_id||'',
+      item_code:r.code||r.item_code||'',
+      item_category:r.category||'',
+      is_custom:!!r.custom
+    }));
+  }
   const raw=String(text||'').split(/\n|,/).map(x=>x.trim()).filter(Boolean);
   if(!raw.length || raw.some(x=>x==='ไม่มีการใช้อะไหล่'))return [];
   return raw.map((line,i)=>{
@@ -429,14 +553,14 @@ function parseUsedPartsText(text){
   });
 }
 
-async function saveTechnicianUsedParts(reportId, jobId, partsText, savedAt){
+async function saveTechnicianUsedParts(reportId, jobId, partsText, savedAt, structuredParts=[]){
   const cleanJobId = jobId || JOB_ID;
   const del = await fetch(`${SUPABASE_URL}/rest/v1/technician_used_parts?technician_report_id=eq.${encodeURIComponent(reportId)}`, {
     method:'DELETE',
     headers: sbHeaders()
   });
   if(!del.ok) console.warn('Cannot clear previous technician_used_parts', await del.text());
-  const rows=parseUsedPartsText(partsText).map(p=>({
+  const rows=parseUsedPartsText(partsText, structuredParts).map(p=>({
     ...p,
     technician_report_id:reportId,
     job_id:cleanJobId,
@@ -446,11 +570,24 @@ async function saveTechnicianUsedParts(reportId, jobId, partsText, savedAt){
     updated_at:savedAt
   }));
   if(!rows.length)return;
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/technician_used_parts`, {
+  let r = await fetch(`${SUPABASE_URL}/rest/v1/technician_used_parts`, {
     method:'POST',
     headers: sbHeaders({ 'Prefer':'resolution=merge-duplicates' }),
     body: JSON.stringify(rows)
   });
+  if(!r.ok){
+    const msg=await r.text();
+    if(/master_price_item_id|item_code|item_category|is_custom|schema cache|column/i.test(msg)){
+      const basicRows=rows.map(({master_price_item_id,item_code,item_category,is_custom,...rest})=>rest);
+      r = await fetch(`${SUPABASE_URL}/rest/v1/technician_used_parts`, {
+        method:'POST',
+        headers: sbHeaders({ 'Prefer':'resolution=merge-duplicates' }),
+        body: JSON.stringify(basicRows)
+      });
+    }else{
+      throw new Error('บันทึก technician_used_parts ไม่สำเร็จ: ' + msg);
+    }
+  }
   if(!r.ok) throw new Error('บันทึก technician_used_parts ไม่สำเร็จ: ' + await r.text());
 }
 
@@ -536,7 +673,7 @@ async function upsertTechnicianReportTables(job, report, { images=[], documentIm
     body: JSON.stringify(eventRow)
   });
   if(!er.ok) throw new Error('บันทึก technician_report_events ไม่สำเร็จ: ' + await er.text());
-  await saveTechnicianUsedParts(reportId, jobId, report.parts, savedAt);
+  await saveTechnicianUsedParts(reportId, jobId, report.parts, savedAt, report.partsStructured||[]);
   return { reportId, reportData };
 }
 
@@ -703,7 +840,8 @@ async function showForm(){
   document.getElementById('f-symptom').value = jobData.symptom || jobData.note || jobData.technicianReport?.symptom || '';
   document.getElementById('f-cause').value = jobData.cause || jobData.technicianReport?.cause || '';
   document.getElementById('f-fix').value = jobData.fix || jobData.technicianReport?.fix || '';
-  document.getElementById('f-parts').value = jobData.partsUsed || jobData.technicianReport?.parts || '';
+  const existingPartsRows = jobData.technicianReport?.partsStructured || jobData.technicianReport?.parts_detail || [];
+  setTechPartRows(Array.isArray(existingPartsRows)&&existingPartsRows.length ? existingPartsRows.map(r=>({masterId:r.masterId||r.master_price_item_id||'',name:r.name||r.part_name_text||'',qty:r.qty||r.quantity||1,unit:r.unit||'',custom:!!r.custom})) : parsePartsTextToRows(jobData.partsUsed || jobData.technicianReport?.parts || ''));
   document.getElementById('f-note').value = jobData.note2 || jobData.technicianReport?.note || '';
   document.getElementById('f-need-quote').checked = !!jobData.technicianReport?.needQuote || jobData.status === 'รออนุมัติอะไหล่';
   noPhoto = { during: !!jobData.technicianReport?.noPhoto?.during, after: !!jobData.technicianReport?.noPhoto?.after };
@@ -789,8 +927,18 @@ async function addPhotos(cat, files){
 function toggleNoParts(){
   const cb = document.getElementById('f-noparts');
   const ta = document.getElementById('f-parts');
-  if(cb.checked){ ta.value=''; ta.disabled=true; ta.style.opacity='.4'; }
-  else { ta.disabled=false; ta.style.opacity='1'; }
+  const editor=document.getElementById('tech-parts-editor');
+  if(cb.checked){
+    ta.value='';
+    ta.disabled=true;
+    ta.style.opacity='.4';
+    if(editor)editor.style.opacity='.4';
+  }else{
+    ta.disabled=false;
+    ta.style.opacity='1';
+    if(editor)editor.style.opacity='1';
+    syncTechPartsText();
+  }
 }
 
 function toggleNoPhotos(cat, clear=true){
@@ -873,7 +1021,8 @@ function removePhoto(cat, id){
 // ============================================================
 function collectReportDraft(){
   const noParts = document.getElementById('f-noparts').checked;
-  const partsVal = document.getElementById('f-parts').value.trim();
+  const structuredParts = noParts ? [] : collectTechPartRows();
+  const partsVal = noParts ? '' : syncTechPartsText().trim();
   return {
     dateIn: document.getElementById('f-date-in').value,
     timeIn: document.getElementById('f-time-in').value,
@@ -883,6 +1032,7 @@ function collectReportDraft(){
     cause: document.getElementById('f-cause').value.trim(),
     fix: document.getElementById('f-fix').value.trim(),
     parts: noParts ? 'ไม่มีการใช้อะไหล่' : partsVal,
+    partsStructured: structuredParts,
     noParts,
     note: document.getElementById('f-note').value.trim(),
     needQuote: document.getElementById('f-need-quote').checked,
@@ -1038,6 +1188,7 @@ async function saveDraft(){
       fix: report.fix,
       report: report.fix,
       partsUsed: report.parts,
+      partsStructured: report.partsStructured||[],
       note2: report.note,
       reportReviewStatus: 'ฉบับร่าง',
       technicianReport: { ...report, reportId, imageCount: uploadedImages.length, documentImageCount: uploadedDocumentImages.length, draftSavedAt:savedAt, isDraft:true, reviewStatus:'ฉบับร่าง' }
@@ -1112,6 +1263,7 @@ async function submitJob(){
       cause: report.cause,
       fix: report.fix,
       parts: report.parts,
+      partsStructured: report.partsStructured||[],
       note: report.note,
       imageIds: uploadedImages.map(im=>im.id)
     };
@@ -1147,6 +1299,7 @@ async function submitJob(){
       fix: report.fix,
       report: report.fix,
       partsUsed: report.parts,
+      partsStructured: report.partsStructured||[],
       note2: report.note,
       techSubmittedAt: submittedAt,
       reportReviewStatus: nextReview,
