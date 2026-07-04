@@ -1150,7 +1150,7 @@ select option{background:var(--surface2);}
             <div class="form-row"><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
             <div class="accounting-panel" style="margin-top:12px;border-left:4px solid var(--green);background:rgba(63,185,80,.06);">
               <div class="accounting-panel-title">หัวเอกสาร / บริษัท / โลโก้ / ลายเซ็น</div>
-              <div class="form-row"><div class="form-group"><label>เลือกบริษัทผู้ออกเอกสาร</label><select id="sale-company-profile" onchange="applySalesCompanyProfile(this.value)"></select></div><div class="form-group"><label>โลโก้บริษัท</label><input id="sale-company-logo" placeholder="assets/profix-logo-dark.svg หรือ URL รูป"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-company-logo')" style="margin-top:6px;"></div></div>
+              <div class="form-row"><div class="form-group"><label>เลือกบริษัทผู้ออกเอกสาร</label><div class="select-tools"><select id="sale-company-profile" onchange="applySalesCompanyProfile(this.value)"></select><button class="btn btn-ghost btn-sm" type="button" onclick="saveCurrentSalesCompanyProfile()">+ บันทึกบริษัทนี้</button></div></div><div class="form-group"><label>โลโก้บริษัท</label><input id="sale-company-logo" placeholder="assets/profix-logo-dark.svg หรือ URL รูป"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-company-logo')" style="margin-top:6px;"></div></div>
               <div class="form-row"><div class="form-group"><label>ชื่อแบรนด์</label><input id="sale-company-display" placeholder="ProFix Solution"></div><div class="form-group"><label>ชื่อบริษัท</label><input id="sale-company-name"></div></div>
               <div class="form-row"><div class="form-group"><label>สถานะสาขา</label><input id="sale-company-branch" placeholder="สำนักงานใหญ่ / สาขา"></div><div class="form-group"><label>Tax ID บริษัท</label><input id="sale-company-taxid"></div></div>
               <div class="form-row"><div class="form-group"><label>ที่อยู่บริษัท</label><textarea id="sale-company-address" style="min-height:54px;"></textarea></div><div class="form-group"><label>โทรศัพท์บริษัท</label><input id="sale-company-phone"><label style="margin-top:8px;">อีเมลบริษัท</label><input id="sale-company-email"></div></div>
@@ -1688,8 +1688,8 @@ function ensurePersistentIds(){
   docs.workOrders.forEach((d,i)=>{if(!d.id)d.id='WOD-'+Date.now().toString(36)+'-'+i;});
   MASTER_COLLECTIONS.forEach(c=>{const list=c.ref();if(Array.isArray(list))list.forEach((r,i)=>{if(r&&!r._id){const k=c.keyOf?String(c.keyOf(r)||'').trim():'';r._id=c.prefix+'-'+(k?cleanId(k,c.prefix):Date.now().toString(36)+'-'+i+'-'+Math.random().toString(36).slice(2,6));}});});
 }
-function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,docs,jCnt,aCnt,lastDataUpdatedAt};}
-function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.paymentMethods)paymentMethods=st.paymentMethods;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
+function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,salesCompanyProfileItems,docs,jCnt,aCnt,lastDataUpdatedAt};}
+function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.paymentMethods)paymentMethods=st.paymentMethods;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.salesCompanyProfileItems)salesCompanyProfileItems=st.salesCompanyProfileItems;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
 function lightTechnicianReportForCache(report={}){
   const r={...report};
   const imageCount=Array.isArray(r.images)?r.images.length:Number(r.imageCount||0);
@@ -1810,7 +1810,7 @@ async function sbFetchAllOptional(table,queryBase){
     return [];
   }
 }
-function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,jCnt,aCnt,lastDataUpdatedAt,masterSplitKeys:[...masterSplitKeys]};}
+function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,salesCompanyProfileItems,jCnt,aCnt,lastDataUpdatedAt,masterSplitKeys:[...masterSplitKeys]};}
 function lightWorkOrderDoc(d){
   const x={...d};
   if(x.url||x.fileUrl||x.key||x.storage==='r2')delete x.dataUrl;
@@ -3608,6 +3608,7 @@ function updateAttachmentPreview(kind,file,dataUrl=''){
 function knownItemNames(){
   const set=new Set();
   (parts||[]).forEach(p=>{const n=String(p.name||'').trim();if(n)set.add(n);});
+  (masterPriceItems||[]).forEach(m=>{const n=String(m.item_name||'').trim();if(n)set.add(n);});
   (stockItems||[]).forEach(s=>{const n=String(s.item_name||'').trim();if(n)set.add(n);});
   (purchaseItems||[]).forEach(p=>{const n=String(p.item_name||'').trim();if(n)set.add(n);});
   (salesInvoiceItems||[]).forEach(s=>{const n=String(s.description||'').trim();if(n)set.add(n);});
@@ -4136,11 +4137,12 @@ function salesDocCustomerInfo(inv={}){
 function salesDocImageUrl(v){return quoteImageUrl(v);}
 function salesCompanyProfiles(){
   const d=quoteCompanyDefaults();
-  return [
+  const defaults=[
     {id:'profix',label:'ProFix Solution',displayName:d.displayName,name:d.name,branch:d.branch,address:d.address,phone:d.phone,taxId:d.taxId,email:d.email,logoUrl:d.logoUrl,bankAccount:d.bankAccount},
     {id:'pt-accoolity',label:'บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด',displayName:'ProFix Solution',name:'บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด',branch:'สำนักงานใหญ่',address:'88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120',phone:'098-6266622',taxId:'0245557002535',email:'profixsolution.team@gmail.com',logoUrl:d.logoUrl,bankAccount:''},
-    {id:'custom',label:'กำหนดเอง / Custom'},
   ];
+  const saved=(salesCompanyProfileItems||[]).map(p=>({...p,label:p.label||p.displayName||p.name||'บริษัท'}));
+  return [...defaults,...saved,{id:'custom',label:'กำหนดเอง / Custom'}];
 }
 function renderSalesCompanyProfileOptions(selected='custom'){
   const sel=document.getElementById('sale-company-profile');if(!sel)return;
@@ -4167,6 +4169,31 @@ function applySalesCompanyProfile(id){
   document.getElementById('sale-company-phone').value=p.phone||'';
   document.getElementById('sale-company-email').value=p.email||'';
   document.getElementById('sale-bank-account').value=p.bankAccount||'';
+}
+function currentSalesCompanyFormData(){
+  const idBase=document.getElementById('sale-company-name')?.value||document.getElementById('sale-company-display')?.value||'company';
+  return {
+    id:'company-'+cleanId(idBase,'company'),
+    label:document.getElementById('sale-company-display')?.value||document.getElementById('sale-company-name')?.value||'บริษัท',
+    displayName:document.getElementById('sale-company-display')?.value||'',
+    name:document.getElementById('sale-company-name')?.value||'',
+    branch:document.getElementById('sale-company-branch')?.value||'',
+    taxId:document.getElementById('sale-company-taxid')?.value||'',
+    address:document.getElementById('sale-company-address')?.value||'',
+    logoUrl:document.getElementById('sale-company-logo')?.value||'',
+    phone:document.getElementById('sale-company-phone')?.value||'',
+    email:document.getElementById('sale-company-email')?.value||'',
+    bankAccount:document.getElementById('sale-bank-account')?.value||''
+  };
+}
+function saveCurrentSalesCompanyProfile(){
+  const p=currentSalesCompanyFormData();
+  if(!p.name&&!p.displayName){alert('กรอกชื่อบริษัทก่อนบันทึกเป็นตัวเลือก');return;}
+  const i=(salesCompanyProfileItems||[]).findIndex(x=>x.id===p.id||String(x.name||'')===String(p.name||''));
+  if(i>=0)salesCompanyProfileItems[i]=p;else salesCompanyProfileItems.push(p);
+  renderSalesCompanyProfileOptions(p.id);
+  saveState();
+  alert('บันทึกบริษัทนี้เป็นตัวเลือกแล้ว');
 }
 function salesClientProfile(name, branchName=''){
   const client=(clients||[]).find(c=>String(c.name||'').trim()===String(name||'').trim())||{};
@@ -4196,9 +4223,9 @@ function applySalesCustomerProfile(name, branchName=''){
   const addr=document.getElementById('sale-customer-address');
   const tax=document.getElementById('sale-customer-taxid');
   const phone=document.getElementById('sale-customer-phone');
-  if(addr&&!addr.value)addr.value=p.address||'';
-  if(tax&&!tax.value)tax.value=p.taxId||'';
-  if(phone&&!phone.value)phone.value=p.phone||'';
+  if(addr)addr.value=p.address||'';
+  if(tax)tax.value=p.taxId||'';
+  if(phone)phone.value=p.phone||'';
 }
 function blankSalesItem(description='',quantity=1,unit='',unitPrice=0,extra={}){return {id:newAccountingId('SITEM'),item_code:'',category:'',description,quantity,unit,unit_price:unitPrice,discount:0,vat_rate:7,source_type:'manual',source_ref_id:'',note:'',...extra};}
 const SALES_DOC_META={
@@ -4409,7 +4436,30 @@ function mergeSalesItemsFromTechnicianParts(jobId){
 }
 function addSalesItemRow(){salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
 function removeSalesItemRow(i){salesDraftItems.splice(i,1);if(!salesDraftItems.length)salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
-function updateSalesDraft(i,field,value){salesDraftItems[i][field]=value;renderSalesItemEditor();}
+function accountingItemByName(name){
+  const key=normalizePartKey(name);
+  if(!key)return null;
+  const master=(masterPriceItems||[]).find(m=>normalizePartKey(m.item_name)===key||normalizePartKey(m.item_code)===key);
+  if(master)return {code:master.item_code||'',name:master.item_name||'',category:master.category||'',unit:master.default_unit||'งาน',price:Number(master.standard_price||master.unit_price||master.sale_price||0),src:'master_price',ref:master.id||master.item_code||master.item_name};
+  const catalog=(parts||[]).find(p=>normalizePartKey(p.name)===key||normalizePartKey(p.code)===key);
+  if(catalog)return {code:catalog.code||'',name:catalog.name||'',category:catalog.cat||catalog.category||'อะไหล่',unit:catalog.unit||'',price:Number(catalog.sell||catalog.price||catalog.cost||0),src:'manual',ref:catalog.part_key||catalog._id||catalog.code||catalog.name};
+  const stock=(stockItems||[]).find(st=>normalizePartKey(st.item_name)===key||normalizePartKey(st.sku)===key);
+  if(stock){const sell=Number(stock.suggested_sell||stock.sell_price||0)||Math.round(Number(stock.average_cost||0)*1.3);return {code:stock.sku||'',name:stock.item_name||'',category:'อะไหล่',unit:stock.unit||'ชิ้น',price:sell,src:'stock',ref:stock.id||stock.sku};}
+  return null;
+}
+function applySalesItemDetails(i,name){
+  const row=accountingItemByName(name);
+  const it=salesDraftItems[i];
+  if(!row||!it)return;
+  it.item_code=row.code||it.item_code||'';
+  it.description=row.name||name;
+  it.category=row.category||it.category||'';
+  it.unit=row.unit||it.unit||'';
+  it.unit_price=Number(row.price||0);
+  it.source_type=row.src||'manual';
+  it.source_ref_id=row.ref||'';
+}
+function updateSalesDraft(i,field,value){salesDraftItems[i][field]=value;if(field==='description')applySalesItemDetails(i,value);renderSalesItemEditor();}
 function salesLineSubtotal(it){return Math.max(0,Number(it.quantity||0)*Number(it.unit_price||0)-Number(it.discount||0));}
 function salesDraftTotals(){
   const lineSum=salesDraftItems.reduce((s,it)=>s+salesLineSubtotal(it),0);
@@ -4452,11 +4502,13 @@ function itemPickerSource(){
     code:m.item_code||'',name:m.item_name||'',sub:`${m.category||''}${m.default_unit?' · หน่วย '+m.default_unit:''}`,
     price:Number(m.standard_price||0),unit:m.default_unit||'งาน',category:m.category||'',ref:m.id,src:'master_price',right:`฿${money(m.standard_price||0)}`}));
   // stock
-  return (stockItems||[]).filter(s=>s.is_active!==false).map(s=>{
+  const fromParts=(parts||[]).filter(p=>p&&p.name).map(p=>({code:p.code||'',name:p.name||'',sub:`${p.cat||p.category||'อะไหล่'}${p.unit?' · หน่วย '+p.unit:''}${p.sup?' · '+p.sup:''}`,price:Number(p.sell||p.price||p.cost||0),unit:p.unit||'',category:p.cat||p.category||'อะไหล่',ref:p.part_key||p._id||p.code||p.name,src:'manual',right:`฿${money(p.sell||p.price||p.cost||0)}`}));
+  const fromStock=(stockItems||[]).filter(s=>s.is_active!==false).map(s=>{
     const sell=Number(s.suggested_sell||s.sell_price||0)||Math.round(Number(s.average_cost||0)*1.3);
     return {code:s.sku||'',name:s.item_name||'',sub:`คงเหลือ ${money(s.current_quantity||0)} ${s.unit||''} · ทุนเฉลี่ย ฿${money(s.average_cost||0)}`,
     price:sell,unit:s.unit||'ชิ้น',category:'อะไหล่',ref:s.id,src:'stock',right:`฿${money(sell)}`};
   });
+  return [...fromParts,...fromStock];
 }
 function renderItemPicker(q){
   const box=document.getElementById('sales-item-picker');if(!box)return;
@@ -5365,6 +5417,7 @@ let suppliers = [
 
 let parts = [];
 let selectedParts=new Set();
+let salesCompanyProfileItems=[];
 
 // ===== SETTINGS RENDERS =====
 function detailText(obj){return Object.entries(obj).map(([k,v])=>`${k}: ${v||'-'}`).join('\n');}
