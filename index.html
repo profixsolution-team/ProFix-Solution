@@ -1679,7 +1679,8 @@ function ensureMeta(){
 }
 function cleanId(v,prefix='ID'){return String(v||'').trim().replace(/[^A-Za-z0-9ก-๙_.:-]+/g,'-').replace(/^-+|-+$/g,'')||prefix+'-'+Date.now().toString(36);}
 function partStableKey(p={},i=0){
-  return cleanId(p._id||p.part_key||p.code||`${p.name||'part'}-${p.brand||p.spec||''}-${p.unit||''}`||i,'part');
+  const composite=[p.code,p.name,p.brand||p.spec,p.unit].map(v=>String(v||'').trim()).filter(Boolean).join('-');
+  return cleanId(p._id||p.part_key||composite||i,'part');
 }
 function ensurePersistentIds(){
   parts.forEach((p,i)=>{if(!p._id)p._id='PART-'+partStableKey(p,i);if(!p.part_key)p.part_key=partStableKey(p,i);});
@@ -5462,12 +5463,20 @@ function mergeImportedParts(imported){
 async function upsertPartsCatalogRows(rows){
   ensurePersistentIds();
   const now=new Date().toISOString();
-  const mapped=(rows||[]).map((p,i)=>{
-    const key=p.part_key||partStableKey(p,i);
+  const seenKeys=new Set();
+  const mappedRaw=(rows||[]).map((p,i)=>{
+    const composite=cleanId([p.code,p.name,p.brand||p.spec,p.unit].map(v=>String(v||'').trim()).filter(Boolean).join('-')||i,'part');
+    let key=p.part_key||partStableKey(p,i);
+    if(seenKeys.has(key))key=composite;
+    if(seenKeys.has(key))key=cleanId(`${composite}-${i}`,'part');
+    seenKeys.add(key);
     p.part_key=key;
-    if(!p._id)p._id='PART-'+key;
+    if(!p._id||seenKeys.has(String(p._id).replace(/^PART-/,'')))p._id='PART-'+key;
     return {part_key:key,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now};
   }).filter(r=>r.part_key&&r.name);
+  const byKey=new Map();
+  mappedRaw.forEach(row=>byKey.set(row.part_key,row));
+  const mapped=[...byKey.values()];
   for(let i=0;i<mapped.length;i+=400){
     const r=await fetch(splitUrl('parts','?on_conflict=part_key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(mapped.slice(i,i+400))});
     if(!r.ok)throw new Error(await r.text());
