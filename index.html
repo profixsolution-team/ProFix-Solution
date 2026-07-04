@@ -4025,7 +4025,10 @@ function renderSalesTax(){
     return `<tr><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;">${prBtns}</td><td>${esc(inv.customer_name||inv.customer_id||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesModal('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}</div></td></tr>`;
   }).join('');
 }
-function openSalesForJob(jobId){openSalesModal('',jobId);}
+async function openSalesForJob(jobId){
+  await ensureAccountingLoaded().catch(e=>console.warn('Accounting preload failed before opening sales doc',e));
+  openSalesModal('',jobId,'quotation');
+}
 // แปลงเอกสารเป็นชนิดถัดไป (ใบเสนอราคา→ใบแจ้งหนี้→ใบกำกับภาษี→ใบเสร็จ) โดยคัดลอกข้อมูลเดิมมาทั้งหมด
 const SALES_DOC_NEXT={quotation:'invoice',invoice:'tax_invoice',tax_invoice:'receipt',receipt:'receipt'};
 function convertSalesDoc(id,toType){
@@ -4295,11 +4298,52 @@ function fillSalesFromJob(pr=''){
   if(!j)return;
   const customer=document.getElementById('sale-customer');
   if(customer&&!customer.value)customer.value=j.client||'';
+  const addedParts=mergeSalesItemsFromTechnicianParts(id);
+  if(addedParts){renderSalesItemEditor();return;}
   const amount=Number(j.pc||0)+Number(j.partR||0);
   if(amount>0&&salesDraftItems.length===1&&!String(salesDraftItems[0].description||'').trim()){
     salesDraftItems=[blankSalesItem(j.type||'ค่าบริการ',1,'งาน',amount)];
     renderSalesItemEditor();
   }
+}
+function normalizePartKey(v){return String(v||'').trim().toLowerCase();}
+function masterPriceById(id){return (masterPriceItems||[]).find(m=>String(m.id)===String(id));}
+function masterPriceByName(name){
+  const key=normalizePartKey(name);
+  if(!key)return null;
+  return (masterPriceItems||[]).find(m=>normalizePartKey(m.item_name)===key||normalizePartKey(m.item_code)===key)||null;
+}
+function salesItemFromTechnicianPart(part){
+  const master=masterPriceById(part.master_price_item_id)||masterPriceByName(part.part_name_text);
+  const qty=Number(part.quantity||1)||1;
+  const unit=part.unit||master?.default_unit||'';
+  const desc=part.part_name_text||master?.item_name||'อะไหล่';
+  const price=Number(master?.standard_price||master?.unit_price||master?.sale_price||0);
+  return blankSalesItem(desc,qty,unit,price,{
+    item_code:part.item_code||master?.item_code||'',
+    category:part.item_category||master?.category||'อะไหล่',
+    source_type:master?'master_price':'technician_part',
+    source_ref_id:master?.id||part.id||'',
+    note:part.is_custom?'รายการที่ช่างพิมพ์เอง':(part.note||'')
+  });
+}
+function mergeSalesItemsFromTechnicianParts(jobId){
+  const rows=techPartsForJob(jobId).filter(x=>String(x.matched_status||'pending')!=='ignored'&&String(x.part_name_text||'').trim());
+  if(!rows.length)return 0;
+  const empty=salesDraftItems.length===1&&!String(salesDraftItems[0].description||'').trim()&&!Number(salesDraftItems[0].unit_price||0);
+  if(empty)salesDraftItems=[];
+  let added=0;
+  rows.forEach(part=>{
+    const item=salesItemFromTechnicianPart(part);
+    const key=item.source_ref_id?`${item.source_type}:${item.source_ref_id}`:`desc:${normalizePartKey(item.description)}`;
+    const exists=salesDraftItems.some(x=>{
+      const xKey=x.source_ref_id?`${x.source_type}:${x.source_ref_id}`:`desc:${normalizePartKey(x.description)}`;
+      return xKey===key;
+    });
+    if(!exists){salesDraftItems.push(item);added++;}
+  });
+  if(!salesDraftItems.length)salesDraftItems=[blankSalesItem()];
+  return added;
 }
 function addSalesItemRow(){salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
 function removeSalesItemRow(i){salesDraftItems.splice(i,1);if(!salesDraftItems.length)salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
@@ -5918,23 +5962,12 @@ function partsQuoteHtml(j,doc={}){
   <div class="footer">${esc(company.displayName)} Team&nbsp;&nbsp;|&nbsp;&nbsp;ขอบคุณที่ใช้บริการ</div>
   </main></body></html>`;
 }
-function generatePartsQuote(){
+async function generatePartsQuote(){
   const j=syncReportFormToJob();if(!j)return;
-  const now=new Date().toISOString();
-  const no=`QT-${new Date().getFullYear()}-${String((docs.qt||[]).length+1).padStart(3,'0')}`;
-  const rows=quoteRowsFromJob(j);
-  const amt=rows.reduce((s,r)=>s+((Number(r.qty)||0)*((Number(r.mat)||0)+(Number(r.labor)||0))),0);
-  let q=docs.qt.find(d=>d.jid===j.id&&d.type==='parts-boq');
-  if(!q){
-    q={no,jid:j.id,cl:j.client||'',branch:j.branch||'',province:j.province||'',team:j.team||'',ref:j.ref||'',amt,date:todayISO(),st:'ร่าง',type:'parts-boq',rows,workDetail:j.fix||j.report||j.partsUsed||j.type||'',note:'',term:'ราคานี้ยังไม่รวมเงื่อนไขพิเศษอื่น ๆ และสามารถปรับเปลี่ยนได้ตามหน้างานจริง',preparedBy:j.pic||'',overhead:10,travel:Number(j.fuel||0)};
-    docs.qt.unshift(q);
-  }
-  j.generatedReports=[...(j.generatedReports||[]),{type:'parts-quote',generatedAt:now,no:q.no}];
-  saveState();
   closeM('m-report');
-  goTo('documents');
-  renderDocs();
-  setTimeout(()=>openQuoteModal(q.no),0);
+  goTo('sales-tax');
+  await ensureAccountingLoaded().catch(e=>console.warn('Accounting preload failed before parts quotation',e));
+  openSalesModal('',j.id,'quotation');
 }
 async function approvePartsRepair(){
   const id=document.getElementById('mrpt-jobid').value;
