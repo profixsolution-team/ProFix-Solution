@@ -4026,7 +4026,10 @@ function renderSalesTax(){
   }).join('');
 }
 async function openSalesForJob(jobId){
-  await ensureAccountingLoaded().catch(e=>console.warn('Accounting preload failed before opening sales doc',e));
+  await Promise.all([
+    ensureAccountingLoaded().catch(e=>console.warn('Accounting preload failed before opening sales doc',e)),
+    ensurePartsLoaded().catch(e=>console.warn('Parts preload failed before opening sales doc',e))
+  ]);
   openSalesModal('',jobId,'quotation');
 }
 // แปลงเอกสารเป็นชนิดถัดไป (ใบเสนอราคา→ใบแจ้งหนี้→ใบกำกับภาษี→ใบเสร็จ) โดยคัดลอกข้อมูลเดิมมาทั้งหมด
@@ -4313,18 +4316,29 @@ function masterPriceByName(name){
   if(!key)return null;
   return (masterPriceItems||[]).find(m=>normalizePartKey(m.item_name)===key||normalizePartKey(m.item_code)===key)||null;
 }
+function partCatalogByNameOrCode(name,code=''){
+  const nameKey=normalizePartKey(name), codeKey=normalizePartKey(code);
+  return (parts||[]).find(p=>{
+    const pName=normalizePartKey(p.name);
+    const pCode=normalizePartKey(p.code);
+    return (codeKey&&pCode===codeKey)||(nameKey&&pName===nameKey);
+  })||null;
+}
 function salesItemFromTechnicianPart(part){
   const master=masterPriceById(part.master_price_item_id)||masterPriceByName(part.part_name_text);
+  const catalog=partCatalogByNameOrCode(part.part_name_text,part.item_code);
   const qty=Number(part.quantity||1)||1;
-  const unit=part.unit||master?.default_unit||'';
-  const desc=part.part_name_text||master?.item_name||'อะไหล่';
-  const price=Number(master?.standard_price||master?.unit_price||master?.sale_price||0);
+  const unit=part.unit||catalog?.unit||master?.default_unit||'';
+  const desc=part.part_name_text||catalog?.name||master?.item_name||'อะไหล่';
+  const price=Number(catalog?.sell||catalog?.price||master?.standard_price||master?.unit_price||master?.sale_price||0);
+  const supplier=part.supplier_name||catalog?.sup||catalog?.supplier||'';
+  const note=[part.is_custom?'รายการที่ช่างพิมพ์เอง':(part.note||''),supplier?`Supplier: ${supplier}`:''].filter(Boolean).join(' | ');
   return blankSalesItem(desc,qty,unit,price,{
-    item_code:part.item_code||master?.item_code||'',
-    category:part.item_category||master?.category||'อะไหล่',
-    source_type:master?'master_price':'technician_part',
-    source_ref_id:master?.id||part.id||'',
-    note:part.is_custom?'รายการที่ช่างพิมพ์เอง':(part.note||'')
+    item_code:part.item_code||catalog?.code||master?.item_code||'',
+    category:part.item_category||catalog?.cat||catalog?.category||master?.category||'อะไหล่',
+    source_type:catalog?'parts':(master?'master_price':'technician_part'),
+    source_ref_id:catalog?catalog._id||catalog.id||catalog.code||part.id:(master?.id||part.id||''),
+    note
   });
 }
 function mergeSalesItemsFromTechnicianParts(jobId){
@@ -5966,7 +5980,10 @@ async function generatePartsQuote(){
   const j=syncReportFormToJob();if(!j)return;
   closeM('m-report');
   goTo('sales-tax');
-  await ensureAccountingLoaded().catch(e=>console.warn('Accounting preload failed before parts quotation',e));
+  await Promise.all([
+    ensureAccountingLoaded().catch(e=>console.warn('Accounting preload failed before parts quotation',e)),
+    ensurePartsLoaded().catch(e=>console.warn('Parts preload failed before parts quotation',e))
+  ]);
   openSalesModal('',j.id,'quotation');
 }
 async function approvePartsRepair(){
