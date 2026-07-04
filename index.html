@@ -872,6 +872,7 @@ select option{background:var(--surface2);}
     <div class="modal-body">
       <div class="form-row"><div class="form-group"><label>รหัสลูกค้า</label><input type="text" id="fc-id" placeholder="CLT-001"></div><div class="form-group"><label>ชื่อบริษัท</label><input type="text" id="fc-name" placeholder="บริษัท ABC จำกัด"></div></div>
       <div class="form-row"><div class="form-group"><label>ผู้ติดต่อหลัก</label><input type="text" id="fc-contact" placeholder="ชื่อ-นามสกุล"></div><div class="form-group"><label>เบอร์โทร</label><input type="text" id="fc-phone" placeholder="08x-xxx-xxxx"></div></div>
+      <div class="form-row"><div class="form-group"><label>เลขประจำตัวผู้เสียภาษี</label><input type="text" id="fc-taxid" placeholder="Tax ID"></div><div class="form-group"><label>ที่อยู่บริษัทลูกค้า</label><input type="text" id="fc-address" placeholder="ที่อยู่สำหรับออกเอกสาร"></div></div>
       <div class="form-row"><div class="form-group"><label>เงื่อนไขจ่ายเงิน</label><select id="fc-pay"><option>จ่ายทุก 2 อาทิตย์</option><option>จ่ายทุกเดือน</option><option>จ่ายทันที</option><option>30 วัน</option><option>45 วัน</option><option>60 วัน</option></select></div><div class="form-group"><label>วงเงินเครดิต (฿)</label><input type="number" id="fc-credit" placeholder="0"></div></div>
       <div class="form-group"><label>หมายเหตุ</label><textarea id="fc-note" placeholder="เงื่อนไขพิเศษ..."></textarea></div>
     </div>
@@ -1677,8 +1678,11 @@ function ensureMeta(){
   ensurePersistentIds();
 }
 function cleanId(v,prefix='ID'){return String(v||'').trim().replace(/[^A-Za-z0-9ก-๙_.:-]+/g,'-').replace(/^-+|-+$/g,'')||prefix+'-'+Date.now().toString(36);}
+function partStableKey(p={},i=0){
+  return cleanId(p._id||p.part_key||p.code||`${p.name||'part'}-${p.brand||p.spec||''}-${p.unit||''}`||i,'part');
+}
 function ensurePersistentIds(){
-  parts.forEach((p,i)=>{if(!p._id)p._id='PART-'+cleanId(p.code||p.name||i,'item')+'-'+i;});
+  parts.forEach((p,i)=>{if(!p._id)p._id='PART-'+partStableKey(p,i);if(!p.part_key)p.part_key=partStableKey(p,i);});
   ensureDocsShape();
   docs.workOrders.forEach((d,i)=>{if(!d.id)d.id='WOD-'+Date.now().toString(36)+'-'+i;});
   MASTER_COLLECTIONS.forEach(c=>{const list=c.ref();if(Array.isArray(list))list.forEach((r,i)=>{if(r&&!r._id){const k=c.keyOf?String(c.keyOf(r)||'').trim():'';r._id=c.prefix+'-'+(k?cleanId(k,c.prefix):Date.now().toString(36)+'-'+i+'-'+Math.random().toString(36).slice(2,6));}});});
@@ -1985,14 +1989,14 @@ async function ensurePartsLoaded(){
   if(partsLoadingPromise)return partsLoadingPromise;
   if(!splitTablesOnline&&!loadedFromSplitTables){partsLoaded=true;return parts;}
   partsLoadingPromise=(async()=>{
-    const rows=await sbFetchAll('parts','?select=id,data,updated_at&order=updated_at.desc');
-    parts=rows.map(r=>r.data).filter(Boolean);
+    const rows=await sbFetchAll('parts','?select=id,part_key,data,updated_at&order=updated_at.desc');
+    parts=rows.map(r=>({...r.data,part_key:r.part_key||r.data?.part_key||String(r.id||'')})).filter(Boolean);
     ensurePersistentIds();
     partsLoaded=true;
     const snap=splitStateSnapshot();
-    splitKnownIds.parts=new Set(rows.map(r=>r.id));
+    splitKnownIds.parts=new Set(snap.parts.map(p=>p.part_key||p._id).filter(Boolean));
     splitSaveHashes.parts=stableJson(snap.parts);
-    splitRowHashes.parts=rowHashMap(snap.parts,p=>p._id);
+    splitRowHashes.parts=rowHashMap(snap.parts,p=>p.part_key||p._id);
     return parts;
   })().catch(e=>{
     console.warn('Parts lazy load failed',e);
@@ -2139,7 +2143,7 @@ async function saveSplitStateNow(force=false){
   if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRowsChanged('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id,force);splitSaveHashes.adminTasks=adminHash;}
   if(workOrdersLoaded&&(force||splitSaveHashes.workOrders!==woHash)){await syncSplitRowsChanged('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id,force);splitSaveHashes.workOrders=woHash;}
   if(docsLoaded&&(force||splitSaveHashes.documents!==docHash)){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
-  if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await replacePartsCatalogRows(snap.parts);splitSaveHashes.parts=partsHash;}
+  if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await upsertPartsCatalogRows(snap.parts);splitSaveHashes.parts=partsHash;}
   // Master collections แยกราย row (phase 4) — บันทึกเฉพาะตารางที่เปลี่ยน, ทนทานต่อตารางที่ยังไม่ถูกสร้าง
   // ห้าม sync ถ้ายังไม่เคยโหลดข้อมูลจาก server สำเร็จในเซสชันนี้ (กันเขียนทับด้วยค่า default/ค่าที่ยังไม่ได้โหลดจริง)
   if(masterMetaTrusted){
@@ -5364,7 +5368,7 @@ let selectedParts=new Set();
 // ===== SETTINGS RENDERS =====
 function detailText(obj){return Object.entries(obj).map(([k,v])=>`${k}: ${v||'-'}`).join('\n');}
 function actionCell(prefix,i,items){return `<td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${prefix}-${i}',event)">...</button><div class="action-menu" id="${prefix}-${i}">${items}</div></td>`;}
-function openClientModal(i=''){editClientIndex=i;if(i===''){['fc-id','fc-name','fc-contact','fc-phone','fc-credit','fc-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fc-id').value='CLT-'+String(clients.length+1).padStart(3,'0');document.getElementById('fc-pay').value='30 วัน';}else{const c=clients[i];document.getElementById('fc-id').value=c.id;document.getElementById('fc-name').value=c.name;document.getElementById('fc-contact').value=c.contact;document.getElementById('fc-phone').value=c.phone;document.getElementById('fc-pay').value=c.payTerm;document.getElementById('fc-credit').value=c.credit;document.getElementById('fc-note').value=c.note||'';}openM('m-client');}
+function openClientModal(i=''){editClientIndex=i;if(i===''){['fc-id','fc-name','fc-contact','fc-phone','fc-taxid','fc-address','fc-credit','fc-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fc-id').value='CLT-'+String(clients.length+1).padStart(3,'0');document.getElementById('fc-pay').value='30 วัน';}else{const c=clients[i];document.getElementById('fc-id').value=c.id;document.getElementById('fc-name').value=c.name;document.getElementById('fc-contact').value=c.contact;document.getElementById('fc-phone').value=c.phone;document.getElementById('fc-taxid').value=c.taxId||c.tax_id||'';document.getElementById('fc-address').value=c.address||c.addr||'';document.getElementById('fc-pay').value=c.payTerm;document.getElementById('fc-credit').value=c.credit;document.getElementById('fc-note').value=c.note||'';}openM('m-client');}
 function openTeamModal(i=''){editTeamIndex=i;if(i===''){['ft-name','ft-lead','ft-phone','ft-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('ft-skill').value='แอร์';}else{const t=teams[i];document.getElementById('ft-name').value=t.name;document.getElementById('ft-lead').value=t.lead;document.getElementById('ft-phone').value=t.phone;document.getElementById('ft-skill').value=t.skill;document.getElementById('ft-note').value=t.note||'';}openM('m-team');}
 function openBranchModal(i=''){editBranchIndex=i;renderClients();if(i===''){['fb-name','fb-mgr','fb-phone','fb-hours','fb-addr'].forEach(id=>document.getElementById(id).value='');document.getElementById('fb-id').value='BRN-'+String(branches.length+1).padStart(3,'0');}else{const b=branches[i];document.getElementById('fb-id').value=b.id;document.getElementById('fb-name').value=b.name;document.getElementById('fb-client').value=b.client;document.getElementById('fb-mgr').value=b.mgr;document.getElementById('fb-phone').value=b.phone;document.getElementById('fb-hours').value=b.hours;document.getElementById('fb-addr').value=b.addr;}openM('m-branch');}
 function openSupplierModal(i=''){editSupplierIndex=i;if(i===''){['fs-name','fs-taxid','fs-contact','fs-phone','fs-terms','fs-lead','fs-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('fs-type').value='อะไหล่แอร์';}else{const x=suppliers[i];document.getElementById('fs-name').value=x.name;document.getElementById('fs-type').value=x.type;document.getElementById('fs-taxid').value=x.taxId||x.tax_id||'';document.getElementById('fs-contact').value=x.contact;document.getElementById('fs-phone').value=x.phone;document.getElementById('fs-terms').value=x.terms;document.getElementById('fs-lead').value=x.lead;document.getElementById('fs-note').value=x.note||'';}openM('m-supplier');}
@@ -5386,7 +5390,7 @@ function openAddPricing(clientName) {document.getElementById('fp-client').value 
 function editPricing(i) {const p = pricing[i];document.getElementById('fp-client').value = p.client;document.getElementById('fp-type').value = p.type;document.getElementById('fp-price').value = p.price;document.getElementById('fp-note').value = p.note;openM('m-pricing');}
 function savePricing() {const cl=document.getElementById('fp-client').value,tp=document.getElementById('fp-type').value,pr=parseFloat(document.getElementById('fp-price').value)||0,nt=document.getElementById('fp-note').value;const ex=pricing.find(p=>p.client===cl&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{pricing.push({client:cl,type:tp,price:pr,note:nt});}closeM('m-pricing');renderPricing();saveState();}
 function delPricing(i){if(confirm('ลบราคากลางนี้?')){pricing.splice(i,1);renderPricing();saveState();}}
-function saveClient(){const data={id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value};if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;closeM('m-client');renderClients();fillSelects();saveState();}
+function saveClient(){const data={id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,taxId:document.getElementById('fc-taxid').value,address:document.getElementById('fc-address').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value};if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;closeM('m-client');renderClients();fillSelects();saveState();}
 function delClient(i){if(confirm('ลบลูกค้านี้?')){clients.splice(i,1);renderClients();fillSelects();saveState();}}
 
 function renderTeams() {
@@ -5455,23 +5459,34 @@ function mergeImportedParts(imported){
   });
   return {added,updated};
 }
-async function replacePartsCatalogRows(rows){
+async function upsertPartsCatalogRows(rows){
+  ensurePersistentIds();
   const now=new Date().toISOString();
-  const del=await fetch(splitUrl('parts','?id=not.is.null'),{method:'DELETE',headers:sbHeaders()});
-  if(!del.ok)throw new Error(await del.text());
-  const mapped=rows.map(p=>({data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}));
+  const mapped=(rows||[]).map((p,i)=>{
+    const key=p.part_key||partStableKey(p,i);
+    p.part_key=key;
+    if(!p._id)p._id='PART-'+key;
+    return {part_key:key,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now};
+  }).filter(r=>r.part_key&&r.name);
   for(let i=0;i<mapped.length;i+=400){
-    const r=await fetch(splitUrl('parts'),{method:'POST',headers:sbHeaders(),body:JSON.stringify(mapped.slice(i,i+400))});
+    const r=await fetch(splitUrl('parts','?on_conflict=part_key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(mapped.slice(i,i+400))});
     if(!r.ok)throw new Error(await r.text());
   }
-  splitKnownIds.parts=new Set(rows.map(p=>p._id).filter(Boolean));
-  splitRowHashes.parts=rowHashMap(rows,p=>p._id);
+  splitKnownIds.parts=new Set(mapped.map(r=>r.part_key));
+  splitRowHashes.parts=rowHashMap(rows,p=>p.part_key||p._id);
   splitSaveHashes.parts=stableJson(rows);
+}
+async function deletePartsCatalogKeys(keys=[]){
+  const safeKeys=[...new Set(keys.filter(Boolean))];
+  for(const key of safeKeys){
+    const r=await fetch(splitUrl('parts',`?part_key=eq.${encodeURIComponent(key)}`),{method:'DELETE',headers:sbHeaders()});
+    if(!r.ok)throw new Error(await r.text());
+  }
 }
 async function persistPartsCatalogNow(force=false){
   ensurePersistentIds();
   partsLoaded=true;
-  await replacePartsCatalogRows(parts);
+  await upsertPartsCatalogRows(parts);
   await saveStateNow(false);
 }
 function ensureXlsxLib(){
