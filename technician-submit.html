@@ -433,12 +433,44 @@ function reportTableId(jobId){ return `${normJobId(jobId)}:latest`; }
 function eventId(prefix){ return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
 async function loadMasterPartOptions(){
   try{
-    const r=await fetch(`${SUPABASE_URL}/rest/v1/master_price_items?select=id,item_code,item_name,category,default_unit&is_active=eq.true&order=category.asc,item_name.asc`,{headers:sbHeaders()});
-    if(!r.ok)throw new Error(await r.text());
-    const rows=await r.json();
-    masterPartOptions=(rows||[]).filter(x=>String(x.item_name||'').trim()).map(x=>({
-      id:x.id||'',code:x.item_code||'',name:x.item_name||'',category:x.category||'',unit:x.default_unit||''
-    }));
+    const partRows=await fetch(`${SUPABASE_URL}/rest/v1/parts?select=id,data,updated_at&order=updated_at.desc`,{headers:sbHeaders()})
+      .then(async r=>r.ok?await r.json():[]);
+    masterPartOptions=(partRows||[]).map(r=>{
+      const x=r.data||{};
+      return {
+        id:r.id||x._id||x.id||x.code||x.name||'',
+        code:x.code||'',
+        name:x.name||'',
+        category:x.cat||x.category||'อะไหล่',
+        unit:x.unit||'',
+        supplier:x.sup||x.supplier||'',
+        source:'parts'
+      };
+    }).filter(x=>String(x.name||'').trim());
+    if(!masterPartOptions.length){
+      const stockRows=await fetch(`${SUPABASE_URL}/rest/v1/stock_items?select=id,sku,item_name,category,unit,is_active&is_active=eq.true&order=item_name.asc`,{headers:sbHeaders()})
+        .then(async r=>r.ok?await r.json():[]);
+      masterPartOptions=(stockRows||[]).map(x=>({
+        id:x.id||'',
+        code:x.sku||'',
+        name:x.item_name||'',
+        category:x.category||'อะไหล่/สต็อก',
+        unit:x.unit||'',
+        source:'stock'
+      })).filter(x=>String(x.name||'').trim());
+    }
+    if(!masterPartOptions.length){
+      const priceRows=await fetch(`${SUPABASE_URL}/rest/v1/master_price_items?select=id,item_code,item_name,category,default_unit&is_active=eq.true&order=category.asc,item_name.asc`,{headers:sbHeaders()})
+        .then(async r=>r.ok?await r.json():[]);
+      masterPartOptions=(priceRows||[]).filter(x=>/อะไหล่|part|spare|material|วัสดุ/i.test(`${x.category||''} ${x.item_name||''}`)).map(x=>({
+        id:x.id||'',
+        code:x.item_code||'',
+        name:x.item_name||'',
+        category:x.category||'',
+        unit:x.default_unit||'',
+        source:'master_price'
+      })).filter(x=>String(x.name||'').trim());
+    }
   }catch(e){
     console.warn('load master part options failed',e);
     masterPartOptions=[];
@@ -447,7 +479,7 @@ async function loadMasterPartOptions(){
 }
 function renderTechPartOptions(){
   const dl=document.getElementById('tech-part-options');if(!dl)return;
-  dl.innerHTML=masterPartOptions.map(p=>`<option value="${esc(p.name)}" label="${esc([p.category,p.code].filter(Boolean).join(' · '))}"></option>`).join('');
+  dl.innerHTML=masterPartOptions.map(p=>`<option value="${esc(p.name)}" label="${esc([p.category,p.code,p.supplier].filter(Boolean).join(' · '))}"></option>`).join('');
 }
 function findMasterPartByName(name){
   const k=String(name||'').trim().toLowerCase();
@@ -494,6 +526,7 @@ function updateTechPartRow(i,field,value){
   if(field==='name'){
     const hit=findMasterPartByName(value);
     techPartRows[i].masterId=hit?.id||'';
+    techPartRows[i].supplier=hit?.supplier||'';
     techPartRows[i].custom=!hit&&!!String(value||'').trim();
     if(hit&&!techPartRows[i].unit)techPartRows[i].unit=hit.unit||'';
   }
@@ -505,6 +538,7 @@ function selectTechPartByName(i,value){
     techPartRows[i].masterId=hit.id;
     techPartRows[i].name=hit.name;
     techPartRows[i].unit=techPartRows[i].unit||hit.unit||'';
+    techPartRows[i].supplier=hit.supplier||'';
     techPartRows[i].custom=false;
     renderTechPartRows();
   }else syncTechPartsText();
@@ -521,7 +555,7 @@ function removeTechPartRow(i){
 function collectTechPartRows(){
   return techPartRows.map(r=>{
     const hit=findMasterPartByName(r.name);
-    return {masterId:hit?.id||r.masterId||'',code:hit?.code||'',name:String(r.name||'').trim(),qty:Number(r.qty||1)||1,unit:String(r.unit||hit?.unit||'').trim(),category:hit?.category||'',custom:!hit};
+    return {masterId:hit?.id||r.masterId||'',code:hit?.code||'',name:String(r.name||'').trim(),qty:Number(r.qty||1)||1,unit:String(r.unit||hit?.unit||'').trim(),category:hit?.category||'',supplier:hit?.supplier||r.supplier||'',custom:!hit};
   }).filter(r=>r.name);
 }
 function parseUsedPartsText(text, structured=[]){
@@ -535,6 +569,7 @@ function parseUsedPartsText(text, structured=[]){
       master_price_item_id:r.masterId||r.master_price_item_id||'',
       item_code:r.code||r.item_code||'',
       item_category:r.category||'',
+      supplier_name:r.supplier||r.supplier_name||'',
       is_custom:!!r.custom
     }));
   }
@@ -577,8 +612,8 @@ async function saveTechnicianUsedParts(reportId, jobId, partsText, savedAt, stru
   });
   if(!r.ok){
     const msg=await r.text();
-    if(/master_price_item_id|item_code|item_category|is_custom|schema cache|column/i.test(msg)){
-      const basicRows=rows.map(({master_price_item_id,item_code,item_category,is_custom,...rest})=>rest);
+    if(/master_price_item_id|item_code|item_category|supplier_name|is_custom|schema cache|column/i.test(msg)){
+      const basicRows=rows.map(({master_price_item_id,item_code,item_category,supplier_name,is_custom,...rest})=>rest);
       r = await fetch(`${SUPABASE_URL}/rest/v1/technician_used_parts`, {
         method:'POST',
         headers: sbHeaders({ 'Prefer':'resolution=merge-duplicates' }),
@@ -841,7 +876,7 @@ async function showForm(){
   document.getElementById('f-cause').value = jobData.cause || jobData.technicianReport?.cause || '';
   document.getElementById('f-fix').value = jobData.fix || jobData.technicianReport?.fix || '';
   const existingPartsRows = jobData.technicianReport?.partsStructured || jobData.technicianReport?.parts_detail || [];
-  setTechPartRows(Array.isArray(existingPartsRows)&&existingPartsRows.length ? existingPartsRows.map(r=>({masterId:r.masterId||r.master_price_item_id||'',name:r.name||r.part_name_text||'',qty:r.qty||r.quantity||1,unit:r.unit||'',custom:!!r.custom})) : parsePartsTextToRows(jobData.partsUsed || jobData.technicianReport?.parts || ''));
+  setTechPartRows(Array.isArray(existingPartsRows)&&existingPartsRows.length ? existingPartsRows.map(r=>({masterId:r.masterId||r.master_price_item_id||'',name:r.name||r.part_name_text||'',qty:r.qty||r.quantity||1,unit:r.unit||'',supplier:r.supplier||r.supplier_name||'',custom:!!r.custom})) : parsePartsTextToRows(jobData.partsUsed || jobData.technicianReport?.parts || ''));
   document.getElementById('f-note').value = jobData.note2 || jobData.technicianReport?.note || '';
   document.getElementById('f-need-quote').checked = !!jobData.technicianReport?.needQuote || jobData.status === 'รออนุมัติอะไหล่';
   noPhoto = { during: !!jobData.technicianReport?.noPhoto?.during, after: !!jobData.technicianReport?.noPhoto?.after };
