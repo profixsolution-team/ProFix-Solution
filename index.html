@@ -1983,7 +1983,7 @@ async function ensurePartsLoaded(){
   if(!splitTablesOnline&&!loadedFromSplitTables){partsLoaded=true;return parts;}
   partsLoadingPromise=(async()=>{
     const rows=await sbFetchAll('parts','?select=id,data,updated_at&order=updated_at.desc');
-    if(rows.length)parts=rows.map(r=>r.data).filter(Boolean);
+    parts=rows.map(r=>r.data).filter(Boolean);
     ensurePersistentIds();
     partsLoaded=true;
     const snap=splitStateSnapshot();
@@ -5313,14 +5313,7 @@ let suppliers = [
   {name:'บ.ยูนิเวอร์แซลพาร์ท', type:'อะไหล่ทั่วไป', contact:'คุณกิตติ', phone:'081-999-0003', terms:'เครดิต 15 วัน', lead:'2-3 วัน', note:''},
 ];
 
-let parts = [
-  {name:'น้ำยาแอร์ R22', brand:'—', sup:'บ.ไทยอะไหล่แอร์', cost:350, sell:500, note:'ราคาต่อปอนด์'},
-  {name:'น้ำยาแอร์ R410A', brand:'—', sup:'บ.ไทยอะไหล่แอร์', cost:450, sell:650, note:'ราคาต่อปอนด์'},
-  {name:'คอมเพรสเซอร์ตู้แช่', brand:'Danfoss SC15G', sup:'ร้านเย็นดีอะไหล่', cost:1800, sell:2500, note:''},
-  {name:'แผงคอยล์เย็น', brand:'—', sup:'บ.ยูนิเวอร์แซลพาร์ท', cost:600, sell:900, note:''},
-  {name:'มอเตอร์พัดลม', brand:'—', sup:'บ.ไทยอะไหล่แอร์', cost:450, sell:700, note:''},
-  {name:'แผงวงจรแอร์', brand:'—', sup:'บ.ยูนิเวอร์แซลพาร์ท', cost:1200, sell:1800, note:''},
-];
+let parts = [];
 let selectedParts=new Set();
 
 // ===== SETTINGS RENDERS =====
@@ -5420,13 +5413,8 @@ function mergeImportedParts(imported){
 async function persistPartsCatalogNow(force=false){
   ensurePersistentIds();
   partsLoaded=true;
-  try{
-    await syncSplitRowsChanged('parts',parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:new Date().toISOString()}),'parts',p=>p._id,true);
-    await saveStateNow(force);
-  }catch(e){
-    console.warn('Persist parts catalog failed',e);
-    saveState();
-  }
+  await syncSplitRowsChanged('parts',parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:new Date().toISOString()}),'parts',p=>p._id,true);
+  await saveStateNow(force);
 }
 function ensureXlsxLib(){
   if(window.XLSX)return Promise.resolve();
@@ -5453,7 +5441,7 @@ async function importPartsFile(input){
     selectedParts.clear();renderSuppliers();renderParts();
     await persistPartsCatalogNow(true);
     alert(`นำเข้าอะไหล่สำเร็จ ${imported.length.toLocaleString()} รายการ\\nเพิ่มใหม่ ${result.added.toLocaleString()} | อัปเดต ${result.updated.toLocaleString()}\\nรายการที่ค่าของและค่าแรงเป็น 0: ${zeroCost.toLocaleString()}`);
-  }catch(e){alert('นำเข้าไฟล์ไม่สำเร็จ: '+(e.message||e));}
+  }catch(e){alert('นำเข้าไฟล์ไม่สำเร็จ / บันทึกขึ้น Supabase ไม่สำเร็จ: '+(e.message||e));}
   input.value='';
 }
 function saveSupplier(){const data={name:document.getElementById('fs-name').value,type:document.getElementById('fs-type').value,taxId:document.getElementById('fs-taxid').value.trim(),contact:document.getElementById('fs-contact').value,phone:document.getElementById('fs-phone').value,terms:document.getElementById('fs-terms').value,lead:document.getElementById('fs-lead').value,note:document.getElementById('fs-note').value};if(editSupplierIndex==='')suppliers.push(data);else suppliers[+editSupplierIndex]=data;closeM('m-supplier');renderSuppliers();refreshAccountingDatalists();saveState();}
