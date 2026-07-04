@@ -5421,6 +5421,7 @@ async function persistPartsCatalogNow(force=false){
   ensurePersistentIds();
   partsLoaded=true;
   try{
+    await syncSplitRowsChanged('parts',parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:new Date().toISOString()}),'parts',p=>p._id,true);
     await saveStateNow(force);
   }catch(e){
     console.warn('Persist parts catalog failed',e);
@@ -6257,14 +6258,19 @@ async function runDailyBackupIfNeeded(){
 function clearRptFilter(){rptSearch='';rptDateFilter='';rptMonthFilter='';rptFilter='ทั้งหมด';rptReviewFilter='ทั้งหมด';renderReports();saveUIState();}
 let remoteRefreshTimer=null, remoteRefreshRunning=false;
 const REMOTE_AUTO_REFRESH_ENABLED=true;
+const REMOTE_REFRESH_INTERVAL_MS=5*60*1000;
+const REMOTE_FOCUS_REFRESH_MIN_MS=2*60*1000;
+let lastRemoteRefreshAt=0;
 function canAutoRefreshRemote(){
   // ไม่รีเฟรชตอนเปิด modal (กันรบกวนการแก้ไข), ตอนมีงานค้างบันทึก (กันทับงานที่ยังไม่ขึ้น server), หรือยังไม่ hydrate
   return REMOTE_AUTO_REFRESH_ENABLED && isHydrated && !hasUnsyncedLocalChanges && !document.querySelector('.modal-overlay.open');
 }
 async function refreshRemoteIfIdle(){
   if(remoteRefreshRunning || !canAutoRefreshRemote())return;
+  if(Date.now()-lastRemoteRefreshAt<REMOTE_FOCUS_REFRESH_MIN_MS)return;
   remoteRefreshRunning=true;
   try{
+    lastRemoteRefreshAt=Date.now();
     await loadState({silent:true});
     if(customerRequestLoaded){try{await ensureCustomerRequestsLoaded(true);}catch(e){}}
     ensureMeta();
@@ -6284,7 +6290,7 @@ async function refreshRemoteIfIdle(){
 function startRemoteRefresh(){
   if(!REMOTE_AUTO_REFRESH_ENABLED)return;
   if(remoteRefreshTimer)return;
-  remoteRefreshTimer=setInterval(refreshRemoteIfIdle,30000);
+  remoteRefreshTimer=setInterval(refreshRemoteIfIdle,REMOTE_REFRESH_INTERVAL_MS);
   window.addEventListener('focus',()=>setTimeout(refreshRemoteIfIdle,400));
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(refreshRemoteIfIdle,400);});
 }
