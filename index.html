@@ -2136,7 +2136,7 @@ async function saveSplitStateNow(force=false){
   if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRowsChanged('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id,force);splitSaveHashes.adminTasks=adminHash;}
   if(workOrdersLoaded&&(force||splitSaveHashes.workOrders!==woHash)){await syncSplitRowsChanged('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id,force);splitSaveHashes.workOrders=woHash;}
   if(docsLoaded&&(force||splitSaveHashes.documents!==docHash)){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
-  if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await syncSplitRowsChanged('parts',snap.parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}),'parts',p=>p._id,force);splitSaveHashes.parts=partsHash;}
+  if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await replacePartsCatalogRows(snap.parts);splitSaveHashes.parts=partsHash;}
   // Master collections แยกราย row (phase 4) — บันทึกเฉพาะตารางที่เปลี่ยน, ทนทานต่อตารางที่ยังไม่ถูกสร้าง
   // ห้าม sync ถ้ายังไม่เคยโหลดข้อมูลจาก server สำเร็จในเซสชันนี้ (กันเขียนทับด้วยค่า default/ค่าที่ยังไม่ได้โหลดจริง)
   if(masterMetaTrusted){
@@ -5410,11 +5410,24 @@ function mergeImportedParts(imported){
   });
   return {added,updated};
 }
+async function replacePartsCatalogRows(rows){
+  const now=new Date().toISOString();
+  const del=await fetch(splitUrl('parts','?id=not.is.null'),{method:'DELETE',headers:sbHeaders()});
+  if(!del.ok)throw new Error(await del.text());
+  const mapped=rows.map(p=>({data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}));
+  for(let i=0;i<mapped.length;i+=400){
+    const r=await fetch(splitUrl('parts'),{method:'POST',headers:sbHeaders(),body:JSON.stringify(mapped.slice(i,i+400))});
+    if(!r.ok)throw new Error(await r.text());
+  }
+  splitKnownIds.parts=new Set(rows.map(p=>p._id).filter(Boolean));
+  splitRowHashes.parts=rowHashMap(rows,p=>p._id);
+  splitSaveHashes.parts=stableJson(rows);
+}
 async function persistPartsCatalogNow(force=false){
   ensurePersistentIds();
   partsLoaded=true;
-  await syncSplitRowsChanged('parts',parts,p=>({id:p._id,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:new Date().toISOString()}),'parts',p=>p._id,true);
-  await saveStateNow(force);
+  await replacePartsCatalogRows(parts);
+  await saveStateNow(false);
 }
 function ensureXlsxLib(){
   if(window.XLSX)return Promise.resolve();
