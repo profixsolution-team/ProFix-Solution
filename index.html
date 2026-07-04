@@ -6242,7 +6242,9 @@ async function runManualBackup(){
     setBackupStatus('สร้าง backup ไม่สำเร็จ อาจยังไม่ได้รัน SQL backup tools: '+e.message, 'err');
   }
 }
+const DAILY_DATABASE_BACKUP_ENABLED=false;
 async function runDailyBackupIfNeeded(){
+  if(!DAILY_DATABASE_BACKUP_ENABLED)return;
   const today=todayISO();
   if(localStorage.getItem(LS_AUTO_BACKUP_DATE_KEY)===today)return;
   try{
