@@ -1200,7 +1200,7 @@ select option{background:var(--surface2);}
           <div class="accounting-panel-title">สรุปบิลขาย</div>
           <div class="form-group" style="margin-bottom:10px;"><label>การคิด VAT</label><select id="sale-vat-mode" onchange="salesVatMode=this.value;updateSalesSummary();"><option value="add">บวก VAT 7% เพิ่มท้ายบิล</option><option value="inclusive">ราคารวม VAT 7% มาแล้ว</option><option value="none">ไม่มี VAT</option></select></div>
           <div class="form-row" style="gap:8px;"><div class="form-group"><label>ค่าเดินทาง (กม.)</label><input id="sale-travel-km" type="number" min="0" step="0.01" value="0" oninput="updateSalesSummary()"></div><div class="form-group"><label>บาท / กม.</label><input id="sale-travel-rate" type="number" min="0" step="0.01" value="0" oninput="updateSalesSummary()"></div></div>
-          <div class="form-group" style="margin-bottom:10px;"><label>SLA</label><div class="segmented" style="display:flex;gap:6px;flex-wrap:wrap;"><button type="button" id="sale-sla-ontime" class="filter-tab active" onclick="setSalesSlaStatus('ontime')">ทัน SLA +1,000</button><button type="button" id="sale-sla-late" class="filter-tab" onclick="setSalesSlaStatus('late')">ไม่ทัน SLA +500</button></div><input id="sale-sla-status" type="hidden" value="ontime"></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>SLA</label><div class="segmented" style="display:flex;gap:6px;flex-wrap:wrap;"><button type="button" id="sale-sla-ontime" class="filter-tab active" onclick="setSalesSlaStatus('ontime')">ทัน SLA +1,000</button><button type="button" id="sale-sla-late" class="filter-tab" onclick="setSalesSlaStatus('late')">ไม่ทัน SLA +500</button><button type="button" id="sale-sla-none" class="filter-tab" onclick="setSalesSlaStatus('none')">ไม่มีค่าดำเนินการ +0</button></div><input id="sale-sla-status" type="hidden" value="ontime"></div>
           <div class="accounting-total-row"><span>รวมค่าสินค้า/บริการ</span><strong id="sale-ui-line-subtotal">0.00</strong></div>
           <div class="accounting-total-row"><span id="sale-ui-overhead-label">Overhead</span><strong id="sale-ui-overhead">0.00</strong></div>
           <div class="accounting-total-row"><span>ค่าเดินทาง</span><strong id="sale-ui-travel">0.00</strong></div>
@@ -1340,7 +1340,7 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.07.06.1';
+const APP_VERSION='2026.07.06.2';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -3989,14 +3989,18 @@ function salesOverheadRateBySubtotal(amount){
   return 0;
 }
 function setSalesSlaStatus(status){
-  const el=document.getElementById('sale-sla-status');if(el)el.value=status==='late'?'late':'ontime';
-  const on=document.getElementById('sale-sla-ontime'),late=document.getElementById('sale-sla-late');
-  if(on)on.classList.toggle('active',(!el||el.value==='ontime'));
-  if(late)late.classList.toggle('active',el&&el.value==='late');
+  const normalized=status==='late'?'late':(status==='none'?'none':'ontime');
+  const el=document.getElementById('sale-sla-status');if(el)el.value=normalized;
+  const on=document.getElementById('sale-sla-ontime'),late=document.getElementById('sale-sla-late'),none=document.getElementById('sale-sla-none');
+  if(on)on.classList.toggle('active',normalized==='ontime');
+  if(late)late.classList.toggle('active',normalized==='late');
+  if(none)none.classList.toggle('active',normalized==='none');
   updateSalesSummary();
 }
 function salesSlaMeta(status){
-  return status==='late'?{status:'late',label:'ค่าดำเนินการปกติ',amount:500}:{status:'ontime',label:'ค่าดำเนินการเร่งด่วน',amount:1000};
+  if(status==='late')return {status:'late',label:'ค่าดำเนินการปกติ',amount:500};
+  if(status==='none')return {status:'none',label:'ไม่มีค่าดำเนินการ',amount:0};
+  return {status:'ontime',label:'ค่าดำเนินการเร่งด่วน',amount:1000};
 }
 function salesAdjustmentTotals(lineSubtotal){
   const overheadRate=salesOverheadRateBySubtotal(lineSubtotal);
@@ -4192,7 +4196,7 @@ function salesDocHtml(inv,items){
 .top{display:grid;grid-template-columns:1fr 78mm;align-items:start;gap:10mm}.brand-logo{width:56mm;max-height:28mm;object-fit:contain;object-position:left top}.doc-title{text-align:right;font-size:20px;font-weight:900;color:#05070a}.doc-meta{margin-top:12px;display:grid;grid-template-columns:1fr 42mm;gap:5px 10px;text-align:right;font-size:13px}.doc-meta b{font-size:14px}
 .party{display:grid;grid-template-columns:1fr 1fr;gap:18mm;margin-top:18mm}.party h3{margin:0 0 10px;color:#6b7280;font-size:13px}.party .name{font-weight:800;color:#111827;margin-bottom:6px}.party div{color:#6b7280;margin:6px 0}
 .items{width:100%;border-collapse:collapse;margin-top:13mm;table-layout:fixed}.items th{background:#666;color:#fff;font-weight:800;font-size:13px;padding:5px 4px;border:1px solid #d4dbe5}.items td{height:8mm;border:1px solid #d4dbe5;padding:4px 5px;vertical-align:middle}.items tbody tr:nth-child(odd){background:#f2f5f9}.items .no{width:8mm;text-align:center}.items .desc{width:auto}.items .qty{width:25mm;text-align:right}.items .unit{width:19mm;text-align:center}.items .price,.items .amount{width:29mm;text-align:right}
-.note-total{display:grid;grid-template-columns:1fr 70mm;gap:10mm;margin-top:8mm;align-items:start}.note h3{margin:0 0 10px;color:#6b7280;font-size:13px}.note .box{white-space:pre-wrap;color:#697386;line-height:1.45}.total table{width:100%;border-collapse:collapse}.total td{padding:4px 4px;font-size:13px}.total .label{font-weight:800}.total .right{text-align:right}.grand td{background:#666;color:#fff;font-size:16px;font-weight:900;border:1px solid #fff}.amount-text{display:grid;grid-template-columns:28mm 1fr;gap:8px;margin-top:8mm;font-weight:800}
+.note-total{display:grid;grid-template-columns:1fr 70mm;gap:10mm;margin-top:8mm;align-items:start}.note h3{margin:0 0 10px;color:#6b7280;font-size:13px}.note .box{white-space:pre-wrap;color:#697386;line-height:1.45}.total table{width:100%;border-collapse:collapse}.total td{padding:4px 4px;font-size:13px}.total .label{font-weight:800}.total .right{text-align:right}.grand td{background:#666;color:#fff;font-size:16px;font-weight:900;border:1px solid #fff}.amount-text{display:grid;grid-template-columns:22mm 1fr;gap:8px;width:70mm;margin:5mm 0 0 auto;font-weight:800}
 .signs{display:grid;grid-template-columns:1fr 1fr;gap:28mm;margin-top:16mm;color:#6b7280;font-size:11px;break-inside:avoid}.signature-box{height:24mm;display:flex;align-items:flex-end;justify-content:center}.signature-img{max-width:54mm;max-height:22mm;object-fit:contain;display:block}.sign-line{color:#111;text-align:center}.footer{margin-top:10mm;text-align:center;color:#7b8492;font-size:10px;font-style:italic;break-inside:avoid}.muted{color:#7b8795;font-size:10px}
 @media print{body{background:#fff}.toolbar{display:none}.sheet{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:14mm 13mm 11mm}}</style></head>
 <body><div class="toolbar"><div>${esc(meta.title)} · ${esc(inv.doc_no||inv.sales_invoice_no||'')}</div><div><button class="btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
