@@ -357,15 +357,18 @@ async function loadLatestCheckin(jobId, opts={}){
   }catch(e){ console.warn('load latest checkin failed', e); return null; }
 }
 function prefillFromCheckin(rec){
-  const jobId = rec.job_id || JOB_ID || '';
+  const jobId = jobRecord?.id || rec.job_id || JOB_ID || '';
+  const latestClient = jobRecord?.client || rec.client_snapshot || '';
+  const latestBranch = jobRecord?.branch || rec.branch_snapshot || '';
+  const latestNote = jobRecord?.note || rec.reported_note || '';
   document.getElementById('j-id').textContent = jobId || '— ไม่ผูกกับ PR —';
-  document.getElementById('j-client').textContent = rec.client_snapshot || jobRecord?.client || '—';
-  document.getElementById('j-branch').textContent = rec.branch_snapshot || jobRecord?.branch || '—';
-  document.getElementById('j-note').textContent = rec.reported_note || jobRecord?.note || 'ไม่มีรายละเอียดจากแอดมิน';
+  document.getElementById('j-client').textContent = latestClient || '—';
+  document.getElementById('j-branch').textContent = latestBranch || '—';
+  document.getElementById('j-note').textContent = latestNote || 'ไม่มีรายละเอียดจากแอดมิน';
   const manualJob = document.getElementById('m-job-id'); if(manualJob) manualJob.value = jobId;
-  const manualClient = document.getElementById('m-client'); if(manualClient) manualClient.value = rec.client_snapshot || '';
-  const manualBranch = document.getElementById('m-branch'); if(manualBranch) manualBranch.value = rec.branch_snapshot || '';
-  const manualNote = document.getElementById('m-note'); if(manualNote) manualNote.value = rec.reported_note || '';
+  const manualClient = document.getElementById('m-client'); if(manualClient) manualClient.value = latestClient;
+  const manualBranch = document.getElementById('m-branch'); if(manualBranch) manualBranch.value = latestBranch;
+  const manualNote = document.getElementById('m-note'); if(manualNote) manualNote.value = latestNote;
   // ประเภทงาน
   selectedTypes = new Set();
   (Array.isArray(rec.job_type)?rec.job_type:[]).forEach(t=>{ if(JOB_TYPES.includes(t)) selectedTypes.add(t); });
@@ -596,9 +599,9 @@ async function submitCheckin(){
   if(!sigPads.tech?.hasStroke){ alert('กรุณาให้ช่างเซ็นชื่อก่อนบันทึก'); return; }
 
   const jobId = manualMode ? (document.getElementById('m-job-id').value.trim() || '') : (jobRecord?.id || JOB_ID || '');
-  const client = manualMode ? document.getElementById('m-client').value.trim() : (jobRecord?.client || '');
-  const branch = manualMode ? document.getElementById('m-branch').value.trim() : (jobRecord?.branch || '');
-  const reportedNote = manualMode ? document.getElementById('m-note').value.trim() : (jobRecord?.note || '');
+  const client = manualMode ? document.getElementById('m-client').value.trim() : (jobRecord?.client || document.getElementById('j-client')?.textContent || '');
+  const branch = manualMode ? document.getElementById('m-branch').value.trim() : (jobRecord?.branch || document.getElementById('j-branch')?.textContent || '');
+  const reportedNote = manualMode ? document.getElementById('m-note').value.trim() : (jobRecord?.note || document.getElementById('j-note')?.textContent || '');
 
   if(checkinPhotos.some(p=>p.status==='compressing')){ alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
   if(!checkinPhotos.some(p=>p.status==='ready'&&(p.blob||p.url))){ alert('กรุณาถ่าย/อัปรูปตรวจเช็กอย่างน้อย 1 รูปก่อนบันทึก'); return; }
