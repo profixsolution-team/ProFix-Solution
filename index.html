@@ -220,6 +220,16 @@ body[data-theme="light"] .tech-update-row.draft-update:hover td{background:rgba(
 .job-picker-row .jp-tag{font-size:9px;padding:1px 6px;border-radius:10px;white-space:nowrap;}
 .job-picker-empty{padding:10px;font-size:11px;color:var(--text2);text-align:center;}
 .job-picker-hint{padding:6px 9px 4px;font-size:10px;color:var(--text3);}
+.doc-parties{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;}
+@media(max-width:820px){.doc-parties{grid-template-columns:1fr;}}
+.doc-party{margin:0 !important;}
+.doc-party .accounting-panel-title{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.doc-group{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg);margin-top:5px;}
+.doc-group>select,.doc-group>input,.doc-group>textarea{border:0;border-bottom:1px solid var(--border);border-radius:0;background:transparent;width:100%;padding:9px 11px;font-size:13px;display:block;}
+.doc-group>*:last-child{border-bottom:0;}
+.doc-group textarea{resize:vertical;}
+.doc-group>select:focus,.doc-group>input:focus,.doc-group>textarea:focus{background:var(--surface2);outline:none;box-shadow:inset 0 0 0 1px var(--accent);}
+.btn-xs{padding:3px 9px !important;font-size:11px !important;height:auto !important;}
 .select-tools{display:flex;gap:6px;align-items:flex-end;}
 .select-tools select,.select-tools input{flex:1;}
 .list-editor{display:grid;gap:8px;}
@@ -1142,19 +1152,39 @@ select option{background:var(--surface2);}
             <div class="accounting-panel-title">ข้อมูลลูกค้าและเอกสาร</div>
             <div class="form-row"><div class="form-group"><label>ประเภทเอกสาร</label><select id="sale-doc-type" onchange="onSalesDocTypeChange(this.value)"><option value="quotation">ใบเสนอราคา / Quotation</option><option value="invoice">ใบแจ้งหนี้ / Invoice</option><option value="tax_invoice">ใบกำกับภาษี / Tax Invoice</option><option value="receipt">ใบเสร็จรับเงิน / Receipt</option></select></div><div class="form-group"><label>เลขที่เอกสาร</label><input id="sale-no" placeholder="เช่น QT-2026-001 / SINV-2026-001"></div></div>
             <div class="form-row"><div class="form-group" style="flex:1;"><label>Job ID / PR (คลิกเลือกได้หลายตัว)</label><div style="position:relative;"><input id="sale-job-input" autocomplete="off" placeholder="ค้นหา PR / ลูกค้า / สาขา แล้วคลิกเลือก" oninput="renderSalesJobPicker(this.value)" onfocus="renderSalesJobPicker(this.value)" onkeydown="handleSalesJobKey(event)"><div id="sale-job-picker" class="job-picker" style="display:none;"></div></div><div id="sale-job-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div><input type="hidden" id="sale-job"></div></div>
-            <div class="accounting-panel" style="margin-top:12px;border-left:4px solid var(--accent);background:rgba(88,166,255,.06);">
-              <div class="accounting-panel-title">ข้อมูลลูกค้า</div>
-              <div class="form-row"><div class="form-group"><label>บริษัทลูกค้า</label><div class="select-tools"><select id="sale-customer-select" onchange="applySalesCustomerProfile(this.value)"></select><button class="btn btn-ghost btn-sm" type="button" onclick="openDocCustomerModal()">+ เพิ่มบริษัท</button></div><input id="sale-customer" type="hidden"></div><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div></div>
-            <div class="form-row"><div class="form-group"><label>ที่อยู่ลูกค้า</label><textarea id="sale-customer-address" style="min-height:54px;"></textarea></div><div class="form-group"><label>Tax ID ลูกค้า</label><input id="sale-customer-taxid" placeholder="เลขประจำตัวผู้เสียภาษีลูกค้า"><label style="margin-top:8px;">โทรศัพท์ลูกค้า</label><input id="sale-customer-phone"></div></div>
+            <div class="form-row"><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
+            <div class="doc-parties">
+              <div class="accounting-panel doc-party" style="border-left:4px solid var(--accent);background:rgba(88,166,255,.06);">
+                <div class="accounting-panel-title">ข้อมูลลูกค้า<button class="btn btn-ghost btn-sm btn-xs" type="button" onclick="openDocCustomerModal()">+ เพิ่มบริษัท</button></div>
+                <label style="margin-top:6px;">บริษัทลูกค้า</label>
+                <div class="doc-group">
+                  <select id="sale-customer-select" onchange="applySalesCustomerProfile(this.value)"></select>
+                  <textarea id="sale-customer-address" placeholder="ที่อยู่ลูกค้า" style="min-height:56px;"></textarea>
+                  <input id="sale-customer-taxid" placeholder="เลขประจำตัวผู้เสียภาษี">
+                  <input id="sale-customer-phone" placeholder="โทรศัพท์">
+                </div>
+                <input id="sale-customer" type="hidden">
+              </div>
+              <div class="accounting-panel doc-party" style="border-left:4px solid var(--green);background:rgba(63,185,80,.06);">
+                <div class="accounting-panel-title">บริษัทผู้ออกเอกสาร<span style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm btn-xs" type="button" onclick="openDocIssuerModal()">+ เพิ่มบริษัท</button><button class="btn btn-ghost btn-sm btn-xs" type="button" onclick="saveCurrentSalesCompanyProfile()">บันทึกทับ</button></span></div>
+                <label style="margin-top:6px;">เลือกบริษัท</label>
+                <div class="doc-group">
+                  <select id="sale-company-profile" onchange="applySalesCompanyProfile(this.value)"></select>
+                  <input id="sale-company-display" placeholder="ชื่อแบรนด์ (แสดงบนเอกสาร)">
+                  <input id="sale-company-name" placeholder="ชื่อบริษัท (นิติบุคคล)">
+                  <input id="sale-company-branch" placeholder="สำนักงานใหญ่ / สาขา">
+                  <input id="sale-company-taxid" placeholder="Tax ID บริษัท">
+                  <textarea id="sale-company-address" placeholder="ที่อยู่บริษัท" style="min-height:44px;"></textarea>
+                  <input id="sale-company-phone" placeholder="โทรศัพท์">
+                  <input id="sale-company-email" placeholder="อีเมล">
+                  <textarea id="sale-bank-account" placeholder="เลขบัญชี / ข้อมูลชำระเงิน" style="min-height:40px;"></textarea>
+                </div>
+                <label style="margin-top:8px;">โลโก้บริษัท (อัปโหลดจากเครื่อง)</label>
+                <input type="hidden" id="sale-company-logo"><input type="file" accept="image/*" onchange="loadCompanyLogoFile(this)"><div id="sale-company-logo-preview" style="margin-top:6px;"></div>
+              </div>
             </div>
-            <div class="form-row"><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
-            <div class="accounting-panel" style="margin-top:12px;border-left:4px solid var(--green);background:rgba(63,185,80,.06);">
-              <div class="accounting-panel-title">หัวเอกสาร / บริษัท / โลโก้ / ลายเซ็น</div>
-              <div class="form-row"><div class="form-group"><label>เลือกบริษัทผู้ออกเอกสาร</label><div class="select-tools"><select id="sale-company-profile" onchange="applySalesCompanyProfile(this.value)"></select><button class="btn btn-ghost btn-sm" type="button" onclick="openDocIssuerModal()">+ เพิ่มบริษัท</button><button class="btn btn-ghost btn-sm" type="button" onclick="saveCurrentSalesCompanyProfile()">บันทึกทับ</button></div></div><div class="form-group"><label>โลโก้บริษัท (อัปโหลดจากเครื่อง)</label><input type="hidden" id="sale-company-logo"><input type="file" accept="image/*" onchange="loadCompanyLogoFile(this)"><div id="sale-company-logo-preview" style="margin-top:6px;"></div></div></div>
-              <div class="form-row"><div class="form-group"><label>ชื่อแบรนด์</label><input id="sale-company-display" placeholder="ProFix Solution"></div><div class="form-group"><label>ชื่อบริษัท</label><input id="sale-company-name"></div></div>
-              <div class="form-row"><div class="form-group"><label>สถานะสาขา</label><input id="sale-company-branch" placeholder="สำนักงานใหญ่ / สาขา"></div><div class="form-group"><label>Tax ID บริษัท</label><input id="sale-company-taxid"></div></div>
-              <div class="form-row"><div class="form-group"><label>ที่อยู่บริษัท</label><textarea id="sale-company-address" style="min-height:54px;"></textarea></div><div class="form-group"><label>โทรศัพท์บริษัท</label><input id="sale-company-phone"><label style="margin-top:8px;">อีเมลบริษัท</label><input id="sale-company-email"></div></div>
-              <div class="form-group"><label>เลขบัญชี / ข้อมูลชำระเงิน</label><textarea id="sale-bank-account" style="min-height:54px;"></textarea></div>
+            <div class="accounting-panel" style="margin-top:12px;">
+              <div class="accounting-panel-title">ลายเซ็น</div>
               <div class="form-row"><div class="form-group"><label>ผู้ออกบิล / ผู้เสนอราคา (ชื่อ)</label><input id="sale-seller-name" list="signer-name-list" autocomplete="off" placeholder="พิมพ์ชื่อผู้เซ็น" onchange="applySalesSignerByName('seller',this.value)"><input type="hidden" id="sale-seller-signature"><input type="file" accept="image/*" onchange="loadSalesSignatureFile(this,'seller')" style="margin-top:6px;"><div id="sale-seller-sig-preview" style="margin-top:6px;"></div></div><div class="form-group"><label>ผู้อนุมัติ / ลูกค้า (ชื่อ)</label><input id="sale-customer-signer-name" list="signer-name-list" autocomplete="off" placeholder="พิมพ์ชื่อผู้เซ็น" onchange="applySalesSignerByName('customer',this.value)"><input type="hidden" id="sale-customer-signature"><input type="file" accept="image/*" onchange="loadSalesSignatureFile(this,'customer')" style="margin-top:6px;"><div id="sale-customer-sig-preview" style="margin-top:6px;"></div></div></div>
               <datalist id="signer-name-list"></datalist>
             </div>
