@@ -24,10 +24,10 @@ const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
 const headers={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
 function showError(html){document.getElementById('sp').style.display='none';document.getElementById('msg').innerHTML=html;}
-// โดเมนที่เราเป็นเจ้าของและอนุญาตให้ redirect ไปได้ (กัน open-redirect แต่รองรับหลายโดเมนช่วงเปลี่ยนผ่าน)
-const ALLOWED_ORIGINS=['https://profixsolution-team.github.io','https://www.profixsolution-service.com','https://profixsolution-service.com'];
+// โดเมนที่เราเป็นเจ้าของและอนุญาตให้ redirect ไปได้ (เช็คแค่ hostname ไม่สนใจ http/https กันปัญหาช่วง SSL ของโดเมนใหม่ยังไม่พร้อม)
+const ALLOWED_HOSTS=['profixsolution-team.github.io','www.profixsolution-service.com','profixsolution-service.com'];
 function safeTarget(t){
-  try{const u=new URL(t,location.href);if(!ALLOWED_ORIGINS.includes(u.origin))return null;return u.href;}catch(e){return null;}
+  try{const u=new URL(t,location.href);if(!ALLOWED_HOSTS.includes(u.hostname))return null;return u.href;}catch(e){return null;}
 }
 (async()=>{
   const code=new URLSearchParams(location.search).get('c');
