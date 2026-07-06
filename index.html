@@ -1144,18 +1144,19 @@ select option{background:var(--surface2);}
             <div class="form-row"><div class="form-group" style="flex:1;"><label>Job ID / PR (คลิกเลือกได้หลายตัว)</label><div style="position:relative;"><input id="sale-job-input" autocomplete="off" placeholder="ค้นหา PR / ลูกค้า / สาขา แล้วคลิกเลือก" oninput="renderSalesJobPicker(this.value)" onfocus="renderSalesJobPicker(this.value)" onkeydown="handleSalesJobKey(event)"><div id="sale-job-picker" class="job-picker" style="display:none;"></div></div><div id="sale-job-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div><input type="hidden" id="sale-job"></div></div>
             <div class="accounting-panel" style="margin-top:12px;border-left:4px solid var(--accent);background:rgba(88,166,255,.06);">
               <div class="accounting-panel-title">ข้อมูลลูกค้า</div>
-              <div class="form-row"><div class="form-group"><label>บริษัทลูกค้า</label><select id="sale-customer-select" onchange="applySalesCustomerProfile(this.value)"></select><input id="sale-customer" type="hidden"></div><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div></div>
+              <div class="form-row"><div class="form-group"><label>บริษัทลูกค้า</label><div class="select-tools"><select id="sale-customer-select" onchange="applySalesCustomerProfile(this.value)"></select><button class="btn btn-ghost btn-sm" type="button" onclick="openDocCustomerModal()">+ เพิ่มบริษัท</button></div><input id="sale-customer" type="hidden"></div><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div></div>
             <div class="form-row"><div class="form-group"><label>ที่อยู่ลูกค้า</label><textarea id="sale-customer-address" style="min-height:54px;"></textarea></div><div class="form-group"><label>Tax ID ลูกค้า</label><input id="sale-customer-taxid" placeholder="เลขประจำตัวผู้เสียภาษีลูกค้า"><label style="margin-top:8px;">โทรศัพท์ลูกค้า</label><input id="sale-customer-phone"></div></div>
             </div>
             <div class="form-row"><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
             <div class="accounting-panel" style="margin-top:12px;border-left:4px solid var(--green);background:rgba(63,185,80,.06);">
               <div class="accounting-panel-title">หัวเอกสาร / บริษัท / โลโก้ / ลายเซ็น</div>
-              <div class="form-row"><div class="form-group"><label>เลือกบริษัทผู้ออกเอกสาร</label><div class="select-tools"><select id="sale-company-profile" onchange="applySalesCompanyProfile(this.value)"></select><button class="btn btn-ghost btn-sm" type="button" onclick="saveCurrentSalesCompanyProfile()">+ บันทึกบริษัทนี้</button></div></div><div class="form-group"><label>โลโก้บริษัท</label><input id="sale-company-logo" placeholder="assets/profix-logo-dark.svg หรือ URL รูป"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-company-logo')" style="margin-top:6px;"></div></div>
+              <div class="form-row"><div class="form-group"><label>เลือกบริษัทผู้ออกเอกสาร</label><div class="select-tools"><select id="sale-company-profile" onchange="applySalesCompanyProfile(this.value)"></select><button class="btn btn-ghost btn-sm" type="button" onclick="openDocIssuerModal()">+ เพิ่มบริษัท</button><button class="btn btn-ghost btn-sm" type="button" onclick="saveCurrentSalesCompanyProfile()">บันทึกทับ</button></div></div><div class="form-group"><label>โลโก้บริษัท (อัปโหลดจากเครื่อง)</label><input type="hidden" id="sale-company-logo"><input type="file" accept="image/*" onchange="loadCompanyLogoFile(this)"><div id="sale-company-logo-preview" style="margin-top:6px;"></div></div></div>
               <div class="form-row"><div class="form-group"><label>ชื่อแบรนด์</label><input id="sale-company-display" placeholder="ProFix Solution"></div><div class="form-group"><label>ชื่อบริษัท</label><input id="sale-company-name"></div></div>
               <div class="form-row"><div class="form-group"><label>สถานะสาขา</label><input id="sale-company-branch" placeholder="สำนักงานใหญ่ / สาขา"></div><div class="form-group"><label>Tax ID บริษัท</label><input id="sale-company-taxid"></div></div>
               <div class="form-row"><div class="form-group"><label>ที่อยู่บริษัท</label><textarea id="sale-company-address" style="min-height:54px;"></textarea></div><div class="form-group"><label>โทรศัพท์บริษัท</label><input id="sale-company-phone"><label style="margin-top:8px;">อีเมลบริษัท</label><input id="sale-company-email"></div></div>
               <div class="form-group"><label>เลขบัญชี / ข้อมูลชำระเงิน</label><textarea id="sale-bank-account" style="min-height:54px;"></textarea></div>
-              <div class="form-row"><div class="form-group"><label>ลายเซ็นผู้เสนอราคา</label><input id="sale-seller-signature" placeholder="URL รูปลายเซ็น หรืออัปโหลด"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-seller-signature')" style="margin-top:6px;"></div><div class="form-group"><label>ลายเซ็นผู้อนุมัติ / ลูกค้า</label><input id="sale-customer-signature" placeholder="URL รูปลายเซ็น หรืออัปโหลด"><input type="file" accept="image/*" onchange="loadQuoteSignatureFile(this,'sale-customer-signature')" style="margin-top:6px;"></div></div>
+              <div class="form-row"><div class="form-group"><label>ผู้ออกบิล / ผู้เสนอราคา (ชื่อ)</label><input id="sale-seller-name" list="signer-name-list" autocomplete="off" placeholder="พิมพ์ชื่อผู้เซ็น" onchange="applySalesSignerByName('seller',this.value)"><input type="hidden" id="sale-seller-signature"><input type="file" accept="image/*" onchange="loadSalesSignatureFile(this,'seller')" style="margin-top:6px;"><div id="sale-seller-sig-preview" style="margin-top:6px;"></div></div><div class="form-group"><label>ผู้อนุมัติ / ลูกค้า (ชื่อ)</label><input id="sale-customer-signer-name" list="signer-name-list" autocomplete="off" placeholder="พิมพ์ชื่อผู้เซ็น" onchange="applySalesSignerByName('customer',this.value)"><input type="hidden" id="sale-customer-signature"><input type="file" accept="image/*" onchange="loadSalesSignatureFile(this,'customer')" style="margin-top:6px;"><div id="sale-customer-sig-preview" style="margin-top:6px;"></div></div></div>
+              <datalist id="signer-name-list"></datalist>
             </div>
           </div>
           <div class="accounting-panel">
@@ -1688,8 +1689,8 @@ function ensurePersistentIds(){
   docs.workOrders.forEach((d,i)=>{if(!d.id)d.id='WOD-'+Date.now().toString(36)+'-'+i;});
   MASTER_COLLECTIONS.forEach(c=>{const list=c.ref();if(Array.isArray(list))list.forEach((r,i)=>{if(r&&!r._id){const k=c.keyOf?String(c.keyOf(r)||'').trim():'';r._id=c.prefix+'-'+(k?cleanId(k,c.prefix):Date.now().toString(36)+'-'+i+'-'+Math.random().toString(36).slice(2,6));}});});
 }
-function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,salesCompanyProfileItems,docs,jCnt,aCnt,lastDataUpdatedAt};}
-function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.paymentMethods)paymentMethods=st.paymentMethods;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.salesCompanyProfileItems)salesCompanyProfileItems=st.salesCompanyProfileItems;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
+function collectState(){return {jobs,adminTasks,lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,parts,salesCompanyProfileItems,salesSignerProfiles,docs,jCnt,aCnt,lastDataUpdatedAt};}
+function applyState(st){if(!st)return;if(st.jobs)jobs=st.jobs;if(st.adminTasks)adminTasks=st.adminTasks;if(st.lpHistory)lpHistory=st.lpHistory;if(st.J_ST)J_ST=st.J_ST;if(st.A_ST)A_ST=st.A_ST;if(st.adminNames)adminNames=st.adminNames;if(st.adminTypes)adminTypes=st.adminTypes;if(st.jobTypes)jobTypes=st.jobTypes;if(st.priorities)priorities=st.priorities;if(st.payStatuses)payStatuses=st.payStatuses;if(st.paymentMethods)paymentMethods=st.paymentMethods;if(st.prValues)prValues=st.prValues;if(st.fixedExpenses)fixedExpenses=st.fixedExpenses;if(st.clients)clients=st.clients;if(st.pricing)pricing=st.pricing;if(st.teams)teams=st.teams;if(st.teamPricing)teamPricing=st.teamPricing;if(st.branches)branches=st.branches;if(st.suppliers)suppliers=st.suppliers;if(st.parts)parts=st.parts;if(st.salesCompanyProfileItems)salesCompanyProfileItems=st.salesCompanyProfileItems;if(st.salesSignerProfiles)salesSignerProfiles=st.salesSignerProfiles;if(st.docs)docs=st.docs;if(st.jCnt)jCnt=st.jCnt;if(st.aCnt)aCnt=st.aCnt;if(st.lastDataUpdatedAt)lastDataUpdatedAt=st.lastDataUpdatedAt;}
 function lightTechnicianReportForCache(report={}){
   const r={...report};
   const imageCount=Array.isArray(r.images)?r.images.length:Number(r.imageCount||0);
@@ -1766,7 +1767,7 @@ function rowHashMap(rows,idOf){
 }
 function splitUrl(table,query=''){return `${SUPABASE_URL}/rest/v1/${table}${query}`;}
 // คอลัมน์ที่เพิ่มใน migration phase 3 — ถ้ายังไม่ได้รัน migration จะถูกตัดออกอัตโนมัติเพื่อไม่ให้บันทึกพัง
-const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no'];
+const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name'];
 function stripKeys(payload,keys){const drop=o=>{const c={...o};keys.forEach(k=>delete c[k]);return c;};return Array.isArray(payload)?payload.map(drop):drop(payload);}
 // POST แบบทนทาน: ถ้า PostgREST แจ้งว่าไม่มีคอลัมน์ (ยังไม่ได้รัน migration) จะลองใหม่โดยตัดคอลัมน์ใหม่ออก
 async function sbUpsertResilient(table,query,payload,optionalKeys=PHASE3_OPTIONAL_KEYS){
@@ -1810,7 +1811,7 @@ async function sbFetchAllOptional(table,queryBase){
     return [];
   }
 }
-function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,salesCompanyProfileItems,jCnt,aCnt,lastDataUpdatedAt,masterSplitKeys:[...masterSplitKeys]};}
+function splitMetaData(){return {lpHistory,J_ST,A_ST,adminNames,adminTypes,jobTypes,priorities,payStatuses,paymentMethods,prValues,fixedExpenses,clients,pricing,teams,teamPricing,branches,suppliers,salesCompanyProfileItems,salesSignerProfiles,jCnt,aCnt,lastDataUpdatedAt,masterSplitKeys:[...masterSplitKeys]};}
 function lightWorkOrderDoc(d){
   const x={...d};
   if(x.url||x.fileUrl||x.key||x.storage==='r2')delete x.dataUrl;
@@ -4096,6 +4097,7 @@ function salesDocHtml(inv,items){
   const customerSignature=salesDocImageUrl(inv.customer_signature_url||'');
   const sellerSignatureHtml=sellerSignature?`<img class="signature-img" src="${esc(sellerSignature)}" alt="ลายเซ็นผู้เสนอราคา">`:'';
   const customerSignatureHtml=customerSignature?`<img class="signature-img" src="${esc(customerSignature)}" alt="ลายเซ็นผู้อนุมัติ / ลูกค้า">`:'';
+  const sellerSignName=esc(inv.seller_name||'');const customerSignName=esc(inv.customer_signer_name||'');
   return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>${esc(meta.title)} ${esc(inv.doc_no||inv.sales_invoice_no||'')}</title>
 <style>@page{size:A4 portrait;margin:0;}*{box-sizing:border-box;font-family:Arial,'Noto Sans Thai',sans-serif;}body{margin:0;background:#edf2f7;color:#111820;font-size:12px;line-height:1.35;}
 .toolbar{position:fixed;top:0;left:0;right:0;background:#1f2937;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;z-index:2;}
@@ -4113,7 +4115,7 @@ function salesDocHtml(inv,items){
 <table class="items"><thead><tr><th class="no">ลำดับ</th><th class="desc">รายการ</th><th class="qty">จำนวน</th><th class="unit">หน่วย</th><th class="price">ราคา</th><th class="amount">ราคา</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="no muted">ไม่มีรายการ</td></tr>'}${Array.from({length:blankRows}).map(()=>'<tr><td class="no"></td><td class="desc"></td><td class="qty"></td><td class="unit"></td><td class="price"></td><td class="amount"></td></tr>').join('')}</tbody></table>
 <section class="note-total"><div class="note"><h3>หมายเหตุ / เงื่อนไข</h3><div class="box">${esc(noteLines||'-')}</div></div><div class="total"><table><tr><td class="label">รวมเป็นเงิน</td><td class="right">${money(inv.subtotal||0)}</td></tr>${showVat?`<tr><td>ภาษีมูลค่าเพิ่ม<br>7%(VAT)</td><td class="right">${money(inv.vat_amount||0)}</td></tr>`:''}<tr><td>หักส่วนลด</td><td class="right">${money(discount)}</td></tr><tr class="grand"><td>ยอดรวมทั้งสิ้น</td><td class="right">${money(inv.total_amount||0)}</td></tr></table></div></section>
 <div class="amount-text"><div>ตัวอักษร</div><div>(${esc(totalText)})</div></div>
-<section class="signs"><div>ลงชื่อผู้เสนอราคา<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ........................................ )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ........................................ )</div></div></section>
+<section class="signs"><div>ลงชื่อผู้เสนอราคา<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ${sellerSignName||'........................................'} )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ${customerSignName||'........................................'} )</div></div></section>
 <div class="footer">${esc(company.displayName)} Team&nbsp;&nbsp;|&nbsp;&nbsp;ขอบคุณที่ใช้บริการ</div></div></body></html>`;
 }
 function salesDocCompanyInfo(inv={}){
@@ -4194,6 +4196,113 @@ function saveCurrentSalesCompanyProfile(){
   renderSalesCompanyProfileOptions(p.id);
   saveState();
   alert('บันทึกบริษัทนี้เป็นตัวเลือกแล้ว');
+}
+// ===== โลโก้บริษัท (อัปโหลดไฟล์อย่างเดียว → base64) =====
+function loadCompanyLogoFile(input){
+  const file=input?.files?.[0];if(!file)return;
+  if(!file.type.startsWith('image/')){alert('กรุณาเลือกไฟล์รูปโลโก้');input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=()=>{const el=document.getElementById('sale-company-logo');if(el)el.value=reader.result||'';updateSalesCompanyLogoPreview();input.value='';};
+  reader.onerror=()=>alert('อ่านไฟล์โลโก้ไม่สำเร็จ');
+  reader.readAsDataURL(file);
+}
+function updateSalesCompanyLogoPreview(){
+  const url=document.getElementById('sale-company-logo')?.value||'';
+  const box=document.getElementById('sale-company-logo-preview');if(!box)return;
+  box.innerHTML=url?`<img src="${esc(salesDocImageUrl(url))}" style="max-height:46px;max-width:170px;object-fit:contain;background:#fff;border-radius:4px;padding:3px;border:1px solid var(--border);">`:'<span style="font-size:11px;color:var(--text3);">ยังไม่มีโลโก้ในระบบ</span>';
+}
+// ===== ลายเซ็นตามชื่อผู้เซ็น (พิมพ์ชื่อ + อัปโหลด จำได้) =====
+function salesSignerNameId(which){return which==='seller'?'sale-seller-name':'sale-customer-signer-name';}
+function salesSignerSigId(which){return which==='seller'?'sale-seller-signature':'sale-customer-signature';}
+function salesSignerPreviewId(which){return which==='seller'?'sale-seller-sig-preview':'sale-customer-sig-preview';}
+function renderSalesSignerLists(){
+  const dl=document.getElementById('signer-name-list');if(!dl)return;
+  dl.innerHTML=(salesSignerProfiles||[]).map(s=>`<option value="${esc(s.name)}"></option>`).join('');
+}
+function updateSalesSignaturePreview(which){
+  const sig=document.getElementById(salesSignerSigId(which))?.value||'';
+  const box=document.getElementById(salesSignerPreviewId(which));if(!box)return;
+  box.innerHTML=sig?`<img src="${esc(salesDocImageUrl(sig))}" style="max-height:44px;max-width:160px;object-fit:contain;background:#fff;border-radius:4px;padding:2px;border:1px solid var(--border);">`:'<span style="font-size:11px;color:var(--text3);">ยังไม่มีลายเซ็น</span>';
+}
+function applySalesSignerByName(which,name){
+  name=String(name||'').trim();
+  const hit=(salesSignerProfiles||[]).find(x=>String(x.name||'').trim().toLowerCase()===name.toLowerCase());
+  const sigEl=document.getElementById(salesSignerSigId(which));
+  if(hit&&sigEl)sigEl.value=hit.signature||'';
+  updateSalesSignaturePreview(which);
+}
+function loadSalesSignatureFile(input,which){
+  const file=input?.files?.[0];if(!file)return;
+  if(!file.type.startsWith('image/')){alert('กรุณาเลือกไฟล์รูปลายเซ็น');input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=()=>{const el=document.getElementById(salesSignerSigId(which));if(el)el.value=reader.result||'';updateSalesSignaturePreview(which);rememberSalesSigner(which);input.value='';};
+  reader.onerror=()=>alert('อ่านไฟล์ลายเซ็นไม่สำเร็จ');
+  reader.readAsDataURL(file);
+}
+function rememberSalesSigner(which){
+  const name=(document.getElementById(salesSignerNameId(which))?.value||'').trim();
+  const sig=document.getElementById(salesSignerSigId(which))?.value||'';
+  if(!name||!sig)return;
+  const i=(salesSignerProfiles||[]).findIndex(x=>String(x.name||'').trim().toLowerCase()===name.toLowerCase());
+  if(i>=0)salesSignerProfiles[i]={name,signature:sig};else salesSignerProfiles.push({name,signature:sig});
+  renderSalesSignerLists();saveState();
+}
+// ===== modal เพิ่มบริษัทลูกค้า (บันทึกเข้าระบบลูกค้า) =====
+function openDocCustomerModal(){
+  ['dc-name','dc-address','dc-taxid','dc-phone','dc-contact'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const cur=document.getElementById('sale-customer')?.value||'';if(cur)document.getElementById('dc-name').value=cur;
+  openM('m-doc-customer');setTimeout(()=>document.getElementById('dc-name')?.focus(),50);
+}
+function saveDocCustomer(){
+  const name=(document.getElementById('dc-name')?.value||'').trim();
+  if(!name){alert('กรอกชื่อบริษัทลูกค้าก่อน');return;}
+  const rec={addr:(document.getElementById('dc-address')?.value||'').trim(),taxId:(document.getElementById('dc-taxid')?.value||'').trim(),phone:(document.getElementById('dc-phone')?.value||'').trim(),contact:(document.getElementById('dc-contact')?.value||'').trim()};
+  const i=(clients||[]).findIndex(c=>String(c.name||'').trim().toLowerCase()===name.toLowerCase());
+  if(i>=0)clients[i]={...clients[i],name,...rec};
+  else clients.push({id:'CLT-'+String((clients?.length||0)+1).padStart(3,'0'),name,contact:rec.contact,phone:rec.phone,payTerm:'30 วัน',credit:0,note:'',addr:rec.addr,taxId:rec.taxId});
+  saveState();
+  renderSalesCustomerOptions(name);
+  applySalesCustomerProfile(name);
+  closeM('m-doc-customer');
+}
+// ===== modal เพิ่มบริษัทผู้ออกเอกสาร =====
+function openDocIssuerModal(){
+  ['di-display','di-name','di-branch','di-taxid','di-address','di-phone','di-email','di-bank'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const lg=document.getElementById('di-logo');if(lg)lg.value='';
+  updateDocIssuerLogoPreview();
+  openM('m-doc-issuer');setTimeout(()=>document.getElementById('di-display')?.focus(),50);
+}
+function loadDocIssuerLogoFile(input){
+  const file=input?.files?.[0];if(!file)return;
+  if(!file.type.startsWith('image/')){alert('กรุณาเลือกไฟล์รูปโลโก้');input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=()=>{const el=document.getElementById('di-logo');if(el)el.value=reader.result||'';updateDocIssuerLogoPreview();input.value='';};
+  reader.readAsDataURL(file);
+}
+function updateDocIssuerLogoPreview(){
+  const url=document.getElementById('di-logo')?.value||'';
+  const box=document.getElementById('di-logo-preview');if(!box)return;
+  box.innerHTML=url?`<img src="${esc(salesDocImageUrl(url))}" style="max-height:46px;max-width:170px;object-fit:contain;background:#fff;border-radius:4px;padding:3px;border:1px solid var(--border);">`:'<span style="font-size:11px;color:var(--text3);">ยังไม่มีโลโก้</span>';
+}
+function saveDocIssuer(){
+  const name=(document.getElementById('di-name')?.value||'').trim();
+  const display=(document.getElementById('di-display')?.value||'').trim();
+  if(!name&&!display){alert('กรอกชื่อบริษัทก่อน');return;}
+  const p={id:'company-'+cleanId(name||display,'company'),label:display||name,displayName:display,name,
+    branch:(document.getElementById('di-branch')?.value||'').trim(),
+    taxId:(document.getElementById('di-taxid')?.value||'').trim(),
+    address:(document.getElementById('di-address')?.value||'').trim(),
+    phone:(document.getElementById('di-phone')?.value||'').trim(),
+    email:(document.getElementById('di-email')?.value||'').trim(),
+    logoUrl:document.getElementById('di-logo')?.value||'',
+    bankAccount:(document.getElementById('di-bank')?.value||'').trim()};
+  const i=(salesCompanyProfileItems||[]).findIndex(x=>x.id===p.id||String(x.name||'')===String(p.name||''));
+  if(i>=0)salesCompanyProfileItems[i]=p;else salesCompanyProfileItems.push(p);
+  saveState();
+  renderSalesCompanyProfileOptions(p.id);
+  applySalesCompanyProfile(p.id);
+  updateSalesCompanyLogoPreview();
+  closeM('m-doc-issuer');
 }
 function salesClientProfile(name, branchName=''){
   const client=(clients||[]).find(c=>String(c.name||'').trim()===String(name||'').trim())||{};
@@ -4281,6 +4390,12 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-bank-account').value=saleCompany.bankAccount;
   document.getElementById('sale-seller-signature').value=inv?.seller_signature_url||'';
   document.getElementById('sale-customer-signature').value=inv?.customer_signature_url||'';
+  document.getElementById('sale-seller-name').value=inv?.seller_name||'';
+  document.getElementById('sale-customer-signer-name').value=inv?.customer_signer_name||'';
+  renderSalesSignerLists();
+  updateSalesCompanyLogoPreview();
+  updateSalesSignaturePreview('seller');
+  updateSalesSignaturePreview('customer');
   accountingAttachments.sales=null;
   updateAttachmentPreview('sales',null);
   setAccountingStatus('sales',inv?.file_url?'มีไฟล์แนบเดิมใน URL แล้ว':'','');
@@ -4599,6 +4714,8 @@ async function saveSalesInvoice(){
     bank_account:document.getElementById('sale-bank-account').value.trim(),
     seller_signature_url:document.getElementById('sale-seller-signature').value.trim(),
     customer_signature_url:document.getElementById('sale-customer-signature').value.trim(),
+    seller_name:document.getElementById('sale-seller-name').value.trim(),
+    customer_signer_name:document.getElementById('sale-customer-signer-name').value.trim(),
     status:'active',
     created_by:getActorName(),
     updated_by:getActorName()
@@ -5418,6 +5535,7 @@ let suppliers = [
 let parts = [];
 let selectedParts=new Set();
 let salesCompanyProfileItems=[];
+let salesSignerProfiles=[]; // [{name, signature(base64)}] — จำลายเซ็นตามชื่อผู้เซ็น
 
 // ===== SETTINGS RENDERS =====
 function detailText(obj){return Object.entries(obj).map(([k,v])=>`${k}: ${v||'-'}`).join('\n');}
@@ -6095,6 +6213,7 @@ function partsQuoteHtml(j,doc={}){
   const customerSignature=quoteImageUrl(doc.customerSignatureUrl||doc.customerSignature||'');
   const sellerSignatureHtml=sellerSignature?`<img class="signature-img" src="${esc(sellerSignature)}" alt="ลายเซ็นผู้เสนอราคา">`:'';
   const customerSignatureHtml=customerSignature?`<img class="signature-img" src="${esc(customerSignature)}" alt="ลายเซ็นผู้อนุมัติ / ลูกค้า">`:'';
+  const sellerSignName=esc(inv.seller_name||'');const customerSignName=esc(inv.customer_signer_name||'');
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(no)}</title><style>
   *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111820;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:12px;line-height:1.35}.toolbar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#175fff;color:#fff}.page{position:relative;width:210mm;min-height:297mm;margin:18px auto;padding:16mm 15mm 12mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16)}.top{display:grid;grid-template-columns:1fr 78mm;align-items:start;gap:10mm}.brand-logo{width:56mm;max-height:28mm;object-fit:contain;object-position:left top}.doc-title{text-align:right;font-size:20px;font-weight:900;color:#05070a}.doc-meta{margin-top:12px;display:grid;grid-template-columns:1fr 36mm;gap:7px 10px;text-align:right;font-size:15px}.doc-meta b{font-size:16px}.party{display:grid;grid-template-columns:1fr 1fr;gap:18mm;margin-top:18mm}.party h3{margin:0 0 10px;color:#6b7280;font-size:13px}.party .name{font-weight:800;color:#111827;margin-bottom:6px}.party div{color:#6b7280;margin:6px 0}.party .strong{font-weight:800;color:#111827}.items{width:100%;border-collapse:collapse;margin-top:13mm;table-layout:fixed}.items th{background:#666;color:#fff;font-weight:800;font-size:13px;padding:5px 4px;border:1px solid #d4dbe5}.items td{height:8mm;border:1px solid #d4dbe5;padding:4px 5px;vertical-align:middle}.items tbody tr:nth-child(odd){background:#f2f5f9}.items .no{width:8mm;text-align:center}.items .desc{width:auto}.items .qty{width:25mm;text-align:right}.items .unit{width:19mm;text-align:center}.items .price,.items .amount{width:29mm;text-align:right}.note-total{display:grid;grid-template-columns:1fr 58mm;gap:16mm;margin-top:8mm}.note h3{margin:0 0 10px;color:#6b7280;font-size:13px}.note .box{white-space:pre-wrap;color:#697386;line-height:1.45}.total table{width:100%;border-collapse:collapse}.total td{padding:4px 4px;font-size:13px}.total .label{font-weight:800}.total .right{text-align:right}.grand td{background:#666;color:#fff;font-size:16px;font-weight:900;border:1px solid #fff}.amount-text{display:grid;grid-template-columns:28mm 1fr;gap:8px;margin-top:8mm;font-weight:800}.signs{position:absolute;left:15mm;right:15mm;bottom:24mm;display:grid;grid-template-columns:1fr 1fr;gap:34mm;color:#6b7280;font-size:11px}.signature-box{height:22mm;display:flex;align-items:flex-end;justify-content:center}.signature-img{max-width:54mm;max-height:20mm;object-fit:contain;display:block}.sign-line{color:#111;text-align:center}.footer{position:absolute;left:15mm;right:15mm;bottom:10mm;text-align:center;color:#7b8492;font-size:10px;font-style:italic}@media print{body{background:#fff}.toolbar{display:none}.page{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:14mm 13mm 11mm}}@page{size:A4 portrait;margin:0}</style></head><body><div class="toolbar"><b>${esc(no)}</b><button onclick="window.print()">พิมพ์ / Save PDF</button></div><main class="page">
   <section class="top"><div><img class="brand-logo" src="${esc(company.logoUrl)}" alt="${esc(company.displayName)}"></div><div><div class="doc-title">Quotation/ใบเสนอราคา</div><div class="doc-meta"><span>เลขที่ :</span><b>${esc(no)}</b><span>วันที่ :</span><b>${esc(quoteDateText(doc.date||todayISO()))}</b></div></div></section>
@@ -6107,7 +6226,7 @@ function partsQuoteHtml(j,doc={}){
   }).join('')}${Array.from({length:blankRows}).map(()=>'<tr><td class="no"></td><td class="desc"></td><td class="qty"></td><td class="unit"></td><td class="price"></td><td class="amount"></td></tr>').join('')}</tbody></table>
   <section class="note-total"><div class="note"><h3>หมายเหตุ / เงื่อนไข</h3><div class="box">${esc(noteLines||'-')}</div></div><div class="total"><table><tr><td class="label">รวมเป็นเงิน</td><td class="right">${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>ภาษีมูลค่าเพิ่ม<br>7%(VAT)</td><td class="right">${vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>หักส่วนลด</td><td class="right">${discount.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr class="grand"><td>ยอดรวมทั้งสิ้น</td><td class="right">${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table></div></section>
   <div class="amount-text"><div>ตัวอักษร</div><div>(${esc(amountText)})</div></div>
-  <section class="signs"><div>ลงชื่อผู้เสนอราคา<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ........................................ )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ........................................ )</div></div></section>
+  <section class="signs"><div>ลงชื่อผู้เสนอราคา<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ${sellerSignName||'........................................'} )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ${customerSignName||'........................................'} )</div></div></section>
   <div class="footer">${esc(company.displayName)} Team&nbsp;&nbsp;|&nbsp;&nbsp;ขอบคุณที่ใช้บริการ</div>
   </main></body></html>`;
 }
@@ -6554,6 +6673,36 @@ initApp();
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeM('m-checkin-view')">ปิด</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: เพิ่มบริษัทลูกค้า (บันทึกเข้าระบบลูกค้า) -->
+<div class="modal-overlay" id="m-doc-customer">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header"><div class="modal-title">+ เพิ่มบริษัทลูกค้า</div><button class="close-btn" onclick="closeM('m-doc-customer')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>ชื่อบริษัทลูกค้า *</label><input id="dc-name" placeholder="เช่น บริษัท เอ็มไพร์ ... จำกัด"></div>
+      <div class="form-group"><label>ที่อยู่</label><textarea id="dc-address" style="min-height:54px;"></textarea></div>
+      <div class="form-row"><div class="form-group"><label>เลขผู้เสียภาษี (Tax ID)</label><input id="dc-taxid"></div><div class="form-group"><label>โทรศัพท์</label><input id="dc-phone"></div></div>
+      <div class="form-group"><label>ผู้ติดต่อ</label><input id="dc-contact"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-doc-customer')">ยกเลิก</button><button class="btn btn-primary" onclick="saveDocCustomer()">✓ บันทึกเข้าระบบลูกค้า</button></div>
+  </div>
+</div>
+
+<!-- MODAL: เพิ่มบริษัทผู้ออกเอกสาร -->
+<div class="modal-overlay" id="m-doc-issuer">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header"><div class="modal-title">+ เพิ่มบริษัทผู้ออกเอกสาร</div><button class="close-btn" onclick="closeM('m-doc-issuer')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="form-group"><label>ชื่อแบรนด์ (แสดงบนเอกสาร)</label><input id="di-display" placeholder="ProFix Solution"></div><div class="form-group"><label>ชื่อบริษัท (นิติบุคคล)</label><input id="di-name"></div></div>
+      <div class="form-row"><div class="form-group"><label>สถานะสาขา</label><input id="di-branch" placeholder="สำนักงานใหญ่ / สาขา"></div><div class="form-group"><label>Tax ID บริษัท</label><input id="di-taxid"></div></div>
+      <div class="form-group"><label>ที่อยู่บริษัท</label><textarea id="di-address" style="min-height:54px;"></textarea></div>
+      <div class="form-row"><div class="form-group"><label>โทรศัพท์</label><input id="di-phone"></div><div class="form-group"><label>อีเมล</label><input id="di-email"></div></div>
+      <div class="form-group"><label>เลขบัญชี / ข้อมูลชำระเงิน</label><textarea id="di-bank" style="min-height:48px;"></textarea></div>
+      <div class="form-group"><label>โลโก้บริษัท (อัปโหลดจากเครื่อง)</label><input type="hidden" id="di-logo"><input type="file" accept="image/*" onchange="loadDocIssuerLogoFile(this)"><div id="di-logo-preview" style="margin-top:6px;"></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-doc-issuer')">ยกเลิก</button><button class="btn btn-primary" onclick="saveDocIssuer()">✓ บันทึกบริษัท</button></div>
   </div>
 </div>
 
