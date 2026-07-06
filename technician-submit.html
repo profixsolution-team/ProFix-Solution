@@ -72,6 +72,16 @@ textarea{resize:vertical;min-height:80px;}
 .part-add{width:auto;padding:9px 12px;border-radius:8px;background:var(--surface3);color:var(--text);border:1px solid var(--border);font-weight:700;cursor:pointer;}
 .part-hint{font-size:11px;color:var(--text3);line-height:1.45;}
 @media(max-width:430px){.part-row{grid-template-columns:1fr 70px 70px 34px;gap:5px;padding:7px;}.part-row input{font-size:13px;padding:9px 8px;}}
+.part-name-wrap{position:relative;min-width:0;}
+.part-dd{position:absolute;left:0;right:0;top:calc(100% + 3px);z-index:60;max-height:240px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.45);}
+.part-dd-row{padding:9px 11px;cursor:pointer;border-bottom:1px solid var(--border);}
+.part-dd-row:last-child{border-bottom:0;}
+.part-dd-row:active{background:var(--surface3);}
+.part-dd-name{font-size:14px;color:var(--text);}
+.part-dd-sub{font-size:11px;color:var(--text3);margin-top:1px;}
+.part-dd-empty{padding:11px;font-size:12px;color:var(--text3);text-align:center;line-height:1.5;}
+.part-custom-tag{display:inline-block;font-size:10px;color:var(--yellow);background:var(--yellow-dim);border-radius:4px;padding:1px 7px;margin-top:5px;}
+.part-add.alt{background:var(--yellow-dim);color:var(--yellow);border-color:var(--yellow);}
 </style>
 </head>
 <body>
@@ -171,11 +181,13 @@ textarea{resize:vertical;min-height:80px;}
       <div class="form-group">
         <label>อะไหล่ที่ใช้ <span class="req-star">*</span></label>
         <input type="hidden" id="f-parts">
-        <datalist id="tech-part-options"></datalist>
         <div class="parts-editor" id="tech-parts-editor"></div>
         <div class="part-tools">
-          <button type="button" class="part-add" onclick="addTechPartRow()">+ เพิ่มแถวอะไหล่</button>
-          <div class="part-hint">พิมพ์ค้นหาชื่ออะไหล่จากระบบได้ หรือพิมพ์รายการใหม่เองได้ ราคาไม่แสดงให้ช่างเห็น</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="part-add" onclick="addTechPartRow()">+ เพิ่มอะไหล่จากระบบ</button>
+            <button type="button" class="part-add alt" onclick="addCustomTechPartRow()">+ อื่นๆ (พิมพ์เอง)</button>
+          </div>
+          <div class="part-hint">พิมพ์เพื่อค้นหาแล้วเลือกอะไหล่จากระบบ — ถ้าไม่มีในระบบ กด "อื่นๆ" เพื่อพิมพ์เอง · ราคาไม่แสดงให้ช่างเห็น</div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
           <input type="checkbox" id="f-noparts" onchange="toggleNoParts()" style="width:18px;height:18px;flex:0 0 auto;">
@@ -512,40 +524,84 @@ function syncTechPartsText(){
 }
 function renderTechPartRows(){
   const box=document.getElementById('tech-parts-editor');if(!box)return;
-  box.innerHTML=techPartRows.map((r,i)=>`<div class="part-row">
-    <input list="tech-part-options" value="${esc(r.name||'')}" placeholder="ค้นหา/พิมพ์ชื่ออะไหล่" oninput="updateTechPartRow(${i},'name',this.value)" onchange="selectTechPartByName(${i},this.value)">
-    <input type="number" min="0" step="any" value="${esc(r.qty??1)}" placeholder="จำนวน" oninput="updateTechPartRow(${i},'qty',this.value)">
-    <input value="${esc(r.unit||'')}" placeholder="หน่วย" oninput="updateTechPartRow(${i},'unit',this.value)">
-    <button type="button" class="rm-part" onclick="removeTechPartRow(${i})">×</button>
-  </div>`).join('');
+  box.innerHTML=techPartRows.map((r,i)=>{
+    const nameCell = r.custom
+      ? `<input value="${esc(r.name||'')}" placeholder="พิมพ์ชื่ออะไหล่เอง (นอกระบบ)" autocomplete="off" oninput="updateTechPartRow(${i},'name',this.value)"><div class="part-custom-tag">อื่นๆ (พิมพ์เอง)</div>`
+      : `<input value="${esc(r.name||'')}" placeholder="ค้นหาอะไหล่จากระบบ" autocomplete="off" onfocus="openTechPartDropdown(${i},this.value)" oninput="openTechPartDropdown(${i},this.value)" onblur="revertTechPartInput(${i})" onkeydown="techPartKeydown(event,${i})"><div class="part-dd" id="part-dd-${i}" style="display:none;"></div>`;
+    return `<div class="part-row">
+      <div class="part-name-wrap">${nameCell}</div>
+      <input type="number" min="0" step="any" value="${esc(r.qty??1)}" placeholder="จำนวน" oninput="updateTechPartRow(${i},'qty',this.value)">
+      <input value="${esc(r.unit||'')}" placeholder="หน่วย" oninput="updateTechPartRow(${i},'unit',this.value)">
+      <button type="button" class="rm-part" onclick="removeTechPartRow(${i})">×</button>
+    </div>`;
+  }).join('');
   syncTechPartsText();
 }
 function updateTechPartRow(i,field,value){
   if(!techPartRows[i])return;
   techPartRows[i][field]=value;
-  if(field==='name'){
-    const hit=findMasterPartByName(value);
-    techPartRows[i].masterId=hit?.id||'';
-    techPartRows[i].supplier=hit?.supplier||'';
-    techPartRows[i].custom=!hit&&!!String(value||'').trim();
-    if(hit&&!techPartRows[i].unit)techPartRows[i].unit=hit.unit||'';
-  }
+  if(field==='name'&&techPartRows[i].custom){ techPartRows[i].masterId=''; techPartRows[i].code=''; techPartRows[i].supplier=''; }
   syncTechPartsText();
 }
-function selectTechPartByName(i,value){
-  const hit=findMasterPartByName(value);
-  if(hit&&techPartRows[i]){
-    techPartRows[i].masterId=hit.id;
-    techPartRows[i].name=hit.name;
-    techPartRows[i].unit=techPartRows[i].unit||hit.unit||'';
-    techPartRows[i].supplier=hit.supplier||'';
-    techPartRows[i].custom=false;
-    renderTechPartRows();
-  }else syncTechPartsText();
+// ===== dropdown ค้นหาอะไหล่จากระบบ (เลือกได้อย่างเดียว) =====
+let techPartDropdownList = {}; // เก็บรายการที่กรองไว้ต่อแถว → เลือกด้วย index กัน bug escaping id
+function techPartMatches(query){
+  const q=String(query||'').trim().toLowerCase();
+  let list=masterPartOptions;
+  if(q)list=list.filter(p=>[p.name,p.code,p.category,p.supplier].some(v=>String(v||'').toLowerCase().includes(q)));
+  return list.slice(0,40);
+}
+function openTechPartDropdown(i,query){
+  const dd=document.getElementById('part-dd-'+i);if(!dd)return;
+  if(!masterPartOptions.length){
+    techPartDropdownList[i]=[];
+    dd.innerHTML='<div class="part-dd-empty">ยังไม่มีรายการอะไหล่ในระบบ<br>กด "+ อื่นๆ" เพื่อพิมพ์เอง</div>';
+    dd.style.display='';return;
+  }
+  const list=techPartMatches(query);
+  techPartDropdownList[i]=list;
+  dd.innerHTML=list.length
+    ? list.map((p,idx)=>`<div class="part-dd-row" onmousedown="event.preventDefault();pickTechPart(${i},${idx})"><div class="part-dd-name">${esc(p.name)}</div>${[p.category,p.code,p.supplier].filter(Boolean).length?`<div class="part-dd-sub">${esc([p.category,p.code,p.supplier].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')
+    : '<div class="part-dd-empty">ไม่พบอะไหล่ที่ตรงกับคำค้น<br>กด "+ อื่นๆ" เพื่อพิมพ์เอง</div>';
+  dd.style.display='';
+}
+function closeTechPartDropdown(i){const dd=document.getElementById('part-dd-'+i);if(dd)dd.style.display='none';}
+function pickTechPart(i,idx){
+  const p=(techPartDropdownList[i]||[])[idx];
+  if(!p||!techPartRows[i])return;
+  techPartRows[i].masterId=p.id;
+  techPartRows[i].name=p.name;
+  techPartRows[i].code=p.code||'';
+  techPartRows[i].category=p.category||'';
+  techPartRows[i].supplier=p.supplier||'';
+  techPartRows[i].unit=techPartRows[i].unit||p.unit||'';
+  techPartRows[i].custom=false;
+  closeTechPartDropdown(i);
+  renderTechPartRows();
+}
+// เลือกได้อย่างเดียว: ถ้าพิมพ์ค้นหาแล้วไม่ได้เลือกจากรายการ ให้ดีด input กลับเป็นชื่อที่เลือกไว้ (หรือว่าง)
+function revertTechPartInput(i){
+  setTimeout(()=>{
+    closeTechPartDropdown(i);
+    const box=document.getElementById('tech-parts-editor');if(!box)return;
+    const input=box.querySelectorAll('.part-name-wrap > input')[i];
+    if(input && techPartRows[i] && !techPartRows[i].custom) input.value=techPartRows[i].name||'';
+  },200);
+}
+function techPartKeydown(e,i){
+  if(e.key==='Escape'){ closeTechPartDropdown(i); }
+  else if(e.key==='Enter'){ e.preventDefault(); openTechPartDropdown(i,e.target.value); if((techPartDropdownList[i]||[]).length) pickTechPart(i,0); }
 }
 function addTechPartRow(){
   techPartRows.push({masterId:'',name:'',qty:1,unit:'',custom:false});
   renderTechPartRows();
+}
+function addCustomTechPartRow(){
+  techPartRows.push({masterId:'',name:'',qty:1,unit:'',custom:true});
+  renderTechPartRows();
+  const box=document.getElementById('tech-parts-editor');
+  const inputs=box?box.querySelectorAll('.part-name-wrap > input'):null;
+  if(inputs&&inputs.length)inputs[inputs.length-1].focus();
 }
 function removeTechPartRow(i){
   techPartRows.splice(i,1);
@@ -553,10 +609,16 @@ function removeTechPartRow(i){
   renderTechPartRows();
 }
 function collectTechPartRows(){
-  return techPartRows.map(r=>{
-    const hit=findMasterPartByName(r.name);
-    return {masterId:hit?.id||r.masterId||'',code:hit?.code||'',name:String(r.name||'').trim(),qty:Number(r.qty||1)||1,unit:String(r.unit||hit?.unit||'').trim(),category:hit?.category||'',supplier:hit?.supplier||r.supplier||'',custom:!hit};
-  }).filter(r=>r.name);
+  return techPartRows.map(r=>({
+    masterId:r.masterId||'',
+    code:r.code||'',
+    name:String(r.name||'').trim(),
+    qty:Number(r.qty||1)||1,
+    unit:String(r.unit||'').trim(),
+    category:r.category||'',
+    supplier:r.supplier||'',
+    custom:!!r.custom
+  })).filter(r=>r.name);
 }
 function parseUsedPartsText(text, structured=[]){
   if(Array.isArray(structured)&&structured.length){
