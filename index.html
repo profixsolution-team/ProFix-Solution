@@ -1199,6 +1199,7 @@ select option{background:var(--surface2);}
         <aside class="accounting-panel accounting-summary">
           <div class="accounting-panel-title">สรุปบิลขาย</div>
           <div class="form-group" style="margin-bottom:10px;"><label>การคิด VAT</label><select id="sale-vat-mode" onchange="salesVatMode=this.value;updateSalesSummary();"><option value="add">บวก VAT 7% เพิ่มท้ายบิล</option><option value="inclusive">ราคารวม VAT 7% มาแล้ว</option><option value="none">ไม่มี VAT</option></select></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>Overhead</label><select id="sale-overhead-enabled" onchange="updateSalesSummary();"><option value="yes">คิด Overhead อัตโนมัติ</option><option value="no">ไม่มี Overhead</option></select></div>
           <div class="form-row" style="gap:8px;"><div class="form-group"><label>ค่าเดินทาง (กม.)</label><input id="sale-travel-km" type="number" min="0" step="0.01" value="0" oninput="updateSalesSummary()"></div><div class="form-group"><label>บาท / กม.</label><input id="sale-travel-rate" type="number" min="0" step="0.01" value="0" oninput="updateSalesSummary()"></div></div>
           <div class="form-group" style="margin-bottom:10px;"><label>SLA</label><div class="segmented" style="display:flex;gap:6px;flex-wrap:wrap;"><button type="button" id="sale-sla-ontime" class="filter-tab active" onclick="setSalesSlaStatus('ontime')">ทัน SLA +1,000</button><button type="button" id="sale-sla-late" class="filter-tab" onclick="setSalesSlaStatus('late')">ไม่ทัน SLA +500</button><button type="button" id="sale-sla-none" class="filter-tab" onclick="setSalesSlaStatus('none')">ไม่มีค่าดำเนินการ +0</button></div><input id="sale-sla-status" type="hidden" value="ontime"></div>
           <div class="accounting-total-row"><span>รวมค่าสินค้า/บริการ</span><strong id="sale-ui-line-subtotal">0.00</strong></div>
@@ -1340,7 +1341,7 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.07.06.2';
+const APP_VERSION='2026.07.06.3';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -1803,7 +1804,7 @@ function rowHashMap(rows,idOf){
 }
 function splitUrl(table,query=''){return `${SUPABASE_URL}/rest/v1/${table}${query}`;}
 // คอลัมน์ที่เพิ่มใน migration phase 3 — ถ้ายังไม่ได้รัน migration จะถูกตัดออกอัตโนมัติเพื่อไม่ให้บันทึกพัง
-const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount'];
+const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled'];
 function stripKeys(payload,keys){const drop=o=>{const c={...o};keys.forEach(k=>delete c[k]);return c;};return Array.isArray(payload)?payload.map(drop):drop(payload);}
 // POST แบบทนทาน: ถ้า PostgREST แจ้งว่าไม่มีคอลัมน์ (ยังไม่ได้รัน migration) จะลองใหม่โดยตัดคอลัมน์ใหม่ออก
 async function sbUpsertResilient(table,query,payload,optionalKeys=PHASE3_OPTIONAL_KEYS){
@@ -3359,8 +3360,8 @@ function checkinFormHtml(r,j){
   const logo=new URL('assets/profix-logo-dark.svg',location.href).href;
   const generatedAt=new Date().toLocaleString('th-TH');
   const jobId=r.job_id||j.id||'—';
-  const client=r.client_snapshot||j.client||'—';
-  const branch=r.branch_snapshot||j.branch||'—';
+  const client=j.client||r.client_snapshot||'—';
+  const branch=j.branch||r.branch_snapshot||'—';
   const types=(Array.isArray(r.job_type)?r.job_type:[]).join(', ')||'—';
   const doneTxt=r.date_done?`${esc(r.date_done)} ${esc(r.time_done||'')}`:'— (ยังไม่เสร็จ ณ ตอนเซ็น)';
   const sigImg=(data,label,name)=>`<div class="sign-box">${data?`<img class="sig-img" src="${esc(data)}" alt="ลายเซ็น">`:'<div class="sig-line"></div>'}<div class="sig-name">${esc(name||'')}</div><div class="sig-label">${esc(label)}</div></div>`;
@@ -4003,13 +4004,14 @@ function salesSlaMeta(status){
   return {status:'ontime',label:'ค่าดำเนินการเร่งด่วน',amount:1000};
 }
 function salesAdjustmentTotals(lineSubtotal){
-  const overheadRate=salesOverheadRateBySubtotal(lineSubtotal);
-  const overheadAmount=Math.round(Number(lineSubtotal||0)*overheadRate)/100;
+  const overheadEnabled=(document.getElementById('sale-overhead-enabled')?.value||'yes')!=='no';
+  const overheadRate=overheadEnabled?salesOverheadRateBySubtotal(lineSubtotal):0;
+  const overheadAmount=overheadEnabled?Math.round(Number(lineSubtotal||0)*overheadRate)/100:0;
   const travelKm=Number(document.getElementById('sale-travel-km')?.value||0);
   const travelRate=Number(document.getElementById('sale-travel-rate')?.value||0);
   const travelAmount=Math.round(travelKm*travelRate*100)/100;
   const sla=salesSlaMeta(document.getElementById('sale-sla-status')?.value||'ontime');
-  return {overheadRate,overheadAmount,travelKm,travelRate,travelAmount,slaStatus:sla.status,slaLabel:sla.label,slaAmount:sla.amount,baseBeforeVat:lineSubtotal+overheadAmount+travelAmount+sla.amount};
+  return {overheadEnabled,overheadRate,overheadAmount,travelKm,travelRate,travelAmount,slaStatus:sla.status,slaLabel:sla.label,slaAmount:sla.amount,baseBeforeVat:lineSubtotal+overheadAmount+travelAmount+sla.amount};
 }
 function inferVatMode(inv,lineSum){
   const vat=Number(inv?.vat_amount||0);
@@ -4127,6 +4129,7 @@ function convertSalesDoc(id,toType){
   document.getElementById('sale-company-taxid').value=inv.company_tax_id||quoteCompanyDefaults().taxId;
   document.getElementById('sale-company-email').value=inv.company_email||quoteCompanyDefaults().email;
   document.getElementById('sale-bank-account').value=inv.bank_account||'';
+  const overheadSelect=document.getElementById('sale-overhead-enabled');if(overheadSelect)overheadSelect.value=(inv.overhead_enabled===false||inv.overhead_enabled==='false')?'no':'yes';
   document.getElementById('sale-travel-km').value=inv.travel_km??'';
   document.getElementById('sale-travel-rate').value=inv.travel_rate??'';
   setSalesSlaStatus(inv.sla_status||'ontime');
@@ -4158,8 +4161,9 @@ function salesDocHtml(inv,items){
   const jobText=jobList.join(', ');
   const branchText=[...new Set(jobList.map(pr=>jobs.find(j=>String(j.id)===String(pr)&&!isDeletedRecord(j))?.branch).filter(Boolean))].join(', ');
   const lineSubtotal=items.reduce((sum,it)=>sum+Number(it.subtotal||0),0);
-  const overheadRate=Number(inv.overhead_rate??salesOverheadRateBySubtotal(lineSubtotal));
-  const overheadAmount=Number(inv.overhead_amount??Math.round(Number(lineSubtotal||0)*overheadRate)/100);
+  const overheadEnabled=!(inv.overhead_enabled===false||inv.overhead_enabled==='false');
+  const overheadRate=overheadEnabled?Number(inv.overhead_rate??salesOverheadRateBySubtotal(lineSubtotal)):0;
+  const overheadAmount=overheadEnabled?Number(inv.overhead_amount??Math.round(Number(lineSubtotal||0)*overheadRate)/100):0;
   const travelKm=Number(inv.travel_km||0);
   const travelRate=Number(inv.travel_rate||0);
   const travelAmount=Number(inv.travel_amount??Math.round(travelKm*travelRate*100)/100);
@@ -4181,7 +4185,7 @@ function salesDocHtml(inv,items){
   const travelLabel=(travelKm||travelRate)?('ค่าเดินทาง ('+money(travelKm)+' กม. x '+money(travelRate)+' บาท)'):'ค่าเดินทาง';
   let totalRows='';
   totalRows+='<tr><td class="label">รวมค่าสินค้า/บริการ</td><td class="right">'+money(lineSubtotal)+'</td></tr>';
-  totalRows+='<tr><td>Overhead '+money(overheadRate)+'%</td><td class="right">'+money(overheadAmount)+'</td></tr>';
+  if(overheadEnabled)totalRows+='<tr><td>Overhead '+money(overheadRate)+'%</td><td class="right">'+money(overheadAmount)+'</td></tr>';
   if(travelAmount||travelKm||travelRate)totalRows+='<tr><td>'+esc(travelLabel)+'</td><td class="right">'+money(travelAmount)+'</td></tr>';
   totalRows+='<tr><td>'+esc(slaLabel)+'</td><td class="right">'+money(slaAmount)+'</td></tr>';
   totalRows+='<tr><td class="label">รวมเป็นเงิน (ก่อน VAT)</td><td class="right">'+money(inv.subtotal||0)+'</td></tr>';
@@ -4478,6 +4482,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-company-phone').value=saleCompany.phone;
   document.getElementById('sale-company-email').value=saleCompany.email;
   document.getElementById('sale-bank-account').value=saleCompany.bankAccount;
+  const overheadSelect=document.getElementById('sale-overhead-enabled');if(overheadSelect)overheadSelect.value=(inv?.overhead_enabled===false||inv?.overhead_enabled==='false')?'no':'yes';
   document.getElementById('sale-travel-km').value=inv?.travel_km??'';
   document.getElementById('sale-travel-rate').value=inv?.travel_rate??'';
   const slaStatus=inv?.sla_status||'ontime';
@@ -4683,7 +4688,7 @@ function updateSalesSummary(){
   document.getElementById('sale-total-input').value=t.total;
   const line=document.getElementById('sale-ui-line-subtotal'),over=document.getElementById('sale-ui-overhead'),overLbl=document.getElementById('sale-ui-overhead-label'),travel=document.getElementById('sale-ui-travel'),sla=document.getElementById('sale-ui-sla'),slaLbl=document.getElementById('sale-ui-sla-label');
   const sub=document.getElementById('sale-ui-subtotal'),vat=document.getElementById('sale-ui-vat'),total=document.getElementById('sale-ui-total');
-  if(line)line.textContent=money(t.lineSubtotal);if(over)over.textContent=money(t.overheadAmount);if(overLbl)overLbl.textContent=`Overhead ${t.overheadRate}%`;if(travel)travel.textContent=money(t.travelAmount);if(sla)sla.textContent=money(t.slaAmount);if(slaLbl)slaLbl.textContent=t.slaLabel;
+  if(line)line.textContent=money(t.lineSubtotal);if(over)over.textContent=money(t.overheadAmount);if(overLbl)overLbl.textContent=t.overheadEnabled?`Overhead ${t.overheadRate}%`:'Overhead (ไม่คิด)';if(travel)travel.textContent=money(t.travelAmount);if(sla)sla.textContent=money(t.slaAmount);if(slaLbl)slaLbl.textContent=t.slaLabel;
   if(sub)sub.textContent=money(t.subtotal);if(vat)vat.textContent=money(t.vat);if(total)total.textContent=money(t.total);
 }
 function salesSourceBadge(src){
@@ -4793,6 +4798,7 @@ async function saveSalesInvoice(){
     invoice_date:document.getElementById('sale-date').value||todayISO(),
     subtotal,
     discount_total:discountTotal,
+    overhead_enabled:adj.overheadEnabled,
     overhead_rate:adj.overheadRate,
     overhead_amount:adj.overheadAmount,
     travel_km:adj.travelKm,
