@@ -4469,9 +4469,21 @@ function loadCompanyLogoFile(input){
   const file=input?.files?.[0];if(!file)return;
   if(!file.type.startsWith('image/')){alert('กรุณาเลือกไฟล์รูปโลโก้');input.value='';return;}
   const reader=new FileReader();
-  reader.onload=()=>{const el=document.getElementById('sale-company-logo');if(el)el.value=reader.result||'';updateSalesCompanyLogoPreview();input.value='';};
+  reader.onload=()=>{const el=document.getElementById('sale-company-logo');if(el)el.value=reader.result||'';updateSalesCompanyLogoPreview();persistCurrentCompanyLogo();input.value='';};
   reader.onerror=()=>alert('อ่านไฟล์โลโก้ไม่สำเร็จ');
   reader.readAsDataURL(file);
+}
+// ผูกโลโก้ที่อัปเข้ากับโปรไฟล์บริษัทปัจจุบันอัตโนมัติ → เลือกบริษัทครั้งหน้าได้โลโก้กลับมา + sync ทุกเครื่อง
+function persistCurrentCompanyLogo(){
+  const name=(document.getElementById('sale-company-name')?.value||document.getElementById('sale-company-display')?.value||'').trim();
+  const logo=document.getElementById('sale-company-logo')?.value||'';
+  if(!name||!logo)return;
+  const p=currentSalesCompanyFormData();
+  const i=(salesCompanyProfileItems||[]).findIndex(x=>x.id===p.id||String(x.name||'').trim()===String(p.name||'').trim());
+  if(i>=0)salesCompanyProfileItems[i]={...salesCompanyProfileItems[i],...p};
+  else salesCompanyProfileItems.push(p);
+  renderSalesCompanyProfileOptions(p.id);
+  saveState();
 }
 function updateSalesCompanyLogoPreview(){
   const url=document.getElementById('sale-company-logo')?.value||'';
@@ -4897,23 +4909,21 @@ function mergeSalesItemsFromTechnicianParts(jobId){
 }
 function addSalesItemRow(){salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
 function removeSalesItemRow(i){salesDraftItems.splice(i,1);if(!salesDraftItems.length)salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
-// จับคู่รายการ → ราคากลาง/แคตตาล็อกอะไหล่/สต็อก (exact ก่อน ถ้าไม่เจอค่อย fuzzy includes)
+// จับคู่รายการ → ราคากลาง/แคตตาล็อกอะไหล่/สต็อก
+// เก็บทุก candidate แล้วเลือก: exact match ก่อน, ราคา>0 ก่อน (กันเคสราคากลางราคา 0 มาบังราคาค่าแรงจากแคตตาล็อก)
 function accountingItemByName(name,code=''){
   const key=normalizePartKey(name), codeKey=normalizePartKey(code);
   if(!key&&!codeKey)return null;
-  const masterHit=m=>{const nk=normalizePartKey(m.item_name),ck=normalizePartKey(m.item_code);return (codeKey&&ck===codeKey)||(key&&nk===key);};
-  const masterFuzzy=m=>{const nk=normalizePartKey(m.item_name);return key&&nk&&(nk.includes(key)||key.includes(nk));};
-  const master=(masterPriceItems||[]).find(masterHit)||(masterPriceItems||[]).find(masterFuzzy);
-  if(master)return {code:master.item_code||'',name:master.item_name||'',category:master.category||'',unit:master.default_unit||'งาน',price:Number(master.standard_price||master.unit_price||master.sale_price||0),src:'master_price',ref:master.id||master.item_code||master.item_name};
-  const catHit=p=>{const nk=normalizePartKey(p.name),ck=normalizePartKey(p.code);return (codeKey&&ck===codeKey)||(key&&nk===key);};
-  const catFuzzy=p=>{const nk=normalizePartKey(p.name);return key&&nk&&(nk.includes(key)||key.includes(nk));};
-  const catalog=(parts||[]).find(catHit)||(parts||[]).find(catFuzzy);
-  if(catalog)return {code:catalog.code||'',name:catalog.name||'',category:catalog.cat||catalog.category||'อะไหล่',unit:catalog.unit||'',price:partSellPrice(catalog),src:'manual',ref:catalog.part_key||catalog._id||catalog.code||catalog.name};
-  const stkHit=st=>{const nk=normalizePartKey(st.item_name),ck=normalizePartKey(st.sku);return (codeKey&&ck===codeKey)||(key&&nk===key);};
-  const stkFuzzy=st=>{const nk=normalizePartKey(st.item_name);return key&&nk&&(nk.includes(key)||key.includes(nk));};
-  const stock=(stockItems||[]).find(stkHit)||(stockItems||[]).find(stkFuzzy);
-  if(stock){const sell=Number(stock.suggested_sell||stock.sell_price||0)||Math.round(Number(stock.average_cost||0)*1.3);return {code:stock.sku||'',name:stock.item_name||'',category:'อะไหล่',unit:stock.unit||'ชิ้น',price:sell,src:'stock',ref:stock.id||stock.sku};}
-  return null;
+  const masterRes=m=>({code:m.item_code||'',name:m.item_name||'',category:m.category||'',unit:m.default_unit||'งาน',price:Number(m.standard_price||m.unit_price||m.sale_price||0),src:'master_price',ref:m.id||m.item_code||m.item_name});
+  const catRes=p=>({code:p.code||'',name:p.name||'',category:p.cat||p.category||'อะไหล่',unit:p.unit||'',price:partSellPrice(p),src:'manual',ref:p.part_key||p._id||p.code||p.name});
+  const stkRes=s=>{const sell=Number(s.suggested_sell||s.sell_price||0)||Math.round(Number(s.average_cost||0)*1.3);return {code:s.sku||'',name:s.item_name||'',category:'อะไหล่',unit:s.unit||'ชิ้น',price:sell,src:'stock',ref:s.id||s.sku};};
+  const cands=[];
+  (masterPriceItems||[]).forEach(m=>{const nk=normalizePartKey(m.item_name),ck=normalizePartKey(m.item_code);const ex=(codeKey&&ck===codeKey)||(key&&nk===key);const fz=key&&nk&&(nk.includes(key)||key.includes(nk));if(ex||fz)cands.push({...masterRes(m),_exact:ex});});
+  (parts||[]).forEach(p=>{const nk=normalizePartKey(p.name),ck=normalizePartKey(p.code);const ex=(codeKey&&ck===codeKey)||(key&&nk===key);const fz=key&&nk&&(nk.includes(key)||key.includes(nk));if(ex||fz)cands.push({...catRes(p),_exact:ex});});
+  (stockItems||[]).forEach(s=>{const nk=normalizePartKey(s.item_name),ck=normalizePartKey(s.sku);const ex=(codeKey&&ck===codeKey)||(key&&nk===key);const fz=key&&nk&&(nk.includes(key)||key.includes(nk));if(ex||fz)cands.push({...stkRes(s),_exact:ex});});
+  if(!cands.length)return null;
+  cands.sort((a,b)=>((b._exact?1:0)-(a._exact?1:0))||(((b.price>0)?1:0)-((a.price>0)?1:0)));
+  return cands[0];
 }
 function applySalesItemDetails(i,name){
   const it=salesDraftItems[i];if(!it)return;
