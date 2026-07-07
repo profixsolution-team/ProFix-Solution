@@ -4550,6 +4550,11 @@ function openSalesModal(id='',prefJobId='',docType=''){
   if(inv&&!salesDraftItems.length)salesDraftItems=[blankSalesItem('ยอดตามบิลเดิม',1,'งาน',Number(inv.subtotal||0))];
   renderSalesItemEditor();
   openM('m-sales');
+  // ให้แน่ใจว่าราคากลาง + แคตตาล็อกอะไหล่โหลดครบก่อน — ไม่งั้น datalist ว่าง ราคา/หมวดไม่ลิงค์
+  Promise.all([
+    accountingLoaded?Promise.resolve():ensureAccountingLoaded(),
+    partsLoaded?Promise.resolve():ensurePartsLoaded()
+  ]).then(()=>{refreshAccountingDatalists();renderSalesItemEditor();}).catch(e=>console.warn('Sales master data preload failed',e));
 }
 // บิลขายของ PR นี้ที่มีอยู่แล้ว (ไม่นับบิลที่กำลังแก้ไข) — ใช้เตือน JOB ซ้ำ
 function existingSalesBillsForJob(pr,excludeId=''){
