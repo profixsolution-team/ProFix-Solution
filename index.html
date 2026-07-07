@@ -1151,7 +1151,7 @@ select option{background:var(--surface2);}
           <div class="accounting-panel mb16">
             <div class="accounting-panel-title">ข้อมูลลูกค้าและเอกสาร</div>
             <div class="form-row"><div class="form-group"><label>ประเภทเอกสาร</label><select id="sale-doc-type" onchange="onSalesDocTypeChange(this.value)"><option value="quotation">ใบเสนอราคา / Quotation</option><option value="invoice">ใบแจ้งหนี้ / Invoice</option><option value="tax_invoice">ใบกำกับภาษี / Tax Invoice</option><option value="receipt">ใบเสร็จรับเงิน / Receipt</option></select></div><div class="form-group"><label>เลขที่เอกสาร</label><input id="sale-no" placeholder="เช่น QT-2026-001 / SINV-2026-001"></div></div>
-            <div class="form-row"><div class="form-group" style="flex:1;"><label>Job ID / PR (คลิกเลือกได้หลายตัว)</label><div style="position:relative;"><input id="sale-job-input" autocomplete="off" placeholder="ค้นหา PR / ลูกค้า / สาขา แล้วคลิกเลือก" oninput="renderSalesJobPicker(this.value)" onfocus="renderSalesJobPicker(this.value)" onkeydown="handleSalesJobKey(event)"><div id="sale-job-picker" class="job-picker" style="display:none;"></div></div><div id="sale-job-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div><input type="hidden" id="sale-job"></div></div>
+            <div class="form-row"><div class="form-group" style="flex:1;"><label>Job ID / PR (คลิกเลือกได้หลายตัว)</label><div style="position:relative;"><input id="sale-job-input" autocomplete="off" placeholder="ค้นหา PR / ลูกค้า / สาขา แล้วคลิกเลือก" oninput="renderSalesJobPicker(this.value)" onfocus="renderSalesJobPicker(this.value)" onkeydown="handleSalesJobKey(event)"><div id="sale-job-picker" class="job-picker" style="display:none;"></div></div><div id="sale-job-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div><div id="sale-dup-note" style="font-size:11px;color:var(--yellow);margin-top:6px;"></div><input type="hidden" id="sale-job"></div></div>
             <div class="form-row"><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
             <div class="doc-parties">
               <div class="accounting-panel doc-party" style="border-left:4px solid var(--accent);background:rgba(88,166,255,.06);">
@@ -1465,6 +1465,35 @@ function sortReportsBySubmitted(arr,dir){
     return dir==='asc'?fallback:-fallback;
   });
 }
+// ===== เรียงตาม "เพิ่ม/แก้ไขล่าสุด" — งานที่ถูกแตะล่าสุดขึ้นบนสุด (ทุกหน้า) =====
+function recordActivityTs(item){
+  return Math.max(
+    Number(item?.modifiedAt||0),
+    recordCreatedTs(item),
+    reportSubmittedTs(item),
+    Date.parse(item?.techUpdateAt||'')||0,
+    Date.parse(item?.reportReviewedAt||'')||0
+  );
+}
+function sortByActivity(arr,dir){
+  return [...arr].sort((a,b)=>{
+    const c=recordActivityTs(a)-recordActivityTs(b);
+    if(c)return dir==='asc'?c:-c;
+    const av=itemDateValue(a)||'', bv=itemDateValue(b)||'';
+    const d=av.localeCompare(bv);
+    return dir==='asc'?d:-d;
+  });
+}
+// bump เวลาแก้ไขล่าสุดของ job/admin_task ให้เด้งขึ้นบนสุด
+function bumpRecordModified(targetType,targetId){
+  try{
+    let rec=null;
+    if(targetType==='job')rec=(jobs||[]).find(j=>String(j.id)===String(targetId));
+    else if(targetType==='admin_task')rec=(adminTasks||[]).find(t=>String(t.id)===String(targetId));
+    else if(targetType==='sales_invoice'){/* บิลขาย bump ที่ job แทน ทำในลูปของ saveSalesInvoice */}
+    if(rec)rec.modifiedAt=Date.now();
+  }catch(e){}
+}
 function markTechUpdateSeen(jobId,{save=true}={}){
   const j=jobs.find(x=>String(x.id)===String(jobId));
   if(j){j.techUpdateUnread=false;j.techUpdateSeenAt=new Date().toISOString();}
@@ -1584,6 +1613,7 @@ function patchFromDiff(before={},after={}){
   return patch;
 }
 async function writeAuditLog(action,targetType,targetId,beforeData,patchData,afterData,meta={}){
+  bumpRecordModified(targetType,targetId); // แตะเวลาแก้ไขล่าสุด → เด้งขึ้นบนสุดทุกหน้า
   try{
     const body=JSON.stringify({
       p_actor_name:getActorName(),
@@ -2584,7 +2614,12 @@ function renderAdmin(){
   if(rj.length){rb.style.display='block';document.getElementById('admin-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('admin-reject-list').innerHTML=rj.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${esc(t.id)}</span><span>${esc(t.type)}</span><span class="tm">-</span><span>${esc(t.client)}</span><span class="badge ${SB[t.status]||'b-reject'}">${esc(t.status)}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setAS('${t.id}','รอดำเนินการ')">รีเซ็ต</button></div>`).join('');}
   else rb.style.display='none';
   let fil=adminFilter==='ทั้งหมด'?scoped:adminFilter==='ติดปัญหา'?scoped.filter(t=>t.status==='ติดปัญหา'||t.status==='Reject'):scoped.filter(t=>t.status===adminFilter);
-  fil=sortByCreatedThenDate(fil.filter(t=>matchText(t,['id','jobId','type','detail','client','assign','due','status'],adminSearch)),adminSortDir);
+  // ซ่อน task ที่งานเชื่อมโยงถูกปิดแล้ว เว้นแต่กำลังค้นหา
+  if(!adminSearch.trim()){
+    const closedIds=new Set(liveJobs().filter(j=>j.status==='ปิดงาน').map(j=>String(j.id)));
+    if(closedIds.size)fil=fil.filter(t=>!(t.jobId&&closedIds.has(String(t.jobId))));
+  }
+  fil=sortByActivity(fil.filter(t=>matchText(t,['id','jobId','type','detail','client','assign','due','status'],adminSearch)),adminSortDir);
   document.getElementById('admin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('admin-tbl-title').textContent='งาน Admin - '+adminFilter+(adminSearch?' / ค้นหา: '+adminSearch:'');
   const tb=document.getElementById('admin-tbody');
@@ -3239,7 +3274,9 @@ function renderJobs(){
   else rb.style.display='none';
   let fil=jobFilter==='ทั้งหมด'?scoped:scoped.filter(j=>j.status===jobFilter);
   if(jobTeamFilter!=='ทั้งหมด')fil=fil.filter(j=>j.team===jobTeamFilter);
-  fil=sortByCreatedThenDate(fil.filter(j=>matchText(j,['id','ref','branch','client','type','team','date','status','note'],jobSearch)),jobSortDir);
+  // ซ่อนงานปิดโดยอัตโนมัติ เว้นแต่เลือก filter "ปิดงาน" หรือกำลังค้นหา
+  if(jobFilter!=='ปิดงาน'&&!jobSearch.trim())fil=fil.filter(j=>j.status!=='ปิดงาน');
+  fil=sortByActivity(fil.filter(j=>matchText(j,['id','ref','branch','client','type','team','date','status','note'],jobSearch)),jobSortDir);
   document.getElementById('job-cnt').textContent=fil.length+' รายการ';
   document.getElementById('job-tbl-title').textContent='คิวช่าง - '+jobFilter+(jobTeamFilter!=='ทั้งหมด'?' / '+jobTeamFilter:'')+(jobSearch?' / ค้นหา: '+jobSearch:'');
   const tb=document.getElementById('job-tbody');
@@ -3616,7 +3653,9 @@ function renderFin(){
   buildFinanceControls(cnts);
   let fil=finFilter==='ทั้งหมด'?jRows:jRows.filter(j=>payLabel(j.pay)===finFilter);
   if(financeDateFilter)fil=fil.filter(j=>(j.date||j.assignedAt||'')===financeDateFilter);
-  fil=sortByTechUpdateThenDate(fil.filter(j=>matchText(j,['id','ref','branch','client','team','type','date','status','pay','financeNote'],financeSearch)),'desc');
+  // ค่าเริ่มต้น: ซ่อนงานปิด + งานเก็บเงินแล้ว (เฉพาะหน้าการเงิน) — จะขึ้นเมื่อเลือก filter สถานะเงินนั้น หรือค้นหา
+  if(finFilter==='ทั้งหมด'&&!financeSearch.trim())fil=fil.filter(j=>j.status!=='ปิดงาน'&&payLabel(j.pay)!=='เก็บแล้ว');
+  fil=sortByActivity(fil.filter(j=>matchText(j,['id','ref','branch','client','team','type','date','status','pay','financeNote'],financeSearch)),'desc');
   document.getElementById('fin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('fin-tbl-title').textContent='P&L ต่องาน - '+finFilter+(financeDateFilter?' / '+financeDateFilter:'')+(financeSearch?' / ค้นหา: '+financeSearch:'');
   document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openFinanceEdit('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${j.pc+j.partR}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button></div></td></tr>`;}).join('');
@@ -4512,9 +4551,22 @@ function openSalesModal(id='',prefJobId='',docType=''){
   renderSalesItemEditor();
   openM('m-sales');
 }
+// บิลขายของ PR นี้ที่มีอยู่แล้ว (ไม่นับบิลที่กำลังแก้ไข) — ใช้เตือน JOB ซ้ำ
+function existingSalesBillsForJob(pr,excludeId=''){
+  return (salesInvoices||[]).filter(inv=>inv.status!=='cancelled'&&String(inv.id)!==String(excludeId)&&salesInvoiceMatchesJob(inv,pr));
+}
 function renderSalesJobChips(){
   const el=document.getElementById('sale-job-chips');if(!el)return;
-  el.innerHTML=salesDraftJobs.length?salesDraftJobs.map((pr,i)=>`<span class="chip" style="display:inline-flex;align-items:center;gap:4px;">${esc(pr)}<button type="button" class="icon-btn" style="padding:0 2px;" onclick="removeSalesJob(${i})">×</button></span>`).join(''):'<span class="tm" style="font-size:11px;">ยังไม่ได้เลือก PR</span>';
+  const curId=document.getElementById('sale-id')?.value||'';
+  let anyDup=false;
+  el.innerHTML=salesDraftJobs.length?salesDraftJobs.map((pr,i)=>{
+    const dups=existingSalesBillsForJob(pr,curId);
+    const warn=dups.length?(anyDup=true,`<span title="มีบิลขายของ PR นี้แล้ว: ${esc(dups.map(d=>d.doc_no||d.sales_invoice_no).filter(Boolean).join(', '))}" style="color:var(--yellow);font-weight:700;">⚠</span>`):'';
+    const bg=dups.length?'background:rgba(210,153,34,.18);border:1px solid var(--yellow);':'';
+    return `<span class="chip" style="display:inline-flex;align-items:center;gap:4px;${bg}">${warn}${esc(pr)}<button type="button" class="icon-btn" style="padding:0 2px;" onclick="removeSalesJob(${i})">×</button></span>`;
+  }).join(''):'<span class="tm" style="font-size:11px;">ยังไม่ได้เลือก PR</span>';
+  const note=document.getElementById('sale-dup-note');
+  if(note)note.innerHTML=anyDup?'⚠ มีบางงานที่ออกบิลขายไปแล้ว — ตรวจสอบก่อนบันทึกซ้ำ':'';
   document.getElementById('sale-job').value=salesDraftJobs.join(',');
 }
 function addSalesJob(){
@@ -4651,28 +4703,53 @@ function mergeSalesItemsFromTechnicianParts(jobId){
 }
 function addSalesItemRow(){salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
 function removeSalesItemRow(i){salesDraftItems.splice(i,1);if(!salesDraftItems.length)salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
-function accountingItemByName(name){
-  const key=normalizePartKey(name);
-  if(!key)return null;
-  const master=(masterPriceItems||[]).find(m=>normalizePartKey(m.item_name)===key||normalizePartKey(m.item_code)===key);
+// จับคู่รายการ → ราคากลาง/แคตตาล็อกอะไหล่/สต็อก (exact ก่อน ถ้าไม่เจอค่อย fuzzy includes)
+function accountingItemByName(name,code=''){
+  const key=normalizePartKey(name), codeKey=normalizePartKey(code);
+  if(!key&&!codeKey)return null;
+  const masterHit=m=>{const nk=normalizePartKey(m.item_name),ck=normalizePartKey(m.item_code);return (codeKey&&ck===codeKey)||(key&&nk===key);};
+  const masterFuzzy=m=>{const nk=normalizePartKey(m.item_name);return key&&nk&&(nk.includes(key)||key.includes(nk));};
+  const master=(masterPriceItems||[]).find(masterHit)||(masterPriceItems||[]).find(masterFuzzy);
   if(master)return {code:master.item_code||'',name:master.item_name||'',category:master.category||'',unit:master.default_unit||'งาน',price:Number(master.standard_price||master.unit_price||master.sale_price||0),src:'master_price',ref:master.id||master.item_code||master.item_name};
-  const catalog=(parts||[]).find(p=>normalizePartKey(p.name)===key||normalizePartKey(p.code)===key);
+  const catHit=p=>{const nk=normalizePartKey(p.name),ck=normalizePartKey(p.code);return (codeKey&&ck===codeKey)||(key&&nk===key);};
+  const catFuzzy=p=>{const nk=normalizePartKey(p.name);return key&&nk&&(nk.includes(key)||key.includes(nk));};
+  const catalog=(parts||[]).find(catHit)||(parts||[]).find(catFuzzy);
   if(catalog)return {code:catalog.code||'',name:catalog.name||'',category:catalog.cat||catalog.category||'อะไหล่',unit:catalog.unit||'',price:Number(catalog.sell||catalog.price||catalog.cost||0),src:'manual',ref:catalog.part_key||catalog._id||catalog.code||catalog.name};
-  const stock=(stockItems||[]).find(st=>normalizePartKey(st.item_name)===key||normalizePartKey(st.sku)===key);
+  const stkHit=st=>{const nk=normalizePartKey(st.item_name),ck=normalizePartKey(st.sku);return (codeKey&&ck===codeKey)||(key&&nk===key);};
+  const stkFuzzy=st=>{const nk=normalizePartKey(st.item_name);return key&&nk&&(nk.includes(key)||key.includes(nk));};
+  const stock=(stockItems||[]).find(stkHit)||(stockItems||[]).find(stkFuzzy);
   if(stock){const sell=Number(stock.suggested_sell||stock.sell_price||0)||Math.round(Number(stock.average_cost||0)*1.3);return {code:stock.sku||'',name:stock.item_name||'',category:'อะไหล่',unit:stock.unit||'ชิ้น',price:sell,src:'stock',ref:stock.id||stock.sku};}
   return null;
 }
 function applySalesItemDetails(i,name){
-  const row=accountingItemByName(name);
-  const it=salesDraftItems[i];
-  if(!row||!it)return;
-  it.item_code=row.code||it.item_code||'';
+  const it=salesDraftItems[i];if(!it)return;
+  const row=accountingItemByName(name,it.item_code);
+  if(!row)return;
+  it.item_code=it.item_code||row.code||'';
   it.description=row.name||name;
+  it.category=it.category||row.category||'';
+  it.unit=it.unit||row.unit||'';
+  // ไม่ทับราคาที่แอดมินกรอกไว้ด้วย 0 — เติมเฉพาะตอนช่องราคายังว่าง/เป็น 0 และเจอราคาจริง
+  if(!Number(it.unit_price||0)&&Number(row.price||0)>0)it.unit_price=Number(row.price);
+  it.source_type=it.source_type&&it.source_type!=='manual'?it.source_type:(row.src||'manual');
+  it.source_ref_id=it.source_ref_id||row.ref||'';
+}
+// ปุ่ม "฿" ต่อแถว: ดึงราคาจากราคากลาง/แคตตาล็อก/สต็อก มาทับ (บังคับ) เพื่อแก้เคสราคาไม่เด้ง
+function pullSalesItemPrice(i){
+  const it=salesDraftItems[i];if(!it)return;
+  const name=String(it.description||'').trim();
+  if(!name&&!String(it.item_code||'').trim()){setAccountingStatus('sales','กรอกชื่อรายการก่อนดึงราคา','warn');return;}
+  if(!accountingLoaded){ensureAccountingLoaded().then(()=>pullSalesItemPrice(i)).catch(()=>{});setAccountingStatus('sales','กำลังโหลดราคากลาง...','warn');return;}
+  const row=accountingItemByName(name,it.item_code);
+  if(!row){setAccountingStatus('sales',`ไม่พบราคาของ "${name}" ในราคากลาง/สต็อก — กรอกเอง`,'warn');return;}
+  it.item_code=row.code||it.item_code||'';
   it.category=row.category||it.category||'';
   it.unit=row.unit||it.unit||'';
   it.unit_price=Number(row.price||0);
   it.source_type=row.src||'manual';
   it.source_ref_id=row.ref||'';
+  renderSalesItemEditor();
+  setAccountingStatus('sales',`ดึงราคา "${row.name}" = ฿${money(row.price)} แล้ว`,'ok');
 }
 function updateSalesDraft(i,field,value){salesDraftItems[i][field]=value;if(field==='description')applySalesItemDetails(i,value);renderSalesItemEditor();}
 function salesLineSubtotal(it){return Math.max(0,Number(it.quantity||0)*Number(it.unit_price||0)-Number(it.discount||0));}
@@ -4699,12 +4776,37 @@ function salesSourceBadge(src){
 function renderSalesItemEditor(){
   const el=document.getElementById('sales-items-editor');if(!el)return;
   const catOpts=it=>['',...new Set([...(MASTER_PRICE_CATEGORIES||[]),it.category||''].filter((v,i,a)=>i===0||v||a.indexOf(v)===i))].map(c=>`<option value="${esc(c)}"${(it.category||'')===c?' selected':''}>${c||'— หมวด —'}</option>`).join('');
-  el.innerHTML=`<div class="table-wrap" style="border-radius:8px;"><table class="accounting-line-table"><thead><tr><th style="width:34px;">#</th><th style="width:88px;">รหัส</th><th>รายละเอียด</th><th style="width:108px;">หมวด</th><th style="width:74px;">จำนวน</th><th style="width:74px;">หน่วย</th><th style="width:104px;">ราคา/หน่วย</th><th style="width:88px;">ส่วนลด</th><th style="width:118px;">ยอดก่อน VAT</th><th style="width:40px;"></th></tr></thead><tbody>${salesDraftItems.map((it,i)=>{
+  const n=salesDraftItems.length;
+  el.innerHTML=`<div class="table-wrap" style="border-radius:8px;"><table class="accounting-line-table"><thead><tr><th style="width:64px;">ลำดับ</th><th style="width:80px;">รหัส</th><th>รายละเอียด</th><th style="width:104px;">หมวด</th><th style="width:70px;">จำนวน</th><th style="width:66px;">หน่วย</th><th style="width:100px;">ราคา/หน่วย</th><th style="width:82px;">ส่วนลด</th><th style="width:110px;">ยอดก่อน VAT</th><th style="width:52px;"></th></tr></thead><tbody>${salesDraftItems.map((it,i)=>{
     const subtotal=salesLineSubtotal(it);
-    return `<tr><td class="mono ta">${i+1}<div style="margin-top:2px;">${salesSourceBadge(it.source_type)}</div></td><td><input value="${esc(it.item_code||'')}" onchange="updateSalesDraft(${i},'item_code',this.value)" placeholder="-"></td><td><input list="accounting-item-list" value="${esc(it.description||'')}" onchange="updateSalesDraft(${i},'description',this.value)" placeholder="พิมพ์/เลือกรายละเอียดสินค้า/บริการ"></td><td><select onchange="updateSalesDraft(${i},'category',this.value)">${catOpts(it)}</select></td><td><input type="number" min="0" step="any" value="${esc(it.quantity||1)}" onchange="updateSalesDraft(${i},'quantity',this.value)"></td><td><input value="${esc(it.unit||'')}" onchange="updateSalesDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td><input type="number" min="0" step="any" value="${esc(it.unit_price||0)}" onchange="updateSalesDraft(${i},'unit_price',this.value)"></td><td><input type="number" min="0" step="any" value="${esc(it.discount||0)}" onchange="updateSalesDraft(${i},'discount',this.value)"></td><td class="mono tg">฿${money(subtotal)}</td><td><button class="icon-btn" type="button" onclick="removeSalesItemRow(${i})">×</button></td></tr>`;
+    return `<tr ondragover="salesDragOver(event,${i})" ondrop="salesDrop(event,${i})">`
+      +`<td class="mono ta"><div style="display:flex;align-items:center;gap:3px;"><span class="sales-drag-handle" title="ลากเพื่อสลับลำดับ" draggable="true" ondragstart="salesDragStart(event,${i})" ondragend="salesDragEnd(event)" style="cursor:grab;color:var(--text3);">⠿</span><b>${i+1}</b><span style="display:inline-flex;flex-direction:column;">`
+      +`<button class="icon-btn" type="button" title="เลื่อนขึ้น" style="padding:0 3px;line-height:1;font-size:10px;${i===0?'opacity:.25;pointer-events:none;':''}" onclick="moveSalesItem(${i},-1)">▲</button>`
+      +`<button class="icon-btn" type="button" title="เลื่อนลง" style="padding:0 3px;line-height:1;font-size:10px;${i===n-1?'opacity:.25;pointer-events:none;':''}" onclick="moveSalesItem(${i},1)">▼</button></span></div><div style="margin-top:2px;">${salesSourceBadge(it.source_type)}</div></td>`
+      +`<td><input value="${esc(it.item_code||'')}" onchange="updateSalesDraft(${i},'item_code',this.value)" placeholder="-"></td><td><input list="accounting-item-list" value="${esc(it.description||'')}" onchange="updateSalesDraft(${i},'description',this.value)" placeholder="พิมพ์/เลือกรายละเอียดสินค้า/บริการ"></td><td><select onchange="updateSalesDraft(${i},'category',this.value)">${catOpts(it)}</select></td><td><input type="number" min="0" step="any" value="${esc(it.quantity||1)}" onchange="updateSalesDraft(${i},'quantity',this.value)"></td><td><input value="${esc(it.unit||'')}" onchange="updateSalesDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td><input type="number" min="0" step="any" value="${esc(it.unit_price||0)}" onchange="updateSalesDraft(${i},'unit_price',this.value)"></td><td><input type="number" min="0" step="any" value="${esc(it.discount||0)}" onchange="updateSalesDraft(${i},'discount',this.value)"></td><td class="mono tg">฿${money(subtotal)}</td>`
+      +`<td style="white-space:nowrap;"><button class="icon-btn" type="button" title="ดึงราคาจากราคากลาง/สต็อก" onclick="pullSalesItemPrice(${i})">฿</button><button class="icon-btn" type="button" title="ลบรายการ" onclick="removeSalesItemRow(${i})">×</button></td></tr>`;
   }).join('')}</tbody></table></div>`;
   updateSalesSummary();
 }
+// ===== สลับลำดับรายการในเอกสาร (ปุ่ม ▲▼ + ลาก) =====
+function moveSalesItem(i,dir){
+  const j=i+dir;
+  if(j<0||j>=salesDraftItems.length)return;
+  const t=salesDraftItems[i];salesDraftItems[i]=salesDraftItems[j];salesDraftItems[j]=t;
+  renderSalesItemEditor();
+}
+let salesDragIndex=null;
+function salesDragStart(e,i){salesDragIndex=i;try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(i));}catch(err){}}
+function salesDragOver(e,i){e.preventDefault();try{e.dataTransfer.dropEffect='move';}catch(err){}}
+function salesDrop(e,i){
+  e.preventDefault();
+  const from=salesDragIndex;salesDragIndex=null;
+  if(from===null||from===undefined||from===i)return;
+  const moved=salesDraftItems.splice(from,1)[0];
+  salesDraftItems.splice(i,0,moved);
+  renderSalesItemEditor();
+}
+function salesDragEnd(e){salesDragIndex=null;}
 // ===== 3-way item picker (ราคากลาง / สต็อก / พิมพ์เอง) =====
 let itemPickerMode='';
 function openItemPicker(mode,e){
@@ -4765,6 +4867,9 @@ async function saveSalesInvoice(){
     if(pendingInput&&!salesDraftJobs.some(x=>x.toLowerCase()===pendingInput.toLowerCase()))salesDraftJobs.push(pendingInput);
     const jobList=[...new Set(salesDraftJobs.map(x=>String(x).trim()).filter(Boolean))];
     if(!jobList.length){setAccountingStatus('sales','กรุณาระบุ Job ID / PR อย่างน้อย 1 รายการ','err');return;}
+    // เตือนถ้ามีงานที่ออกบิลขายไปแล้ว (ไม่นับบิลที่กำลังแก้ไข)
+    const dupWarn=jobList.map(pr=>{const d=existingSalesBillsForJob(pr,id);return d.length?`${pr}: ${d.map(x=>x.doc_no||x.sales_invoice_no).filter(Boolean).join(', ')}`:'';}).filter(Boolean);
+    if(dupWarn.length&&!confirm('งานต่อไปนี้มีบิลขายอยู่แล้ว:\n'+dupWarn.join('\n')+'\n\nต้องการออกบิลขายซ้ำหรือไม่?')){setAccountingStatus('sales','ยกเลิกการบันทึก (มีบิลขายซ้ำ)','warn');return;}
     const jobId=jobList[0];
     const rows=salesDraftItems.filter(x=>String(x.description||'').trim()).map((x,idx)=>{
       const quantity=Number(x.quantity||0),unitPrice=Number(x.unit_price||0),discount=Number(x.discount||0),subtotal=Math.max(0,quantity*unitPrice-discount);
@@ -5934,7 +6039,9 @@ function renderReports(){
     const s=rptSearch.toLowerCase();
     fil=fil.filter(j=>(j.id||'').toLowerCase().includes(s)||(j.branch||'').toLowerCase().includes(s)||(j.team||'').toLowerCase().includes(s)||(j.client||'').toLowerCase().includes(s));
   }
-  fil=sortReportsBySubmitted(fil,rptSortDir);
+  // ซ่อนงานปิดโดยอัตโนมัติ เว้นแต่เลือก filter "ปิดงาน" หรือกำลังค้นหา
+  if(rptFilter!=='ปิดงาน'&&!rptSearch.trim())fil=fil.filter(j=>j.status!=='ปิดงาน');
+  fil=sortByActivity(fil,rptSortDir);
   document.getElementById('rpt-cnt').textContent=fil.length+' รายการ';
   document.getElementById('rpt-title').textContent='รายงานช่าง'+(rptFilter&&rptFilter!=='ทั้งหมด'?' - '+rptFilter:'');
   const tb=document.getElementById('rpt-tbody');
