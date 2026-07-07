@@ -1177,9 +1177,21 @@ select option{background:var(--surface2);}
               </div>
             </div>
             <div class="accounting-panel" style="margin-top:12px;">
-              <div class="accounting-panel-title">ลายเซ็น</div>
-              <div class="form-row"><div class="form-group"><label>ผู้ออกบิล / ผู้เสนอราคา (ชื่อ)</label><input id="sale-seller-name" list="signer-name-list" autocomplete="off" placeholder="พิมพ์ชื่อผู้เซ็น" onchange="applySalesSignerByName('seller',this.value)"><input type="hidden" id="sale-seller-signature"><input type="file" accept="image/*" onchange="loadSalesSignatureFile(this,'seller')" style="margin-top:6px;"><div id="sale-seller-sig-preview" style="margin-top:6px;"></div></div><div class="form-group"><label>ผู้อนุมัติ / ลูกค้า (ชื่อ)</label><input id="sale-customer-signer-name" list="signer-name-list" autocomplete="off" placeholder="พิมพ์ชื่อผู้เซ็น" onchange="applySalesSignerByName('customer',this.value)"><input type="hidden" id="sale-customer-signature"><input type="file" accept="image/*" onchange="loadSalesSignatureFile(this,'customer')" style="margin-top:6px;"><div id="sale-customer-sig-preview" style="margin-top:6px;"></div></div></div>
-              <datalist id="signer-name-list"></datalist>
+              <div class="accounting-panel-title">ลายเซ็น <span style="font-size:11px;font-weight:400;color:var(--text3);">— เลือกผู้เซ็นจากรายชื่อ (บันทึกลายเซ็นไว้ใช้ซ้ำได้ทุกเครื่อง)</span></div>
+              <div class="form-row">
+                <div class="form-group"><label>ผู้ออกบิล / ผู้เสนอราคา</label>
+                  <div style="display:flex;gap:6px;align-items:center;"><select id="sale-seller-select" style="flex:1;" onchange="onSalesSignerSelect('seller',this.value)"></select><button class="btn btn-ghost btn-xs" type="button" onclick="deleteSalesSigner('seller')" title="ลบผู้เซ็นนี้ออกจากระบบ">🗑</button></div>
+                  <input type="hidden" id="sale-seller-name"><input type="hidden" id="sale-seller-signature">
+                  <label style="margin-top:6px;font-size:11px;color:var(--text2);">อัปโหลด/เปลี่ยนลายเซ็นของผู้ที่เลือก</label>
+                  <input type="file" accept="image/*" onchange="loadSalesSignatureFile(this,'seller')"><div id="sale-seller-sig-preview" style="margin-top:6px;"></div>
+                </div>
+                <div class="form-group"><label>ผู้อนุมัติ / ลูกค้า</label>
+                  <div style="display:flex;gap:6px;align-items:center;"><select id="sale-customer-signer-select" style="flex:1;" onchange="onSalesSignerSelect('customer',this.value)"></select><button class="btn btn-ghost btn-xs" type="button" onclick="deleteSalesSigner('customer')" title="ลบผู้เซ็นนี้ออกจากระบบ">🗑</button></div>
+                  <input type="hidden" id="sale-customer-signer-name"><input type="hidden" id="sale-customer-signature">
+                  <label style="margin-top:6px;font-size:11px;color:var(--text2);">อัปโหลด/เปลี่ยนลายเซ็นของผู้ที่เลือก</label>
+                  <input type="file" accept="image/*" onchange="loadSalesSignatureFile(this,'customer')"><div id="sale-customer-sig-preview" style="margin-top:6px;"></div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="accounting-panel">
@@ -4425,6 +4437,7 @@ function applySalesCompanyProfile(id){
   document.getElementById('sale-company-phone').value=p.phone||'';
   document.getElementById('sale-company-email').value=p.email||'';
   document.getElementById('sale-bank-account').value=p.bankAccount||'';
+  updateSalesCompanyLogoPreview(); // ดึงโลโก้ที่บันทึกไว้กับบริษัทมาแสดง/ใช้ทันที
 }
 function currentSalesCompanyFormData(){
   const idBase=document.getElementById('sale-company-name')?.value||document.getElementById('sale-company-display')?.value||'company';
@@ -4469,9 +4482,40 @@ function updateSalesCompanyLogoPreview(){
 function salesSignerNameId(which){return which==='seller'?'sale-seller-name':'sale-customer-signer-name';}
 function salesSignerSigId(which){return which==='seller'?'sale-seller-signature':'sale-customer-signature';}
 function salesSignerPreviewId(which){return which==='seller'?'sale-seller-sig-preview':'sale-customer-sig-preview';}
+function salesSignerSelectId(which){return which==='seller'?'sale-seller-select':'sale-customer-signer-select';}
 function renderSalesSignerLists(){
-  const dl=document.getElementById('signer-name-list');if(!dl)return;
-  dl.innerHTML=(salesSignerProfiles||[]).map(s=>`<option value="${esc(s.name)}"></option>`).join('');
+  ['seller','customer'].forEach(which=>{
+    const sel=document.getElementById(salesSignerSelectId(which));if(!sel)return;
+    const cur=document.getElementById(salesSignerNameId(which))?.value||'';
+    const opts=['<option value="">— ไม่ระบุผู้เซ็น —</option>'];
+    (salesSignerProfiles||[]).forEach(s=>{opts.push(`<option value="${esc(s.name)}"${String(s.name)===cur?' selected':''}>${esc(s.name)}${s.signature?' ✍':''}</option>`);});
+    if(cur&&!(salesSignerProfiles||[]).some(s=>String(s.name)===cur))opts.push(`<option value="${esc(cur)}" selected>${esc(cur)}</option>`);
+    opts.push('<option value="__add__">➕ เพิ่มผู้เซ็นใหม่...</option>');
+    sel.innerHTML=opts.join('');
+  });
+}
+function onSalesSignerSelect(which,val){
+  if(val==='__add__'){
+    const name=(prompt('ชื่อผู้เซ็นใหม่ (เช่น ชื่อแอดมิน)')||'').trim();
+    if(!name){renderSalesSignerLists();return;}
+    if(!(salesSignerProfiles||[]).some(s=>String(s.name||'').trim().toLowerCase()===name.toLowerCase()))salesSignerProfiles.push({name,signature:''});
+    document.getElementById(salesSignerNameId(which)).value=name;
+    document.getElementById(salesSignerSigId(which)).value='';
+    saveState();renderSalesSignerLists();updateSalesSignaturePreview(which);
+    return;
+  }
+  document.getElementById(salesSignerNameId(which)).value=val;
+  applySalesSignerByName(which,val);
+  renderSalesSignerLists();
+}
+function deleteSalesSigner(which){
+  const name=(document.getElementById(salesSignerNameId(which))?.value||'').trim();
+  if(!name){alert('ยังไม่ได้เลือกผู้เซ็น');return;}
+  if(!confirm(`ลบผู้เซ็น "${name}" ออกจากระบบ? (ลายเซ็นที่บันทึกไว้จะถูกลบด้วย)`))return;
+  salesSignerProfiles=(salesSignerProfiles||[]).filter(s=>String(s.name||'').trim().toLowerCase()!==name.toLowerCase());
+  document.getElementById(salesSignerNameId(which)).value='';
+  document.getElementById(salesSignerSigId(which)).value='';
+  saveState();renderSalesSignerLists();updateSalesSignaturePreview(which);
 }
 function updateSalesSignaturePreview(which){
   const sig=document.getElementById(salesSignerSigId(which))?.value||'';
@@ -4597,7 +4641,22 @@ const SALES_DOC_META={
   tax_invoice:{label:'ใบกำกับภาษี / Tax Invoice',prefix:'SINV',title:'ใบกำกับภาษี',addLabel:'+ เพิ่มใบกำกับภาษี'},
   receipt:{label:'ใบเสร็จรับเงิน / Receipt',prefix:'RCP',title:'ใบเสร็จรับเงิน',addLabel:'+ เพิ่มใบเสร็จ'}
 };
-function nextSalesDocNo(docType){const meta=SALES_DOC_META[docType]||SALES_DOC_META.tax_invoice;const n=(salesInvoices||[]).filter(x=>(x.doc_type||'tax_invoice')===docType).length+1;return `${meta.prefix}-${new Date().getFullYear()}-${String(n).padStart(3,'0')}`;}
+function nextSalesDocNo(docType){
+  const meta=SALES_DOC_META[docType]||SALES_DOC_META.tax_invoice;
+  const prefix=`${meta.prefix}-${new Date().getFullYear()}-`;
+  let max=0;
+  (salesInvoices||[]).forEach(x=>{
+    const no=String(x.doc_no||x.sales_invoice_no||'');
+    if(no.startsWith(prefix)){const n=parseInt(no.slice(prefix.length),10);if(Number.isFinite(n)&&n>max)max=n;}
+  });
+  return `${prefix}${String(max+1).padStart(3,'0')}`;
+}
+// เพิ่มเลขท้าย +1 (คงความกว้างเลข) ใช้ตอนเลขเอกสารชนกัน
+function bumpDocNo(no){
+  const m=String(no||'').match(/^(.*?)(\d+)(\D*)$/);
+  if(!m)return String(no||'DOC')+'-2';
+  return m[1]+String(parseInt(m[2],10)+1).padStart(m[2].length,'0')+m[3];
+}
 function onSalesDocTypeChange(docType){
   const meta=SALES_DOC_META[docType]||SALES_DOC_META.tax_invoice;
   const titleEl=document.getElementById('sales-modal-title');
@@ -4778,6 +4837,15 @@ function fillSalesFromJob(pr=''){
   }
 }
 function normalizePartKey(v){return String(v||'').trim().toLowerCase();}
+// ราคาขายของรายการในแคตตาล็อก: ใช้ราคาขายก่อน ถ้าไม่มีให้รวมค่าของ+ค่าแรง (รองรับรายการค่าแรง/ค่าบริการที่เก็บราคาไว้ในช่อง labor)
+function partSellPrice(p){
+  if(!p)return 0;
+  const sell=Number(p.sell||p.price||0);
+  if(sell>0)return sell;
+  const combo=Number(p.cost||0)+Number(p.labor||p.service||0);
+  if(combo>0)return combo;
+  return Number(p.labor||p.service||p.cost||0);
+}
 function masterPriceById(id){return (masterPriceItems||[]).find(m=>String(m.id)===String(id));}
 function masterPriceByName(name){
   const key=normalizePartKey(name);
@@ -4798,7 +4866,7 @@ function salesItemFromTechnicianPart(part){
   const qty=Number(part.quantity||1)||1;
   const unit=part.unit||catalog?.unit||master?.default_unit||'';
   const desc=part.part_name_text||catalog?.name||master?.item_name||'อะไหล่';
-  const price=Number(catalog?.sell||catalog?.price||master?.standard_price||master?.unit_price||master?.sale_price||0);
+  const price=Number((catalog?partSellPrice(catalog):0)||master?.standard_price||master?.unit_price||master?.sale_price||0);
   const supplier=part.supplier_name||catalog?.sup||catalog?.supplier||'';
   const note=[part.is_custom?'รายการที่ช่างพิมพ์เอง':(part.note||''),supplier?`Supplier: ${supplier}`:''].filter(Boolean).join(' | ');
   return blankSalesItem(desc,qty,unit,price,{
@@ -4840,7 +4908,7 @@ function accountingItemByName(name,code=''){
   const catHit=p=>{const nk=normalizePartKey(p.name),ck=normalizePartKey(p.code);return (codeKey&&ck===codeKey)||(key&&nk===key);};
   const catFuzzy=p=>{const nk=normalizePartKey(p.name);return key&&nk&&(nk.includes(key)||key.includes(nk));};
   const catalog=(parts||[]).find(catHit)||(parts||[]).find(catFuzzy);
-  if(catalog)return {code:catalog.code||'',name:catalog.name||'',category:catalog.cat||catalog.category||'อะไหล่',unit:catalog.unit||'',price:Number(catalog.sell||catalog.price||catalog.cost||0),src:'manual',ref:catalog.part_key||catalog._id||catalog.code||catalog.name};
+  if(catalog)return {code:catalog.code||'',name:catalog.name||'',category:catalog.cat||catalog.category||'อะไหล่',unit:catalog.unit||'',price:partSellPrice(catalog),src:'manual',ref:catalog.part_key||catalog._id||catalog.code||catalog.name};
   const stkHit=st=>{const nk=normalizePartKey(st.item_name),ck=normalizePartKey(st.sku);return (codeKey&&ck===codeKey)||(key&&nk===key);};
   const stkFuzzy=st=>{const nk=normalizePartKey(st.item_name);return key&&nk&&(nk.includes(key)||key.includes(nk));};
   const stock=(stockItems||[]).find(stkHit)||(stockItems||[]).find(stkFuzzy);
@@ -4948,7 +5016,7 @@ function itemPickerSource(){
     code:m.item_code||'',name:m.item_name||'',sub:`${m.category||''}${m.default_unit?' · หน่วย '+m.default_unit:''}`,
     price:Number(m.standard_price||0),unit:m.default_unit||'งาน',category:m.category||'',ref:m.id,src:'master_price',right:`฿${money(m.standard_price||0)}`}));
   // stock
-  const fromParts=(parts||[]).filter(p=>p&&p.name).map(p=>({code:p.code||'',name:p.name||'',sub:`${p.cat||p.category||'อะไหล่'}${p.unit?' · หน่วย '+p.unit:''}${p.sup?' · '+p.sup:''}`,price:Number(p.sell||p.price||p.cost||0),unit:p.unit||'',category:p.cat||p.category||'อะไหล่',ref:p.part_key||p._id||p.code||p.name,src:'manual',right:`฿${money(p.sell||p.price||p.cost||0)}`}));
+  const fromParts=(parts||[]).filter(p=>p&&p.name).map(p=>{const pr=partSellPrice(p);return {code:p.code||'',name:p.name||'',sub:`${p.cat||p.category||'อะไหล่'}${p.unit?' · หน่วย '+p.unit:''}${p.sup?' · '+p.sup:''}`,price:pr,unit:p.unit||'',category:p.cat||p.category||'อะไหล่',ref:p.part_key||p._id||p.code||p.name,src:'manual',right:`฿${money(pr)}`};});
   const fromStock=(stockItems||[]).filter(s=>s.is_active!==false).map(s=>{
     const sell=Number(s.suggested_sell||s.sell_price||0)||Math.round(Number(s.average_cost||0)*1.3);
     return {code:s.sku||'',name:s.item_name||'',sub:`คงเหลือ ${money(s.current_quantity||0)} ${s.unit||''} · ทุนเฉลี่ย ฿${money(s.average_cost||0)}`,
@@ -5064,7 +5132,21 @@ async function saveSalesInvoice(){
     created_by:getActorName(),
     updated_by:getActorName()
     };
-    await sbUpsertResilient('sales_invoices','?on_conflict=id',inv);
+    // บันทึกเอกสาร — ถ้าเลขที่เอกสารชน (unique sales_invoice_no) ให้เพิ่มเลขแล้วลองใหม่อัตโนมัติ
+    for(let attempt=0;attempt<8;attempt++){
+      try{await sbUpsertResilient('sales_invoices','?on_conflict=id',inv);break;}
+      catch(e){
+        const m=String(e?.message||e);
+        if(/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)&&attempt<7){
+          const bumped=bumpDocNo(inv.sales_invoice_no||inv.doc_no||docNo);
+          inv.sales_invoice_no=bumped;inv.doc_no=bumped;
+          const noEl=document.getElementById('sale-no');if(noEl)noEl.value=bumped;
+          setAccountingStatus('sales','เลขเอกสารซ้ำ — เปลี่ยนเป็น '+bumped,'warn');
+          continue;
+        }
+        throw e;
+      }
+    }
     const old=salesInvoiceItems.filter(x=>x.sales_invoice_id===id);
     for(const item of old.filter(x=>!rows.some(row=>row.id===x.id))){
       const del=await fetch(splitUrl('sales_invoice_items',`?id=eq.${encodeURIComponent(item.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
