@@ -905,9 +905,11 @@ function showError(title, msg){
   document.getElementById('error-msg').textContent = msg;
 }
 // เปิดฟอร์มอีกครั้งจากหน้า "ส่งแล้ว" (กรณีต้องแก้ไข/ส่งรอบเพิ่ม) — prefill ข้อมูลรอบล่าสุดให้
-function reopenSubmittedForm(){
+async function reopenSubmittedForm(){
   if(!jobData)return;
   document.getElementById('state-done').classList.add('hidden');
+  // โหลดแคตตาล็อกอะไหล่ก่อนเสมอ — loadJob() ข้ามขั้นนี้ไปตอนรายงานถูกส่งแล้ว ทำให้ dropdown ว่าง
+  if(!masterPartOptions.length)await loadMasterPartOptions();
   showForm();
 }
 // ลองโหลดงานใหม่ (กรณี fetch พลาดชั่วคราว)
