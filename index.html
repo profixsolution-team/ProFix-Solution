@@ -6,6 +6,7 @@
 <title>ProFix Service Console</title>
 <link rel="icon" type="image/svg+xml" href="assets/profix-icon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--surface2:#1f2937;--surface3:#273344;--border:#30363d;--border2:#3d4754;--accent:#58a6ff;--accent-dim:#1a3a5c;--green:#3fb950;--green-dim:#1a3a1f;--yellow:#d29922;--yellow-dim:#3a2a0a;--red:#f85149;--red-dim:#3a0f0f;--purple:#bc8cff;--purple-dim:#2d1f4e;--orange:#f0883e;--orange-dim:#3a1e0a;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--mono:"IBM Plex Mono",monospace;--sans:"Noto Sans Thai",sans-serif;}
 body[data-theme="light"]{--bg:#f5f7fb;--surface:#ffffff;--surface2:#eef3f8;--surface3:#e3ebf4;--border:#d7e0ea;--border2:#bac8d8;--accent:#175fff;--accent-dim:#e7efff;--green:#138a3d;--green-dim:#e7f6ec;--yellow:#9a6700;--yellow-dim:#fff4d6;--red:#cf222e;--red-dim:#ffebe9;--purple:#8250df;--purple-dim:#f2eafd;--orange:#bc4c00;--orange-dim:#fff1e5;--text:#16202d;--text2:#536173;--text3:#7b8795;}
@@ -438,23 +439,22 @@ select option{background:var(--surface2);}
     <button class="nav-item active" data-page="dashboard" onclick="goTo('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</button>
     <div class="nav-section">Tracker</div>
     <button class="nav-item" data-page="admin-tracker" onclick="goTo('admin-tracker',this)"><span class="nav-icon">🗂</span>Admin Tracker<span class="nav-badge-y" id="nb-admin">2</span></button>
-    <button class="nav-item" data-page="customer-requests" onclick="goTo('customer-requests',this)"><span class="nav-icon">☑</span>งานจากลูกค้า<span class="nav-badge-y" id="nb-customer-requests" style="display:none;">0</span></button>
     <button class="nav-item" data-page="jobs" onclick="goTo('jobs',this)"><span class="nav-icon">📋</span>คิวช่าง<span class="nav-badge" id="nb-new">3</span></button>
     <button class="nav-item" data-page="job-calendar" onclick="goTo('job-calendar',this)"><span class="nav-icon">▦</span>Calendar คิวช่าง</button>
+    <div class="nav-section">งานลูกค้า</div>
+    <button class="nav-item" data-page="customer-requests" onclick="goTo('customer-requests',this)"><span class="nav-icon">☑</span>งานจากลูกค้า<span class="nav-badge-y" id="nb-customer-requests" style="display:none;">0</span></button>
     <div class="nav-section">การเงิน</div>
     <button class="nav-item" data-page="finance" onclick="goTo('finance',this)"><span class="nav-icon">💰</span>ภาพรวมการเงิน</button>
-    <button class="nav-item" data-page="purchase-tax" onclick="goTo('purchase-tax',this)"><span class="nav-icon">🧾</span>บิลซื้อ / ภาษีซื้อ</button>
-    <button class="nav-item" data-page="sales-tax" onclick="goTo('sales-tax',this)"><span class="nav-icon">🧾</span>บิลขาย / ภาษีขาย</button>
-    <button class="nav-item" data-page="stock" onclick="goTo('stock',this)"><span class="nav-icon">📦</span>Stock / คลังอะไหล่<span class="nav-badge-y" id="nb-stock" style="display:none;">0</span></button>
     <button class="nav-item" data-page="tech-pay" onclick="goTo('tech-pay',this)"><span class="nav-icon">👷</span>จ่ายช่าง</button>
     <div class="nav-section">เอกสาร</div>
     <button class="nav-item" data-page="workorders" onclick="goTo('workorders',this)"><span class="nav-icon">🗃</span>ใบงาน / แฟ้ม PR</button>
-    <button class="nav-item" data-page="documents" onclick="goTo('documents',this)"><span class="nav-icon">📄</span>ใบเสนอราคา/บิล</button>
+    <button class="nav-item" data-page="purchase-tax" onclick="goTo('purchase-tax',this)"><span class="nav-icon">🧾</span>บิลซื้อ / ภาษีซื้อ</button>
+    <button class="nav-item" data-page="sales-tax" onclick="goTo('sales-tax',this)"><span class="nav-icon">🧾</span>บิลขาย / ภาษีขาย</button>
     <div class="nav-section">ข้อมูลระบบ</div>
-    <button class="nav-item" data-page="settings-clients" onclick="goTo('settings-clients',this)"><span class="nav-icon">🏢</span>ลูกค้า & ราคากลาง</button>
+    <button class="nav-item" data-page="settings-clients" onclick="goTo('settings-clients',this)"><span class="nav-icon">🏢</span>ลูกค้า</button>
     <button class="nav-item" data-page="settings-teams" onclick="goTo('settings-teams',this)"><span class="nav-icon">👷</span>ทีมช่าง & ราคา</button>
-    <button class="nav-item" data-page="settings-branches" onclick="goTo('settings-branches',this)"><span class="nav-icon">🏬</span>สาขา</button>
     <button class="nav-item" data-page="settings-suppliers" onclick="goTo('settings-suppliers',this)"><span class="nav-icon">🔩</span>ซัพพลายเออร์</button>
+    <button class="nav-item" data-page="stock" onclick="goTo('stock',this)"><span class="nav-icon">📦</span>Stock / คลังอะไหล่<span class="nav-badge-y" id="nb-stock" style="display:none;">0</span></button>
     <div class="nav-section">รายงาน</div>
     <button class="nav-item" data-page="reports" onclick="goTo('reports',this)"><span class="nav-icon">📝</span>รายงานช่าง</button>
     <button class="nav-item" data-page="system-safety" onclick="goTo('system-safety',this)"><span class="nav-icon">🛡</span>กู้ข้อมูล / Backup</button>
@@ -780,10 +780,10 @@ select option{background:var(--surface2);}
 </div>
 
 
-<!-- SETTINGS: CLIENTS & PRICING -->
+<!-- SETTINGS: CLIENTS -->
 <div class="page" id="page-settings-clients">
   <div class="page-header">
-    <div><div class="page-title">ลูกค้า & ราคากลาง</div><div class="page-sub">ราคากลางต่อลูกค้า × ประเภทงาน — แอดมินเท่านั้น <span class="system-updated tm"></span></div></div>
+    <div><div class="page-title">ลูกค้า</div><div class="page-sub">ข้อมูลบริษัทลูกค้า / ที่อยู่ / ผู้ติดต่อ — คลิกแถวเพื่อดู/แก้ไข <span class="system-updated tm"></span></div></div>
     <button class="btn btn-primary" onclick="openClientModal()">+ เพิ่มลูกค้า</button>
   </div>
   <div class="content">
@@ -791,14 +791,6 @@ select option{background:var(--surface2);}
       <div class="table-header"><div class="table-title">รายชื่อลูกค้า</div></div>
       <table><thead><tr><th>รหัส</th><th>ชื่อบริษัท</th><th>เงื่อนไขจ่าย</th><th>ผู้ติดต่อ</th><th>เบอร์</th><th>สถานะ</th><th></th></tr></thead>
       <tbody id="cl-tbody"></tbody></table>
-    </div>
-    <div class="table-wrap">
-      <div class="table-header">
-        <div class="table-title">⚠️ ราคากลาง (แอดมินเท่านั้น)</div>
-        <select id="cl-filter" onchange="renderPricing()" style="width:auto;padding:5px 10px;font-size:12px;"><option value="">ทุกลูกค้า</option></select>
-      </div>
-      <table><thead><tr><th>ลูกค้า</th><th>ประเภทงาน</th><th>ราคากลาง (฿)</th><th>หมายเหตุ</th><th></th></tr></thead>
-      <tbody id="price-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -882,9 +874,10 @@ select option{background:var(--surface2);}
     <div class="modal-body">
       <div class="form-row"><div class="form-group"><label>รหัสลูกค้า</label><input type="text" id="fc-id" placeholder="CLT-001"></div><div class="form-group"><label>ชื่อบริษัท</label><input type="text" id="fc-name" placeholder="บริษัท ABC จำกัด"></div></div>
       <div class="form-row"><div class="form-group"><label>ผู้ติดต่อหลัก</label><input type="text" id="fc-contact" placeholder="ชื่อ-นามสกุล"></div><div class="form-group"><label>เบอร์โทร</label><input type="text" id="fc-phone" placeholder="08x-xxx-xxxx"></div></div>
-      <div class="form-row"><div class="form-group"><label>เลขประจำตัวผู้เสียภาษี</label><input type="text" id="fc-taxid" placeholder="Tax ID"></div><div class="form-group"><label>ที่อยู่บริษัทลูกค้า</label><input type="text" id="fc-address" placeholder="ที่อยู่สำหรับออกเอกสาร"></div></div>
+      <div class="form-group"><label>เลขประจำตัวผู้เสียภาษี</label><input type="text" id="fc-taxid" placeholder="Tax ID"></div>
+      <div class="form-group"><label>ที่อยู่บริษัทลูกค้า (กด Enter เพื่อขึ้นบรรทัดใหม่)</label><textarea id="fc-address" placeholder="ที่อยู่สำหรับออกเอกสาร&#10;เว้นบรรทัดได้" style="min-height:88px;resize:vertical;line-height:1.5;"></textarea></div>
       <div class="form-row"><div class="form-group"><label>เงื่อนไขจ่ายเงิน</label><select id="fc-pay"><option>จ่ายทุก 2 อาทิตย์</option><option>จ่ายทุกเดือน</option><option>จ่ายทันที</option><option>30 วัน</option><option>45 วัน</option><option>60 วัน</option></select></div><div class="form-group"><label>วงเงินเครดิต (฿)</label><input type="number" id="fc-credit" placeholder="0"></div></div>
-      <div class="form-group"><label>หมายเหตุ</label><textarea id="fc-note" placeholder="เงื่อนไขพิเศษ..."></textarea></div>
+      <div class="form-group"><label>หมายเหตุ</label><textarea id="fc-note" placeholder="เงื่อนไขพิเศษ..." style="min-height:38px;"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-client')">ยกเลิก</button><button class="btn btn-primary" onclick="saveClient()">✓ บันทึก</button></div>
   </div>
@@ -1234,6 +1227,15 @@ select option{background:var(--surface2);}
   </div>
 </div>
 
+<!-- TEAM FINANCE SUMMARY MODAL -->
+<div class="modal-overlay" id="m-team-finance">
+  <div class="modal" style="max-width:920px;">
+    <div class="modal-header"><div><div class="modal-title">สรุปการเงินรายทีม</div><div class="tm" style="font-size:11px;margin-top:2px;" id="team-fin-sub"></div></div><button class="close-btn" onclick="closeM('m-team-finance')">×</button></div>
+    <div class="modal-body" id="team-fin-body"></div>
+    <div class="modal-footer"><button class="btn btn-success" onclick="exportFinanceXlsx()">⬇ Export .xlsx</button><button class="btn btn-ghost" onclick="closeM('m-team-finance')">ปิด</button></div>
+  </div>
+</div>
+
 <!-- FIXED EXPENSE MODAL -->
 <div class="modal-overlay" id="m-fixed">
   <div class="modal">
@@ -1295,6 +1297,8 @@ let salesConvertSourceId='';
 const MASTER_PRICE_CATEGORIES=['ค่าบริการ','ค่าแรง','ค่าเดินทาง','งานซ่อม','งานติดตั้ง','อะไหล่','อื่น ๆ'];
 let purchaseVatMode='add', salesVatMode='add'; // 'add' บวกเพิ่ม | 'inclusive' รวมแล้ว | 'none' ไม่มี
 let salesDraftJobs=[];
+let financeTeamFilter='ทั้งหมด';
+let financeMonthFilter=new Date().toISOString().slice(0,7); // ค่าเริ่มต้น = เดือนปัจจุบัน
 let purSearch='',purDate='',purRange='',purSort='desc';
 let saleSearch='',saleDate='',saleRange='',saleSort='desc';
 let stockItems=[], stockMovements=[], stockLoaded=false, stockLoadingPromise=null;
@@ -2440,9 +2444,11 @@ function buildJobControls(counts){
 }
 function buildFinanceControls(counts){
   const b=document.getElementById('fin-fbar');if(!b)return;
-  b.innerHTML=`<span class="filter-label">สถานะเงิน:</span><select class="filter-select" onchange="finFilter=this.value;renderFin();saveUIState();">${statusOptionHtml(payStatuses,counts,finFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="fin-search-input" value="${esc(financeSearch)}" placeholder="PR / สาขา / ทีม" onkeydown="if(event.key==='Enter')applyFinanceSearch()"><button class="btn btn-ghost btn-sm" onclick="applyFinanceSearch()">ค้นหา</button><span class="filter-label">วันที่:</span><input class="filter-input" type="date" value="${esc(financeDateFilter)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setFinanceDate(this.value)"><button class="btn btn-ghost btn-sm" onclick="setFinanceDate('')">ล้างวันที่</button>`;
+  const teamOpts=['ทั้งหมด',...teams.map(t=>t.name)].map(t=>`<option value="${esc(t)}"${financeTeamFilter===t?' selected':''}>${esc(t)}</option>`).join('');
+  b.innerHTML=`<span class="filter-label">เดือน:</span><input class="filter-input" type="month" value="${esc(financeMonthFilter)}" onchange="setFinanceMonth(this.value)"><span class="filter-label">ทีม:</span><select class="filter-select" onchange="financeTeamFilter=this.value;renderFin();saveUIState();">${teamOpts}</select><span class="filter-label">สถานะเงิน:</span><select class="filter-select" onchange="finFilter=this.value;renderFin();saveUIState();">${statusOptionHtml(payStatuses,counts,finFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="fin-search-input" value="${esc(financeSearch)}" placeholder="PR / สาขา / ทีม" onkeydown="if(event.key==='Enter')applyFinanceSearch()"><button class="btn btn-ghost btn-sm" onclick="applyFinanceSearch()">ค้นหา</button><button class="btn btn-ghost btn-sm" onclick="setFinanceDate('')" title="ล้างวันที่แบบเจาะจง">ล้างวันที่</button><button class="btn btn-primary btn-sm" onclick="openTeamFinanceSummary()">📊 สรุปทีม</button><button class="btn btn-success btn-sm" onclick="exportFinanceXlsx()">⬇ Export .xlsx</button>`;
   addFbarManager('fin-fbar','payStatuses');
 }
+function setFinanceMonth(v){financeMonthFilter=v||'';renderFin();saveUIState();}
 function addDateControls(bid, scope){
   const b=document.getElementById(bid);if(!b)return;
   const dateVal=scope==='admin'?adminDateFilter:jobDateFilter;
@@ -3480,7 +3486,7 @@ function openDet(id){
   currentDetailJobId=id;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
-  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-success" onclick="openCheckinViewModal('${j.id}')">เช็คข้อมูลแจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
+  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-success" onclick="openCheckinViewModal('${j.id}')">เช็คข้อมูลแจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button>${salesJobIsBilled(j.id)?`<button class="btn btn-success" onclick="matchFinanceFromSales('${j.id}')">🔗 ดึงราคาเข้าการเงิน</button>`:''}<button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
   ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
   openM('m-detail');
 }
@@ -3635,7 +3641,8 @@ function renderCalendar(){
 // FINANCE
 function setFinFilter(f){finFilter=f;renderFin();}
 function renderFin(){
-  const jRows=liveJobs();
+  // การ์ดสรุป + ตาราง scope ตามเดือน/ทีมที่เลือก (ค่าเริ่มต้น = เดือนปัจจุบัน)
+  const jRows=liveJobs().filter(j=>(!financeMonthFilter||String(j.date||j.assignedAt||'').slice(0,7)===financeMonthFilter)&&(financeTeamFilter==='ทั้งหมด'||j.team===financeTeamFilter));
   const fixed=fixedExpenses.reduce((s,x)=>s+x.amount,0);
   const inc=jRows.reduce((s,j)=>s+j.pc+j.partR,0);
   const exp=jRows.reduce((s,j)=>s+j.pt+j.partC+j.fuel,0);
@@ -3658,13 +3665,98 @@ function renderFin(){
   fil=sortByActivity(fil.filter(j=>matchText(j,['id','ref','branch','client','team','type','date','status','pay','financeNote'],financeSearch)),'desc');
   document.getElementById('fin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('fin-tbl-title').textContent='P&L ต่องาน - '+finFilter+(financeDateFilter?' / '+financeDateFilter:'')+(financeSearch?' / ค้นหา: '+financeSearch:'');
-  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openFinanceEdit('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${j.pc+j.partR}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button></div></td></tr>`;}).join('');
+  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openDet('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${j.pc+j.partR}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="matchFinanceFromSales('${j.id}')">🔗 ดึงข้อมูลจากใบเสนอราคา/บิล</button><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button><button onclick="deleteJob('${j.id}')" style="color:var(--red);">ลบงาน</button></div></td></tr>`;}).join('');
   renderFixedExpenses();
 }
 function setPay(id,s){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(j){const before=clonePlain(j);j.pay=s;renderFin();renderDash();saveState();writeAuditLog('update_job_pay','job',id,before,{pay:s},clonePlain(j));}}
 function updateJobMoney(id,field,value){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);const v=parseFloat(value)||0;if(field==='income')j.pc=Math.max(0,v-j.partR);else j[field]=v;renderFin();renderDash();saveState();writeAuditLog('update_job_money','job',id,before,patchFromDiff(before,j),clonePlain(j),{field});}
 function openFinanceEdit(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;fillSelects();document.getElementById('ff-id').value=id;document.getElementById('ff-pc').value=j.pc;document.getElementById('ff-partR').value=j.partR;document.getElementById('ff-pt').value=j.pt;document.getElementById('ff-partC').value=j.partC;document.getElementById('ff-fuel').value=j.fuel;document.getElementById('ff-pay').value=payLabel(j.pay);document.getElementById('ff-note').value=j.financeNote||'';openM('m-finance-edit');}
 function saveFinanceEdit(){const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);Object.assign(j,{pc:parseFloat(document.getElementById('ff-pc').value)||0,partR:parseFloat(document.getElementById('ff-partR').value)||0,pt:parseFloat(document.getElementById('ff-pt').value)||0,partC:parseFloat(document.getElementById('ff-partC').value)||0,fuel:parseFloat(document.getElementById('ff-fuel').value)||0,pay:document.getElementById('ff-pay').value,financeNote:document.getElementById('ff-note').value});closeM('m-finance-edit');renderFin();renderDash();saveState();writeAuditLog('update_job_finance','job',id,before,patchFromDiff(before,j),clonePlain(j));}
+// ===== #9 ดึงข้อมูลการเงินจากใบเสนอราคา/บิลขายอัตโนมัติ =====
+const SALES_PARTS_CAT_RE=/อะไหล่|part|spare|วัสดุ|material|ของ/i;
+function latestSalesDocForJob(jobId){
+  const list=(salesInvoices||[]).filter(x=>x.status!=='cancelled'&&salesInvoiceMatchesJob(x,jobId));
+  if(!list.length)return null;
+  // เลือกฉบับล่าสุด: เรียงตามวันที่เอกสาร แล้วเลขที่
+  return [...list].sort((a,b)=>String(b.invoice_date||'').localeCompare(String(a.invoice_date||''))||String(b.doc_no||'').localeCompare(String(a.doc_no||'')))[0];
+}
+async function matchFinanceFromSales(jobId){
+  const j=jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));if(!j)return;
+  await ensureAccountingLoaded().catch(()=>{});
+  const inv=latestSalesDocForJob(jobId);
+  if(!inv){alert('ยังไม่มีใบเสนอราคา/บิลขายของงานนี้ — ออกเอกสารก่อนแล้วค่อยดึงข้อมูล');return;}
+  const items=(salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===inv.id&&x.status!=='cancelled');
+  const partsRevenue=items.filter(it=>SALES_PARTS_CAT_RE.test(String(it.category||'')+' '+String(it.description||''))).reduce((s,it)=>s+Number(it.subtotal||0),0);
+  const travel=Number(inv.travel_amount||0);
+  const subtotal=Number(inv.subtotal||0);
+  const pc=Math.max(0,subtotal-partsRevenue-travel);       // รายรับงาน (บริการ+overhead+SLA)
+  const partR=partsRevenue;                                 // ขายอะไหล่
+  const fuel=travel;                                        // ค่าเดินทาง (ตามที่คิดลูกค้า)
+  // ต้นทุน: ดึงจากต้นทุนจริงที่แอดมินยืนยัน (job cost items) ถ้ามี ไม่งั้นคงค่าเดิม
+  const costSum=jobCosts(jobId).reduce((s,c)=>s+Number(c.cost_amount||0),0);
+  const partC=costSum>0?costSum:Number(j.partC||0);
+  // จ่ายช่าง: ดึงจากราคาทีม (team × ประเภทงาน) ถ้ามี ไม่งั้นคงค่าเดิม
+  const tp=(teamPricing||[]).find(p=>String(p.team||'')===String(j.team||'')&&String(p.type||'')===String(j.type||''));
+  const pt=tp?Number(tp.price||0):Number(j.pt||0);
+  const newGp=(pc-pt)+(partR-partC)-fuel;
+  const msg=`ดึงจากเอกสาร: ${inv.doc_no||inv.sales_invoice_no||inv.id}\n\n`
+    +`รายรับงาน (บริการ): ฿${money(pc)}\n`
+    +`ขายอะไหล่: ฿${money(partR)}\n`
+    +`ค่าเดินทาง (คิดลูกค้า): ฿${money(fuel)}\n`
+    +`จ่ายช่าง${tp?' (ราคาทีม)':' (คงค่าเดิม)'}: ฿${money(pt)}\n`
+    +`ต้นทุนอะไหล่${costSum>0?' (ต้นทุนจริง)':' (คงค่าเดิม)'}: ฿${money(partC)}\n`
+    +`─────────────\nกำไรสุทธิที่คำนวณได้: ฿${money(newGp)}\n\n`
+    +`ยืนยันนำค่านี้ไปใส่ในการเงินของงาน ${jobId}?`;
+  if(!confirm(msg))return;
+  const before=clonePlain(j);
+  Object.assign(j,{pc,partR,pt,partC,fuel});
+  j.financeNote=[j.financeNote||'',`ดึงจากเอกสาร ${inv.doc_no||inv.sales_invoice_no||''} เมื่อ ${todayISO()}`].filter(Boolean).join('\n');
+  renderFin();renderDash();saveState();
+  writeAuditLog('match_finance_from_sales','job',jobId,before,patchFromDiff(before,j),clonePlain(j),{salesDoc:inv.id});
+  alert(`อัปเดตการเงินงาน ${jobId} แล้ว — กำไรสุทธิ ฿${money(newGp)}`);
+}
+// ===== #8 ขอบเขตงานตาม filter เดือน/ทีม (ไม่ซ่อนงานปิด — ใช้กับ export/สรุป) =====
+function financeScopedJobs(){
+  let list=liveJobs();
+  if(financeMonthFilter)list=list.filter(j=>String(j.date||j.assignedAt||'').slice(0,7)===financeMonthFilter);
+  if(financeTeamFilter&&financeTeamFilter!=='ทั้งหมด')list=list.filter(j=>j.team===financeTeamFilter);
+  return list;
+}
+function exportFinanceXlsx(){
+  if(typeof XLSX==='undefined'){alert('ไลบรารี xlsx ยังโหลดไม่เสร็จ — ลองใหม่อีกครั้ง');return;}
+  const list=financeScopedJobs();
+  if(!list.length){alert('ไม่มีข้อมูลงานในช่วงที่เลือก');return;}
+  const header=['PR','สาขา','ทีม','ประเภท','วันที่','สถานะงาน','สถานะเงิน','รายรับงาน','ขายอะไหล่','จ่ายช่าง','ต้นทุนอะไหล่','ค่าเดินทาง','กำไร'];
+  const data=list.map(j=>[j.id,j.branch||'',j.team||'',j.type||'',j.date||j.assignedAt||'',j.status||'',payLabel(j.pay)||'',Number(j.pc||0),Number(j.partR||0),Number(j.pt||0),Number(j.partC||0),Number(j.fuel||0),gp(j)]);
+  const sum=f=>list.reduce((s,j)=>s+Number(f(j)||0),0);
+  const totals=['รวม','','','','','','',sum(j=>j.pc),sum(j=>j.partR),sum(j=>j.pt),sum(j=>j.partC),sum(j=>j.fuel),sum(j=>gp(j))];
+  const ws=XLSX.utils.aoa_to_sheet([header,...data,totals]);
+  ws['!cols']=header.map((h,i)=>({wch:i<7?14:12}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'การเงิน');
+  const name=`ProFix-การเงิน-${financeTeamFilter==='ทั้งหมด'?'ทุกทีม':financeTeamFilter}-${financeMonthFilter||'all'}.xlsx`;
+  XLSX.writeFile(wb,name);
+}
+function financeStatusBuckets(list){const b={};list.forEach(j=>{const s=j.status||'-';b[s]=(b[s]||0)+1;});return b;}
+function openTeamFinanceSummary(){
+  const monthLabel=financeMonthFilter||'ทุกเดือน';
+  const all=financeScopedJobs();
+  const teamsToShow=financeTeamFilter&&financeTeamFilter!=='ทั้งหมด'?[financeTeamFilter]:[...new Set(all.map(j=>j.team||'ไม่ระบุทีม'))];
+  const sub=document.getElementById('team-fin-sub');if(sub)sub.textContent=`เดือน ${monthLabel} · ${financeTeamFilter==='ทั้งหมด'?'ทุกทีม':financeTeamFilter}`;
+  const body=document.getElementById('team-fin-body');if(!body)return;
+  if(!all.length){body.innerHTML='<div class="empty"><div class="empty-icon">📊</div><div>ไม่มีข้อมูลงานในช่วงที่เลือก</div></div>';openM('m-team-finance');return;}
+  body.innerHTML=teamsToShow.map(tm=>{
+    const tj=all.filter(j=>(j.team||'ไม่ระบุทีม')===tm);
+    if(!tj.length)return '';
+    const income=tj.reduce((s,j)=>s+Number(j.pc||0)+Number(j.partR||0),0);
+    const profit=tj.reduce((s,j)=>s+gp(j),0);
+    const buckets=financeStatusBuckets(tj);
+    const bucketHtml=Object.entries(buckets).map(([s,c])=>`<span class="chip">${esc(s)}: ${c}</span>`).join(' ');
+    const rows=tj.map(j=>`<tr style="cursor:pointer;" onclick="closeM('m-team-finance');openDet('${esc(j.id)}')"><td class="mono ta" style="font-size:11px;">${esc(j.id)}</td><td style="font-size:12px;">${esc(j.branch||'-')}</td><td><span class="chip">${esc(j.type||'-')}</span></td><td>${statusBadge(j,j.status)}</td><td class="mono tr tg">฿${money(Number(j.pc||0)+Number(j.partR||0))}</td><td class="mono tr ${gp(j)>=0?'tg':'tr'}">฿${money(gp(j))}</td></tr>`).join('');
+    return `<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${esc(tm)} · ${tj.length} งาน</div><span class="mono tm" style="font-size:12px;">รายได้ ฿${money(income)} · กำไร <b class="${profit>=0?'tg':'tr'}">฿${money(profit)}</b></span></div><div style="padding:8px 12px;display:flex;flex-wrap:wrap;gap:5px;">${bucketHtml||'<span class="tm">-</span>'}</div><table><thead><tr><th>PR</th><th>สาขา</th><th>ประเภท</th><th>สถานะ</th><th>รายได้</th><th>กำไร</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }).join('')||'<div class="empty">ไม่มีข้อมูล</div>';
+  openM('m-team-finance');
+}
 function money(v){return Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
 function newAccountingId(prefix){return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;}
 function setAccountingStatus(kind,msg,type=''){
@@ -3938,7 +4030,7 @@ function renderPurchaseTax(){
     const stockPending=stockRows.filter(x=>!x.stock_received).length;
     const stockBadge=stockRows.length?(stockPending?`<br><span class="badge b-unpaid" style="font-size:9px;">รอรับเข้า stock ${stockPending}</span>`:`<br><span class="badge b-paid" style="font-size:9px;">รับเข้า stock แล้ว</span>`):'';
     const confirmBtn=stockPending?`<button onclick="confirmPurchaseStockIn('${esc(inv.id)}')">✓ ยืนยันรับเข้า Stock</button>`:'';
-    return `<tr><td class="mono ta" style="font-size:11px;">${esc(inv.purchase_no)}</td><td>${esc(inv.supplier_name||inv.supplier_id||'-')}<br><span class="tm" style="font-size:10px;">${rows.length} รายการ</span>${stockBadge}</td><td>${esc(inv.invoice_no||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('pur-${esc(inv.id)}',event)">...</button><div class="action-menu" id="pur-${esc(inv.id)}">${confirmBtn}<button onclick="openPurchaseModal('${esc(inv.id)}')">แก้ไข/ดูรายการ</button>${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}</div></td></tr>`;
+    return `<tr style="cursor:pointer;" onclick="openPurchaseModal('${esc(inv.id)}')"><td class="mono ta" style="font-size:11px;">${esc(inv.purchase_no)}</td><td>${esc(inv.supplier_name||inv.supplier_id||'-')}<br><span class="tm" style="font-size:10px;">${rows.length} รายการ</span>${stockBadge}</td><td>${esc(inv.invoice_no||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('pur-${esc(inv.id)}',event)">...</button><div class="action-menu" id="pur-${esc(inv.id)}">${confirmBtn}<button onclick="openPurchaseModal('${esc(inv.id)}')">แก้ไข/ดูรายการ</button>${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deletePurchaseInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบบิลซื้อ</button></div></td></tr>`;
   }).join('');
 }
 function blankPurchaseItem(){
@@ -4139,8 +4231,37 @@ function renderSalesTax(){
     const prBtns=salesInvoiceJobs(inv).map(p=>`<button class="btn btn-ghost btn-sm" onclick="openDet('${esc(p)}')">${esc(p)}</button>`).join(' ')||'-';
     const dt=inv.doc_type||'tax_invoice';const dmeta=SALES_DOC_META[dt]||SALES_DOC_META.tax_invoice;
     const nextType=SALES_DOC_NEXT[dt];const nextMeta=nextType&&nextType!==dt?SALES_DOC_META[nextType]:null;
-    return `<tr><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;">${prBtns}</td><td>${esc(inv.customer_name||inv.customer_id||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesModal('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}</div></td></tr>`;
+    const firstPr=salesInvoiceJobs(inv)[0]||'';
+    return `<tr${firstPr?` style="cursor:pointer;" onclick="openDet('${esc(firstPr)}')"`:''}><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;" onclick="event.stopPropagation()">${prBtns}</td><td>${esc(inv.customer_name||inv.customer_id||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesModal('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
   }).join('');
+}
+// ลบ (ยกเลิก) บิลขาย — soft cancel ทั้งเอกสารและรายการ
+async function deleteSalesInvoice(id){
+  const inv=salesInvoices.find(x=>x.id===id);if(!inv)return;
+  if(!confirm(`ลบเอกสาร ${inv.doc_no||inv.sales_invoice_no||id}?\nรายการนี้จะถูกยกเลิก (ไม่แสดงในรายงาน)`))return;
+  try{
+    const r=await fetch(splitUrl('sales_invoices',`?id=eq.${encodeURIComponent(id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
+    if(!r.ok)throw new Error(await r.text());
+    for(const it of salesInvoiceItems.filter(x=>x.sales_invoice_id===id&&x.status!=='cancelled')){
+      await fetch(splitUrl('sales_invoice_items',`?id=eq.${encodeURIComponent(it.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
+    }
+    writeAuditLog('delete_sales_invoice','sales_invoice',id,inv,{status:'cancelled'},{...inv,status:'cancelled'});
+    accountingLoaded=false;await ensureAccountingLoaded(true);renderSalesTax();
+  }catch(e){alert('ลบเอกสารไม่สำเร็จ: '+e.message);}
+}
+// ลบ (ยกเลิก) บิลซื้อ
+async function deletePurchaseInvoice(id){
+  const inv=purchaseInvoices.find(x=>x.id===id);if(!inv)return;
+  if(!confirm(`ลบบิลซื้อ ${inv.purchase_no||id}?\nรายการนี้จะถูกยกเลิก (ไม่แสดงในรายงาน)`))return;
+  try{
+    const r=await fetch(splitUrl('purchase_invoices',`?id=eq.${encodeURIComponent(id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
+    if(!r.ok)throw new Error(await r.text());
+    for(const it of purchaseItems.filter(x=>x.purchase_invoice_id===id&&x.status!=='cancelled')){
+      await fetch(splitUrl('purchase_items',`?id=eq.${encodeURIComponent(it.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
+    }
+    writeAuditLog('delete_purchase_invoice','purchase_invoice',id,inv,{status:'cancelled'},{...inv,status:'cancelled'});
+    accountingLoaded=false;await ensureAccountingLoaded(true);renderPurchaseTax();
+  }catch(e){alert('ลบบิลซื้อไม่สำเร็จ: '+e.message);}
 }
 async function openSalesForJob(jobId){
   await Promise.all([
@@ -5772,14 +5893,16 @@ async function openPartModal(i=''){await ensurePartsLoaded();editPartIndex=i;ren
 function renderClients() {
   updateSystemUpdated();
   fillSelects();
-  document.getElementById('cl-tbody').innerHTML = clients.map((c,i)=>`
-    <tr><td class="mono ta" style="font-size:11px;">${esc(c.id)}</td><td style="font-weight:600;">${esc(c.name)}</td><td><span class="chip">${esc(c.payTerm)}</span></td><td>${esc(c.contact)}</td><td class="mono" style="font-size:12px;">${esc(c.phone)}</td><td><span class="badge b-done">ใช้งาน</span></td>${actionCell('clm',i,`<button onclick="alert(detailText(clients[${i}]))">ดูดีเทล</button><button onclick="openClientModal(${i})">แก้ไข</button><button onclick="openAddPricing('${esc(c.name)}')">+ ราคากลาง</button><button onclick="delClient(${i})">ลบ</button>`)}</tr>`).join('');
+  const tb=document.getElementById('cl-tbody');
+  if(tb)tb.innerHTML = clients.map((c,i)=>`
+    <tr style="cursor:pointer;" onclick="openClientModal(${i})"><td class="mono ta" style="font-size:11px;">${esc(c.id)}</td><td style="font-weight:600;">${esc(c.name)}</td><td><span class="chip">${esc(c.payTerm)}</span></td><td>${esc(c.contact)}</td><td class="mono" style="font-size:12px;">${esc(c.phone)}</td><td><span class="badge b-done">ใช้งาน</span></td>${actionCell('clm',i,`<button onclick="event.stopPropagation();openClientModal(${i})">แก้ไข</button><button onclick="event.stopPropagation();delClient(${i})">ลบ</button>`)}</tr>`).join('');
   renderPricing();
 }
 function renderPricing() {
+  const tb=document.getElementById('price-tbody');if(!tb)return; // section ราคากลางถูกย้ายออก — คงฟังก์ชันไว้กัน reference เดิมพัง
   const f = document.getElementById('cl-filter')?.value || '';
   const fil = f ? pricing.filter(p=>p.client===f) : pricing;
-  document.getElementById('price-tbody').innerHTML = fil.map(p=>{const i=pricing.indexOf(p);return `<tr><td>${esc(p.client)}</td><td><span class="chip">${esc(p.type)}</span></td><td class="mono fw7 ta">฿${p.price.toLocaleString()}</td><td class="tm" style="font-size:12px;">${esc(p.note||'-')}</td>${actionCell('prm',i,`<button onclick="alert(detailText(pricing[${i}]))">ดูดีเทล</button><button onclick="editPricing(${i})">แก้ไข</button><button onclick="delPricing(${i})">ลบ</button>`)}</tr>`;}).join('');
+  tb.innerHTML = fil.map(p=>{const i=pricing.indexOf(p);return `<tr><td>${esc(p.client)}</td><td><span class="chip">${esc(p.type)}</span></td><td class="mono fw7 ta">฿${p.price.toLocaleString()}</td><td class="tm" style="font-size:12px;">${esc(p.note||'-')}</td>${actionCell('prm',i,`<button onclick="alert(detailText(pricing[${i}]))">ดูดีเทล</button><button onclick="editPricing(${i})">แก้ไข</button><button onclick="delPricing(${i})">ลบ</button>`)}</tr>`;}).join('');
 }
 function openAddPricing(clientName) {document.getElementById('fp-client').value = clientName;document.getElementById('fp-price').value='';document.getElementById('fp-note').value='';openM('m-pricing');}
 function editPricing(i) {const p = pricing[i];document.getElementById('fp-client').value = p.client;document.getElementById('fp-type').value = p.type;document.getElementById('fp-price').value = p.price;document.getElementById('fp-note').value = p.note;openM('m-pricing');}
