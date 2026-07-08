@@ -1249,6 +1249,17 @@ select option{background:var(--surface2);}
   </div>
 </div>
 
+<!-- DOCUMENT PREVIEW MODAL -->
+<div class="modal-overlay" id="m-doc-preview">
+  <div class="modal" style="max-width:1040px;">
+    <div class="modal-header"><div><div class="modal-title" id="doc-preview-title">พรีวิวเอกสาร</div><div class="tm" style="font-size:11px;margin-top:2px;" id="doc-preview-sub"></div></div><button class="close-btn" onclick="closeM('m-doc-preview')">×</button></div>
+    <div class="modal-body" style="padding:0;">
+      <div id="doc-preview-actions" style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--border);"></div>
+      <iframe id="doc-preview-frame" title="พรีวิวเอกสาร" style="width:100%;height:64vh;border:0;background:#fff;display:block;"></iframe>
+    </div>
+  </div>
+</div>
+
 <!-- FIXED EXPENSE MODAL -->
 <div class="modal-overlay" id="m-fixed">
   <div class="modal">
@@ -4045,7 +4056,7 @@ function renderPurchaseTax(){
     const stockPending=stockRows.filter(x=>!x.stock_received).length;
     const stockBadge=stockRows.length?(stockPending?`<br><span class="badge b-unpaid" style="font-size:9px;">รอรับเข้า stock ${stockPending}</span>`:`<br><span class="badge b-paid" style="font-size:9px;">รับเข้า stock แล้ว</span>`):'';
     const confirmBtn=stockPending?`<button onclick="confirmPurchaseStockIn('${esc(inv.id)}')">✓ ยืนยันรับเข้า Stock</button>`:'';
-    return `<tr style="cursor:pointer;" onclick="openPurchaseModal('${esc(inv.id)}')"><td class="mono ta" style="font-size:11px;">${esc(inv.purchase_no)}</td><td>${esc(inv.supplier_name||inv.supplier_id||'-')}<br><span class="tm" style="font-size:10px;">${rows.length} รายการ</span>${stockBadge}</td><td>${esc(inv.invoice_no||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('pur-${esc(inv.id)}',event)">...</button><div class="action-menu" id="pur-${esc(inv.id)}">${confirmBtn}<button onclick="openPurchaseModal('${esc(inv.id)}')">แก้ไข/ดูรายการ</button>${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deletePurchaseInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบบิลซื้อ</button></div></td></tr>`;
+    return `<tr style="cursor:pointer;" onclick="openPurchaseDocPreview('${esc(inv.id)}')"><td class="mono ta" style="font-size:11px;">${esc(inv.purchase_no)}</td><td>${esc(inv.supplier_name||inv.supplier_id||'-')}<br><span class="tm" style="font-size:10px;">${rows.length} รายการ</span>${stockBadge}</td><td>${esc(inv.invoice_no||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('pur-${esc(inv.id)}',event)">...</button><div class="action-menu" id="pur-${esc(inv.id)}">${confirmBtn}<button onclick="openPurchaseModal('${esc(inv.id)}')">แก้ไข/ดูรายการ</button>${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deletePurchaseInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบบิลซื้อ</button></div></td></tr>`;
   }).join('');
 }
 function blankPurchaseItem(){
@@ -4247,7 +4258,7 @@ function renderSalesTax(){
     const dt=inv.doc_type||'tax_invoice';const dmeta=SALES_DOC_META[dt]||SALES_DOC_META.tax_invoice;
     const nextType=SALES_DOC_NEXT[dt];const nextMeta=nextType&&nextType!==dt?SALES_DOC_META[nextType]:null;
     const firstPr=salesInvoiceJobs(inv)[0]||'';
-    return `<tr${firstPr?` style="cursor:pointer;" onclick="openDet('${esc(firstPr)}')"`:''}><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;" onclick="event.stopPropagation()">${prBtns}</td><td>${esc(inv.customer_name||inv.customer_id||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesModal('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
+    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;" onclick="event.stopPropagation()">${prBtns}</td><td>${esc(inv.customer_name||inv.customer_id||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesModal('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
   }).join('');
 }
 // ลบ (ยกเลิก) บิลขาย — soft cancel ทั้งเอกสารและรายการ
@@ -4322,6 +4333,69 @@ function convertSalesDoc(id,toType){
   renderSalesItemEditor();
 }
 // พิมพ์ / บันทึก PDF เอกสารขายตามชนิด
+// ===== พรีวิวเอกสารใน modal (คลิกที่ list บิลซื้อ/ขาย) =====
+function salesDocHtmlFor(inv,items){
+  const useBoq=inv.doc_type==='quotation'&&(inv.doc_template||'boq')!=='modern';
+  return useBoq?boqQuoteDocHtml(inv,items):salesDocHtml(inv,items);
+}
+function openSalesDocPreview(id){
+  const inv=salesInvoices.find(x=>x.id===id);if(!inv)return;
+  const items=salesInvoiceItems.filter(x=>x.sales_invoice_id===id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0));
+  const meta=SALES_DOC_META[inv.doc_type||'tax_invoice']||SALES_DOC_META.tax_invoice;
+  const firstPr=salesInvoiceJobs(inv)[0]||'';
+  document.getElementById('doc-preview-title').textContent=meta.title+' · '+esc(inv.doc_no||inv.sales_invoice_no||'');
+  document.getElementById('doc-preview-sub').textContent=(inv.customer_name||inv.customer_id||'-')+' · ฿'+money(inv.total_amount);
+  document.getElementById('doc-preview-actions').innerHTML=
+    `<button class="btn btn-primary btn-sm" onclick="closeM('m-doc-preview');openSalesModal('${esc(id)}')">✏️ แก้ไขเอกสาร</button>`
+    +`<button class="btn btn-success btn-sm" onclick="printSalesDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`
+    +(firstPr?`<button class="btn btn-ghost btn-sm" onclick="matchFinanceFromSales('${esc(firstPr)}')">🔗 ดึงราคาเข้าการเงิน</button>`:'');
+  document.getElementById('doc-preview-frame').srcdoc=salesDocHtmlFor(inv,items);
+  openM('m-doc-preview');
+}
+function openPurchaseDocPreview(id){
+  const inv=purchaseInvoices.find(x=>x.id===id);if(!inv)return;
+  const items=purchaseItems.filter(x=>x.purchase_invoice_id===id&&x.status!=='cancelled');
+  document.getElementById('doc-preview-title').textContent='บิลซื้อ · '+esc(inv.purchase_no||inv.id||'');
+  document.getElementById('doc-preview-sub').textContent=(inv.supplier_name||inv.supplier_id||'-')+' · ฿'+money(inv.total_amount);
+  document.getElementById('doc-preview-actions').innerHTML=
+    `<button class="btn btn-primary btn-sm" onclick="closeM('m-doc-preview');openPurchaseModal('${esc(id)}')">✏️ แก้ไข / ดูรายการ</button>`
+    +`<button class="btn btn-success btn-sm" onclick="printPurchaseDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`
+    +(inv.file_url?`<button class="btn btn-ghost btn-sm" onclick="window.open('${esc(inv.file_url)}','_blank')">📎 เปิดไฟล์แนบ</button>`:'');
+  document.getElementById('doc-preview-frame').srcdoc=purchaseDocHtml(inv,items);
+  openM('m-doc-preview');
+}
+function printPurchaseDoc(id){
+  const inv=purchaseInvoices.find(x=>x.id===id);if(!inv)return;
+  const items=purchaseItems.filter(x=>x.purchase_invoice_id===id&&x.status!=='cancelled');
+  generateDocWindow(purchaseDocHtml(inv,items));
+}
+function purchaseDocHtml(inv,items){
+  const rows=(items||[]).map((it,i)=>`<tr><td class="c">${i+1}</td><td>${esc(it.item_name||'')}</td><td class="c">${esc(it.job_id||'')}</td><td class="c">${it.quantity?money(it.quantity):''}</td><td class="c">${esc(it.unit||'')}</td><td class="r">${money(it.unit_price||0)}</td><td class="r">${money(it.subtotal||(Number(it.quantity||0)*Number(it.unit_price||0)))}</td></tr>`).join('');
+  const blank=Math.max(0,8-(items||[]).length);
+  const blankRows=Array.from({length:blank}).map(()=>`<tr><td class="c">&nbsp;</td><td></td><td></td><td></td><td></td><td class="r"></td><td class="r"></td></tr>`).join('');
+  return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>บิลซื้อ ${esc(inv.purchase_no||'')}</title>
+<style>@page{size:A4 portrait;margin:0;}*{box-sizing:border-box;font-family:'Noto Sans Thai',Arial,sans-serif;}body{margin:0;background:#edf2f7;color:#111820;font-size:12px;}
+.toolbar{position:fixed;top:0;left:0;right:0;background:#1f2937;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;z-index:2;}
+.toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;}.btn-print{background:#3fb950;color:#fff;}.btn-ghost{background:#374151;color:#fff;margin-right:6px;}
+.sheet{width:210mm;min-height:297mm;margin:52px auto 16px;background:#fff;padding:16mm 15mm;box-shadow:0 12px 34px rgba(16,24,40,.16);}
+.htitle{font-size:20px;font-weight:900;text-align:center;margin-bottom:4px;}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin:14px 0;font-size:13px;}
+table.items{width:100%;border-collapse:collapse;margin-top:8px;}
+.items th{background:#666;color:#fff;font-weight:800;font-size:12px;padding:6px 4px;border:1px solid #d4dbe5;}
+.items td{border:1px solid #d4dbe5;padding:5px 6px;height:8mm;}
+.c{text-align:center;}.r{text-align:right;}
+.tot{margin-top:10px;margin-left:auto;width:70mm;border-collapse:collapse;}
+.tot td{padding:4px 6px;border:1px solid #d4dbe5;}.tot .g{background:#666;color:#fff;font-weight:800;}
+@media print{body{background:#fff;}.toolbar{display:none;}.sheet{margin:0;box-shadow:none;}}</style></head>
+<body><div class="toolbar"><div>บิลซื้อ · ${esc(inv.purchase_no||'')}</div><div><button class="btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
+<div class="sheet">
+<div class="htitle">บิลซื้อ / ใบรับสินค้า</div>
+<div class="meta"><div><b>ผู้ขาย:</b> ${esc(inv.supplier_name||'-')}</div><div><b>เลขที่บิลซื้อ:</b> ${esc(inv.purchase_no||'-')}</div><div><b>Tax ID:</b> ${esc(inv.supplier_tax_id||'-')}</div><div><b>เลขที่ใบกำกับ:</b> ${esc(inv.invoice_no||'-')}</div><div><b>วันที่:</b> ${esc(inv.invoice_date||'-')}</div><div><b>สถานะจ่าย:</b> ${esc(inv.payment_status||'-')}</div></div>
+<table class="items"><thead><tr><th style="width:10mm;">ลำดับ</th><th>รายการ</th><th style="width:26mm;">PR</th><th style="width:18mm;">จำนวน</th><th style="width:16mm;">หน่วย</th><th style="width:26mm;">ราคา/หน่วย</th><th style="width:30mm;">รวม</th></tr></thead><tbody>${rows||''}${blankRows}</tbody></table>
+<table class="tot"><tr><td>ยอดก่อน VAT</td><td class="r">${money(inv.subtotal||0)}</td></tr><tr><td>VAT</td><td class="r">${money(inv.vat_amount||0)}</td></tr><tr class="g"><td>รวมทั้งสิ้น</td><td class="r">${money(inv.total_amount||0)}</td></tr></table>
+${inv.note?`<div style="margin-top:12px;"><b>หมายเหตุ:</b> ${esc(inv.note)}</div>`:''}
+</div></body></html>`;
+}
 function printSalesDoc(id){
   const inv=salesInvoices.find(x=>x.id===id);if(!inv)return;
   const items=salesInvoiceItems.filter(x=>x.sales_invoice_id===id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0));
@@ -6561,11 +6635,18 @@ function imageChunks(items,size){
   return chunks;
 }
 function generateDocWindow(html){
-  const w=window.open('','_blank');
-  if(!w){alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+  // เปิดเป็นแท็บใหม่จริง (blob URL) — ไม่โดนมองเป็น popup เล็ก
+  try{
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const w=window.open(url,'_blank');
+    if(!w){URL.revokeObjectURL(url);alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(e){
+    const w=window.open('','_blank');
+    if(!w){alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+    w.document.open();w.document.write(html);w.document.close();
+  }
 }
 function acceptanceReportHtml(j){
   const logo=new URL('assets/profix-logo-dark.svg',location.href).href;
