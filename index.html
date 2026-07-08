@@ -4322,7 +4322,123 @@ function convertSalesDoc(id,toType){
 function printSalesDoc(id){
   const inv=salesInvoices.find(x=>x.id===id);if(!inv)return;
   const items=salesInvoiceItems.filter(x=>x.sales_invoice_id===id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0));
-  generateDocWindow(salesDocHtml(inv,items));
+  // ใบเสนอราคาใช้ฟอร์ม BOQ (แนวนอน) ตามแบบฟอร์มบริษัท — ประเภทอื่นใช้เทมเพลตเดิม
+  generateDocWindow((inv.doc_type==='quotation')?boqQuoteDocHtml(inv,items):salesDocHtml(inv,items));
+}
+// ===== ฟอร์มใบเสนอราคา BOQ (แนวนอน A4) — เลียนแบบ FM-SS-013 =====
+function boqQuoteDocHtml(inv,items){
+  const company=salesDocCompanyInfo(inv);
+  const customer=salesDocCustomerInfo(inv);
+  const jobList=salesInvoiceJobs(inv);
+  const firstPr=jobList[0]||'';
+  const job=(jobs||[]).find(j=>String(j.id)===String(firstPr)&&!isDeletedRecord(j));
+  const branchText=[...new Set(jobList.map(pr=>{const jj=(jobs||[]).find(j=>String(j.id)===String(pr)&&!isDeletedRecord(j));return jj?jj.branch:'';}).filter(Boolean))].join(', ')||(job?.branch||'');
+  const jobDetail=inv.note||job?.note||job?.report||'';
+  const cause=job?.technicianReport?.cause||job?.symptom||job?.cause||'';
+  const fix=job?.technicianReport?.fix||job?.fix||'';
+  const lineSubtotal=items.reduce((s,it)=>s+Number(it.subtotal||0),0);
+  const overheadEnabled=!(inv.overhead_enabled===false||inv.overhead_enabled==='false');
+  const overheadRate=overheadEnabled?Number(inv.overhead_rate??salesOverheadRateBySubtotal(lineSubtotal)):0;
+  const overheadAmount=overheadEnabled?Number(inv.overhead_amount??Math.round(lineSubtotal*overheadRate)/100):0;
+  const afterOverhead=lineSubtotal+overheadAmount;
+  const travelKm=Number(inv.travel_km||0),travelRate=Number(inv.travel_rate||0);
+  const travelAmount=Number(inv.travel_amount??Math.round(travelKm*travelRate*100)/100);
+  const sla=salesSlaMeta(inv.sla_status||'ontime');
+  const slaAmount=Number(inv.sla_fee_amount??sla.amount);
+  const normalFee=(inv.sla_status==='late')?slaAmount:0;
+  const urgentFee=(inv.sla_status==='ontime')?slaAmount:0;
+  const slaNote=inv.sla_status==='late'?'ไม่ทัน SLA':(inv.sla_status==='ontime'?'ทัน SLA':'');
+  const grandBeforeVat=Number(inv.subtotal??(afterOverhead+travelAmount+slaAmount));
+  const vat=Number(inv.vat_amount||0);
+  const total=Number(inv.total_amount||(grandBeforeVat+vat));
+  const bahtText=thaiBahtText(total);
+  const dateText=quoteDateText(inv.invoice_date||todayISO());
+  const docNo=inv.doc_no||inv.sales_invoice_no||'';
+  const travelRoute=travelKm||travelAmount?`${esc(company.branch||'ศูนย์')} ถึง ${esc(branchText||'-')}`:'';
+  const laborRe=/ค่าแรง|บริการ|แรง|service|labor|ติดตั้ง|ล้าง|ซ่อม|ดำเนินการ|งานบริการ/i;
+  const itemRows=items.map((it,i)=>{
+    const isLabor=laborRe.test(String(it.category||''))||laborRe.test(String(it.description||''));
+    const amt=Number(it.subtotal||0);
+    const mat=(!isLabor&&amt)?money(amt):'-';
+    const lab=(isLabor&&amt)?money(amt):'-';
+    return `<tr><td class="c">${i+1}</td><td>${esc(it.category||'')}</td><td class="c">${esc(it.item_code||'')}</td><td>${esc(it.description||'')}</td><td class="c">${esc(it.unit||'')}</td><td class="c">${it.quantity?money(it.quantity):''}</td><td class="r">${mat}</td><td class="r">${lab}</td><td class="r">${amt?money(amt):'-'}</td></tr>`;
+  }).join('');
+  const blank=Math.max(0,12-items.length);
+  const blankRows=Array.from({length:blank}).map(()=>`<tr><td class="c">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td class="r">-</td><td class="r">-</td><td class="r">-</td></tr>`).join('');
+  return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>ใบเสนอราคา ${esc(docNo)}</title>
+<style>@page{size:A4 landscape;margin:0;}*{box-sizing:border-box;font-family:'Noto Sans Thai',Arial,sans-serif;}
+body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
+.toolbar{position:fixed;top:0;left:0;right:0;background:#1f2937;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;z-index:2;}
+.toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;}.btn-print{background:#3fb950;color:#fff;}.btn-ghost{background:#374151;color:#fff;margin-right:6px;}
+.sheet{width:297mm;min-height:210mm;margin:52px auto 16px;background:#fff;padding:7mm 7mm 5mm;box-shadow:0 10px 30px rgba(0,0,0,.15);}
+.grid{width:100%;border-collapse:collapse;table-layout:fixed;}
+.grid td,.grid th{border:1px solid #000;padding:2px 5px;vertical-align:middle;word-wrap:break-word;}
+.k{font-weight:700;text-align:center;background:#fafafa;font-size:10.5px;}
+.company{text-align:center;}
+.company .cbig{font-weight:800;font-size:13px;margin-bottom:2px;}
+.company div{line-height:1.4;}
+.items th{background:#f0f0f0;font-weight:800;text-align:center;font-size:10.5px;}
+.items td{height:6.2mm;}
+.c{text-align:center;}.r{text-align:right;}
+.title{text-align:center;font-weight:800;font-size:15px;margin:0 0 4px;}
+.notes .k{text-align:left;}
+.baht{text-align:center;font-weight:800;padding:6px 0 2px;}
+.totals{width:100%;border-collapse:collapse;}
+.totals td{border:1px solid #000;padding:3px 6px;}
+.totals .tk{font-weight:700;}.totals .tv{text-align:right;font-variant-numeric:tabular-nums;}
+.totals .gr{background:#666;color:#fff;font-weight:800;font-size:12px;}
+.formno{text-align:right;font-size:10px;margin-top:4px;color:#333;}
+@media print{body{background:#fff;}.toolbar{display:none;}.sheet{margin:0;box-shadow:none;width:297mm;min-height:205mm;}}
+</style></head>
+<body>
+<div class="toolbar"><div>ใบเสนอราคา · ${esc(docNo)}</div><div><button class="btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
+<div class="sheet">
+<div class="title">ใบเสนอราคา / Quotation</div>
+<table class="grid">
+  <colgroup><col style="width:58%"><col style="width:16%"><col style="width:26%"></colgroup>
+  <tr><td class="company" rowspan="4"><div class="cbig">${esc(company.name)}${company.branch?` (${esc(company.branch)})`:''}</div><div>${esc(company.address||'')}</div><div>โทร ${esc(company.phone||'-')}&nbsp;&nbsp;เลขประจำตัวผู้เสียภาษี ${esc(company.taxId||'-')}</div></td><td class="k">Work Order NO.</td><td class="c">${esc(firstPr)}</td></tr>
+  <tr><td class="k">เลขที่ใบแจ้งซ่อม</td><td class="c">${esc(jobList.join(', '))}</td></tr>
+  <tr><td class="k">Quotation NO.</td><td class="c">${esc(docNo)}</td></tr>
+  <tr><td class="k">Date Issued</td><td class="c">${esc(dateText)}</td></tr>
+</table>
+<table class="grid">
+  <colgroup><col style="width:12%"><col style="width:46%"><col style="width:9%"><col style="width:15%"><col style="width:8%"><col style="width:10%"></colgroup>
+  <tr><td class="k" rowspan="2">รายละเอียดงาน :</td><td rowspan="2" style="text-align:left;vertical-align:top;">${esc(jobDetail||'-')}</td><td class="k">สาขา :</td><td>${esc(branchText||'-')}</td><td class="k">จังหวัด :</td><td>${esc(customer.province||'')}</td></tr>
+  <tr><td class="k">ศูนย์ที่</td><td>${esc(company.branch||'')}</td><td class="k">จังหวัด :</td><td></td></tr>
+</table>
+<table class="grid items">
+  <colgroup><col style="width:4%"><col style="width:11%"><col style="width:7%"><col style="width:37%"><col style="width:6%"><col style="width:7%"><col style="width:9%"><col style="width:9%"><col style="width:10%"></colgroup>
+  <thead><tr><th>NO.</th><th>หมวด</th><th>ลำดับ<br>ราคากลาง</th><th>Bill Of Quantities</th><th>หน่วย</th><th>ปริมาณ</th><th>ค่าของ</th><th>ค่าแรง</th><th>รวม</th></tr></thead>
+  <tbody>${itemRows}${blankRows}</tbody>
+</table>
+<table class="grid">
+  <colgroup><col style="width:62%"><col style="width:38%"></colgroup>
+  <tr><td class="notes" style="vertical-align:top;padding:0;">
+    <table class="grid" style="border:0;"><colgroup><col style="width:22%"><col style="width:78%"></colgroup>
+      <tr><td class="k" style="border-left:0;border-top:0;">หมายเหตุ :</td><td style="border-top:0;border-right:0;text-align:left;"></td></tr>
+      <tr><td class="k" style="border-left:0;">สาเหตุ</td><td style="border-right:0;text-align:left;">${esc(cause||'')}</td></tr>
+      <tr><td class="k" style="border-left:0;">การแก้ไข</td><td style="border-right:0;text-align:left;">${esc(fix||'')}</td></tr>
+      <tr><td class="k" style="border-left:0;">ผู้จัดทำ</td><td style="border-right:0;text-align:left;">${esc(inv.seller_name||'')}</td></tr>
+      <tr><td class="k" style="border-left:0;border-bottom:0;">ค่าเดินทาง :</td><td style="border-right:0;border-bottom:0;text-align:left;">${travelRoute}${travelKm?` (${money(travelKm)} กม.)`:''}</td></tr>
+    </table>
+    <div class="baht">( ${esc(bahtText)} )</div>
+  </td>
+  <td style="vertical-align:top;padding:0;">
+    <table class="totals">
+      <tr><td class="tk">รวม</td><td class="tv">${money(lineSubtotal)}</td></tr>
+      <tr><td class="tk">Overhead ${money(overheadRate)}%</td><td class="tv">${money(overheadAmount)}</td></tr>
+      <tr><td class="tk">ราคารวม Overhead</td><td class="tv">${money(afterOverhead)}</td></tr>
+      <tr><td class="tk">ค่าดำเนินการปกติ ${slaNote==='ไม่ทัน SLA'?'<span style="font-weight:400;font-size:9px;">('+slaNote+')</span>':''}</td><td class="tv">${money(normalFee)}</td></tr>
+      <tr><td class="tk">ค่าดำเนินการเร่งด่วน ${slaNote==='ทัน SLA'?'<span style="font-weight:400;font-size:9px;">('+slaNote+')</span>':''}</td><td class="tv">${money(urgentFee)}</td></tr>
+      <tr><td class="tk">ค่าเดินทาง</td><td class="tv">${money(travelAmount)}</td></tr>
+      <tr><td class="tk">รวมทั้งหมด</td><td class="tv">${money(grandBeforeVat)}</td></tr>
+      <tr><td class="tk">VAT 7%</td><td class="tv">${money(vat)}</td></tr>
+      <tr><td class="tk gr">รวมราคาทั้งสิ้น</td><td class="tv gr">${money(total)}</td></tr>
+    </table>
+  </td></tr>
+</table>
+<div class="formno">FM-SS-013 Rev.02</div>
+</div></body></html>`;
 }
 function salesDocHtml(inv,items){
   const meta=SALES_DOC_META[inv.doc_type||'tax_invoice']||SALES_DOC_META.tax_invoice;
@@ -4500,7 +4616,7 @@ function renderSalesSignerLists(){
     const sel=document.getElementById(salesSignerSelectId(which));if(!sel)return;
     const cur=document.getElementById(salesSignerNameId(which))?.value||'';
     const opts=['<option value="">— ไม่ระบุผู้เซ็น —</option>'];
-    (salesSignerProfiles||[]).forEach(s=>{opts.push(`<option value="${esc(s.name)}"${String(s.name)===cur?' selected':''}>${esc(s.name)}${s.signature?' ✍':''}</option>`);});
+    (salesSignerProfiles||[]).forEach(s=>{opts.push(`<option value="${esc(s.name)}"${String(s.name)===cur?' selected':''}>${esc(s.name)}</option>`);});
     if(cur&&!(salesSignerProfiles||[]).some(s=>String(s.name)===cur))opts.push(`<option value="${esc(cur)}" selected>${esc(cur)}</option>`);
     opts.push('<option value="__add__">➕ เพิ่มผู้เซ็นใหม่...</option>');
     sel.innerHTML=opts.join('');
