@@ -1985,11 +1985,12 @@ function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
     technicianReport:tr
   };
 }
-async function loadTechnicianReportTables(){
-  const [reportRows,imageRows]=await Promise.all([
-    sbFetchAll('technician_reports','?select=id,report_id,job_id,round_id,status,review_status,is_draft,report_data,submitted_at,draft_saved_at,updated_at&order=updated_at.desc'),
-    sbFetchAll('technician_report_images','?select=id,report_id,job_id,category,url,data,uploaded_at,updated_at&order=updated_at.asc')
-  ]);
+// โหมดเอกสารเต็มหน้า (เปิดจาก ?sales=) — โหลดข้อมูลเฉพาะที่ฟอร์มเอกสารต้องใช้ ให้เร็วขึ้น
+function isDocModeLight(){try{return new URLSearchParams(location.search).has('sales');}catch(e){return false;}}
+async function loadTechnicianReportTables(skipImages=false){
+  const reportRows=await sbFetchAll('technician_reports','?select=id,report_id,job_id,round_id,status,review_status,is_draft,report_data,submitted_at,draft_saved_at,updated_at&order=updated_at.desc');
+  // รูปรายงานช่างหนักสุด — ข้ามในโหมดเอกสาร (ฟอร์มบิลขายไม่ใช้รูป ใช้แค่สาเหตุ/การแก้ไขซึ่งอยู่ใน report_data)
+  const imageRows=skipImages?[]:await sbFetchAll('technician_report_images','?select=id,report_id,job_id,category,url,data,uploaded_at,updated_at&order=updated_at.asc');
   if(!reportRows.length)return;
   const latestByJob=new Map();
   reportRows.forEach(r=>{
@@ -2008,14 +2009,15 @@ async function loadTechnicianReportTables(){
 async function loadSplitState(){
   if(!SPLIT_TABLES_ENABLED)return false;
   const masterFetch=c=>knownMissingTables.has(c.table)?Promise.resolve(null):sbFetchAll(c.table,'?select=id,data,updated_at').catch(e=>{const m=e?.message||'';if(/find the table|does not exist|42P01|PGRST205|schema cache|relation/i.test(m)){knownMissingTables.add(c.table);console.warn(`[skip] ตาราง ${c.table} ยังไม่ถูกสร้าง — รัน migration phase 4 แล้วรีโหลด`);}return null;});
+  const docLight=isDocModeLight();
   const [jobRows,adminRows,metaRows,...masterResults]=await Promise.all([
     sbFetchAll('jobs','?select=id,data,updated_at&order=updated_at.desc'),
-    sbFetchAll('admin_tasks','?select=id,data,updated_at&order=updated_at.desc'),
+    docLight?Promise.resolve([]):sbFetchAll('admin_tasks','?select=id,data,updated_at&order=updated_at.desc'), // โหมดเอกสารไม่ใช้ tracker
     sbFetchJson('system_data','?id=eq.main&select=id,data,updated_at'),
     ...MASTER_COLLECTIONS.map(masterFetch)
   ]);
   splitTablesOnline=true;
-  const hasData=jobRows.length||adminRows.length;
+  const hasData=jobRows.length||adminRows.length||docLight;
   if(!hasData)return false;
   masterMetaTrusted=true; // เชื่อมต่อ server สำเร็จจริง (jobs/admin/system_data โหลดได้) — ปลอดภัยที่จะ sync master collections
   const masterRowsByKey={};
@@ -2281,7 +2283,7 @@ async function loadState(opts={}){
   try{
     if(await loadSplitState()){
       try{
-        await loadTechnicianReportTables();
+        await loadTechnicianReportTables(isDocModeLight());
       }catch(reportErr){console.warn('Technician report table load failed',reportErr);}
       return;
     }
@@ -4530,7 +4532,7 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
           <tr><td class="k">สาเหตุ</td><td class="tl" colspan="2">${esc(cause||'')}</td></tr>
           <tr><td class="k">การแก้ไข</td><td class="tl" colspan="2">${esc(fix||'')}</td></tr>
           <tr><td class="k">ผู้จัดทำ</td><td class="tl" colspan="2">RM</td></tr>
-          <tr><td class="k">ค่าเดินทาง :</td><td class="tl">${travelRoute||'-'}</td><td class="r" style="font-variant-numeric:tabular-nums;">${money(travelKm)}</td></tr>
+          <tr><td class="k">ค่าเดินทาง :</td><td class="tl" colspan="2">${travelRoute||'-'}${travelKm?` — ${money(travelKm)} กม.`:''}</td></tr>
         </table>
         <div class="baht">( ${esc(bahtText)} )</div>
       </div>
@@ -7278,7 +7280,7 @@ async function initApp(){
     if(duplicateJobsRepairedSinceSave>0){
       saveStateNow(true).then(()=>{duplicateJobsRepairedSinceSave=0;}).catch(e=>console.warn('Duplicate job repair save failed',e));
     }
-    runDailyBackupIfNeeded();
+    if(!isDocModeLight())runDailyBackupIfNeeded(); // โหมดเอกสารไม่ต้องแบ็กอัป
     startRemoteRefresh();
     maybeAutoOpenSalesFromUrl();
   }).catch(e=>{
