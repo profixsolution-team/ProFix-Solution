@@ -4669,6 +4669,17 @@ function bumpDocNo(no){
   if(!m)return String(no||'DOC')+'-2';
   return m[1]+String(parseInt(m[2],10)+1).padStart(m[2].length,'0')+m[3];
 }
+// ถามเลขเอกสารสูงสุดจริงจาก server ตาม prefix (กันเลขซ้ำเมื่อ list ในเครื่องไม่ครบ/มีหลายเครื่องออกบิลพร้อมกัน)
+async function serverMaxSalesNo(prefix){
+  try{
+    const r=await fetch(splitUrl('sales_invoices',`?sales_invoice_no=like.${encodeURIComponent(prefix+'*')}&select=sales_invoice_no`),{headers:sbHeaders()});
+    if(!r.ok)return 0;
+    const rows=await r.json();
+    let max=0;
+    (rows||[]).forEach(x=>{const n=parseInt(String(x.sales_invoice_no||'').slice(prefix.length),10);if(Number.isFinite(n)&&n>max)max=n;});
+    return max;
+  }catch(e){return 0;}
+}
 function onSalesDocTypeChange(docType){
   const meta=SALES_DOC_META[docType]||SALES_DOC_META.tax_invoice;
   const titleEl=document.getElementById('sales-modal-title');
@@ -5142,13 +5153,16 @@ async function saveSalesInvoice(){
     created_by:getActorName(),
     updated_by:getActorName()
     };
-    // บันทึกเอกสาร — ถ้าเลขที่เอกสารชน (unique sales_invoice_no) ให้เพิ่มเลขแล้วลองใหม่อัตโนมัติ
-    for(let attempt=0;attempt<8;attempt++){
+    // บันทึกเอกสาร — ถ้าเลขที่เอกสารชน (unique sales_invoice_no) ให้ถามเลขสูงสุดจริงจาก server แล้วข้ามไปเลขว่างถัดไป
+    for(let attempt=0;attempt<10;attempt++){
       try{await sbUpsertResilient('sales_invoices','?on_conflict=id',inv);break;}
       catch(e){
         const m=String(e?.message||e);
-        if(/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)&&attempt<7){
-          const bumped=bumpDocNo(inv.sales_invoice_no||inv.doc_no||docNo);
+        if(/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)&&attempt<9){
+          const cur=String(inv.sales_invoice_no||inv.doc_no||docNo);
+          const prefix=cur.replace(/\d+\D*$/,'')||(cur+'-'); // เช่น QT-2026-
+          const smax=await serverMaxSalesNo(prefix);
+          const bumped=`${prefix}${String(smax+1+attempt).padStart(3,'0')}`;
           inv.sales_invoice_no=bumped;inv.doc_no=bumped;
           const noEl=document.getElementById('sale-no');if(noEl)noEl.value=bumped;
           setAccountingStatus('sales','เลขเอกสารซ้ำ — เปลี่ยนเป็น '+bumped,'warn');
