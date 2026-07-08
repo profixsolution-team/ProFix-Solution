@@ -13,6 +13,15 @@ body[data-theme="light"]{--bg:#f5f7fb;--surface:#ffffff;--surface2:#eef3f8;--sur
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;}
 .app{display:flex;min-height:100vh;}
+/* โหมดเอกสารเต็มหน้า (เปิดในแท็บใหม่เฉพาะทำเอกสาร) — ซ่อน sidebar/หน้าอื่น เห็นแต่ฟอร์มเอกสาร */
+html.doc-mode .mobile-topbar,html.doc-mode .sidebar,html.doc-mode .sidebar-backdrop{display:none !important;}
+html.doc-mode .app{display:block;}
+html.doc-mode .main{width:100% !important;margin:0 !important;}
+html.doc-mode .page{display:none !important;}
+html.doc-mode #m-sales.modal-overlay{background:var(--bg);}
+html.doc-mode #m-sales .modal.accounting-modal{max-width:1180px;width:96%;margin:14px auto;}
+html.doc-mode #doc-mode-bar{display:flex;}
+#doc-mode-bar{display:none;position:sticky;top:0;z-index:1200;align-items:center;justify-content:space-between;gap:10px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);}
 .sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
 .main{flex:1;overflow-x:hidden;min-width:0;}
 .mobile-topbar{display:none;position:sticky;top:0;z-index:900;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 12px;align-items:center;gap:10px;}
@@ -412,6 +421,8 @@ select option{background:var(--surface2);}
 </style>
 </head>
 <body>
+<script>if(new URLSearchParams(location.search).has('sales'))document.documentElement.classList.add('doc-mode');</script>
+<div id="doc-mode-bar"><div style="font-weight:800;color:var(--accent);">📄 ทำเอกสาร (แท็บเฉพาะ)</div><button class="btn btn-ghost btn-sm" onclick="window.close()">✕ ปิดแท็บ</button></div>
 <div class="app-loader" id="app-loader" aria-live="polite" aria-label="กำลังโหลด">
   <div class="loader-card">
     <img class="logo-dark" src="assets/profix-icon.svg" alt="ProFix">
@@ -4296,6 +4307,7 @@ async function maybeAutoOpenSalesFromUrl(){
   const sp=new URLSearchParams(location.search);
   if(!sp.has('sales'))return;
   salesUrlOpened=true;
+  salesDocKioskMode=true;
   const sid=sp.get('sales')||'new', dtype=sp.get('doctype')||'quotation', pr=sp.get('pr')||'';
   try{await Promise.all([ensureAccountingLoaded().catch(()=>{}),ensurePartsLoaded().catch(()=>{})]);}catch(e){}
   goTo('sales-tax');
@@ -4461,61 +4473,59 @@ function boqQuoteDocHtml(inv,items){
   }).join('');
   const blank=Math.max(0,12-items.length);
   const blankRows=Array.from({length:blank}).map(()=>`<tr><td class="c">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td class="r">-</td><td class="r">-</td><td class="r">-</td></tr>`).join('');
+  // colgroup 9 คอลัมน์ชุดเดียว ใช้ทุกตาราง → เส้นตั้งตรงกันทั้งฟอร์ม
+  const COLS='<colgroup><col style="width:4%"><col style="width:11%"><col style="width:7%"><col style="width:33%"><col style="width:7%"><col style="width:8%"><col style="width:9%"><col style="width:9%"><col style="width:12%"></colgroup>';
   return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>ใบเสนอราคา ${esc(docNo)}</title>
 <style>@page{size:A4 landscape;margin:0;}*{box-sizing:border-box;font-family:'Noto Sans Thai',Arial,sans-serif;}
 body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
 .toolbar{position:fixed;top:0;left:0;right:0;background:#1f2937;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;z-index:2;}
 .toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;}.btn-print{background:#3fb950;color:#fff;}.btn-ghost{background:#374151;color:#fff;margin-right:6px;}
 .sheet{width:297mm;min-height:210mm;margin:52px auto 16px;background:#fff;padding:7mm 7mm 5mm;box-shadow:0 10px 30px rgba(0,0,0,.15);}
-.grid{width:100%;border-collapse:collapse;table-layout:fixed;}
-.grid td,.grid th{border:1px solid #000;padding:2px 5px;vertical-align:middle;word-wrap:break-word;}
-.k{font-weight:700;text-align:center;background:#fafafa;font-size:10.5px;}
+.grid{width:100%;border-collapse:collapse;table-layout:fixed;color:#000;}
+.grid td,.grid th{border:1px solid #000;padding:3px 5px;vertical-align:middle;word-wrap:break-word;color:#000;}
+.k{font-weight:700;text-align:center;background:#f2f2f2;font-size:10.5px;color:#000;}
 .company{text-align:center;}
 .company .cbig{font-weight:800;font-size:13px;margin-bottom:2px;}
 .company div{line-height:1.4;}
-.items th{background:#f0f0f0;font-weight:800;text-align:center;font-size:10.5px;}
-.items td{height:6.2mm;}
+.ihead th{background:#e6e6e6;font-weight:800;text-align:center;font-size:10.5px;color:#000;}
+.irow td{height:6.2mm;}
 .c{text-align:center;}.r{text-align:right;}
-.title{text-align:center;font-weight:800;font-size:15px;margin:0 0 4px;}
-.tk{font-weight:700;}
-.tv{text-align:right;font-variant-numeric:tabular-nums;}
-.gr{background:#666;color:#fff;font-weight:800;font-size:12px;}
+.title{text-align:center;font-weight:800;font-size:15px;margin:0 0 5px;color:#000;}
+.tk{font-weight:700;color:#000;}
+.tv{text-align:right;font-variant-numeric:tabular-nums;color:#000;}
+.gr{background:#d9d9d9;color:#000;font-weight:800;font-size:12.5px;}
 .tl{text-align:left !important;}
 .notes-wrap{display:flex;flex-direction:column;height:100%;min-height:100%;}
 .notes-inner{width:100%;border-collapse:collapse;}
-.notes-inner td{border:0;border-bottom:1px solid #e2e2e2;padding:2px 6px;vertical-align:top;font-size:10.5px;}
+.notes-inner td{border:0;border-bottom:1px solid #ccc;padding:3px 6px;vertical-align:top;font-size:10.5px;color:#000;}
 .notes-inner .k{text-align:left;background:transparent;white-space:nowrap;font-weight:700;}
-.baht{margin-top:auto;text-align:center;font-weight:800;padding:8px 4px 4px;border-top:1px solid #000;}
-.formno{text-align:right;font-size:10px;margin-top:4px;color:#333;}
+.baht{margin-top:auto;text-align:center;font-weight:800;padding:8px 4px 4px;border-top:1px solid #000;color:#000;}
+.formno{text-align:right;font-size:10px;margin-top:4px;color:#000;}
 @media print{body{background:#fff;}.toolbar{display:none;}.sheet{margin:0;box-shadow:none;width:297mm;min-height:205mm;}}
 </style></head>
 <body>
 <div class="toolbar"><div>ใบเสนอราคา · ${esc(docNo)}</div><div><button class="btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
 <div class="sheet">
 <div class="title">ใบเสนอราคา / Quotation</div>
-<table class="grid">
-  <colgroup><col style="width:58%"><col style="width:16%"><col style="width:26%"></colgroup>
-  <tr><td class="company" rowspan="4"><div class="cbig">${esc(company.name)}${company.branch?` (${esc(company.branch)})`:''}</div><div>${esc(company.address||'')}</div><div>โทร ${esc(company.phone||'-')}&nbsp;&nbsp;เลขประจำตัวผู้เสียภาษี ${esc(company.taxId||'-')}</div></td><td class="k">Work Order NO.</td><td class="c">${esc(firstPr)}</td></tr>
-  <tr><td class="k">เลขที่ใบแจ้งซ่อม</td><td class="c">${esc(jobList.join(', '))}</td></tr>
-  <tr><td class="k">Quotation NO.</td><td class="c">${esc(docNo)}</td></tr>
-  <tr><td class="k">Date Issued</td><td class="c">${esc(dateText)}</td></tr>
-</table>
-<table class="grid">
-  <colgroup><col style="width:12%"><col style="width:46%"><col style="width:9%"><col style="width:15%"><col style="width:8%"><col style="width:10%"></colgroup>
-  <tr><td class="k" rowspan="2">รายละเอียดงาน :</td><td rowspan="2" style="text-align:left;vertical-align:top;">${esc(jobDetail||'-')}</td><td class="k">สาขา :</td><td>${esc(branchText||'-')}</td><td class="k">จังหวัด :</td><td>${esc(inv.branch_province||'')}</td></tr>
-  <tr><td class="k">ศูนย์ที่</td><td>${esc(inv.customer_name||inv.customer_id||'')}</td><td class="k">จังหวัด :</td><td>${esc(custProvince)}</td></tr>
-</table>
-<table class="grid items">
-  <colgroup><col style="width:4%"><col style="width:11%"><col style="width:7%"><col style="width:37%"><col style="width:6%"><col style="width:7%"><col style="width:9%"><col style="width:9%"><col style="width:10%"></colgroup>
-  <thead><tr><th>NO.</th><th>หมวด</th><th>ลำดับ<br>ราคากลาง</th><th>Bill Of Quantities</th><th>หน่วย</th><th>ปริมาณ</th><th>ค่าของ</th><th>ค่าแรง</th><th>รวม</th></tr></thead>
-  <tbody>${itemRows}${blankRows}</tbody>
-</table>
-<table class="grid" style="table-layout:fixed;">
-  <colgroup><col style="width:62%"><col style="width:20%"><col style="width:18%"></colgroup>
+<table class="grid">${COLS}
+  <tr><td class="company" colspan="5" rowspan="4"><div class="cbig">${esc(company.name)}${company.branch?` (${esc(company.branch)})`:''}</div><div>${esc(company.address||'')}</div><div>โทร ${esc(company.phone||'-')}&nbsp;&nbsp;เลขประจำตัวผู้เสียภาษี ${esc(company.taxId||'-')}</div></td><td class="k" colspan="2">Work Order NO.</td><td class="c" colspan="2">${esc(firstPr)}</td></tr>
+  <tr><td class="k" colspan="2">เลขที่ใบแจ้งซ่อม</td><td class="c" colspan="2">${esc(jobList.join(', '))}</td></tr>
+  <tr><td class="k" colspan="2">Quotation NO.</td><td class="c" colspan="2">${esc(docNo)}</td></tr>
+  <tr><td class="k" colspan="2">Date Issued</td><td class="c" colspan="2">${esc(dateText)}</td></tr>
   <tr>
-    <td class="notes" rowspan="9" style="vertical-align:top;padding:0;height:1px;">
+    <td class="k" colspan="2" rowspan="2">รายละเอียดงาน :</td>
+    <td class="tl" colspan="2" rowspan="2" style="vertical-align:top;">${esc(jobDetail||'-')}</td>
+    <td class="k">สาขา :</td><td class="tl" colspan="2">${esc(branchText||'-')}</td><td class="k">จังหวัด :</td><td class="tl">${esc(inv.branch_province||'')}</td>
+  </tr>
+  <tr>
+    <td class="k">ศูนย์ที่</td><td class="tl" colspan="2">${esc(inv.customer_name||inv.customer_id||'')}</td><td class="k">จังหวัด :</td><td class="tl">${esc(custProvince)}</td>
+  </tr>
+  <tr class="ihead"><th>NO.</th><th>หมวด</th><th>ลำดับ<br>ราคากลาง</th><th>Bill Of Quantities</th><th>หน่วย</th><th>ปริมาณ</th><th>ค่าของ</th><th>ค่าแรง</th><th>รวม</th></tr>
+  ${itemRows.replace(/<tr>/g,'<tr class="irow">')}${blankRows.replace(/<tr>/g,'<tr class="irow">')}
+  <tr>
+    <td class="notes" colspan="6" rowspan="9" style="vertical-align:top;padding:0;height:1px;">
       <div class="notes-wrap">
-        <table class="notes-inner"><colgroup><col style="width:18%"><col style="width:66%"><col style="width:16%"></colgroup>
+        <table class="notes-inner"><colgroup><col style="width:14%"><col style="width:74%"><col style="width:12%"></colgroup>
           <tr><td class="k">หมายเหตุ :</td><td class="tl" colspan="2"></td></tr>
           <tr><td class="k">สาเหตุ</td><td class="tl" colspan="2">${esc(cause||'')}</td></tr>
           <tr><td class="k">การแก้ไข</td><td class="tl" colspan="2">${esc(fix||'')}</td></tr>
@@ -4525,16 +4535,16 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
         <div class="baht">( ${esc(bahtText)} )</div>
       </div>
     </td>
-    <td class="tk">รวม</td><td class="tv">${money(lineSubtotal)}</td>
+    <td class="tk" colspan="2">รวม</td><td class="tv">${money(lineSubtotal)}</td>
   </tr>
-  <tr><td class="tk">Overhead ${money(overheadRate)}%</td><td class="tv">${money(overheadAmount)}</td></tr>
-  <tr><td class="tk">ราคารวม Overhead</td><td class="tv">${money(afterOverhead)}</td></tr>
-  <tr><td class="tk">ค่าดำเนินการปกติ${slaNote==='ไม่ทัน SLA'?' <span style="font-weight:400;font-size:9px;">(ไม่ทัน SLA)</span>':''}</td><td class="tv">${money(normalFee)}</td></tr>
-  <tr><td class="tk">ค่าดำเนินการเร่งด่วน${slaNote==='ทัน SLA'?' <span style="font-weight:400;font-size:9px;">(ทัน SLA)</span>':''}</td><td class="tv">${money(urgentFee)}</td></tr>
-  <tr><td class="tk">ค่าเดินทาง</td><td class="tv">${money(travelAmount)}</td></tr>
-  <tr><td class="tk">รวมทั้งหมด</td><td class="tv">${money(grandBeforeVat)}</td></tr>
-  <tr><td class="tk">VAT 7%</td><td class="tv">${money(vat)}</td></tr>
-  <tr><td class="tk gr">รวมราคาทั้งสิ้น</td><td class="tv gr">${money(total)}</td></tr>
+  <tr><td class="tk" colspan="2">Overhead ${money(overheadRate)}%</td><td class="tv">${money(overheadAmount)}</td></tr>
+  <tr><td class="tk" colspan="2">ราคารวม Overhead</td><td class="tv">${money(afterOverhead)}</td></tr>
+  <tr><td class="tk" colspan="2">ค่าดำเนินการปกติ${slaNote==='ไม่ทัน SLA'?' <span style="font-weight:400;font-size:9px;">(ไม่ทัน SLA)</span>':''}</td><td class="tv">${money(normalFee)}</td></tr>
+  <tr><td class="tk" colspan="2">ค่าดำเนินการเร่งด่วน${slaNote==='ทัน SLA'?' <span style="font-weight:400;font-size:9px;">(ทัน SLA)</span>':''}</td><td class="tv">${money(urgentFee)}</td></tr>
+  <tr><td class="tk" colspan="2">ค่าเดินทาง</td><td class="tv">${money(travelAmount)}</td></tr>
+  <tr><td class="tk" colspan="2">รวมทั้งหมด</td><td class="tv">${money(grandBeforeVat)}</td></tr>
+  <tr><td class="tk" colspan="2">VAT 7%</td><td class="tv">${money(vat)}</td></tr>
+  <tr><td class="tk gr" colspan="2">รวมราคาทั้งสิ้น</td><td class="tv gr">${money(total)}</td></tr>
 </table>
 <div class="formno">FM-SS-013 Rev.02</div>
 </div></body></html>`;
@@ -6149,7 +6159,11 @@ function saveQuoteDoc(printAfter=false){
 
 // MODAL
 function openM(id){document.getElementById(id).classList.add('open');}
-function closeM(id){document.getElementById(id).classList.remove('open');if(id==='m-job')pendingJobFromAdminId=null;}
+function closeM(id){document.getElementById(id).classList.remove('open');if(id==='m-job')pendingJobFromAdminId=null;
+  // โหมดเอกสารเต็มหน้า: ปิดฟอร์มเอกสาร = ปิดแท็บ
+  if(id==='m-sales'&&salesDocKioskMode){setTimeout(()=>{try{window.close();}catch(e){}},60);}
+}
+let salesDocKioskMode=false;
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 
 
