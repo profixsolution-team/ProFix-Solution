@@ -1144,6 +1144,7 @@ select option{background:var(--surface2);}
           <div class="accounting-panel mb16">
             <div class="accounting-panel-title">ข้อมูลลูกค้าและเอกสาร</div>
             <div class="form-row"><div class="form-group"><label>ประเภทเอกสาร</label><select id="sale-doc-type" onchange="onSalesDocTypeChange(this.value)"><option value="quotation">ใบเสนอราคา / Quotation</option><option value="invoice">ใบแจ้งหนี้ / Invoice</option><option value="tax_invoice">ใบกำกับภาษี / Tax Invoice</option><option value="receipt">ใบเสร็จรับเงิน / Receipt</option></select></div><div class="form-group"><label>เลขที่เอกสาร</label><input id="sale-no" placeholder="เช่น QT-2026-001 / SINV-2026-001"></div></div>
+            <div class="form-row" id="sale-template-row"><div class="form-group"><label>รูปแบบใบเสนอราคา (ตอนพิมพ์)</label><select id="sale-doc-template"><option value="boq">ฟอร์ม BOQ (แนวนอน ตามแบบบริษัท)</option><option value="modern">แบบเดิม (โมเดิร์น แนวตั้ง)</option></select></div></div>
             <div class="form-row"><div class="form-group" style="flex:1;"><label>Job ID / PR (คลิกเลือกได้หลายตัว)</label><div style="position:relative;"><input id="sale-job-input" autocomplete="off" placeholder="ค้นหา PR / ลูกค้า / สาขา แล้วคลิกเลือก" oninput="renderSalesJobPicker(this.value)" onfocus="renderSalesJobPicker(this.value)" onkeydown="handleSalesJobKey(event)"><div id="sale-job-picker" class="job-picker" style="display:none;"></div></div><div id="sale-job-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div><div id="sale-dup-note" style="font-size:11px;color:var(--yellow);margin-top:6px;"></div><input type="hidden" id="sale-job"></div></div>
             <div class="form-row"><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
             <div class="doc-parties">
@@ -1850,7 +1851,7 @@ function rowHashMap(rows,idOf){
 }
 function splitUrl(table,query=''){return `${SUPABASE_URL}/rest/v1/${table}${query}`;}
 // คอลัมน์ที่เพิ่มใน migration phase 3 — ถ้ายังไม่ได้รัน migration จะถูกตัดออกอัตโนมัติเพื่อไม่ให้บันทึกพัง
-const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled'];
+const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template'];
 function stripKeys(payload,keys){const drop=o=>{const c={...o};keys.forEach(k=>delete c[k]);return c;};return Array.isArray(payload)?payload.map(drop):drop(payload);}
 // POST แบบทนทาน: ถ้า PostgREST แจ้งว่าไม่มีคอลัมน์ (ยังไม่ได้รัน migration) จะลองใหม่โดยตัดคอลัมน์ใหม่ออก
 async function sbUpsertResilient(table,query,payload,optionalKeys=PHASE3_OPTIONAL_KEYS){
@@ -4322,8 +4323,9 @@ function convertSalesDoc(id,toType){
 function printSalesDoc(id){
   const inv=salesInvoices.find(x=>x.id===id);if(!inv)return;
   const items=salesInvoiceItems.filter(x=>x.sales_invoice_id===id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0));
-  // ใบเสนอราคาใช้ฟอร์ม BOQ (แนวนอน) ตามแบบฟอร์มบริษัท — ประเภทอื่นใช้เทมเพลตเดิม
-  generateDocWindow((inv.doc_type==='quotation')?boqQuoteDocHtml(inv,items):salesDocHtml(inv,items));
+  // ใบเสนอราคาเลือกได้ 2 ดีไซน์: modern (เดิม) / boq (ฟอร์มบริษัท) — ประเภทอื่นใช้เทมเพลตเดิมเสมอ
+  const useBoq=inv.doc_type==='quotation'&&(inv.doc_template||'boq')!=='modern';
+  generateDocWindow(useBoq?boqQuoteDocHtml(inv,items):salesDocHtml(inv,items));
 }
 // ===== ฟอร์มใบเสนอราคา BOQ (แนวนอน A4) — เลียนแบบ FM-SS-013 =====
 function boqQuoteDocHtml(inv,items){
@@ -4333,9 +4335,10 @@ function boqQuoteDocHtml(inv,items){
   const firstPr=jobList[0]||'';
   const job=(jobs||[]).find(j=>String(j.id)===String(firstPr)&&!isDeletedRecord(j));
   const branchText=[...new Set(jobList.map(pr=>{const jj=(jobs||[]).find(j=>String(j.id)===String(pr)&&!isDeletedRecord(j));return jj?jj.branch:'';}).filter(Boolean))].join(', ')||(job?.branch||'');
-  const jobDetail=inv.note||job?.note||job?.report||'';
-  const cause=job?.technicianReport?.cause||job?.symptom||job?.cause||'';
+  const cause=job?.technicianReport?.cause||job?.cause||job?.symptom||'';
   const fix=job?.technicianReport?.fix||job?.fix||'';
+  const jobDetail=cause||inv.note||job?.note||''; // รายละเอียดงาน = สาเหตุจากฟอร์มช่าง
+  const custProvince=inv.customer_province||'ปทุมธานี';
   const lineSubtotal=items.reduce((s,it)=>s+Number(it.subtotal||0),0);
   const overheadEnabled=!(inv.overhead_enabled===false||inv.overhead_enabled==='false');
   const overheadRate=overheadEnabled?Number(inv.overhead_rate??salesOverheadRateBySubtotal(lineSubtotal)):0;
@@ -4381,12 +4384,15 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
 .items td{height:6.2mm;}
 .c{text-align:center;}.r{text-align:right;}
 .title{text-align:center;font-weight:800;font-size:15px;margin:0 0 4px;}
-.notes .k{text-align:left;}
-.baht{text-align:center;font-weight:800;padding:6px 0 2px;}
-.totals{width:100%;border-collapse:collapse;}
-.totals td{border:1px solid #000;padding:3px 6px;}
-.totals .tk{font-weight:700;}.totals .tv{text-align:right;font-variant-numeric:tabular-nums;}
-.totals .gr{background:#666;color:#fff;font-weight:800;font-size:12px;}
+.tk{font-weight:700;}
+.tv{text-align:right;font-variant-numeric:tabular-nums;}
+.gr{background:#666;color:#fff;font-weight:800;font-size:12px;}
+.tl{text-align:left !important;}
+.notes-wrap{display:flex;flex-direction:column;height:100%;min-height:100%;}
+.notes-inner{width:100%;border-collapse:collapse;}
+.notes-inner td{border:0;border-bottom:1px solid #e2e2e2;padding:2px 6px;vertical-align:top;font-size:10.5px;}
+.notes-inner .k{text-align:left;background:transparent;white-space:nowrap;font-weight:700;}
+.baht{margin-top:auto;text-align:center;font-weight:800;padding:8px 4px 4px;border-top:1px solid #000;}
 .formno{text-align:right;font-size:10px;margin-top:4px;color:#333;}
 @media print{body{background:#fff;}.toolbar{display:none;}.sheet{margin:0;box-shadow:none;width:297mm;min-height:205mm;}}
 </style></head>
@@ -4403,39 +4409,39 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
 </table>
 <table class="grid">
   <colgroup><col style="width:12%"><col style="width:46%"><col style="width:9%"><col style="width:15%"><col style="width:8%"><col style="width:10%"></colgroup>
-  <tr><td class="k" rowspan="2">รายละเอียดงาน :</td><td rowspan="2" style="text-align:left;vertical-align:top;">${esc(jobDetail||'-')}</td><td class="k">สาขา :</td><td>${esc(branchText||'-')}</td><td class="k">จังหวัด :</td><td>${esc(customer.province||'')}</td></tr>
-  <tr><td class="k">ศูนย์ที่</td><td>${esc(company.branch||'')}</td><td class="k">จังหวัด :</td><td></td></tr>
+  <tr><td class="k" rowspan="2">รายละเอียดงาน :</td><td rowspan="2" style="text-align:left;vertical-align:top;">${esc(jobDetail||'-')}</td><td class="k">สาขา :</td><td>${esc(branchText||'-')}</td><td class="k">จังหวัด :</td><td></td></tr>
+  <tr><td class="k">ศูนย์ที่</td><td>${esc(inv.customer_name||inv.customer_id||'')}</td><td class="k">จังหวัด :</td><td>${esc(custProvince)}</td></tr>
 </table>
 <table class="grid items">
   <colgroup><col style="width:4%"><col style="width:11%"><col style="width:7%"><col style="width:37%"><col style="width:6%"><col style="width:7%"><col style="width:9%"><col style="width:9%"><col style="width:10%"></colgroup>
   <thead><tr><th>NO.</th><th>หมวด</th><th>ลำดับ<br>ราคากลาง</th><th>Bill Of Quantities</th><th>หน่วย</th><th>ปริมาณ</th><th>ค่าของ</th><th>ค่าแรง</th><th>รวม</th></tr></thead>
   <tbody>${itemRows}${blankRows}</tbody>
 </table>
-<table class="grid">
-  <colgroup><col style="width:62%"><col style="width:38%"></colgroup>
-  <tr><td class="notes" style="vertical-align:top;padding:0;">
-    <table class="grid" style="border:0;"><colgroup><col style="width:22%"><col style="width:78%"></colgroup>
-      <tr><td class="k" style="border-left:0;border-top:0;">หมายเหตุ :</td><td style="border-top:0;border-right:0;text-align:left;"></td></tr>
-      <tr><td class="k" style="border-left:0;">สาเหตุ</td><td style="border-right:0;text-align:left;">${esc(cause||'')}</td></tr>
-      <tr><td class="k" style="border-left:0;">การแก้ไข</td><td style="border-right:0;text-align:left;">${esc(fix||'')}</td></tr>
-      <tr><td class="k" style="border-left:0;">ผู้จัดทำ</td><td style="border-right:0;text-align:left;">${esc(inv.seller_name||'')}</td></tr>
-      <tr><td class="k" style="border-left:0;border-bottom:0;">ค่าเดินทาง :</td><td style="border-right:0;border-bottom:0;text-align:left;">${travelRoute}${travelKm?` (${money(travelKm)} กม.)`:''}</td></tr>
-    </table>
-    <div class="baht">( ${esc(bahtText)} )</div>
-  </td>
-  <td style="vertical-align:top;padding:0;">
-    <table class="totals">
-      <tr><td class="tk">รวม</td><td class="tv">${money(lineSubtotal)}</td></tr>
-      <tr><td class="tk">Overhead ${money(overheadRate)}%</td><td class="tv">${money(overheadAmount)}</td></tr>
-      <tr><td class="tk">ราคารวม Overhead</td><td class="tv">${money(afterOverhead)}</td></tr>
-      <tr><td class="tk">ค่าดำเนินการปกติ ${slaNote==='ไม่ทัน SLA'?'<span style="font-weight:400;font-size:9px;">('+slaNote+')</span>':''}</td><td class="tv">${money(normalFee)}</td></tr>
-      <tr><td class="tk">ค่าดำเนินการเร่งด่วน ${slaNote==='ทัน SLA'?'<span style="font-weight:400;font-size:9px;">('+slaNote+')</span>':''}</td><td class="tv">${money(urgentFee)}</td></tr>
-      <tr><td class="tk">ค่าเดินทาง</td><td class="tv">${money(travelAmount)}</td></tr>
-      <tr><td class="tk">รวมทั้งหมด</td><td class="tv">${money(grandBeforeVat)}</td></tr>
-      <tr><td class="tk">VAT 7%</td><td class="tv">${money(vat)}</td></tr>
-      <tr><td class="tk gr">รวมราคาทั้งสิ้น</td><td class="tv gr">${money(total)}</td></tr>
-    </table>
-  </td></tr>
+<table class="grid" style="table-layout:fixed;">
+  <colgroup><col style="width:62%"><col style="width:20%"><col style="width:18%"></colgroup>
+  <tr>
+    <td class="notes" rowspan="9" style="vertical-align:top;padding:0;height:1px;">
+      <div class="notes-wrap">
+        <table class="notes-inner"><colgroup><col style="width:20%"><col style="width:80%"></colgroup>
+          <tr><td class="k">หมายเหตุ :</td><td class="tl"></td></tr>
+          <tr><td class="k">สาเหตุ</td><td class="tl">${esc(cause||'')}</td></tr>
+          <tr><td class="k">การแก้ไข</td><td class="tl">${esc(fix||'')}</td></tr>
+          <tr><td class="k">ผู้จัดทำ</td><td class="tl">RM</td></tr>
+          <tr><td class="k">ค่าเดินทาง :</td><td class="tl"><span>${travelRoute||'-'}</span><span style="float:right;font-variant-numeric:tabular-nums;">${money(travelKm)}</span></td></tr>
+        </table>
+        <div class="baht">( ${esc(bahtText)} )</div>
+      </div>
+    </td>
+    <td class="tk">รวม</td><td class="tv">${money(lineSubtotal)}</td>
+  </tr>
+  <tr><td class="tk">Overhead ${money(overheadRate)}%</td><td class="tv">${money(overheadAmount)}</td></tr>
+  <tr><td class="tk">ราคารวม Overhead</td><td class="tv">${money(afterOverhead)}</td></tr>
+  <tr><td class="tk">ค่าดำเนินการปกติ${slaNote==='ไม่ทัน SLA'?' <span style="font-weight:400;font-size:9px;">(ไม่ทัน SLA)</span>':''}</td><td class="tv">${money(normalFee)}</td></tr>
+  <tr><td class="tk">ค่าดำเนินการเร่งด่วน${slaNote==='ทัน SLA'?' <span style="font-weight:400;font-size:9px;">(ทัน SLA)</span>':''}</td><td class="tv">${money(urgentFee)}</td></tr>
+  <tr><td class="tk">ค่าเดินทาง</td><td class="tv">${money(travelAmount)}</td></tr>
+  <tr><td class="tk">รวมทั้งหมด</td><td class="tv">${money(grandBeforeVat)}</td></tr>
+  <tr><td class="tk">VAT 7%</td><td class="tv">${money(vat)}</td></tr>
+  <tr><td class="tk gr">รวมราคาทั้งสิ้น</td><td class="tv gr">${money(total)}</td></tr>
 </table>
 <div class="formno">FM-SS-013 Rev.02</div>
 </div></body></html>`;
@@ -4803,6 +4809,7 @@ function onSalesDocTypeChange(docType){
   const noEl=document.getElementById('sale-no');
   // ถ้าเลขยังเป็นค่าเริ่มต้นของชนิดอื่น ให้สร้างเลขใหม่ตามชนิด (เฉพาะตอนสร้างใหม่)
   if(noEl&&!document.getElementById('sale-id').value)noEl.value=nextSalesDocNo(docType);
+  const tplRow=document.getElementById('sale-template-row');if(tplRow)tplRow.style.display=docType==='quotation'?'':'none';
 }
 function openSalesModal(id='',prefJobId='',docType=''){
   const inv=id?salesInvoices.find(x=>x.id===id):null;
@@ -4815,6 +4822,8 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-id').value=inv?.id||'';
   salesConvertSourceId=inv?.source_doc_id||'';
   document.getElementById('sale-no').value=inv?.doc_no||inv?.sales_invoice_no||nextNo;
+  const tplSel=document.getElementById('sale-doc-template');if(tplSel)tplSel.value=inv?.doc_template||'boq';
+  const tplRow=document.getElementById('sale-template-row');if(tplRow)tplRow.style.display=dt==='quotation'?'':'none';
   salesDraftJobs=inv?(inv.job_ids?String(inv.job_ids).split(',').map(s=>s.trim()).filter(Boolean):(inv.job_id?[inv.job_id]:[])):(prefJobId?[prefJobId]:[]);
   document.getElementById('sale-job-input').value='';
   renderSalesJobChips();
@@ -5265,6 +5274,7 @@ async function saveSalesInvoice(){
     customer_signature_url:document.getElementById('sale-customer-signature').value.trim(),
     seller_name:document.getElementById('sale-seller-name').value.trim(),
     customer_signer_name:document.getElementById('sale-customer-signer-name').value.trim(),
+    doc_template:document.getElementById('sale-doc-template')?.value||'boq',
     status:'active',
     created_by:getActorName(),
     updated_by:getActorName()
