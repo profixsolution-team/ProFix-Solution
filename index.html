@@ -620,7 +620,7 @@ select option{background:var(--surface2);}
 <div class="page" id="page-sales-tax">
   <div class="page-header">
     <div><div class="page-title">บิลขาย / เอกสารขาย</div><div class="page-sub">ใบเสนอราคา · ใบแจ้งหนี้ · ใบกำกับภาษี · ใบเสร็จ — ดึงข้อมูลลูกค้า/PR/ราคากลาง/สต็อกมาใช้ได้ทันที</div></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" onclick="openSalesModal('','','quotation')">+ ใบเสนอราคา</button><button class="btn btn-ghost btn-sm" onclick="openSalesModal('','','invoice')">+ ใบแจ้งหนี้</button><button class="btn btn-primary btn-sm" onclick="openSalesModal('','','tax_invoice')">+ ใบกำกับภาษี</button><button class="btn btn-ghost btn-sm" onclick="openSalesModal('','','receipt')">+ ใบเสร็จ</button></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" onclick="openSalesInNewTab('','','quotation')">+ ใบเสนอราคา</button><button class="btn btn-ghost btn-sm" onclick="openSalesInNewTab('','','invoice')">+ ใบแจ้งหนี้</button><button class="btn btn-primary btn-sm" onclick="openSalesInNewTab('','','tax_invoice')">+ ใบกำกับภาษี</button><button class="btn btn-ghost btn-sm" onclick="openSalesInNewTab('','','receipt')">+ ใบเสร็จ</button></div>
   </div>
   <div class="content">
     <div class="fin-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
@@ -4258,7 +4258,7 @@ function renderSalesTax(){
     const dt=inv.doc_type||'tax_invoice';const dmeta=SALES_DOC_META[dt]||SALES_DOC_META.tax_invoice;
     const nextType=SALES_DOC_NEXT[dt];const nextMeta=nextType&&nextType!==dt?SALES_DOC_META[nextType]:null;
     const firstPr=salesInvoiceJobs(inv)[0]||'';
-    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;" onclick="event.stopPropagation()">${prBtns}</td><td>${esc(inv.customer_name||inv.customer_id||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesModal('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
+    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;" onclick="event.stopPropagation()">${prBtns}</td><td>${esc(inv.customer_name||inv.customer_id||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesInNewTab('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
   }).join('');
 }
 // ลบ (ยกเลิก) บิลขาย — soft cancel ทั้งเอกสารและรายการ
@@ -4289,12 +4289,29 @@ async function deletePurchaseInvoice(id){
     accountingLoaded=false;await ensureAccountingLoaded(true);renderPurchaseTax();
   }catch(e){alert('ลบบิลซื้อไม่สำเร็จ: '+e.message);}
 }
+// แท็บใหม่: อ่าน ?sales=... แล้วเปิดฟอร์มเอกสารขายอัตโนมัติ (เรียกครั้งเดียวหลังโหลดข้อมูลเสร็จ)
+let salesUrlOpened=false;
+async function maybeAutoOpenSalesFromUrl(){
+  if(salesUrlOpened)return;
+  const sp=new URLSearchParams(location.search);
+  if(!sp.has('sales'))return;
+  salesUrlOpened=true;
+  const sid=sp.get('sales')||'new', dtype=sp.get('doctype')||'quotation', pr=sp.get('pr')||'';
+  try{await Promise.all([ensureAccountingLoaded().catch(()=>{}),ensurePartsLoaded().catch(()=>{})]);}catch(e){}
+  goTo('sales-tax');
+  if(sid==='new')openSalesModal('',pr,dtype);
+  else openSalesModal(sid);
+}
+// เปิดฟอร์มทำ/แก้เอกสารขายในแท็บใหม่ (โหลดแอปในแท็บใหม่พร้อมพารามิเตอร์ให้เด้งฟอร์มเอง)
+function openSalesInNewTab(id='',prefJobId='',docType=''){
+  const p=new URLSearchParams();
+  p.set('sales',id||'new');
+  if(docType)p.set('doctype',docType);
+  if(prefJobId)p.set('pr',prefJobId);
+  window.open(location.pathname+'?'+p.toString(),'_blank');
+}
 async function openSalesForJob(jobId){
-  await Promise.all([
-    ensureAccountingLoaded().catch(e=>console.warn('Accounting preload failed before opening sales doc',e)),
-    ensurePartsLoaded().catch(e=>console.warn('Parts preload failed before opening sales doc',e))
-  ]);
-  openSalesModal('',jobId,'quotation');
+  openSalesInNewTab('',jobId,'quotation');
 }
 // แปลงเอกสารเป็นชนิดถัดไป (ใบเสนอราคา→ใบแจ้งหนี้→ใบกำกับภาษี→ใบเสร็จ) โดยคัดลอกข้อมูลเดิมมาทั้งหมด
 const SALES_DOC_NEXT={quotation:'invoice',invoice:'tax_invoice',tax_invoice:'receipt',receipt:'receipt'};
@@ -4346,7 +4363,7 @@ function openSalesDocPreview(id){
   document.getElementById('doc-preview-title').textContent=meta.title+' · '+esc(inv.doc_no||inv.sales_invoice_no||'');
   document.getElementById('doc-preview-sub').textContent=(inv.customer_name||inv.customer_id||'-')+' · ฿'+money(inv.total_amount);
   document.getElementById('doc-preview-actions').innerHTML=
-    `<button class="btn btn-primary btn-sm" onclick="closeM('m-doc-preview');openSalesModal('${esc(id)}')">✏️ แก้ไขเอกสาร</button>`
+    `<button class="btn btn-primary btn-sm" onclick="closeM('m-doc-preview');openSalesInNewTab('${esc(id)}')">✏️ แก้ไขเอกสาร</button>`
     +`<button class="btn btn-success btn-sm" onclick="printSalesDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`
     +(firstPr?`<button class="btn btn-ghost btn-sm" onclick="matchFinanceFromSales('${esc(firstPr)}')">🔗 ดึงราคาเข้าการเงิน</button>`:'');
   document.getElementById('doc-preview-frame').srcdoc=salesDocHtmlFor(inv,items);
@@ -7249,10 +7266,12 @@ async function initApp(){
     }
     runDailyBackupIfNeeded();
     startRemoteRefresh();
+    maybeAutoOpenSalesFromUrl();
   }).catch(e=>{
     console.warn('Background sync failed',e);
     isHydrated=true;
     startRemoteRefresh();
+    maybeAutoOpenSalesFromUrl();
   }).finally(()=>setAppLoading(false));
 }
 initApp();
