@@ -4525,28 +4525,41 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
   <tr class="ihead"><th>NO.</th><th>หมวด</th><th>ลำดับ<br>ราคากลาง</th><th>Bill Of Quantities</th><th>หน่วย</th><th>ปริมาณ</th><th>ค่าของ</th><th>ค่าแรง</th><th>รวม</th></tr>
   ${itemRows.replace(/<tr>/g,'<tr class="irow">')}${blankRows.replace(/<tr>/g,'<tr class="irow">')}
   <tr>
-    <td class="notes" colspan="6" rowspan="9" style="vertical-align:top;padding:0;height:1px;">
-      <div class="notes-wrap">
-        <table class="notes-inner"><colgroup><col style="width:14%"><col style="width:74%"><col style="width:12%"></colgroup>
-          <tr><td class="k">หมายเหตุ :</td><td class="tl" colspan="2"></td></tr>
-          <tr><td class="k">สาเหตุ</td><td class="tl" colspan="2">${esc(cause||'')}</td></tr>
-          <tr><td class="k">การแก้ไข</td><td class="tl" colspan="2">${esc(fix||'')}</td></tr>
-          <tr><td class="k">ผู้จัดทำ</td><td class="tl" colspan="2">RM</td></tr>
-          <tr><td class="k">ค่าเดินทาง :</td><td class="tl" colspan="2">${travelRoute||'-'}${travelKm?` — ${money(travelKm)} กม.`:''}</td></tr>
-        </table>
-        <div class="baht">( ${esc(bahtText)} )</div>
-      </div>
-    </td>
+    <td class="k" colspan="2">หมายเหตุ :</td><td class="tl" colspan="4"></td>
     <td class="tk" colspan="2">รวม</td><td class="tv">${money(lineSubtotal)}</td>
   </tr>
-  <tr><td class="tk" colspan="2">Overhead ${money(overheadRate)}%</td><td class="tv">${money(overheadAmount)}</td></tr>
-  <tr><td class="tk" colspan="2">ราคารวม Overhead</td><td class="tv">${money(afterOverhead)}</td></tr>
-  <tr><td class="tk" colspan="2">ค่าดำเนินการปกติ${slaNote==='ไม่ทัน SLA'?' <span style="font-weight:400;font-size:9px;">(ไม่ทัน SLA)</span>':''}</td><td class="tv">${money(normalFee)}</td></tr>
-  <tr><td class="tk" colspan="2">ค่าดำเนินการเร่งด่วน${slaNote==='ทัน SLA'?' <span style="font-weight:400;font-size:9px;">(ทัน SLA)</span>':''}</td><td class="tv">${money(urgentFee)}</td></tr>
-  <tr><td class="tk" colspan="2">ค่าเดินทาง</td><td class="tv">${money(travelAmount)}</td></tr>
-  <tr><td class="tk" colspan="2">รวมทั้งหมด</td><td class="tv">${money(grandBeforeVat)}</td></tr>
-  <tr><td class="tk" colspan="2">VAT 7%</td><td class="tv">${money(vat)}</td></tr>
-  <tr><td class="tk gr" colspan="2">รวมราคาทั้งสิ้น</td><td class="tv gr">${money(total)}</td></tr>
+  <tr>
+    <td class="k" colspan="2">สาเหตุ</td><td class="tl" colspan="4" style="vertical-align:top;">${esc(cause||'')}</td>
+    <td class="tk" colspan="2">Overhead ${money(overheadRate)}%</td><td class="tv">${money(overheadAmount)}</td>
+  </tr>
+  <tr>
+    <td class="k" colspan="2">การแก้ไข</td><td class="tl" colspan="4" style="vertical-align:top;">${esc(fix||'')}</td>
+    <td class="tk" colspan="2">ราคารวม Overhead</td><td class="tv">${money(afterOverhead)}</td>
+  </tr>
+  <tr>
+    <td class="k" colspan="2">ผู้จัดทำ</td><td class="tl" colspan="4">RM</td>
+    <td class="tk" colspan="2">ค่าดำเนินการปกติ${slaNote==='ไม่ทัน SLA'?' <span style="font-weight:400;font-size:9px;">(ไม่ทัน SLA)</span>':''}</td><td class="tv">${money(normalFee)}</td>
+  </tr>
+  <tr>
+    <td class="tl" colspan="6"></td>
+    <td class="tk" colspan="2">ค่าดำเนินการเร่งด่วน${slaNote==='ทัน SLA'?' <span style="font-weight:400;font-size:9px;">(ทัน SLA)</span>':''}</td><td class="tv">${money(urgentFee)}</td>
+  </tr>
+  <tr>
+    <td class="k" colspan="2">ค่าเดินทาง :</td><td class="tl" colspan="4"><span>${travelRoute||'-'}</span><span style="float:right;font-variant-numeric:tabular-nums;">${money(travelKm)}</span></td>
+    <td class="tk" colspan="2">ค่าเดินทาง</td><td class="tv">${money(travelAmount)}</td>
+  </tr>
+  <tr>
+    <td class="tl" colspan="6"></td>
+    <td class="tk" colspan="2">รวมทั้งหมด</td><td class="tv">${money(grandBeforeVat)}</td>
+  </tr>
+  <tr>
+    <td class="tl" colspan="6"></td>
+    <td class="tk" colspan="2">VAT 7%</td><td class="tv">${money(vat)}</td>
+  </tr>
+  <tr>
+    <td colspan="6" style="text-align:center;font-weight:800;">( ${esc(bahtText)} )</td>
+    <td class="tk gr" colspan="2">รวมราคาทั้งสิ้น</td><td class="tv gr">${money(total)}</td>
+  </tr>
 </table>
 <div class="formno">FM-SS-013 Rev.02</div>
 </div></body></html>`;
