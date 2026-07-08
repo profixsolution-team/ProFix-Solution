@@ -1144,7 +1144,7 @@ select option{background:var(--surface2);}
           <div class="accounting-panel mb16">
             <div class="accounting-panel-title">ข้อมูลลูกค้าและเอกสาร</div>
             <div class="form-row"><div class="form-group"><label>ประเภทเอกสาร</label><select id="sale-doc-type" onchange="onSalesDocTypeChange(this.value)"><option value="quotation">ใบเสนอราคา / Quotation</option><option value="invoice">ใบแจ้งหนี้ / Invoice</option><option value="tax_invoice">ใบกำกับภาษี / Tax Invoice</option><option value="receipt">ใบเสร็จรับเงิน / Receipt</option></select></div><div class="form-group"><label>เลขที่เอกสาร</label><input id="sale-no" placeholder="เช่น QT-2026-001 / SINV-2026-001"></div></div>
-            <div class="form-row" id="sale-template-row"><div class="form-group"><label>รูปแบบใบเสนอราคา (ตอนพิมพ์)</label><select id="sale-doc-template"><option value="boq">ฟอร์ม BOQ (แนวนอน ตามแบบบริษัท)</option><option value="modern">แบบเดิม (โมเดิร์น แนวตั้ง)</option></select></div></div>
+            <div class="form-row" id="sale-template-row" style="align-items:flex-end;gap:10px;background:linear-gradient(90deg,var(--accent-dim),transparent);border:1px dashed var(--accent);border-radius:10px;padding:10px 12px;margin-top:6px;"><div class="form-group" style="flex:1.3;"><label style="color:var(--accent);font-weight:800;">🖨️ รูปแบบใบเสนอราคา (ตอนพิมพ์)</label><select id="sale-doc-template" style="border-color:var(--accent);font-weight:600;"><option value="boq">📄 ฟอร์ม BOQ (แนวนอน ตามแบบบริษัท)</option><option value="modern">🧾 แบบเดิม (โมเดิร์น แนวตั้ง)</option></select></div><div class="form-group"><label>จังหวัด (สาขา)</label><input id="sale-branch-province" placeholder="เช่น กรุงเทพมหานคร"></div><div class="form-group"><label>จังหวัด (ศูนย์/ลูกค้า)</label><input id="sale-customer-province" placeholder="เช่น ปทุมธานี"></div></div>
             <div class="form-row"><div class="form-group" style="flex:1;"><label>Job ID / PR (คลิกเลือกได้หลายตัว)</label><div style="position:relative;"><input id="sale-job-input" autocomplete="off" placeholder="ค้นหา PR / ลูกค้า / สาขา แล้วคลิกเลือก" oninput="renderSalesJobPicker(this.value)" onfocus="renderSalesJobPicker(this.value)" onkeydown="handleSalesJobKey(event)"><div id="sale-job-picker" class="job-picker" style="display:none;"></div></div><div id="sale-job-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div><div id="sale-dup-note" style="font-size:11px;color:var(--yellow);margin-top:6px;"></div><input type="hidden" id="sale-job"></div></div>
             <div class="form-row"><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
             <div class="doc-parties">
@@ -1851,7 +1851,7 @@ function rowHashMap(rows,idOf){
 }
 function splitUrl(table,query=''){return `${SUPABASE_URL}/rest/v1/${table}${query}`;}
 // คอลัมน์ที่เพิ่มใน migration phase 3 — ถ้ายังไม่ได้รัน migration จะถูกตัดออกอัตโนมัติเพื่อไม่ให้บันทึกพัง
-const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template'];
+const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template','branch_province','customer_province'];
 function stripKeys(payload,keys){const drop=o=>{const c={...o};keys.forEach(k=>delete c[k]);return c;};return Array.isArray(payload)?payload.map(drop):drop(payload);}
 // POST แบบทนทาน: ถ้า PostgREST แจ้งว่าไม่มีคอลัมน์ (ยังไม่ได้รัน migration) จะลองใหม่โดยตัดคอลัมน์ใหม่ออก
 async function sbUpsertResilient(table,query,payload,optionalKeys=PHASE3_OPTIONAL_KEYS){
@@ -4409,7 +4409,7 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
 </table>
 <table class="grid">
   <colgroup><col style="width:12%"><col style="width:46%"><col style="width:9%"><col style="width:15%"><col style="width:8%"><col style="width:10%"></colgroup>
-  <tr><td class="k" rowspan="2">รายละเอียดงาน :</td><td rowspan="2" style="text-align:left;vertical-align:top;">${esc(jobDetail||'-')}</td><td class="k">สาขา :</td><td>${esc(branchText||'-')}</td><td class="k">จังหวัด :</td><td></td></tr>
+  <tr><td class="k" rowspan="2">รายละเอียดงาน :</td><td rowspan="2" style="text-align:left;vertical-align:top;">${esc(jobDetail||'-')}</td><td class="k">สาขา :</td><td>${esc(branchText||'-')}</td><td class="k">จังหวัด :</td><td>${esc(inv.branch_province||'')}</td></tr>
   <tr><td class="k">ศูนย์ที่</td><td>${esc(inv.customer_name||inv.customer_id||'')}</td><td class="k">จังหวัด :</td><td>${esc(custProvince)}</td></tr>
 </table>
 <table class="grid items">
@@ -4422,12 +4422,12 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
   <tr>
     <td class="notes" rowspan="9" style="vertical-align:top;padding:0;height:1px;">
       <div class="notes-wrap">
-        <table class="notes-inner"><colgroup><col style="width:20%"><col style="width:80%"></colgroup>
-          <tr><td class="k">หมายเหตุ :</td><td class="tl"></td></tr>
-          <tr><td class="k">สาเหตุ</td><td class="tl">${esc(cause||'')}</td></tr>
-          <tr><td class="k">การแก้ไข</td><td class="tl">${esc(fix||'')}</td></tr>
-          <tr><td class="k">ผู้จัดทำ</td><td class="tl">RM</td></tr>
-          <tr><td class="k">ค่าเดินทาง :</td><td class="tl"><span>${travelRoute||'-'}</span><span style="float:right;font-variant-numeric:tabular-nums;">${money(travelKm)}</span></td></tr>
+        <table class="notes-inner"><colgroup><col style="width:18%"><col style="width:66%"><col style="width:16%"></colgroup>
+          <tr><td class="k">หมายเหตุ :</td><td class="tl" colspan="2"></td></tr>
+          <tr><td class="k">สาเหตุ</td><td class="tl" colspan="2">${esc(cause||'')}</td></tr>
+          <tr><td class="k">การแก้ไข</td><td class="tl" colspan="2">${esc(fix||'')}</td></tr>
+          <tr><td class="k">ผู้จัดทำ</td><td class="tl" colspan="2">RM</td></tr>
+          <tr><td class="k">ค่าเดินทาง :</td><td class="tl">${travelRoute||'-'}</td><td class="r" style="font-variant-numeric:tabular-nums;">${money(travelKm)}</td></tr>
         </table>
         <div class="baht">( ${esc(bahtText)} )</div>
       </div>
@@ -4823,6 +4823,8 @@ function openSalesModal(id='',prefJobId='',docType=''){
   salesConvertSourceId=inv?.source_doc_id||'';
   document.getElementById('sale-no').value=inv?.doc_no||inv?.sales_invoice_no||nextNo;
   const tplSel=document.getElementById('sale-doc-template');if(tplSel)tplSel.value=inv?.doc_template||'boq';
+  const bpEl=document.getElementById('sale-branch-province');if(bpEl)bpEl.value=inv?.branch_province||'';
+  const cpEl=document.getElementById('sale-customer-province');if(cpEl)cpEl.value=inv?.customer_province||'';
   const tplRow=document.getElementById('sale-template-row');if(tplRow)tplRow.style.display=dt==='quotation'?'':'none';
   salesDraftJobs=inv?(inv.job_ids?String(inv.job_ids).split(',').map(s=>s.trim()).filter(Boolean):(inv.job_id?[inv.job_id]:[])):(prefJobId?[prefJobId]:[]);
   document.getElementById('sale-job-input').value='';
@@ -5275,6 +5277,8 @@ async function saveSalesInvoice(){
     seller_name:document.getElementById('sale-seller-name').value.trim(),
     customer_signer_name:document.getElementById('sale-customer-signer-name').value.trim(),
     doc_template:document.getElementById('sale-doc-template')?.value||'boq',
+    branch_province:document.getElementById('sale-branch-province')?.value.trim()||'',
+    customer_province:document.getElementById('sale-customer-province')?.value.trim()||'',
     status:'active',
     created_by:getActorName(),
     updated_by:getActorName()
