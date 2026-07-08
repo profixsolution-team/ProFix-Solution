@@ -6173,10 +6173,31 @@ function renderParts(){
 function togglePartSelect(i,checked){if(checked)selectedParts.add(i);else selectedParts.delete(i);const idxs=filteredPartIndexes();const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(x=>selectedParts.has(x));all.indeterminate=idxs.some(x=>selectedParts.has(x))&&!all.checked;}}
 function toggleAllVisibleParts(checked){filteredPartIndexes().forEach(i=>checked?selectedParts.add(i):selectedParts.delete(i));renderParts();}
 function selectAllVisibleParts(){toggleAllVisibleParts(true);}
-function deleteSelectedParts(){const ids=[...selectedParts].filter(i=>parts[i]).sort((a,b)=>b-a);if(!ids.length){alert('ยังไม่ได้เลือกรายการอะไหล่');return;}if(!confirm(`ลบอะไหล่ที่เลือก ${ids.length.toLocaleString()} รายการ?`))return;ids.forEach(i=>parts.splice(i,1));selectedParts.clear();renderParts();persistPartsCatalogNow(true);}
+async function deleteSelectedParts(){const ids=[...selectedParts].filter(i=>parts[i]).sort((a,b)=>b-a);if(!ids.length){alert('ยังไม่ได้เลือกรายการอะไหล่');return;}if(!confirm(`ลบอะไหล่ที่เลือก ${ids.length.toLocaleString()} รายการ?`))return;try{await ensurePartsLoaded();const removedKeys=ids.map(i=>parts[i]?.part_key).filter(Boolean);ids.forEach(i=>parts.splice(i,1));selectedParts.clear();renderParts();await persistPartsCatalogNow(true);if(removedKeys.length)await deletePartsCatalogKeys(removedKeys);}catch(e){console.warn('deleteSelectedParts failed',e);alert('ลบอะไหล่ไม่สำเร็จ: '+(e.message||e));}}
 function calcPartMargin(){const c=parseFloat(document.getElementById('fpa-cost').value)||0,l=parseFloat(document.getElementById('fpa-labor').value)||0,s=parseFloat(document.getElementById('fpa-sell').value)||0;if(s>0){const m=Math.round((s-c-l)/s*100);document.getElementById('fpa-margin').value=m+'% (฿'+(s-c-l).toLocaleString()+')';}}
-function savePart(){const cost=parseFloat(document.getElementById('fpa-cost').value)||0,labor=parseFloat(document.getElementById('fpa-labor').value)||0,sell=parseFloat(document.getElementById('fpa-sell').value)||cost;const data={code:document.getElementById('fpa-code').value,cat:document.getElementById('fpa-cat').value,name:document.getElementById('fpa-name').value,brand:document.getElementById('fpa-brand').value,unit:document.getElementById('fpa-unit').value,sup:document.getElementById('fpa-sup').value,cost,labor,sell,note:document.getElementById('fpa-note').value};if(editPartIndex==='')parts.push(data);else parts[+editPartIndex]={...(parts[+editPartIndex]||{}),...data};closeM('m-part');renderParts();persistPartsCatalogNow(true);}
-function delPart(i){if(confirm('ลบอะไหล่นี้?')){parts.splice(i,1);selectedParts.clear();renderParts();persistPartsCatalogNow(true);}}
+async function savePart(){
+  const cost=parseFloat(document.getElementById('fpa-cost').value)||0,labor=parseFloat(document.getElementById('fpa-labor').value)||0,sell=parseFloat(document.getElementById('fpa-sell').value)||cost;
+  const data={code:document.getElementById('fpa-code').value,cat:document.getElementById('fpa-cat').value,name:document.getElementById('fpa-name').value.trim(),brand:document.getElementById('fpa-brand').value,unit:document.getElementById('fpa-unit').value,sup:document.getElementById('fpa-sup').value,cost,labor,sell,note:document.getElementById('fpa-note').value};
+  if(!data.name){alert('กรุณากรอกชื่ออะไหล่ก่อน');return;}
+  try{
+    await ensurePartsLoaded(); // ให้ parts เต็มก่อน กัน list บางส่วน
+    if(editPartIndex===''){
+      // อะไหล่ใหม่: ให้ part_key เฉพาะตัว กันชน/merge ทับรายการเดิม
+      data.part_key='part-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
+      data._id='PART-'+data.part_key;
+      parts.push(data);
+    }else{
+      parts[+editPartIndex]={...(parts[+editPartIndex]||{}),...data};
+    }
+    renderParts();
+    await persistPartsCatalogNow(true); // await จริง — บันทึกเสร็จก่อนปิด
+    closeM('m-part');
+  }catch(e){
+    console.warn('savePart failed',e);
+    alert('บันทึกอะไหล่ไม่สำเร็จ: '+(e.message||e)+'\nกรุณาลองใหม่');
+  }
+}
+async function delPart(i){if(!confirm('ลบอะไหล่นี้?'))return;try{await ensurePartsLoaded();const key=parts[i]?.part_key;parts.splice(i,1);selectedParts.clear();renderParts();await persistPartsCatalogNow(true);if(key)await deletePartsCatalogKeys([key]);}catch(e){console.warn('delPart failed',e);alert('ลบอะไหล่ไม่สำเร็จ: '+(e.message||e));}}
 function triggerPartImport(){document.getElementById('part-import-file').click();}
 function normalizePartNumber(v){if(v===null||v===undefined||v==='')return 0;if(typeof v==='number')return Number.isFinite(v)?v:0;const cleaned=String(v).replace(/,/g,'').replace(/[^\d.-]/g,'').trim();if(!cleaned)return 0;const n=Number(cleaned);return Number.isFinite(n)?n:0;}
 function cleanHeader(v){return String(v??'').replace(/\s+/g,'').trim();}
