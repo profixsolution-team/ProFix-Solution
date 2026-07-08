@@ -1828,11 +1828,12 @@ function collectFastState(){
   const st={...collectState()};
   st.jobs=(jobs||[]).map(lightJobForCache);
   st.adminTasks=(adminTasks||[]).map(lightAdminTaskForCache);
-  st.parts=[];
+  // แคช parts ด้วยถ้าไม่ใหญ่เกิน → หน้าซัพพลายเออร์ขึ้นทันทีจาก cache (parts ~100KB สำหรับหลักร้อยรายการ)
+  if(partsLoaded&&(parts||[]).length&&(parts||[]).length<=4000){st.parts=parts;st._partsOmitted=false;}
+  else{st.parts=[];st._partsOmitted=true;}
   st.docs={qt:[],iv:[],workOrders:[]};
-  st._partsOmitted=true;
   st._docsOmitted=true;
-  st._cacheVersion=4;
+  st._cacheVersion=5;
   st._cachedAt=new Date().toISOString();
   return st;
 }
@@ -1857,6 +1858,8 @@ function loadFastState(){
     if(st._partsOmitted)delete st.parts;
     if(st._docsOmitted)delete st.docs;
     applyState(st);
+    // ถ้า cache มี parts มาด้วย ให้ถือว่าโหลดแล้ว → หน้าซัพพลายเออร์ขึ้นทันที (background จะ refresh ให้สดอีกที)
+    if(!st._partsOmitted&&Array.isArray(st.parts)&&st.parts.length)partsLoaded=true;
     return true;
   }catch(e){console.warn('Fast cache load failed',e);return false;}
 }
@@ -2097,9 +2100,9 @@ function mergeFullStateWithSplit(fullState,splitState){
   return merged;
 }
 async function ensurePartsLoaded(){
-  if(partsLoaded)return parts;
+  if(partsLoaded&&parts&&parts.length)return parts; // มีข้อมูลแล้วค่อยข้าม — ถ้า flag=true แต่ว่าง ให้โหลดใหม่ (กันค้างว่าง)
   if(partsLoadingPromise)return partsLoadingPromise;
-  if(!splitTablesOnline&&!loadedFromSplitTables){partsLoaded=true;return parts;}
+  if(!splitTablesOnline&&!loadedFromSplitTables){return parts;} // ยังไม่ online — อย่าเพิ่งล็อก flag (รอ online แล้วค่อยโหลด)
   partsLoadingPromise=(async()=>{
     const rows=await sbFetchAll('parts','?select=id,part_key,data,updated_at&order=updated_at.desc');
     parts=rows.map(r=>({...r.data,part_key:r.part_key||r.data?.part_key||String(r.id||'')})).filter(Boolean);
@@ -2112,10 +2115,24 @@ async function ensurePartsLoaded(){
     return parts;
   })().catch(e=>{
     console.warn('Parts lazy load failed',e);
-    partsLoaded=true;
     return parts;
   }).finally(()=>{partsLoadingPromise=null;});
   return partsLoadingPromise;
+}
+// รีเฟรชอะไหล่เงียบๆ (ไม่โชว์ loading) — ใช้เบื้องหลังหลังโหลดจาก cache เพื่อให้ข้อมูลสด
+async function refreshPartsSilently(){
+  if(!splitTablesOnline&&!loadedFromSplitTables)return parts;
+  try{
+    const rows=await sbFetchAll('parts','?select=id,part_key,data,updated_at&order=updated_at.desc');
+    parts=rows.map(r=>({...r.data,part_key:r.part_key||r.data?.part_key||String(r.id||'')})).filter(Boolean);
+    ensurePersistentIds();partsLoaded=true;
+    const snap=splitStateSnapshot();
+    splitKnownIds.parts=new Set(snap.parts.map(p=>p.part_key||p._id).filter(Boolean));
+    splitSaveHashes.parts=stableJson(snap.parts);
+    splitRowHashes.parts=rowHashMap(snap.parts,p=>p.part_key||p._id);
+    cacheFastState();
+  }catch(e){console.warn('refreshPartsSilently failed',e);}
+  return parts;
 }
 async function ensureWorkOrdersLoaded(){
   if(workOrdersLoaded||!splitTablesOnline&&!loadedFromSplitTables)return docs.workOrders||[];
@@ -2389,7 +2406,7 @@ function goTo(id, el){
     'settings-clients':renderClients,
     'settings-teams':renderTeams,
     'settings-branches':()=>{renderClients();renderBranches();},
-    'settings-suppliers':()=>{renderSuppliers();ensurePartsLoaded().then(renderParts);},
+    'settings-suppliers':()=>{renderSuppliers();(partsLoaded&&parts.length?refreshPartsSilently():ensurePartsLoaded()).then(renderParts);},
     reports:renderReports,
     'system-safety':renderSystemSafety
   };
@@ -6290,7 +6307,8 @@ function renderSuppliers(){updateSystemUpdated();document.getElementById('sup-tb
 function filteredPartIndexes(){const q=document.getElementById('part-search')?.value?.toLowerCase()||'';return parts.map((p,i)=>({p,i})).filter(({p})=>!q||String(p.name||'').toLowerCase().includes(q)||String(p.brand||p.spec||'').toLowerCase().includes(q)||String(p.cat||p.category||'').toLowerCase().includes(q)||String(p.code||'').toLowerCase().includes(q)).map(x=>x.i);}
 function renderParts(){
   const tb=document.getElementById('part-tbody');if(!tb)return;
-  if(!partsLoaded&&splitTablesOnline){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดข้อมูลอะไหล่</div></div></td></tr>';ensurePartsLoaded().then(renderParts);return;}
+  if((!partsLoaded||!parts.length)&&(splitTablesOnline||loadedFromSplitTables)&&!partsLoadingPromise){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดข้อมูลอะไหล่</div></div></td></tr>';ensurePartsLoaded().then(renderParts);return;}
+  if(partsLoadingPromise&&!parts.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดข้อมูลอะไหล่</div></div></td></tr>';partsLoadingPromise.then(renderParts);return;}
   const idxs=filteredPartIndexes();tb.innerHTML=idxs.map(i=>{const x=parts[i];return `<tr><td><input type="checkbox" ${selectedParts.has(i)?'checked':''} onchange="togglePartSelect(${i},this.checked)"></td><td class="mono ta" style="font-size:11px;">${esc(x.code||'-')}</td><td><span class="chip">${esc(x.cat||x.category||'-')}</span></td><td style="font-weight:600;">${esc(x.name||'-')}</td><td class="tm" style="font-size:12px;">${esc(x.brand||x.spec||'-')}</td><td>${esc(x.unit||'-')}</td><td class="mono tr">฿${Number(x.cost||0).toLocaleString()}</td><td class="mono tr">฿${Number(x.labor||0).toLocaleString()}</td><td class="mono tg">฿${Number(x.sell||x.price||0).toLocaleString()}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(i=>selectedParts.has(i));all.indeterminate=idxs.some(i=>selectedParts.has(i))&&!all.checked;}}
 function togglePartSelect(i,checked){if(checked)selectedParts.add(i);else selectedParts.delete(i);const idxs=filteredPartIndexes();const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(x=>selectedParts.has(x));all.indeterminate=idxs.some(x=>selectedParts.has(x))&&!all.checked;}}
 function toggleAllVisibleParts(checked){filteredPartIndexes().forEach(i=>checked?selectedParts.add(i):selectedParts.delete(i));renderParts();}
@@ -7293,7 +7311,11 @@ async function initApp(){
     if(duplicateJobsRepairedSinceSave>0){
       saveStateNow(true).then(()=>{duplicateJobsRepairedSinceSave=0;}).catch(e=>console.warn('Duplicate job repair save failed',e));
     }
-    if(!isDocModeLight())runDailyBackupIfNeeded(); // โหมดเอกสารไม่ต้องแบ็กอัป
+    if(!isDocModeLight()){
+      runDailyBackupIfNeeded(); // โหมดเอกสารไม่ต้องแบ็กอัป
+      // preload/refresh อะไหล่เบื้องหลัง → หน้าซัพพลายเออร์พร้อมทันที + cache สด
+      (partsLoaded&&parts.length?refreshPartsSilently():ensurePartsLoaded()).then(()=>{if(document.getElementById('page-settings-suppliers')?.classList.contains('active'))renderParts();}).catch(()=>{});
+    }
     startRemoteRefresh();
     maybeAutoOpenSalesFromUrl();
   }).catch(e=>{
