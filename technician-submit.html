@@ -455,6 +455,7 @@ async function loadMasterPartOptions(){
         name:x.name||'',
         category:x.cat||x.category||'อะไหล่',
         unit:x.unit||'',
+        brand:x.brand||x.spec||'',
         supplier:x.sup||x.supplier||'',
         source:'parts'
       };
@@ -546,10 +547,13 @@ function updateTechPartRow(i,field,value){
 // ===== dropdown ค้นหาอะไหล่จากระบบ (เลือกได้อย่างเดียว) =====
 let techPartDropdownList = {}; // เก็บรายการที่กรองไว้ต่อแถว → เลือกด้วย index กัน bug escaping id
 function techPartMatches(query){
-  const q=String(query||'').trim().toLowerCase();
+  const q=String(query||'').replace(/\s+/g,' ').trim().toLowerCase();
   let list=masterPartOptions;
-  if(q)list=list.filter(p=>[p.name,p.code,p.category,p.supplier].some(v=>String(v||'').toLowerCase().includes(q)));
-  return list.slice(0,40);
+  if(q){
+    const tokens=q.split(' ').filter(Boolean);
+    list=list.filter(p=>{const hay=[p.name,p.code,p.category,p.brand,p.supplier].map(v=>String(v||'').toLowerCase()).join(' ');return tokens.every(t=>hay.includes(t));});
+  }
+  return list.slice(0,200); // แสดงได้มากขึ้น (เดิม 40 ทำให้บางรายการไม่ขึ้น)
 }
 function openTechPartDropdown(i,query){
   const dd=document.getElementById('part-dd-'+i);if(!dd)return;
@@ -561,7 +565,7 @@ function openTechPartDropdown(i,query){
   const list=techPartMatches(query);
   techPartDropdownList[i]=list;
   dd.innerHTML=list.length
-    ? list.map((p,idx)=>`<div class="part-dd-row" onmousedown="event.preventDefault();pickTechPart(${i},${idx})"><div class="part-dd-name">${esc(p.name)}</div>${[p.category,p.code,p.supplier].filter(Boolean).length?`<div class="part-dd-sub">${esc([p.category,p.code,p.supplier].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')
+    ? list.map((p,idx)=>`<div class="part-dd-row" onmousedown="event.preventDefault();pickTechPart(${i},${idx})"><div class="part-dd-name">${esc(p.name)}</div>${[p.category,p.code,p.brand,p.supplier].filter(Boolean).length?`<div class="part-dd-sub">${esc([p.category,p.code,p.brand,p.supplier].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')
     : '<div class="part-dd-empty">ไม่พบอะไหล่ที่ตรงกับคำค้น<br>กด "+ อื่นๆ" เพื่อพิมพ์เอง</div>';
   dd.style.display='';
 }
