@@ -643,7 +643,7 @@ select option{background:var(--surface2);}
     <div class="filter-bar" id="sale-fbar" style="margin-bottom:16px;border-radius:8px;border:1px solid var(--border);"></div>
     <div class="table-wrap mobile-list">
       <div class="table-header"><div class="table-title">รายการบิลขาย</div><span class="mono tm" id="sale-table-count" style="font-size:11px;"></span></div>
-      <table><thead><tr><th>เลขบิลขาย</th><th>PR</th><th>ลูกค้า</th><th>วันที่</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th>รับเงิน</th><th></th></tr></thead><tbody id="sales-tbody"></tbody></table>
+      <table><thead><tr><th>เลขบิลขาย</th><th>PR</th><th>ลูกค้า</th><th>วันที่</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th>รับเงิน</th><th>แก้ล่าสุด</th><th></th></tr></thead><tbody id="sales-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -966,9 +966,9 @@ select option{background:var(--surface2);}
   <div class="modal">
     <div class="modal-header"><div class="modal-title">เพิ่ม/แก้ไขอะไหล่</div><button class="close-btn" onclick="closeM('m-part')">×</button></div>
     <div class="modal-body">
-      <div class="form-row"><div class="form-group"><label>ลำดับ / รหัส</label><input type="text" id="fpa-code" placeholder="เช่น 1 หรือ PCB-001"></div><div class="form-group"><label>หมวดหมู่</label><input type="text" id="fpa-cat" placeholder="เช่น สารเคมี/น้ำยา"></div></div>
-      <div class="form-row"><div class="form-group"><label>ชื่ออะไหล่</label><input type="text" id="fpa-name" placeholder="เช่น คอมเพรสเซอร์ตู้แช่"></div><div class="form-group"><label>รายละเอียด/สเปค</label><input type="text" id="fpa-brand" placeholder="เช่น Danfoss SC15G"></div></div>
-      <div class="form-row"><div class="form-group"><label>หน่วย</label><input type="text" id="fpa-unit" placeholder="เช่น ชุด / กิโลกรัม"></div><div class="form-group"><label>ซัพพลายเออร์</label><select id="fpa-sup"></select></div></div>
+      <div class="form-row"><div class="form-group"><label>ลำดับ / รหัส <span style="font-size:10px;color:var(--text3);">(อัตโนมัติ เลือก/พิมพ์เองได้)</span></label><input type="text" id="fpa-code" list="fpa-code-list" autocomplete="off" placeholder="เช่น 1 หรือ PCB-001"><datalist id="fpa-code-list"></datalist></div><div class="form-group"><label>หมวดหมู่ <span style="font-size:10px;color:var(--text3);">(เลือกเดิม/เพิ่มใหม่)</span></label><input type="text" id="fpa-cat" list="fpa-cat-list" autocomplete="off" placeholder="เช่น สารเคมี/น้ำยา"><datalist id="fpa-cat-list"></datalist></div></div>
+      <div class="form-row"><div class="form-group"><label>ชื่ออะไหล่</label><input type="text" id="fpa-name" list="fpa-name-list" autocomplete="off" placeholder="เช่น คอมเพรสเซอร์ตู้แช่"><datalist id="fpa-name-list"></datalist></div><div class="form-group"><label>รายละเอียด/สเปค</label><input type="text" id="fpa-brand" placeholder="เช่น Danfoss SC15G"></div></div>
+      <div class="form-row"><div class="form-group"><label>หน่วย <span style="font-size:10px;color:var(--text3);">(เลือกเดิม/เพิ่มใหม่)</span></label><input type="text" id="fpa-unit" list="fpa-unit-list" autocomplete="off" placeholder="เช่น ชุด / กิโลกรัม"><datalist id="fpa-unit-list"></datalist></div><div class="form-group"><label>ซัพพลายเออร์</label><select id="fpa-sup"></select></div></div>
       <div class="form-row"><div class="form-group"><label>ค่าของ (฿)</label><input type="number" id="fpa-cost" placeholder="0" oninput="calcPartMargin()"></div><div class="form-group"><label>ค่าแรง (฿)</label><input type="number" id="fpa-labor" placeholder="0" oninput="calcPartMargin()"></div></div>
       <div class="form-row"><div class="form-group"><label>ราคาขายลูกค้า (฿)</label><input type="number" id="fpa-sell" placeholder="0" oninput="calcPartMargin()"></div><div class="form-group"><label>Margin</label><input type="text" id="fpa-margin" placeholder="—" readonly style="background:var(--surface2);color:var(--green);font-family:var(--mono);"></div></div>
       <div class="form-group"><label>หมายเหตุ</label><input type="text" id="fpa-note" placeholder="ใช้กับงานประเภท..."></div>
@@ -1330,6 +1330,8 @@ let purchaseInvoices=[], purchaseItems=[], technicianUsedParts=[], jobCostItems=
 let masterPriceItems=[];
 let salesConvertSourceId='';
 const MASTER_PRICE_CATEGORIES=['ค่าบริการ','ค่าแรง','ค่าเดินทาง','งานซ่อม','งานติดตั้ง','อะไหล่','อื่น ๆ'];
+// ค่าแรง/ค่าบริการเท่านั้นนับเป็น "ค่าแรง" — หมวดอื่นทั้งหมดนับเป็น "ค่าของ" (ใช้ทั้งฟอร์มเอกสาร + ดึงเข้าการเงิน)
+const SALES_LABOR_RE=/ค่าแรง|ค่าบริการ|บริการ|labor|service/i;
 const THAI_PROVINCES=['กรุงเทพมหานคร','กระบี่','กาญจนบุรี','กาฬสินธุ์','กำแพงเพชร','ขอนแก่น','จันทบุรี','ฉะเชิงเทรา','ชลบุรี','ชัยนาท','ชัยภูมิ','ชุมพร','เชียงราย','เชียงใหม่','ตรัง','ตราด','ตาก','นครนายก','นครปฐม','นครพนม','นครราชสีมา','นครศรีธรรมราช','นครสวรรค์','นนทบุรี','นราธิวาส','น่าน','บึงกาฬ','บุรีรัมย์','ปทุมธานี','ประจวบคีรีขันธ์','ปราจีนบุรี','ปัตตานี','พระนครศรีอยุธยา','พะเยา','พังงา','พัทลุง','พิจิตร','พิษณุโลก','เพชรบุรี','เพชรบูรณ์','แพร่','ภูเก็ต','มหาสารคาม','มุกดาหาร','แม่ฮ่องสอน','ยโสธร','ยะลา','ร้อยเอ็ด','ระนอง','ระยอง','ราชบุรี','ลพบุรี','ลำปาง','ลำพูน','เลย','ศรีสะเกษ','สกลนคร','สงขลา','สตูล','สมุทรปราการ','สมุทรสงคราม','สมุทรสาคร','สระแก้ว','สระบุรี','สิงห์บุรี','สุโขทัย','สุพรรณบุรี','สุราษฎร์ธานี','สุรินทร์','หนองคาย','หนองบัวลำภู','อ่างทอง','อำนาจเจริญ','อุดรธานี','อุตรดิตถ์','อุทัยธานี','อุบลราชธานี'];
 function provinceOptionsHtml(selected=''){return '<option value="">— เลือกจังหวัด —</option>'+THAI_PROVINCES.map(p=>`<option value="${esc(p)}"${p===selected?' selected':''}>${esc(p)}</option>`).join('');}
 let purchaseVatMode='add', salesVatMode='add'; // 'add' บวกเพิ่ม | 'inclusive' รวมแล้ว | 'none' ไม่มี
@@ -3742,7 +3744,8 @@ async function matchFinanceFromSales(jobId){
   const inv=latestSalesDocForJob(jobId);
   if(!inv){alert('ยังไม่มีใบเสนอราคา/บิลขายของงานนี้ — ออกเอกสารก่อนแล้วค่อยดึงข้อมูล');return;}
   const items=(salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===inv.id&&x.status!=='cancelled');
-  const partsRevenue=items.filter(it=>SALES_PARTS_CAT_RE.test(String(it.category||'')+' '+String(it.description||''))).reduce((s,it)=>s+Number(it.subtotal||0),0);
+  // ทุกรายการที่ไม่ใช่ค่าแรง/ค่าบริการ = ค่าของ (ขายอะไหล่)
+  const partsRevenue=items.filter(it=>!SALES_LABOR_RE.test(String(it.category||'')+' '+String(it.description||''))).reduce((s,it)=>s+Number(it.subtotal||0),0);
   const travel=Number(inv.travel_amount||0);
   const subtotal=Number(inv.subtotal||0);
   const pc=Math.max(0,subtotal-partsRevenue-travel);       // รายรับงาน (บริการ+overhead+SLA)
@@ -3812,6 +3815,17 @@ function openTeamFinanceSummary(){
     return `<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${esc(tm)} · ${tj.length} งาน</div><span class="mono tm" style="font-size:12px;">รายได้ ฿${money(income)} · กำไร <b class="${profit>=0?'tg':'tr'}">฿${money(profit)}</b></span></div><div style="padding:8px 12px;display:flex;flex-wrap:wrap;gap:5px;">${bucketHtml||'<span class="tm">-</span>'}</div><table><thead><tr><th>PR</th><th>สาขา</th><th>ประเภท</th><th>สถานะ</th><th>รายได้</th><th>กำไร</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }).join('')||'<div class="empty">ไม่มีข้อมูล</div>';
   openM('m-team-finance');
+}
+// เวลาแก้ล่าสุดแบบอ่านง่าย (ไทย)
+function editedAtText(iso){
+  if(!iso)return '-';
+  const d=new Date(iso);if(isNaN(d.getTime()))return '-';
+  const now=new Date();
+  const time=d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+' น.';
+  if(d.toDateString()===now.toDateString())return 'วันนี้ '+time;
+  const y=new Date(now);y.setDate(now.getDate()-1);
+  if(d.toDateString()===y.toDateString())return 'เมื่อวาน '+time;
+  return d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+time;
 }
 function money(v){return Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
 function newAccountingId(prefix){return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;}
@@ -4281,14 +4295,14 @@ function renderSalesTax(){
   document.getElementById('sale-count').textContent=list.length+' บิล';
   document.getElementById('sale-unpaid').textContent='฿'+money(unpaid);
   document.getElementById('sale-table-count').textContent=list.length+' รายการ';
-  if(!accountingLoaded){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลขาย</div></div></td></tr>';return;}
-  if(!list.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">🧾</div><div>${salesInvoices.length?'ไม่พบบิลขายตามตัวกรอง':'ยังไม่มีบิลขาย'}</div></div></td></tr>`;return;}
+  if(!accountingLoaded){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลขาย</div></div></td></tr>';return;}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">🧾</div><div>${salesInvoices.length?'ไม่พบบิลขายตามตัวกรอง':'ยังไม่มีบิลขาย'}</div></div></td></tr>`;return;}
   tb.innerHTML=list.map(inv=>{
     const prBtns=salesInvoiceJobs(inv).map(p=>`<button class="btn btn-ghost btn-sm" onclick="openDet('${esc(p)}')">${esc(p)}</button>`).join(' ')||'-';
     const dt=inv.doc_type||'tax_invoice';const dmeta=SALES_DOC_META[dt]||SALES_DOC_META.tax_invoice;
     const nextType=SALES_DOC_NEXT[dt];const nextMeta=nextType&&nextType!==dt?SALES_DOC_META[nextType]:null;
     const firstPr=salesInvoiceJobs(inv)[0]||'';
-    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;" onclick="event.stopPropagation()">${prBtns}</td><td>${esc(inv.customer_name||inv.customer_id||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesInNewTab('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
+    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;" onclick="event.stopPropagation()">${prBtns}</td><td>${esc(inv.customer_name||inv.customer_id||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="tm" style="font-size:11px;white-space:nowrap;"><b style="color:var(--text2);">${esc(inv.updated_by||inv.created_by||'-')}</b><br>${esc(editedAtText(inv.updated_at))}</td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesInNewTab('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
   }).join('');
 }
 // ลบ (ยกเลิก) บิลขาย — soft cancel ทั้งเอกสารและรายการ
@@ -4392,7 +4406,7 @@ function openSalesDocPreview(id){
   const meta=SALES_DOC_META[inv.doc_type||'tax_invoice']||SALES_DOC_META.tax_invoice;
   const firstPr=salesInvoiceJobs(inv)[0]||'';
   document.getElementById('doc-preview-title').textContent=meta.title+' · '+esc(inv.doc_no||inv.sales_invoice_no||'');
-  document.getElementById('doc-preview-sub').textContent=(inv.customer_name||inv.customer_id||'-')+' · ฿'+money(inv.total_amount);
+  document.getElementById('doc-preview-sub').textContent=(inv.customer_name||inv.customer_id||'-')+' · ฿'+money(inv.total_amount)+' · แก้ล่าสุดโดย '+(inv.updated_by||inv.created_by||'-')+' ('+editedAtText(inv.updated_at)+')';
   document.getElementById('doc-preview-actions').innerHTML=
     `<button class="btn btn-primary btn-sm" onclick="closeM('m-doc-preview');openSalesInNewTab('${esc(id)}')">✏️ แก้ไขเอกสาร</button>`
     +`<button class="btn btn-success btn-sm" onclick="printSalesDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`
@@ -4482,13 +4496,14 @@ function boqQuoteDocHtml(inv,items){
   const dateText=quoteDateText(inv.invoice_date||todayISO());
   const docNo=inv.doc_no||inv.sales_invoice_no||'';
   const travelRoute=travelKm||travelAmount?`${esc(company.branch||'ศูนย์')} ถึง ${esc(branchText||'-')}`:'';
-  const laborRe=/ค่าแรง|บริการ|แรง|service|labor|ติดตั้ง|ล้าง|ซ่อม|ดำเนินการ|งานบริการ/i;
   const itemRows=items.map((it,i)=>{
-    const isLabor=laborRe.test(String(it.category||''))||laborRe.test(String(it.description||''));
-    const amt=Number(it.subtotal||0);
-    const mat=(!isLabor&&amt)?money(amt):'-';
-    const lab=(isLabor&&amt)?money(amt):'-';
-    return `<tr><td class="c">${i+1}</td><td>${esc(it.category||'')}</td><td class="c">${esc(it.item_code||'')}</td><td>${esc(it.description||'')}</td><td class="c">${esc(it.unit||'')}</td><td class="c">${it.quantity?money(it.quantity):''}</td><td class="r">${mat}</td><td class="r">${lab}</td><td class="r">${amt?money(amt):'-'}</td></tr>`;
+    const isLabor=SALES_LABOR_RE.test(String(it.category||''))||SALES_LABOR_RE.test(String(it.description||''));
+    const unitPrice=Number(it.unit_price||0);
+    const sub=Number(it.subtotal||(Number(it.quantity||0)*unitPrice));
+    // ค่าของ/ค่าแรง = ราคาต่อ 1 หน่วย, รวม = ราคาจริงตามปริมาณ
+    const mat=(!isLabor&&unitPrice)?money(unitPrice):'-';
+    const lab=(isLabor&&unitPrice)?money(unitPrice):'-';
+    return `<tr><td class="c">${i+1}</td><td>${esc(it.category||'')}</td><td class="c">${esc(it.item_code||'')}</td><td>${esc(it.description||'')}</td><td class="c">${esc(it.unit||'')}</td><td class="c">${it.quantity?money(it.quantity):''}</td><td class="r">${mat}</td><td class="r">${lab}</td><td class="r">${sub?money(sub):'-'}</td></tr>`;
   }).join('');
   const blank=Math.max(0,12-items.length);
   const blankRows=Array.from({length:blank}).map(()=>`<tr><td class="c">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td class="r">-</td><td class="r">-</td><td class="r">-</td></tr>`).join('');
@@ -5200,16 +5215,16 @@ function accountingItemByName(name,code=''){
 }
 function applySalesItemDetails(i,name){
   const it=salesDraftItems[i];if(!it)return;
+  it.description=String(name||''); // เก็บชื่อที่พิมพ์/เลือกเสมอ (ไม่ค้างชื่อเดิม ไม่ทับด้วย fuzzy)
   const row=accountingItemByName(name,it.item_code);
-  if(!row)return;
-  it.item_code=it.item_code||row.code||'';
-  it.description=row.name||name;
-  it.category=it.category||row.category||'';
-  it.unit=it.unit||row.unit||'';
-  // ไม่ทับราคาที่แอดมินกรอกไว้ด้วย 0 — เติมเฉพาะตอนช่องราคายังว่าง/เป็น 0 และเจอราคาจริง
-  if(!Number(it.unit_price||0)&&Number(row.price||0)>0)it.unit_price=Number(row.price);
-  it.source_type=it.source_type&&it.source_type!=='manual'?it.source_type:(row.src||'manual');
-  it.source_ref_id=it.source_ref_id||row.ref||'';
+  if(!row)return; // ไม่เจอในระบบ → เก็บชื่อไว้ ราคาคงเดิม (พิมพ์เอง)
+  // เจอรายการในระบบ → อัปเดตให้ครบทั้งหมวด/หน่วย/รหัส/ราคา (ตามรายการใหม่)
+  it.item_code=row.code||it.item_code||'';
+  it.category=row.category||it.category||'';
+  it.unit=row.unit||it.unit||'';
+  it.unit_price=Number(row.price||0);
+  it.source_type=row.src||'manual';
+  it.source_ref_id=row.ref||'';
 }
 // ปุ่ม "฿" ต่อแถว: ดึงราคาจากราคากลาง/แคตตาล็อก/สต็อก มาทับ (บังคับ) เพื่อแก้เคสราคาไม่เด้ง
 function pullSalesItemPrice(i){
@@ -5416,7 +5431,8 @@ async function saveSalesInvoice(){
     customer_province:document.getElementById('sale-customer-province')?.value.trim()||'',
     status:'active',
     created_by:getActorName(),
-    updated_by:getActorName()
+    updated_by:getActorName(),
+    updated_at:new Date().toISOString()
     };
     // บันทึกเอกสาร — ถ้าเลขที่เอกสารชน (unique sales_invoice_no) ให้ถามเลขสูงสุดจริงจาก server แล้วข้ามไปเลขว่างถัดไป
     for(let attempt=0;attempt<10;attempt++){
@@ -6263,7 +6279,18 @@ function openClientModal(i=''){editClientIndex=i;if(i===''){['fc-id','fc-name','
 function openTeamModal(i=''){editTeamIndex=i;if(i===''){['ft-name','ft-lead','ft-phone','ft-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('ft-skill').value='แอร์';}else{const t=teams[i];document.getElementById('ft-name').value=t.name;document.getElementById('ft-lead').value=t.lead;document.getElementById('ft-phone').value=t.phone;document.getElementById('ft-skill').value=t.skill;document.getElementById('ft-note').value=t.note||'';}openM('m-team');}
 function openBranchModal(i=''){editBranchIndex=i;renderClients();if(i===''){['fb-name','fb-mgr','fb-phone','fb-hours','fb-addr'].forEach(id=>document.getElementById(id).value='');document.getElementById('fb-id').value='BRN-'+String(branches.length+1).padStart(3,'0');}else{const b=branches[i];document.getElementById('fb-id').value=b.id;document.getElementById('fb-name').value=b.name;document.getElementById('fb-client').value=b.client;document.getElementById('fb-mgr').value=b.mgr;document.getElementById('fb-phone').value=b.phone;document.getElementById('fb-hours').value=b.hours;document.getElementById('fb-addr').value=b.addr;}openM('m-branch');}
 function openSupplierModal(i=''){editSupplierIndex=i;if(i===''){['fs-name','fs-taxid','fs-contact','fs-phone','fs-terms','fs-lead','fs-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('fs-type').value='อะไหล่แอร์';}else{const x=suppliers[i];document.getElementById('fs-name').value=x.name;document.getElementById('fs-type').value=x.type;document.getElementById('fs-taxid').value=x.taxId||x.tax_id||'';document.getElementById('fs-contact').value=x.contact;document.getElementById('fs-phone').value=x.phone;document.getElementById('fs-terms').value=x.terms;document.getElementById('fs-lead').value=x.lead;document.getElementById('fs-note').value=x.note||'';}openM('m-supplier');}
-async function openPartModal(i=''){await ensurePartsLoaded();editPartIndex=i;renderSuppliers();if(i===''){['fpa-code','fpa-cat','fpa-name','fpa-brand','fpa-unit','fpa-cost','fpa-labor','fpa-sell','fpa-margin','fpa-note'].forEach(id=>document.getElementById(id).value='');}else{const x=parts[i];document.getElementById('fpa-code').value=x.code||'';document.getElementById('fpa-cat').value=x.cat||x.category||'';document.getElementById('fpa-name').value=x.name||'';document.getElementById('fpa-brand').value=x.brand||x.spec||'';document.getElementById('fpa-unit').value=x.unit||'';document.getElementById('fpa-sup').value=x.sup||'';document.getElementById('fpa-cost').value=x.cost||0;document.getElementById('fpa-labor').value=x.labor||0;document.getElementById('fpa-sell').value=x.sell||x.price||0;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
+// ค่าตัวเลข "ลำดับ" ถัดไป (max ของรหัสที่เป็นตัวเลข + 1)
+function nextPartSeq(){let max=0;(parts||[]).forEach(p=>{const n=parseInt(String(p.code||'').replace(/[^0-9]/g,''),10);if(Number.isFinite(n)&&n>max)max=n;});return String(max+1);}
+function fillPartDatalists(){
+  const uniq=(arr)=>[...new Set(arr.filter(v=>String(v||'').trim()))];
+  const cats=uniq([...(MASTER_PRICE_CATEGORIES||[]),...(parts||[]).map(p=>p.cat||p.category)]);
+  const units=uniq((parts||[]).map(p=>p.unit));
+  const names=uniq((parts||[]).map(p=>p.name));
+  const codes=uniq((parts||[]).map(p=>p.code)).sort((a,b)=>(parseInt(a,10)||0)-(parseInt(b,10)||0));
+  const set=(id,vals)=>{const el=document.getElementById(id);if(el)el.innerHTML=vals.map(v=>`<option value="${esc(v)}"></option>`).join('');};
+  set('fpa-cat-list',cats);set('fpa-unit-list',units);set('fpa-name-list',names);set('fpa-code-list',codes);
+}
+async function openPartModal(i=''){await ensurePartsLoaded();editPartIndex=i;renderSuppliers();fillPartDatalists();if(i===''){['fpa-code','fpa-cat','fpa-name','fpa-brand','fpa-unit','fpa-cost','fpa-labor','fpa-sell','fpa-margin','fpa-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fpa-code').value=nextPartSeq();}else{const x=parts[i];document.getElementById('fpa-code').value=x.code||'';document.getElementById('fpa-cat').value=x.cat||x.category||'';document.getElementById('fpa-name').value=x.name||'';document.getElementById('fpa-brand').value=x.brand||x.spec||'';document.getElementById('fpa-unit').value=x.unit||'';document.getElementById('fpa-sup').value=x.sup||'';document.getElementById('fpa-cost').value=x.cost||0;document.getElementById('fpa-labor').value=x.labor||0;document.getElementById('fpa-sell').value=x.sell||x.price||0;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
 
 function renderClients() {
   updateSystemUpdated();
@@ -6304,7 +6331,8 @@ function saveBranch(){const data={id:document.getElementById('fb-id').value,name
 function delBranch(i){if(confirm('ลบสาขานี้?')){branches.splice(i,1);renderBranches();saveState();}}
 
 function renderSuppliers(){updateSystemUpdated();document.getElementById('sup-tbody').innerHTML=suppliers.map((x,i)=>`<tr><td style="font-weight:600;">${esc(x.name)}</td><td><span class="chip">${esc(x.type)}</span></td><td class="mono" style="font-size:12px;">${esc(x.taxId||x.tax_id||'-')}</td><td>${esc(x.contact)}</td><td class="mono" style="font-size:12px;">${esc(x.phone)}</td><td style="font-size:12px;">${esc(x.terms)}</td><td class="tm" style="font-size:12px;">${esc(x.note||'-')}</td>${actionCell('spm',i,`<button onclick="alert(detailText(suppliers[${i}]))">ดูดีเทล</button><button onclick="openSupplierModal(${i})">แก้ไข</button><button onclick="delSupplier(${i})">ลบ</button>`)}</tr>`).join('');const supOpts=suppliers.map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join('');const fpaS=document.getElementById('fpa-sup');if(fpaS)fpaS.innerHTML=supOpts;refreshAccountingDatalists();renderParts();}
-function filteredPartIndexes(){const q=document.getElementById('part-search')?.value?.toLowerCase()||'';return parts.map((p,i)=>({p,i})).filter(({p})=>!q||String(p.name||'').toLowerCase().includes(q)||String(p.brand||p.spec||'').toLowerCase().includes(q)||String(p.cat||p.category||'').toLowerCase().includes(q)||String(p.code||'').toLowerCase().includes(q)).map(x=>x.i);}
+function partSeqNum(p){const n=parseInt(String(p?.code||'').replace(/[^0-9]/g,''),10);return Number.isFinite(n)?n:999999;}
+function filteredPartIndexes(){const q=document.getElementById('part-search')?.value?.toLowerCase()||'';return parts.map((p,i)=>({p,i})).filter(({p})=>!q||String(p.name||'').toLowerCase().includes(q)||String(p.brand||p.spec||'').toLowerCase().includes(q)||String(p.cat||p.category||'').toLowerCase().includes(q)||String(p.code||'').toLowerCase().includes(q)).sort((a,b)=>partSeqNum(a.p)-partSeqNum(b.p)||String(a.p.name||'').localeCompare(String(b.p.name||''),'th')).map(x=>x.i);}
 function renderParts(){
   const tb=document.getElementById('part-tbody');if(!tb)return;
   if((!partsLoaded||!parts.length)&&(splitTablesOnline||loadedFromSplitTables)&&!partsLoadingPromise){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดข้อมูลอะไหล่</div></div></td></tr>';ensurePartsLoaded().then(renderParts);return;}
