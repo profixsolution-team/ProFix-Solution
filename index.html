@@ -4929,7 +4929,7 @@ function boqQuoteDocHtml(inv,items){
   const bahtText=thaiBahtText(total);
   const dateText=quoteDateText(inv.invoice_date||todayISO());
   const docNo=inv.doc_no||inv.sales_invoice_no||'';
-  const travelRoute=travelKm||travelAmount?`${esc(company.branch||'ศูนย์')} ถึง ${esc(branchText||'-')}`:'';
+  const travelRoute=travelKm||travelAmount?`ศูนย์ ${esc(custProvince||'ปทุมธานี')} ถึง ${esc(branchText||'-')}`:'';
   const itemRows=items.map((it,i)=>{
     const isLabor=SALES_LABOR_RE.test(String(it.category||''))||SALES_LABOR_RE.test(String(it.description||''));
     const unitPrice=Number(it.unit_price||0);
