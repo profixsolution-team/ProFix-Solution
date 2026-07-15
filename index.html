@@ -13,6 +13,27 @@ body[data-theme="light"]{--bg:#f5f7fb;--surface:#ffffff;--surface2:#eef3f8;--sur
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;}
 .app{display:flex;min-height:100vh;}
+/* ===== Login overlay ===== */
+#login-overlay{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;background:var(--bg);padding:20px;}
+#login-overlay.show{display:flex;}
+.login-card{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:30px 26px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+.login-logo{font-size:26px;font-weight:900;color:var(--accent);text-align:center;}
+.login-title{font-size:18px;font-weight:800;text-align:center;color:var(--text);}
+.login-sub{font-size:12px;color:var(--text2);text-align:center;margin-bottom:8px;}
+.login-card input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--text);font-size:15px;font-family:inherit;}
+.login-card input:focus{outline:none;border-color:var(--accent);}
+.login-msg{font-size:13px;text-align:center;min-height:18px;color:var(--red);}
+.login-msg.ok{color:var(--green);}
+/* ===== Role gating ===== */
+/* staff & viewer: ไม่เห็นต้นทุน/กำไร */
+body.role-staff .role-cost, body.role-viewer .role-cost{display:none !important;}
+/* viewer: ดูอย่างเดียว — ซ่อนปุ่มเพิ่ม/บันทึกที่หัวหน้า + เมนู action ต่อแถว */
+body.role-viewer .page-header .btn-primary,
+body.role-viewer .page-header .btn-success,
+body.role-viewer .action-cell,
+body.role-viewer .part-add,
+body.role-viewer .fin-fbar .btn-success{display:none !important;}
+#user-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-top:auto;border-top:1px solid var(--border);font-size:12px;color:var(--text2);}
 /* โหมดเอกสารเต็มหน้า (เปิดในแท็บใหม่เฉพาะทำเอกสาร) — ซ่อน sidebar/หน้าอื่น เห็นแต่ฟอร์มเอกสาร */
 html.doc-mode .mobile-topbar,html.doc-mode .sidebar,html.doc-mode .sidebar-backdrop{display:none !important;}
 html.doc-mode .app{display:block;}
@@ -419,10 +440,50 @@ select option{background:var(--surface2);}
   .cal-day.muted{display:none;}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <script>if(new URLSearchParams(location.search).has('sales'))document.documentElement.classList.add('doc-mode');</script>
 <div id="doc-mode-bar"><div style="font-weight:800;color:var(--accent);">📄 ทำเอกสาร (แท็บเฉพาะ)</div><button class="btn btn-ghost btn-sm" onclick="window.close()">✕ ปิดแท็บ</button></div>
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay">
+  <form class="login-card" id="login-form" onsubmit="return doLoginSubmit(event)">
+    <div class="login-logo">🔧 ProFix</div>
+    <div class="login-title">เข้าสู่ระบบ</div>
+    <div class="login-sub">Service Console — สำหรับทีมงานเท่านั้น</div>
+    <input id="login-user" type="email" autocomplete="email" placeholder="อีเมล" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <input id="login-pass" type="password" autocomplete="current-password" placeholder="รหัสผ่าน">
+    <button type="submit" class="btn btn-primary" id="login-btn" style="width:100%;">เข้าสู่ระบบ</button>
+    <div id="login-msg" class="login-msg"></div>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="doForgotPassword()" style="width:100%;">ลืมรหัสผ่าน?</button>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="showSignupForm()" style="width:100%;">ยังไม่มีบัญชี? ขอสิทธิ์เข้าใช้งาน</button>
+  </form>
+  <form class="login-card" id="recovery-form" style="display:none;" onsubmit="return doRecoverySubmit(event)">
+    <div class="login-logo">🔧 ProFix</div>
+    <div class="login-title">ตั้งรหัสผ่านใหม่</div>
+    <div class="login-sub">กรอกรหัสผ่านใหม่ของคุณ</div>
+    <input id="recovery-pass" type="password" autocomplete="new-password" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)">
+    <input id="recovery-pass2" type="password" autocomplete="new-password" placeholder="ยืนยันรหัสผ่านใหม่">
+    <button type="submit" class="btn btn-primary" id="recovery-btn" style="width:100%;">บันทึกรหัสผ่านใหม่</button>
+    <div id="recovery-msg" class="login-msg"></div>
+  </form>
+  <form class="login-card" id="signup-form" style="display:none;" onsubmit="return doSignupSubmit(event)">
+    <div class="login-logo">🔧 ProFix</div>
+    <div class="login-title">ขอสิทธิ์เข้าใช้งาน</div>
+    <div class="login-sub">สมัคร → ยืนยันอีเมล → รอแอดมินอนุมัติ</div>
+    <input id="signup-username" type="text" autocomplete="username" placeholder="Username (ชื่อผู้ใช้)">
+    <div style="display:flex;gap:8px;">
+      <input id="signup-first" type="text" autocomplete="given-name" placeholder="ชื่อจริง" style="flex:1;min-width:0;">
+      <input id="signup-last" type="text" autocomplete="family-name" placeholder="นามสกุล" style="flex:1;min-width:0;">
+    </div>
+    <input id="signup-phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="เบอร์โทร">
+    <input id="signup-email" type="email" autocomplete="email" placeholder="อีเมล" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <input id="signup-pass" type="password" autocomplete="new-password" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)">
+    <button type="submit" class="btn btn-primary" id="signup-btn" style="width:100%;">สมัคร</button>
+    <div id="signup-msg" class="login-msg"></div>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="showLoginForm()" style="width:100%;">กลับไปเข้าสู่ระบบ</button>
+  </form>
+</div>
 <div class="app-loader" id="app-loader" aria-live="polite" aria-label="กำลังโหลด">
   <div class="loader-card">
     <img class="logo-dark" src="assets/profix-icon.svg" alt="ProFix">
@@ -469,6 +530,9 @@ select option{background:var(--surface2);}
     <div class="nav-section">รายงาน</div>
     <button class="nav-item" data-page="reports" onclick="goTo('reports',this)"><span class="nav-icon">📝</span>รายงานช่าง</button>
     <button class="nav-item" data-page="system-safety" onclick="goTo('system-safety',this)"><span class="nav-icon">🛡</span>กู้ข้อมูล / Backup</button>
+    <div class="nav-section">บัญชี</div>
+    <button class="nav-item" data-page="account" onclick="goTo('account',this)"><span class="nav-icon">⚙️</span>ตั้งค่าบัญชี</button>
+    <button class="nav-item" data-page="users" onclick="goTo('users',this)"><span class="nav-icon">👥</span>จัดการผู้ใช้<span class="nav-badge" id="nb-users" style="display:none;">0</span></button>
   </nav>
 </aside>
 <main class="main">
@@ -872,7 +936,7 @@ select option{background:var(--surface2);}
           <button class="btn btn-ghost btn-sm" onclick="openPartModal()">+ เพิ่มอะไหล่</button>
         </div>
       </div>
-      <table><thead><tr><th style="width:36px;"><input type="checkbox" id="part-check-all" onchange="toggleAllVisibleParts(this.checked)"></th><th>ลำดับ</th><th>หมวดหมู่</th><th>ชื่ออะไหล่</th><th>รายละเอียด/สเปค</th><th>หน่วย</th><th>ค่าของ</th><th>ค่าแรง</th><th>ราคาขาย</th><th></th></tr></thead>
+      <table><thead><tr><th style="width:36px;"><input type="checkbox" id="part-check-all" onchange="toggleAllVisibleParts(this.checked)"></th><th>ลำดับ</th><th>หมวดหมู่</th><th>ชื่ออะไหล่</th><th>รายละเอียด/สเปค</th><th>หน่วย</th><th class="role-cost">ค่าของ</th><th class="role-cost">ค่าแรง</th><th>ราคาขาย</th><th></th></tr></thead>
       <tbody id="part-tbody"></tbody></table>
     </div>
   </div>
@@ -1035,6 +1099,51 @@ select option{background:var(--surface2);}
         <div class="table-header"><div class="table-title" id="recover-title">Event Log</div><span class="mono tm" id="recover-count" style="font-size:11px;"></span></div>
         <div id="recover-results" style="padding:14px;"></div>
       </div>
+    </div>
+  </div>
+</div>
+<div class="page" id="page-account">
+  <div class="page-header">
+    <div><div class="page-title">ตั้งค่าบัญชี</div><div class="page-sub">แก้ไขข้อมูลส่วนตัว และเปลี่ยนรหัสผ่าน</div></div>
+  </div>
+  <div class="content">
+    <div class="system-grid">
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">ข้อมูลส่วนตัว</div></div>
+        <div style="padding:14px;display:grid;gap:10px;max-width:540px;">
+          <div class="form-group"><label>อีเมล (สำหรับล็อกอิน — แก้ไม่ได้)</label><input id="acc-email" disabled></div>
+          <div class="form-group"><label>ชื่อที่แสดง</label><input id="acc-display" placeholder="เช่น Mint"></div>
+          <div class="form-group"><label>Username</label><input id="acc-username" placeholder="ชื่อผู้ใช้"></div>
+          <div class="flex g8">
+            <div class="form-group" style="flex:1;min-width:0;"><label>ชื่อจริง</label><input id="acc-first"></div>
+            <div class="form-group" style="flex:1;min-width:0;"><label>นามสกุล</label><input id="acc-last"></div>
+          </div>
+          <div class="form-group"><label>เบอร์โทร</label><input id="acc-phone" inputmode="tel"></div>
+          <div><button class="btn btn-primary" onclick="saveAccountProfile()">บันทึกข้อมูล</button></div>
+          <div id="acc-msg" class="login-msg" style="text-align:left;min-height:0;"></div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">เปลี่ยนรหัสผ่าน</div></div>
+        <div style="padding:14px;display:grid;gap:10px;max-width:540px;">
+          <div class="form-group"><label>รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)</label><input id="acc-pass" type="password" autocomplete="new-password"></div>
+          <div class="form-group"><label>ยืนยันรหัสผ่านใหม่</label><input id="acc-pass2" type="password" autocomplete="new-password"></div>
+          <div><button class="btn btn-primary" onclick="changeMyPassword()">เปลี่ยนรหัสผ่าน</button></div>
+          <div id="acc-pass-msg" class="login-msg" style="text-align:left;min-height:0;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="page" id="page-users">
+  <div class="page-header">
+    <div><div class="page-title">จัดการผู้ใช้</div><div class="page-sub">อนุมัติคำขอ · กำหนดสิทธิ์ · ระงับ/ลบบัญชี (เฉพาะแอดมินเต็ม)</div></div>
+    <button class="btn btn-ghost" onclick="renderUsers()">รีเฟรช</button>
+  </div>
+  <div class="content">
+    <div class="table-wrap">
+      <div class="table-header"><div class="table-title">ผู้ใช้ทั้งหมด</div></div>
+      <div id="users-table" style="padding:6px;overflow-x:auto;"></div>
     </div>
   </div>
 </div>
@@ -1384,7 +1493,17 @@ document.addEventListener('click', closeMenus);
 // SUPABASE PERSISTENCE
 const SUPABASE_URL='https://cfikdkytopyqxvaytiks.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
-const APP_VERSION='2026.07.06.3';
+// Supabase Auth client (แชร์ session ผ่าน localStorage → แท็บ ?sales= ใช้ session เดิม ไม่ถามล็อกอินซ้ำ)
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:'implicit', storageKey:'svc_admin_tracker_sb_auth' }
+});
+let ACCESS_TOKEN = null;
+// อัปเดต token ทุกครั้ง session เปลี่ยน (รวม refresh อัตโนมัติ) + ดักลิงก์รีเซ็ตรหัสผ่านจากอีเมล
+sbClient.auth.onAuthStateChange(function(event, session){
+  ACCESS_TOKEN = (session && session.access_token) || null;
+  if(event==='PASSWORD_RECOVERY'){ try{ showRecoveryForm(); }catch(e){} }
+});
+const APP_VERSION='2026.07.15.1';
 const STATE_KEY='service_management_tracker';
 const SPLIT_TABLES_ENABLED=true;
 // ตั้งเป็น Worker URL ของคุณ เช่น https://profix-r2-upload-worker.YOUR-SUBDOMAIN.workers.dev/upload-workorder
@@ -1609,7 +1728,7 @@ function initAppVersion(){
   }
   localStorage.setItem(LS_APP_VERSION_KEY,APP_VERSION);
 }
-function sbHeaders(extra={}){return {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',...extra};}
+function sbHeaders(extra={}){return {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(ACCESS_TOKEN||SUPABASE_ANON_KEY),'Content-Type':'application/json',...extra};}
 function getDeviceId(){
   let id=localStorage.getItem(LS_DEVICE_ID_KEY);
   if(!id){
@@ -1618,15 +1737,327 @@ function getDeviceId(){
   }
   return id;
 }
-function getActorName({ask=false}={}){
-  let name=localStorage.getItem(LS_ACTOR_NAME_KEY)||'';
-  if((ask||!name) && !name){
-    name=(prompt('ตั้งชื่อเครื่อง/ผู้ใช้งานสำหรับ Audit log เช่น Admin Mint, Admin Meow, Office PC')||'').trim();
-    if(!name)name='Unknown Admin';
-    localStorage.setItem(LS_ACTOR_NAME_KEY,name);
-  }
-  return name||'Unknown Admin';
+// ===== Modal ป้อนข้อความ (แทน prompt) — คืน Promise<string|null> (null = ยกเลิก) =====
+function uiPrompt(opts){
+  opts=opts||{};
+  return new Promise(function(resolve){
+    let ov=document.getElementById('m-uiprompt');
+    if(!ov){
+      ov=document.createElement('div');
+      ov.className='modal-overlay'; ov.id='m-uiprompt';
+      ov.innerHTML='<div class="modal" style="max-width:440px;"><div class="modal-header"><div class="modal-title" id="uiprompt-title"></div><button class="close-btn" id="uiprompt-x">×</button></div><div class="modal-body"><div class="form-group"><label id="uiprompt-label"></label><div id="uiprompt-field"></div></div><div class="flex g8" style="justify-content:flex-end;margin-top:12px;"><button class="btn btn-ghost" id="uiprompt-cancel">ยกเลิก</button><button class="btn btn-primary" id="uiprompt-ok">ตกลง</button></div></div></div>';
+      document.body.appendChild(ov);
+    }
+    document.getElementById('uiprompt-title').textContent=opts.title||'กรอกข้อมูล';
+    const label=document.getElementById('uiprompt-label');
+    label.textContent=opts.label||''; label.style.display=opts.label?'':'none';
+    const multiline=!!opts.multiline;
+    document.getElementById('uiprompt-field').innerHTML=multiline?'<textarea id="uiprompt-input" rows="4" style="width:100%;"></textarea>':'<input id="uiprompt-input" type="text" style="width:100%;">';
+    const input=document.getElementById('uiprompt-input');
+    input.value=opts.value||''; if(opts.placeholder)input.placeholder=opts.placeholder; if(opts.readonly)input.readOnly=true;
+    document.getElementById('uiprompt-ok').textContent=opts.okText||'ตกลง';
+    document.getElementById('uiprompt-cancel').style.display=opts.hideCancel?'none':'';
+    function cleanup(val){ ov.classList.remove('open'); ov.removeEventListener('mousedown',onBackdrop); document.removeEventListener('keydown',onKey); resolve(val); }
+    function onBackdrop(e){ if(e.target===ov)cleanup(null); }
+    function onKey(e){ if(e.key==='Escape')cleanup(null); if(e.key==='Enter'&&!multiline){e.preventDefault();cleanup(input.value);} }
+    document.getElementById('uiprompt-x').onclick=function(){cleanup(null);};
+    document.getElementById('uiprompt-cancel').onclick=function(){cleanup(null);};
+    document.getElementById('uiprompt-ok').onclick=function(){cleanup(input.value);};
+    ov.addEventListener('mousedown',onBackdrop);
+    document.addEventListener('keydown',onKey);
+    ov.classList.add('open');
+    setTimeout(function(){input.focus(); if(input.select)input.select();},50);
+  });
 }
+// Modal แสดงข้อความให้คัดลอก (fallback เวลา clipboard API ใช้ไม่ได้)
+function uiCopyModal(text,title){
+  return uiPrompt({title:title||'คัดลอกข้อความ',label:'เลือกข้อความแล้วคัดลอก (Ctrl/⌘+C)',value:text,multiline:true,readonly:true,okText:'ปิด',hideCancel:true});
+}
+function getActorName(){
+  // auth บังคับล็อกอินแล้ว → ใช้ชื่อผู้ล็อกอินเป็นชื่อใน audit เสมอ
+  if(AUTH && AUTH.display_name) return AUTH.display_name;
+  return localStorage.getItem(LS_ACTOR_NAME_KEY) || 'ทีมงาน';
+}
+// ===== ระบบล็อกอิน / สิทธิ์ผู้ใช้ =====
+const AUTH_ENABLED = true;                 // ปิดชั่วคราวได้ (ตั้ง false = ไม่บังคับล็อกอิน)
+let AUTH = null;                           // {email, display_name, role, status}
+
+// อ่านสิทธิ์ตัวเองจาก RPC profix_me (คืน null ถ้าไม่มีแถว/ยังไม่ผูกสิทธิ์)
+async function fetchMyProfile(){
+  const {data,error}=await sbClient.rpc('profix_me');
+  if(error)throw error;
+  return (Array.isArray(data)&&data[0])||null;
+}
+// ลืมรหัสผ่าน → ส่งลิงก์ตั้งรหัสใหม่เข้าอีเมลจริง (ผ่าน Resend SMTP)
+async function doForgotPassword(){
+  const email=(document.getElementById('login-user')?.value||'').trim().toLowerCase();
+  const msg=document.getElementById('login-msg');
+  if(!email){ if(msg){msg.className='login-msg';msg.textContent='กรอกอีเมลในช่องด้านบนก่อน แล้วกด "ลืมรหัสผ่าน?"';} return; }
+  try{
+    const {error}=await sbClient.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+    if(error)throw error;
+    if(msg){msg.className='login-msg ok';msg.textContent='ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ '+email+' แล้ว (เช็คกล่องเมล/สแปม)';}
+  }catch(err){ if(msg){msg.className='login-msg';msg.textContent='ส่งลิงก์ไม่สำเร็จ: '+(err.message||err);} }
+}
+// แสดงฟอร์มตั้งรหัสผ่านใหม่ (เรียกเมื่อผู้ใช้เข้ามาจากลิงก์ในเมล — event PASSWORD_RECOVERY)
+function showRecoveryForm(){
+  const loader=document.getElementById('app-loader'); if(loader)loader.style.display='none';
+  const lf=document.getElementById('login-form'); if(lf)lf.style.display='none';
+  const rf=document.getElementById('recovery-form'); if(rf)rf.style.display='';
+  const ov=document.getElementById('login-overlay'); if(ov)ov.classList.add('show');
+  setTimeout(function(){var p=document.getElementById('recovery-pass'); if(p)p.focus();},120);
+}
+async function doRecoverySubmit(ev){
+  ev.preventDefault();
+  const p1=document.getElementById('recovery-pass').value||'';
+  const p2=document.getElementById('recovery-pass2').value||'';
+  const msg=document.getElementById('recovery-msg');const btn=document.getElementById('recovery-btn');
+  if(p1.length<6){msg.className='login-msg';msg.textContent='รหัสผ่านอย่างน้อย 6 ตัว';return false;}
+  if(p1!==p2){msg.className='login-msg';msg.textContent='รหัสผ่านสองช่องไม่ตรงกัน';return false;}
+  btn.disabled=true;msg.className='login-msg';msg.textContent='กำลังบันทึก...';
+  try{
+    const {error}=await sbClient.auth.updateUser({password:p1});
+    if(error)throw error;
+    msg.className='login-msg ok';msg.textContent='ตั้งรหัสผ่านใหม่สำเร็จ กำลังเข้าสู่ระบบ...';
+    setTimeout(function(){location.reload();},1200);
+  }catch(err){msg.className='login-msg';msg.textContent='⚠️ '+(err.message||err);btn.disabled=false;}
+  return false;
+}
+async function doLoginSubmit(ev){
+  ev.preventDefault();
+  const email=(document.getElementById('login-user').value||'').trim().toLowerCase();
+  const p=document.getElementById('login-pass').value||'';
+  const msg=document.getElementById('login-msg');const btn=document.getElementById('login-btn');
+  if(!email||!p){msg.className='login-msg';msg.textContent='กรอกอีเมลและรหัสผ่าน';return false;}
+  btn.disabled=true;msg.className='login-msg';msg.textContent='กำลังตรวจสอบ...';
+  try{
+    const {data,error}=await sbClient.auth.signInWithPassword({email,password:p});
+    if(error){
+      const em=(error.message||'').toLowerCase();
+      msg.className='login-msg';
+      msg.textContent = (em.includes('not confirmed')||em.includes('confirm')) ? 'กรุณายืนยันอีเมลก่อน (กดลิงก์ในเมลที่ส่งไป)' : 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+      btn.disabled=false;return false;
+    }
+    ACCESS_TOKEN=(data&&data.session&&data.session.access_token)||null;
+    const me=await fetchMyProfile();
+    if(!me){await sbClient.auth.signOut();ACCESS_TOKEN=null;msg.className='login-msg';msg.textContent='บัญชีนี้ยังไม่ได้ตั้งค่าสิทธิ์ ติดต่อแอดมิน';btn.disabled=false;return false;}
+    if(me.status!=='approved'||!me.active){
+      await sbClient.auth.signOut();ACCESS_TOKEN=null;
+      msg.className='login-msg';
+      msg.textContent = me.status==='pending' ? 'บัญชีของคุณรอแอดมินอนุมัติ' : (me.status==='suspended' ? 'บัญชีถูกระงับ ติดต่อแอดมิน' : 'บัญชีนี้ยังใช้งานไม่ได้');
+      btn.disabled=false;return false;
+    }
+    AUTH={email:me.email,display_name:me.display_name||me.email,role:me.role,status:me.status};
+    msg.className='login-msg ok';msg.textContent='เข้าสู่ระบบสำเร็จ';
+    document.getElementById('login-overlay').classList.remove('show');
+    document.getElementById('login-pass').value='';
+    applyRolePermissions();
+    if(!window.__appStarted){window.__appStarted=true;startApp();}
+  }catch(err){msg.className='login-msg';msg.textContent='⚠️ '+(err.message||err);}
+  btn.disabled=false;return false;
+}
+async function logout(){
+  if(!confirm('ออกจากระบบ?'))return;
+  try{await sbClient.auth.signOut();}catch(e){}
+  ACCESS_TOKEN=null;AUTH=null;location.reload();
+}
+function canEdit(){return !AUTH || AUTH.role!=='viewer';}  // viewer = ดูอย่างเดียว
+function guardEdit(){ if(canEdit())return true; alert('บัญชีนี้เป็นสิทธิ์ "ดูอย่างเดียว" — แก้ไขข้อมูลไม่ได้'); return false; }
+function applyRolePermissions(){
+  const role=(AUTH&&AUTH.role)||'admin';
+  document.body.classList.remove('role-admin','role-staff','role-viewer');
+  document.body.classList.add('role-'+role);
+  // staff/viewer ไม่เห็นหน้าการเงิน/จ่ายช่าง (ต้นทุน-กำไร) และหน้าจัดการผู้ใช้ (admin เท่านั้น)
+  const hidePages = (role==='admin') ? [] : ['finance','tech-pay','users'];
+  document.querySelectorAll('.nav-item[data-page]').forEach(function(b){
+    b.style.display = hidePages.indexOf(b.getAttribute('data-page'))>=0 ? 'none' : '';
+  });
+  // แสดงชื่อผู้ใช้ + ปุ่มออกจากระบบ ใน sidebar
+  renderUserChip();
+  if(role==='admin'){ refreshPendingBadge(); }
+}
+function roleLabel(r){return r==='admin'?'แอดมิน (เต็ม)':r==='staff'?'แอดมิน (ไม่เห็นต้นทุน)':r==='viewer'?'ดูอย่างเดียว':r;}
+function renderUserChip(){
+  let chip=document.getElementById('user-chip');
+  const sb=document.querySelector('.sidebar');
+  if(!AUTH||!sb)return;
+  if(!chip){chip=document.createElement('div');chip.id='user-chip';sb.appendChild(chip);}
+  chip.innerHTML='<div style="flex:1;min-width:0;"><div style="font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">👤 '+esc(AUTH.display_name)+'</div><div style="font-size:10px;">'+esc(roleLabel(AUTH.role))+'</div></div><button class="btn btn-ghost btn-sm" title="ตั้งค่าบัญชี" onclick="goTo(\'account\')">⚙</button><button class="btn btn-ghost btn-sm" onclick="logout()">ออก</button>';
+}
+// ===== หน้าตั้งค่าบัญชี (โปรไฟล์ + เปลี่ยนรหัสผ่าน) =====
+async function renderAccount(){
+  const setV=(id,v)=>{const e=document.getElementById(id); if(e)e.value=v||'';};
+  ['acc-msg','acc-pass-msg'].forEach(id=>{const e=document.getElementById(id); if(e)e.textContent='';});
+  try{
+    const me = AUTH ? await fetchMyProfile() : null;
+    if(me){
+      setV('acc-email',me.email); setV('acc-display',me.display_name);
+      setV('acc-username',me.username); setV('acc-first',me.first_name);
+      setV('acc-last',me.last_name); setV('acc-phone',me.phone);
+    }
+  }catch(e){}
+}
+async function saveAccountProfile(){
+  const g=id=>(document.getElementById(id)?.value||'').trim();
+  const msg=document.getElementById('acc-msg');
+  try{
+    const {error}=await sbClient.rpc('profix_update_my_profile',{
+      p_display_name:g('acc-display'),p_username:g('acc-username'),
+      p_first_name:g('acc-first'),p_last_name:g('acc-last'),p_phone:g('acc-phone')
+    });
+    if(error)throw error;
+    if(AUTH){ AUTH.display_name=g('acc-display')||AUTH.display_name; renderUserChip(); }
+    if(msg){msg.className='login-msg ok';msg.style.textAlign='left';msg.textContent='บันทึกข้อมูลเรียบร้อย';}
+  }catch(e){ if(msg){msg.className='login-msg';msg.style.textAlign='left';msg.textContent='บันทึกไม่สำเร็จ: '+(e.message||e);} }
+}
+async function changeMyPassword(){
+  const p1=document.getElementById('acc-pass')?.value||'';
+  const p2=document.getElementById('acc-pass2')?.value||'';
+  const msg=document.getElementById('acc-pass-msg');
+  if(msg)msg.style.textAlign='left';
+  if(p1.length<6){msg.className='login-msg';msg.textContent='รหัสผ่านอย่างน้อย 6 ตัว';return;}
+  if(p1!==p2){msg.className='login-msg';msg.textContent='รหัสผ่านสองช่องไม่ตรงกัน';return;}
+  try{
+    const {error}=await sbClient.auth.updateUser({password:p1});
+    if(error)throw error;
+    document.getElementById('acc-pass').value='';document.getElementById('acc-pass2').value='';
+    msg.className='login-msg ok';msg.textContent='เปลี่ยนรหัสผ่านสำเร็จ';
+  }catch(e){ msg.className='login-msg';msg.textContent='เปลี่ยนไม่สำเร็จ: '+(e.message||e); }
+}
+// ===== จัดการผู้ใช้ (เฉพาะแอดมินเต็ม) =====
+let USERS_CACHE=[];
+async function refreshPendingBadge(){
+  try{
+    const {data,error}=await sbClient.rpc('profix_admin_pending_count');
+    const n=error?0:(data||0);
+    const b=document.getElementById('nb-users');
+    if(b){ b.textContent=n; b.style.display=n>0?'':'none'; }
+  }catch(e){}
+}
+function statusBadgeUser(s){
+  const m={pending:['รออนุมัติ','b-wait'],approved:['ใช้งานได้','b-done'],suspended:['ถูกระงับ','b-reject']};
+  const x=m[s]||[s,'b-wait']; return `<span class="badge ${x[1]}">${x[0]}</span>`;
+}
+function usersTableHtml(rows){
+  if(!rows.length)return '<div style="padding:16px;color:var(--text2);">ยังไม่มีผู้ใช้</div>';
+  const roleOpts=(sel)=>['admin','staff','viewer'].map(r=>`<option value="${r}"${sel===r?' selected':''}>${roleLabel(r)}</option>`).join('');
+  const body=rows.map(function(u){
+    const id=u.auth_user_id;
+    const fullName=[u.first_name,u.last_name].filter(Boolean).join(' ');
+    const unconfirmed=u.email_confirmed_at?'':' <span class="badge b-reject" title="ยังไม่ยืนยันอีเมล">ยังไม่ยืนยันเมล</span>';
+    let roleCell, actions;
+    if(u.status==='pending'){
+      // อนุมัติ: เลือก role ในแถวเลย ไม่มี popup
+      roleCell=`<select id="approve-role-${id}">${roleOpts('viewer')}</select>`;
+      actions=`<button class="btn btn-success btn-sm" onclick="approveUser('${id}')">อนุมัติ</button>`
+        +`<button class="btn btn-ghost btn-sm" onclick="setUserStatus('${id}','suspended')">ปฏิเสธ</button>`;
+    }else{
+      roleCell=`<select onchange="changeUserRole('${id}',this.value)">${roleOpts(u.role)}</select>`;
+      actions=(u.status==='approved')
+        ? `<button class="btn btn-ghost btn-sm" onclick="setUserStatus('${id}','suspended')">ระงับ</button>`
+        : `<button class="btn btn-success btn-sm" onclick="setUserStatus('${id}','approved')">คืนสิทธิ์</button>`;
+    }
+    actions+=`<button class="btn btn-danger btn-sm" onclick="deleteUserAccount('${id}','${esc(u.email||'')}')">ลบ</button>`;
+    const last=u.last_sign_in_at?new Date(u.last_sign_in_at).toLocaleString('th-TH'):'-';
+    return `<tr>
+      <td>${esc(u.display_name||'-')}${unconfirmed}<div class="tm" style="font-size:11px;">${esc(fullName||'')}</div></td>
+      <td class="mono" style="font-size:12px;">${esc(u.email||'-')}<div class="tm" style="font-size:11px;">@${esc(u.username||'-')} · ${esc(u.phone||'-')}</div></td>
+      <td>${roleCell}</td>
+      <td>${statusBadgeUser(u.status)}</td>
+      <td style="font-size:12px;">${esc(last)}</td>
+      <td><div class="flex g8" style="flex-wrap:wrap;">${actions}</div></td>
+    </tr>`;
+  }).join('');
+  return `<table><thead><tr><th>ชื่อ</th><th>อีเมล / ติดต่อ</th><th>สิทธิ์</th><th>สถานะ</th><th>เข้าล่าสุด</th><th></th></tr></thead><tbody>${body}</tbody></table>`;
+}
+async function renderUsers(){
+  const box=document.getElementById('users-table');
+  if(!box)return;
+  if(!AUTH||AUTH.role!=='admin'){ box.innerHTML='<div style="padding:16px;color:var(--text2);">เฉพาะแอดมินเต็มเท่านั้น</div>'; return; }
+  box.innerHTML='<div style="padding:16px;color:var(--text2);">กำลังโหลด...</div>';
+  try{
+    const {data,error}=await sbClient.rpc('profix_admin_list_users');
+    if(error)throw error;
+    USERS_CACHE=data||[];
+    box.innerHTML=usersTableHtml(USERS_CACHE);
+    refreshPendingBadge();
+  }catch(e){ box.innerHTML='<div style="padding:16px;color:var(--red);">โหลดไม่สำเร็จ: '+esc(e.message||String(e))+'</div>'; }
+}
+async function approveUser(id){
+  const sel=document.getElementById('approve-role-'+id);
+  const r=(sel&&sel.value)||'viewer';
+  try{
+    const {error}=await sbClient.rpc('profix_admin_approve',{p_target:id,p_role:r});
+    if(error)throw error;
+    // แจ้งเตือนผู้ใช้ทางอีเมลว่าอนุมัติแล้ว (best-effort — เมลล้มเหลวไม่กระทบการอนุมัติ)
+    try{
+      const {data:{session}}=await sbClient.auth.getSession();
+      await fetch(SUPABASE_URL+'/functions/v1/profix-admin-users',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+((session&&session.access_token)||'')},
+        body:JSON.stringify({action:'notify_approved',target_user_id:id})
+      });
+    }catch(mailErr){ console.warn('notify email failed',mailErr); }
+    renderUsers();
+  }catch(e){ alert('อนุมัติไม่สำเร็จ: '+(e.message||e)); }
+}
+async function changeUserRole(id,role){
+  try{ const {error}=await sbClient.rpc('profix_admin_set_role',{p_target:id,p_role:role}); if(error)throw error; renderUsers(); }
+  catch(e){ alert('เปลี่ยนสิทธิ์ไม่สำเร็จ: '+(e.message||e)); renderUsers(); }
+}
+async function setUserStatus(id,status){
+  const label=status==='suspended'?'ระงับ/ปฏิเสธ':'คืนสิทธิ์';
+  if(!confirm(label+'บัญชีนี้?'))return;
+  try{ const {error}=await sbClient.rpc('profix_admin_set_status',{p_target:id,p_status:status}); if(error)throw error; renderUsers(); }
+  catch(e){ alert('ทำรายการไม่สำเร็จ: '+(e.message||e)); }
+}
+async function deleteUserAccount(id,email){
+  if(!confirm('ลบบัญชี '+email+' ถาวร? กู้คืนไม่ได้'))return;
+  try{
+    const {data:{session}}=await sbClient.auth.getSession();
+    const r=await fetch(SUPABASE_URL+'/functions/v1/profix-admin-users',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+((session&&session.access_token)||'')},
+      body:JSON.stringify({action:'delete_user',target_user_id:id})
+    });
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
+    renderUsers();
+  }catch(e){ alert('ลบไม่สำเร็จ: '+(e.message||e)); }
+}
+// ===== สมัครเข้าใช้งาน (ผู้ใช้ใหม่ → รออนุมัติ) =====
+function showSignupForm(){
+  const lf=document.getElementById('login-form'); if(lf)lf.style.display='none';
+  const sf=document.getElementById('signup-form'); if(sf)sf.style.display='';
+  setTimeout(function(){var e=document.getElementById('signup-email'); if(e)e.focus();},60);
+}
+function showLoginForm(){
+  const sf=document.getElementById('signup-form'); if(sf)sf.style.display='none';
+  const lf=document.getElementById('login-form'); if(lf)lf.style.display='';
+}
+async function doSignupSubmit(ev){
+  ev.preventDefault();
+  const g=id=>(document.getElementById(id)?.value||'').trim();
+  const email=g('signup-email').toLowerCase();
+  const username=g('signup-username'), first=g('signup-first'), last=g('signup-last'), phone=g('signup-phone');
+  const p=document.getElementById('signup-pass').value||'';
+  const msg=document.getElementById('signup-msg');const btn=document.getElementById('signup-btn');
+  if(!email||!p){msg.className='login-msg';msg.textContent='กรอกอีเมลและรหัสผ่าน';return false;}
+  if(p.length<6){msg.className='login-msg';msg.textContent='รหัสผ่านอย่างน้อย 6 ตัว';return false;}
+  btn.disabled=true;msg.className='login-msg';msg.textContent='กำลังสมัคร...';
+  try{
+    const display=[first,last].filter(Boolean).join(' ')||username||email.split('@')[0];
+    const {error}=await sbClient.auth.signUp({email,password:p,options:{
+      emailRedirectTo:location.origin+location.pathname,
+      data:{display_name:display,username,first_name:first,last_name:last,phone}
+    }});
+    if(error)throw error;
+    // เปิด "Confirm email" ไว้ → ยังไม่มี session จนกว่าจะกดลิงก์ยืนยันในเมล
+    msg.className='login-msg ok';msg.textContent='สมัครสำเร็จ! กรุณาเช็คอีเมลแล้วกดลิงก์ยืนยัน จากนั้นรอแอดมินอนุมัติ';
+  }catch(err){msg.className='login-msg';msg.textContent='⚠️ '+(err.message||err);}
+  btn.disabled=false;return false;
+}
+
 function initAuditIdentity(){
   getDeviceId();
   getActorName();
@@ -2410,7 +2841,9 @@ function goTo(id, el){
     'settings-branches':()=>{renderClients();renderBranches();},
     'settings-suppliers':()=>{renderSuppliers();(partsLoaded&&parts.length?refreshPartsSilently():ensurePartsLoaded()).then(renderParts);},
     reports:renderReports,
-    'system-safety':renderSystemSafety
+    'system-safety':renderSystemSafety,
+    users:renderUsers,
+    account:renderAccount
   };
   if(m[id]) m[id]();
   closeSidebar();
@@ -3258,7 +3691,8 @@ async function acceptCustomerRequest(id){
 }
 async function rejectCustomerRequest(id){
   const r=customerJobRequests.find(x=>x.id===id);if(!r||r.status!=='new')return;
-  const note=prompt('เหตุผลที่ปฏิเสธ / หมายเหตุ',r.note||'')||'';
+  const note=await uiPrompt({title:'ปฏิเสธงานลูกค้า',label:'เหตุผลที่ปฏิเสธ / หมายเหตุ',value:r.note||'',multiline:true,okText:'ยืนยันปฏิเสธ'});
+  if(note===null)return;
   try{
     Object.assign(r,{status:'rejected',note});
     if(r._fallback)await saveCustomerRequestFallbackRows();
@@ -3271,7 +3705,7 @@ async function rejectCustomerRequest(id){
 async function copyCustomerRequestLink(){
   const url=new URL('customer-request.html',location.href).href;
   const text=`แจ้งงานซ่อม/บริการให้ ProFix ได้ที่ลิงก์นี้:\n${url}`;
-  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งงานลูกค้าแล้ว');}catch(e){prompt('คัดลอกลิงก์นี้',text);}
+  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งงานลูกค้าแล้ว');}catch(e){uiCopyModal(text,'คัดลอกลิงก์แจ้งงานลูกค้า');}
 }
 function addAdminName(){
   const v=document.getElementById('fa-assign').value.trim();
@@ -3347,7 +3781,7 @@ function renderJobs(){
   if(!fil.length){tb.innerHTML=trackerEmptyHtml('jobs',allJobs.length,9);return;}
   tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}${techUpdateMark(j)}${esc(j.id)}${techUpdatePill(j)}${level1Badge(j)}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="color:${statusSelectColor(j,j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
-async function setJS(id,s){
+async function setJS(id,s){if(!guardEdit())return;
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   const before=clonePlain(j);
   j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;
@@ -3399,7 +3833,7 @@ async function copyTechnicianLink(id){
   const fullUrl=new URL(technicianFormUrl(id),location.href).href;
   const url=shortUrl||fullUrl;
   const text=`🔧 งานช่าง ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nกรอกฟอร์มงานช่างที่ลิงก์นี้:\n${url}`;
-  try{await navigator.clipboard.writeText(text);alert('คัดลอกฟอร์มลิงก์ช่างแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){prompt('คัดลอกข้อความนี้',text);}
+  try{await navigator.clipboard.writeText(text);alert('คัดลอกฟอร์มลิงก์ช่างแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){uiCopyModal(text,'คัดลอกฟอร์มลิงก์ช่าง');}
 }
 // ===== หน้าแจ้งเข้าซ่อม / เซ็นออนไลน์ (checkin.html) — แยกอิสระจากฟอร์มช่าง =====
 let checkinViewRows=[], checkinViewJob=null;
@@ -3537,7 +3971,7 @@ async function copyCheckinLink(id){
   const fullUrl=new URL(checkinFormUrl(id),location.href).href;
   const url=shortUrl||fullUrl;
   const text=`📝 แจ้งเข้าซ่อม ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nยืนยันเข้างาน + เซ็นชื่อที่ลิงก์นี้:\n${url}`;
-  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งเข้าซ่อมแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){prompt('คัดลอกข้อความนี้',text);}
+  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งเข้าซ่อมแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){uiCopyModal(text,'คัดลอกลิงก์แจ้งเข้าซ่อม');}
 }
 function openDet(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
@@ -3594,7 +4028,7 @@ async function hasRemoteEditConflict(){
 function confirmOverwriteIfConflict(label){
   return confirm(`⚠️ มีแอดมินอีกเครื่องเพิ่งแก้${label}นี้ไประหว่างที่คุณกำลังแก้อยู่\n\nกด "ตกลง" = เขียนทับด้วยข้อมูลของคุณ (ข้อมูลของอีกฝั่งจะหาย)\nกด "ยกเลิก" = หยุดก่อน แล้วปิดฟอร์มเพื่อรีเฟรชดูข้อมูลล่าสุด`);
 }
-async function saveJob(){
+async function saveJob(){if(!guardEdit())return;
   const data={client:document.getElementById('fj-client').value,ref:document.getElementById('fj-ref').value||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,status:document.getElementById('fj-status').value,level:document.getElementById('fj-level')?.value||'',pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value};
   let savedJobId=editJobId;
   let before=null, after=null, action='create_job';
@@ -3647,7 +4081,7 @@ async function saveJob(){
   writeAuditLog(action,'job',savedJobId,before,patchFromDiff(before||{},after||{}),after);
 }
 function editJob(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;closeM('m-detail');fillSelects();editJobId=id;captureEditBaseline('jobs',id,j);document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';const fjl=document.getElementById('fj-level');if(fjl)fjl.value=jobLevel(j)||'';document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
-function deleteJob(id){
+function deleteJob(id){if(!guardEdit())return;
   const key=normalizePR(id);
   const dupCount=liveJobs().filter(j=>normalizePR(j.id)===key).length;
   if(dupCount>1){
@@ -3726,10 +4160,10 @@ function renderFin(){
   document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openDet('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${j.pc+j.partR}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="matchFinanceFromSales('${j.id}')">🔗 ดึงข้อมูลจากใบเสนอราคา/บิล</button><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button><button onclick="deleteJob('${j.id}')" style="color:var(--red);">ลบงาน</button></div></td></tr>`;}).join('');
   renderFixedExpenses();
 }
-function setPay(id,s){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(j){const before=clonePlain(j);j.pay=s;renderFin();renderDash();saveState();writeAuditLog('update_job_pay','job',id,before,{pay:s},clonePlain(j));}}
-function updateJobMoney(id,field,value){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);const v=parseFloat(value)||0;if(field==='income')j.pc=Math.max(0,v-j.partR);else j[field]=v;renderFin();renderDash();saveState();writeAuditLog('update_job_money','job',id,before,patchFromDiff(before,j),clonePlain(j),{field});}
+function setPay(id,s){if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(j){const before=clonePlain(j);j.pay=s;renderFin();renderDash();saveState();writeAuditLog('update_job_pay','job',id,before,{pay:s},clonePlain(j));}}
+function updateJobMoney(id,field,value){if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);const v=parseFloat(value)||0;if(field==='income')j.pc=Math.max(0,v-j.partR);else j[field]=v;renderFin();renderDash();saveState();writeAuditLog('update_job_money','job',id,before,patchFromDiff(before,j),clonePlain(j),{field});}
 function openFinanceEdit(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;fillSelects();document.getElementById('ff-id').value=id;document.getElementById('ff-pc').value=j.pc;document.getElementById('ff-partR').value=j.partR;document.getElementById('ff-pt').value=j.pt;document.getElementById('ff-partC').value=j.partC;document.getElementById('ff-fuel').value=j.fuel;document.getElementById('ff-pay').value=payLabel(j.pay);document.getElementById('ff-note').value=j.financeNote||'';openM('m-finance-edit');}
-function saveFinanceEdit(){const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);Object.assign(j,{pc:parseFloat(document.getElementById('ff-pc').value)||0,partR:parseFloat(document.getElementById('ff-partR').value)||0,pt:parseFloat(document.getElementById('ff-pt').value)||0,partC:parseFloat(document.getElementById('ff-partC').value)||0,fuel:parseFloat(document.getElementById('ff-fuel').value)||0,pay:document.getElementById('ff-pay').value,financeNote:document.getElementById('ff-note').value});closeM('m-finance-edit');renderFin();renderDash();saveState();writeAuditLog('update_job_finance','job',id,before,patchFromDiff(before,j),clonePlain(j));}
+function saveFinanceEdit(){if(!guardEdit())return;const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);Object.assign(j,{pc:parseFloat(document.getElementById('ff-pc').value)||0,partR:parseFloat(document.getElementById('ff-partR').value)||0,pt:parseFloat(document.getElementById('ff-pt').value)||0,partC:parseFloat(document.getElementById('ff-partC').value)||0,fuel:parseFloat(document.getElementById('ff-fuel').value)||0,pay:document.getElementById('ff-pay').value,financeNote:document.getElementById('ff-note').value});closeM('m-finance-edit');renderFin();renderDash();saveState();writeAuditLog('update_job_finance','job',id,before,patchFromDiff(before,j),clonePlain(j));}
 // ===== #9 ดึงข้อมูลการเงินจากใบเสนอราคา/บิลขายอัตโนมัติ =====
 const SALES_PARTS_CAT_RE=/อะไหล่|part|spare|วัสดุ|material|ของ/i;
 function latestSalesDocForJob(jobId){
@@ -4240,7 +4674,7 @@ function renderPurchaseItemEditor(){
   }).join('')}</tbody></table></div>`;
   updatePurchaseSummary();
 }
-async function savePurchaseInvoice(){
+async function savePurchaseInvoice(){if(!guardEdit())return;
   setAccountingStatus('purchase','กำลังบันทึกบิลซื้อ...','warn');
   try{
     const id=document.getElementById('pur-id').value||newAccountingId('PINV');
@@ -4778,9 +5212,9 @@ function renderSalesSignerLists(){
     sel.innerHTML=opts.join('');
   });
 }
-function onSalesSignerSelect(which,val){
+async function onSalesSignerSelect(which,val){
   if(val==='__add__'){
-    const name=(prompt('ชื่อผู้เซ็นใหม่ (เช่น ชื่อแอดมิน)')||'').trim();
+    const name=((await uiPrompt({title:'เพิ่มผู้เซ็นใหม่',label:'ชื่อผู้เซ็นใหม่ (เช่น ชื่อแอดมิน)'}))||'').trim();
     if(!name){renderSalesSignerLists();return;}
     if(!(salesSignerProfiles||[]).some(s=>String(s.name||'').trim().toLowerCase()===name.toLowerCase()))salesSignerProfiles.push({name,signature:''});
     document.getElementById(salesSignerNameId(which)).value=name;
@@ -5351,7 +5785,7 @@ document.addEventListener('click',e=>{
   if(!box||box.style.display==='none')return;
   if(!e.target.closest('#sales-item-picker')&&!String(e.target.getAttribute&&e.target.getAttribute('onclick')||'').includes('openItemPicker')){box.style.display='none';itemPickerMode='';}
 });
-async function saveSalesInvoice(){
+async function saveSalesInvoice(){if(!guardEdit())return;
   setAccountingStatus('sales','กำลังบันทึกบิลขาย...','warn');
   try{
     const id=document.getElementById('sale-id').value||newAccountingId('SINV');
@@ -6310,7 +6744,7 @@ function openAddPricing(clientName) {document.getElementById('fp-client').value 
 function editPricing(i) {const p = pricing[i];document.getElementById('fp-client').value = p.client;document.getElementById('fp-type').value = p.type;document.getElementById('fp-price').value = p.price;document.getElementById('fp-note').value = p.note;openM('m-pricing');}
 function savePricing() {const cl=document.getElementById('fp-client').value,tp=document.getElementById('fp-type').value,pr=parseFloat(document.getElementById('fp-price').value)||0,nt=document.getElementById('fp-note').value;const ex=pricing.find(p=>p.client===cl&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{pricing.push({client:cl,type:tp,price:pr,note:nt});}closeM('m-pricing');renderPricing();saveState();}
 function delPricing(i){if(confirm('ลบราคากลางนี้?')){pricing.splice(i,1);renderPricing();saveState();}}
-function saveClient(){const data={id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,taxId:document.getElementById('fc-taxid').value,address:document.getElementById('fc-address').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value};if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;closeM('m-client');renderClients();fillSelects();saveState();}
+function saveClient(){if(!guardEdit())return;const data={id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,taxId:document.getElementById('fc-taxid').value,address:document.getElementById('fc-address').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value};if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;closeM('m-client');renderClients();fillSelects();saveState();}
 function delClient(i){if(confirm('ลบลูกค้านี้?')){clients.splice(i,1);renderClients();fillSelects();saveState();}}
 
 function renderTeams() {
@@ -6321,7 +6755,7 @@ function renderTeams() {
 }
 function renderTeamPricing(){const f=document.getElementById('team-filter')?.value||'';const fil=f?teamPricing.filter(p=>p.team===f):teamPricing;document.getElementById('team-price-tbody').innerHTML=fil.map(p=>{const i=teamPricing.indexOf(p);return `<tr><td>${esc(p.team)}</td><td><span class="chip">${esc(p.type)}</span></td><td class="mono fw7 tg">฿${p.price.toLocaleString()}</td><td class="tm" style="font-size:12px;">${esc(p.note||'-')}</td>${actionCell('tpm',i,`<button onclick="alert(detailText(teamPricing[${i}]))">ดูดีเทล</button><button onclick="editTP(${i})">แก้ไข</button><button onclick="delTP(${i})">ลบ</button>`)}</tr>`;}).join('');}
 function editTP(i){const p=teamPricing[i];document.getElementById('ftp-team').value=p.team;document.getElementById('ftp-type').value=p.type;document.getElementById('ftp-price').value=p.price;document.getElementById('ftp-note').value=p.note;openM('m-team-pricing');}
-function saveTeamPricing(){const tm=document.getElementById('ftp-team').value,tp=document.getElementById('ftp-type').value,pr=parseFloat(document.getElementById('ftp-price').value)||0,nt=document.getElementById('ftp-note').value;const ex=teamPricing.find(p=>p.team===tm&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{teamPricing.push({team:tm,type:tp,price:pr,note:nt});}closeM('m-team-pricing');renderTeamPricing();saveState();}
+function saveTeamPricing(){if(!guardEdit())return;const tm=document.getElementById('ftp-team').value,tp=document.getElementById('ftp-type').value,pr=parseFloat(document.getElementById('ftp-price').value)||0,nt=document.getElementById('ftp-note').value;const ex=teamPricing.find(p=>p.team===tm&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{teamPricing.push({team:tm,type:tp,price:pr,note:nt});}closeM('m-team-pricing');renderTeamPricing();saveState();}
 function delTP(i){if(confirm('ลบราคานี้?')){teamPricing.splice(i,1);renderTeamPricing();saveState();}}
 function saveTeam(){const data={name:document.getElementById('ft-name').value,lead:document.getElementById('ft-lead').value,phone:document.getElementById('ft-phone').value,skill:document.getElementById('ft-skill').value,note:document.getElementById('ft-note').value};if(editTeamIndex==='')teams.push(data);else teams[+editTeamIndex]=data;closeM('m-team');renderTeams();fillSelects();saveState();}
 function delTeam(i){if(confirm('ลบทีมนี้?')){teams.splice(i,1);renderTeams();fillSelects();saveState();}}
@@ -6337,13 +6771,13 @@ function renderParts(){
   const tb=document.getElementById('part-tbody');if(!tb)return;
   if((!partsLoaded||!parts.length)&&(splitTablesOnline||loadedFromSplitTables)&&!partsLoadingPromise){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดข้อมูลอะไหล่</div></div></td></tr>';ensurePartsLoaded().then(renderParts);return;}
   if(partsLoadingPromise&&!parts.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดข้อมูลอะไหล่</div></div></td></tr>';partsLoadingPromise.then(renderParts);return;}
-  const idxs=filteredPartIndexes();tb.innerHTML=idxs.map(i=>{const x=parts[i];return `<tr><td><input type="checkbox" ${selectedParts.has(i)?'checked':''} onchange="togglePartSelect(${i},this.checked)"></td><td class="mono ta" style="font-size:11px;">${esc(x.code||'-')}</td><td><span class="chip">${esc(x.cat||x.category||'-')}</span></td><td style="font-weight:600;">${esc(x.name||'-')}</td><td class="tm" style="font-size:12px;">${esc(x.brand||x.spec||'-')}</td><td>${esc(x.unit||'-')}</td><td class="mono tr">฿${Number(x.cost||0).toLocaleString()}</td><td class="mono tr">฿${Number(x.labor||0).toLocaleString()}</td><td class="mono tg">฿${Number(x.sell||x.price||0).toLocaleString()}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(i=>selectedParts.has(i));all.indeterminate=idxs.some(i=>selectedParts.has(i))&&!all.checked;}}
+  const idxs=filteredPartIndexes();tb.innerHTML=idxs.map(i=>{const x=parts[i];return `<tr><td><input type="checkbox" ${selectedParts.has(i)?'checked':''} onchange="togglePartSelect(${i},this.checked)"></td><td class="mono ta" style="font-size:11px;">${esc(x.code||'-')}</td><td><span class="chip">${esc(x.cat||x.category||'-')}</span></td><td style="font-weight:600;">${esc(x.name||'-')}</td><td class="tm" style="font-size:12px;">${esc(x.brand||x.spec||'-')}</td><td>${esc(x.unit||'-')}</td><td class="mono tr role-cost">฿${Number(x.cost||0).toLocaleString()}</td><td class="mono tr role-cost">฿${Number(x.labor||0).toLocaleString()}</td><td class="mono tg">฿${Number(x.sell||x.price||0).toLocaleString()}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(i=>selectedParts.has(i));all.indeterminate=idxs.some(i=>selectedParts.has(i))&&!all.checked;}}
 function togglePartSelect(i,checked){if(checked)selectedParts.add(i);else selectedParts.delete(i);const idxs=filteredPartIndexes();const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(x=>selectedParts.has(x));all.indeterminate=idxs.some(x=>selectedParts.has(x))&&!all.checked;}}
 function toggleAllVisibleParts(checked){filteredPartIndexes().forEach(i=>checked?selectedParts.add(i):selectedParts.delete(i));renderParts();}
 function selectAllVisibleParts(){toggleAllVisibleParts(true);}
 async function deleteSelectedParts(){const ids=[...selectedParts].filter(i=>parts[i]).sort((a,b)=>b-a);if(!ids.length){alert('ยังไม่ได้เลือกรายการอะไหล่');return;}if(!confirm(`ลบอะไหล่ที่เลือก ${ids.length.toLocaleString()} รายการ?`))return;try{await ensurePartsLoaded();const removedKeys=ids.map(i=>parts[i]?.part_key).filter(Boolean);ids.forEach(i=>parts.splice(i,1));selectedParts.clear();renderParts();await persistPartsCatalogNow(true);if(removedKeys.length)await deletePartsCatalogKeys(removedKeys);}catch(e){console.warn('deleteSelectedParts failed',e);alert('ลบอะไหล่ไม่สำเร็จ: '+(e.message||e));}}
 function calcPartMargin(){const c=parseFloat(document.getElementById('fpa-cost').value)||0,l=parseFloat(document.getElementById('fpa-labor').value)||0,s=parseFloat(document.getElementById('fpa-sell').value)||0;if(s>0){const m=Math.round((s-c-l)/s*100);document.getElementById('fpa-margin').value=m+'% (฿'+(s-c-l).toLocaleString()+')';}}
-async function savePart(){
+async function savePart(){if(!guardEdit())return;
   const cost=parseFloat(document.getElementById('fpa-cost').value)||0,labor=parseFloat(document.getElementById('fpa-labor').value)||0,sell=parseFloat(document.getElementById('fpa-sell').value)||cost;
   const data={code:document.getElementById('fpa-code').value,cat:document.getElementById('fpa-cat').value,name:document.getElementById('fpa-name').value.trim(),brand:document.getElementById('fpa-brand').value,unit:document.getElementById('fpa-unit').value,sup:document.getElementById('fpa-sup').value,cost,labor,sell,note:document.getElementById('fpa-note').value};
   if(!data.name){alert('กรุณากรอกชื่ออะไหล่ก่อน');return;}
@@ -7082,8 +7516,12 @@ async function returnReportForFix(){
   const id=document.getElementById('mrpt-jobid').value;
   const j=jobs.find(x=>x.id===id);if(!j)return;
   const before=clonePlain(j);
-  const note=document.getElementById('mrpt-review-note').value.trim()||prompt('ระบุเหตุผลที่ต้องแก้ไขรายงาน')||'ต้องแก้ไขรายงาน';
-  if(!note)return;
+  let note=document.getElementById('mrpt-review-note').value.trim();
+  if(!note){
+    const entered=await uiPrompt({title:'ส่งกลับแก้ไขรายงาน',label:'ระบุเหตุผลที่ต้องแก้ไข',multiline:true});
+    if(entered===null)return;
+    note=entered.trim()||'ต้องแก้ไขรายงาน';
+  }
   document.getElementById('mrpt-review-note').value=note;
   const x=syncReportFormToJob();if(!x)return;
   const returnedAt=new Date().toISOString();
@@ -7353,7 +7791,49 @@ async function initApp(){
     maybeAutoOpenSalesFromUrl();
   }).finally(()=>setAppLoading(false));
 }
-initApp();
+function startApp(){ initApp(); }
+// ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
+(async function bootstrap(){
+  applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
+  if(!AUTH_ENABLED){ window.__appStarted=true; startApp(); return; }
+  function showLogin(){
+    const loader=document.getElementById('app-loader'); if(loader)loader.style.display='none';
+    const ov=document.getElementById('login-overlay'); if(ov)ov.classList.add('show');
+    setTimeout(function(){var u=document.getElementById('login-user'); if(u)u.focus();},120);
+  }
+  // มาจากลิงก์รีเซ็ตรหัสผ่าน → รอ event PASSWORD_RECOVERY (onAuthStateChange จะเรียก showRecoveryForm ให้)
+  if((location.hash||'').indexOf('type=recovery')>=0){
+    const loader=document.getElementById('app-loader'); if(loader)loader.style.display='none';
+    return;
+  }
+  // มาจากลิงก์ยืนยันอีเมลตอนสมัคร → ยืนยันแล้วแต่ยัง pending → แจ้งให้รอแอดมินอนุมัติ
+  if((location.hash||'').indexOf('type=signup')>=0){
+    try{ await sbClient.auth.signOut(); }catch(e){}
+    ACCESS_TOKEN=null;
+    const loader=document.getElementById('app-loader'); if(loader)loader.style.display='none';
+    const ov=document.getElementById('login-overlay'); if(ov)ov.classList.add('show');
+    const lm=document.getElementById('login-msg'); if(lm){lm.className='login-msg ok';lm.textContent='ยืนยันอีเมลสำเร็จ! รอแอดมินอนุมัติก่อนเข้าใช้งาน';}
+    setTimeout(function(){var u=document.getElementById('login-user'); if(u)u.focus();},120);
+    return;
+  }
+  try{
+    const {data:{session}}=await sbClient.auth.getSession();
+    ACCESS_TOKEN=(session&&session.access_token)||null;
+    if(session){
+      const me=await fetchMyProfile();
+      if(me&&me.status==='approved'&&me.active){
+        AUTH={email:me.email,display_name:me.display_name||me.email,role:me.role,status:me.status};
+        applyRolePermissions();
+        window.__appStarted=true;
+        startApp();
+        return;
+      }
+      // มี session แต่ยังไม่ approved/ถูกระงับ → ออกแล้วให้ล็อกอินใหม่
+      await sbClient.auth.signOut();ACCESS_TOKEN=null;
+    }
+  }catch(e){ console.warn('auth bootstrap error',e); }
+  showLogin();
+})();
 </script>
 
 <!-- MODAL: REPORT DETAIL -->
