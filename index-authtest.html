@@ -470,8 +470,13 @@ select option{background:var(--surface2);}
   <form class="login-card" id="signup-form" style="display:none;" onsubmit="return doSignupSubmit(event)">
     <div class="login-logo">🔧 ProFix</div>
     <div class="login-title">ขอสิทธิ์เข้าใช้งาน</div>
-    <div class="login-sub">สมัครแล้วรอแอดมินอนุมัติก่อนเข้าใช้งาน</div>
-    <input id="signup-name" type="text" autocomplete="name" placeholder="ชื่อที่แสดง (เช่น Mint)">
+    <div class="login-sub">สมัคร → ยืนยันอีเมล → รอแอดมินอนุมัติ</div>
+    <input id="signup-username" type="text" autocomplete="username" placeholder="Username (ชื่อผู้ใช้)">
+    <div style="display:flex;gap:8px;">
+      <input id="signup-first" type="text" autocomplete="given-name" placeholder="ชื่อจริง" style="flex:1;min-width:0;">
+      <input id="signup-last" type="text" autocomplete="family-name" placeholder="นามสกุล" style="flex:1;min-width:0;">
+    </div>
+    <input id="signup-phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="เบอร์โทร">
     <input id="signup-email" type="email" autocomplete="email" placeholder="อีเมล" autocapitalize="off" autocorrect="off" spellcheck="false">
     <input id="signup-pass" type="password" autocomplete="new-password" placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)">
     <button type="submit" class="btn btn-primary" id="signup-btn" style="width:100%;">สมัคร</button>
@@ -525,7 +530,8 @@ select option{background:var(--surface2);}
     <div class="nav-section">รายงาน</div>
     <button class="nav-item" data-page="reports" onclick="goTo('reports',this)"><span class="nav-icon">📝</span>รายงานช่าง</button>
     <button class="nav-item" data-page="system-safety" onclick="goTo('system-safety',this)"><span class="nav-icon">🛡</span>กู้ข้อมูล / Backup</button>
-    <div class="nav-section">ผู้ดูแลระบบ</div>
+    <div class="nav-section">บัญชี</div>
+    <button class="nav-item" data-page="account" onclick="goTo('account',this)"><span class="nav-icon">⚙️</span>ตั้งค่าบัญชี</button>
     <button class="nav-item" data-page="users" onclick="goTo('users',this)"><span class="nav-icon">👥</span>จัดการผู้ใช้<span class="nav-badge" id="nb-users" style="display:none;">0</span></button>
   </nav>
 </aside>
@@ -1092,6 +1098,39 @@ select option{background:var(--surface2);}
       <div class="table-wrap">
         <div class="table-header"><div class="table-title" id="recover-title">Event Log</div><span class="mono tm" id="recover-count" style="font-size:11px;"></span></div>
         <div id="recover-results" style="padding:14px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="page" id="page-account">
+  <div class="page-header">
+    <div><div class="page-title">ตั้งค่าบัญชี</div><div class="page-sub">แก้ไขข้อมูลส่วนตัว และเปลี่ยนรหัสผ่าน</div></div>
+  </div>
+  <div class="content">
+    <div class="system-grid">
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">ข้อมูลส่วนตัว</div></div>
+        <div style="padding:14px;display:grid;gap:10px;max-width:540px;">
+          <div class="form-group"><label>อีเมล (สำหรับล็อกอิน — แก้ไม่ได้)</label><input id="acc-email" disabled></div>
+          <div class="form-group"><label>ชื่อที่แสดง</label><input id="acc-display" placeholder="เช่น Mint"></div>
+          <div class="form-group"><label>Username</label><input id="acc-username" placeholder="ชื่อผู้ใช้"></div>
+          <div class="flex g8">
+            <div class="form-group" style="flex:1;min-width:0;"><label>ชื่อจริง</label><input id="acc-first"></div>
+            <div class="form-group" style="flex:1;min-width:0;"><label>นามสกุล</label><input id="acc-last"></div>
+          </div>
+          <div class="form-group"><label>เบอร์โทร</label><input id="acc-phone" inputmode="tel"></div>
+          <div><button class="btn btn-primary" onclick="saveAccountProfile()">บันทึกข้อมูล</button></div>
+          <div id="acc-msg" class="login-msg" style="text-align:left;min-height:0;"></div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">เปลี่ยนรหัสผ่าน</div></div>
+        <div style="padding:14px;display:grid;gap:10px;max-width:540px;">
+          <div class="form-group"><label>รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)</label><input id="acc-pass" type="password" autocomplete="new-password"></div>
+          <div class="form-group"><label>ยืนยันรหัสผ่านใหม่</label><input id="acc-pass2" type="password" autocomplete="new-password"></div>
+          <div><button class="btn btn-primary" onclick="changeMyPassword()">เปลี่ยนรหัสผ่าน</button></div>
+          <div id="acc-pass-msg" class="login-msg" style="text-align:left;min-height:0;"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1698,16 +1737,46 @@ function getDeviceId(){
   }
   return id;
 }
-function getActorName({ask=false}={}){
-  // ถ้าล็อกอินแล้ว ใช้ชื่อผู้ล็อกอินเป็นชื่อใน audit เสมอ
+// ===== Modal ป้อนข้อความ (แทน prompt) — คืน Promise<string|null> (null = ยกเลิก) =====
+function uiPrompt(opts){
+  opts=opts||{};
+  return new Promise(function(resolve){
+    let ov=document.getElementById('m-uiprompt');
+    if(!ov){
+      ov=document.createElement('div');
+      ov.className='modal-overlay'; ov.id='m-uiprompt';
+      ov.innerHTML='<div class="modal" style="max-width:440px;"><div class="modal-header"><div class="modal-title" id="uiprompt-title"></div><button class="close-btn" id="uiprompt-x">×</button></div><div class="modal-body"><div class="form-group"><label id="uiprompt-label"></label><div id="uiprompt-field"></div></div><div class="flex g8" style="justify-content:flex-end;margin-top:12px;"><button class="btn btn-ghost" id="uiprompt-cancel">ยกเลิก</button><button class="btn btn-primary" id="uiprompt-ok">ตกลง</button></div></div></div>';
+      document.body.appendChild(ov);
+    }
+    document.getElementById('uiprompt-title').textContent=opts.title||'กรอกข้อมูล';
+    const label=document.getElementById('uiprompt-label');
+    label.textContent=opts.label||''; label.style.display=opts.label?'':'none';
+    const multiline=!!opts.multiline;
+    document.getElementById('uiprompt-field').innerHTML=multiline?'<textarea id="uiprompt-input" rows="4" style="width:100%;"></textarea>':'<input id="uiprompt-input" type="text" style="width:100%;">';
+    const input=document.getElementById('uiprompt-input');
+    input.value=opts.value||''; if(opts.placeholder)input.placeholder=opts.placeholder; if(opts.readonly)input.readOnly=true;
+    document.getElementById('uiprompt-ok').textContent=opts.okText||'ตกลง';
+    document.getElementById('uiprompt-cancel').style.display=opts.hideCancel?'none':'';
+    function cleanup(val){ ov.classList.remove('open'); ov.removeEventListener('mousedown',onBackdrop); document.removeEventListener('keydown',onKey); resolve(val); }
+    function onBackdrop(e){ if(e.target===ov)cleanup(null); }
+    function onKey(e){ if(e.key==='Escape')cleanup(null); if(e.key==='Enter'&&!multiline){e.preventDefault();cleanup(input.value);} }
+    document.getElementById('uiprompt-x').onclick=function(){cleanup(null);};
+    document.getElementById('uiprompt-cancel').onclick=function(){cleanup(null);};
+    document.getElementById('uiprompt-ok').onclick=function(){cleanup(input.value);};
+    ov.addEventListener('mousedown',onBackdrop);
+    document.addEventListener('keydown',onKey);
+    ov.classList.add('open');
+    setTimeout(function(){input.focus(); if(input.select)input.select();},50);
+  });
+}
+// Modal แสดงข้อความให้คัดลอก (fallback เวลา clipboard API ใช้ไม่ได้)
+function uiCopyModal(text,title){
+  return uiPrompt({title:title||'คัดลอกข้อความ',label:'เลือกข้อความแล้วคัดลอก (Ctrl/⌘+C)',value:text,multiline:true,readonly:true,okText:'ปิด',hideCancel:true});
+}
+function getActorName(){
+  // auth บังคับล็อกอินแล้ว → ใช้ชื่อผู้ล็อกอินเป็นชื่อใน audit เสมอ
   if(AUTH && AUTH.display_name) return AUTH.display_name;
-  let name=localStorage.getItem(LS_ACTOR_NAME_KEY)||'';
-  if((ask||!name) && !name){
-    name=(prompt('ตั้งชื่อเครื่อง/ผู้ใช้งานสำหรับ Audit log เช่น Admin Mint, Admin Meow, Office PC')||'').trim();
-    if(!name)name='Unknown Admin';
-    localStorage.setItem(LS_ACTOR_NAME_KEY,name);
-  }
-  return name||'Unknown Admin';
+  return localStorage.getItem(LS_ACTOR_NAME_KEY) || 'ทีมงาน';
 }
 // ===== ระบบล็อกอิน / สิทธิ์ผู้ใช้ =====
 const AUTH_ENABLED = true;                 // ปิดชั่วคราวได้ (ตั้ง false = ไม่บังคับล็อกอิน)
@@ -1721,13 +1790,13 @@ async function fetchMyProfile(){
 }
 // ลืมรหัสผ่าน → ส่งลิงก์ตั้งรหัสใหม่เข้าอีเมลจริง (ผ่าน Resend SMTP)
 async function doForgotPassword(){
-  const email=(prompt('กรอกอีเมลที่ใช้ล็อกอิน เพื่อรับลิงก์ตั้งรหัสผ่านใหม่')||'').trim().toLowerCase();
-  if(!email)return;
+  const email=(document.getElementById('login-user')?.value||'').trim().toLowerCase();
   const msg=document.getElementById('login-msg');
+  if(!email){ if(msg){msg.className='login-msg';msg.textContent='กรอกอีเมลในช่องด้านบนก่อน แล้วกด "ลืมรหัสผ่าน?"';} return; }
   try{
     const {error}=await sbClient.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
     if(error)throw error;
-    if(msg){msg.className='login-msg ok';msg.textContent='ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่อีเมลแล้ว (เช็คกล่องเมล/สแปม)';}
+    if(msg){msg.className='login-msg ok';msg.textContent='ส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ '+email+' แล้ว (เช็คกล่องเมล/สแปม)';}
   }catch(err){ if(msg){msg.className='login-msg';msg.textContent='ส่งลิงก์ไม่สำเร็จ: '+(err.message||err);} }
 }
 // แสดงฟอร์มตั้งรหัสผ่านใหม่ (เรียกเมื่อผู้ใช้เข้ามาจากลิงก์ในเมล — event PASSWORD_RECOVERY)
@@ -1763,7 +1832,12 @@ async function doLoginSubmit(ev){
   btn.disabled=true;msg.className='login-msg';msg.textContent='กำลังตรวจสอบ...';
   try{
     const {data,error}=await sbClient.auth.signInWithPassword({email,password:p});
-    if(error){msg.className='login-msg';msg.textContent='อีเมลหรือรหัสผ่านไม่ถูกต้อง';btn.disabled=false;return false;}
+    if(error){
+      const em=(error.message||'').toLowerCase();
+      msg.className='login-msg';
+      msg.textContent = (em.includes('not confirmed')||em.includes('confirm')) ? 'กรุณายืนยันอีเมลก่อน (กดลิงก์ในเมลที่ส่งไป)' : 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+      btn.disabled=false;return false;
+    }
     ACCESS_TOKEN=(data&&data.session&&data.session.access_token)||null;
     const me=await fetchMyProfile();
     if(!me){await sbClient.auth.signOut();ACCESS_TOKEN=null;msg.className='login-msg';msg.textContent='บัญชีนี้ยังไม่ได้ตั้งค่าสิทธิ์ ติดต่อแอดมิน';btn.disabled=false;return false;}
@@ -1808,25 +1882,47 @@ function renderUserChip(){
   const sb=document.querySelector('.sidebar');
   if(!AUTH||!sb)return;
   if(!chip){chip=document.createElement('div');chip.id='user-chip';sb.appendChild(chip);}
-  chip.innerHTML='<div style="flex:1;min-width:0;"><div style="font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">👤 '+esc(AUTH.display_name)+'</div><div style="font-size:10px;">'+esc(roleLabel(AUTH.role))+'</div></div><button class="btn btn-ghost btn-sm" title="โปรไฟล์ / เปลี่ยนรหัสผ่าน" onclick="openProfile()">⚙</button><button class="btn btn-ghost btn-sm" onclick="logout()">ออก</button>';
+  chip.innerHTML='<div style="flex:1;min-width:0;"><div style="font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">👤 '+esc(AUTH.display_name)+'</div><div style="font-size:10px;">'+esc(roleLabel(AUTH.role))+'</div></div><button class="btn btn-ghost btn-sm" title="ตั้งค่าบัญชี" onclick="goTo(\'account\')">⚙</button><button class="btn btn-ghost btn-sm" onclick="logout()">ออก</button>';
 }
-// โปรไฟล์ตัวเอง: แก้ชื่อแสดง + เปลี่ยนรหัสผ่าน (ทุก role ทำเองได้)
-async function openProfile(){
-  const name=prompt('ชื่อที่แสดง (แก้ได้)', (AUTH&&AUTH.display_name)||'');
-  if(name!==null){
-    const nm=name.trim();
-    if(nm && nm!==AUTH.display_name){
-      try{ const {error}=await sbClient.rpc('profix_set_my_display_name',{p_name:nm}); if(error)throw error; AUTH.display_name=nm; renderUserChip(); }
-      catch(e){ alert('แก้ชื่อไม่สำเร็จ: '+(e.message||e)); }
+// ===== หน้าตั้งค่าบัญชี (โปรไฟล์ + เปลี่ยนรหัสผ่าน) =====
+async function renderAccount(){
+  const setV=(id,v)=>{const e=document.getElementById(id); if(e)e.value=v||'';};
+  ['acc-msg','acc-pass-msg'].forEach(id=>{const e=document.getElementById(id); if(e)e.textContent='';});
+  try{
+    const me = AUTH ? await fetchMyProfile() : null;
+    if(me){
+      setV('acc-email',me.email); setV('acc-display',me.display_name);
+      setV('acc-username',me.username); setV('acc-first',me.first_name);
+      setV('acc-last',me.last_name); setV('acc-phone',me.phone);
     }
-  }
-  if(confirm('ต้องการเปลี่ยนรหัสผ่านไหม?')){
-    const p=prompt('รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)');
-    if(p&&p.length>=6){
-      try{ const {error}=await sbClient.auth.updateUser({password:p}); if(error)throw error; alert('เปลี่ยนรหัสผ่านสำเร็จ'); }
-      catch(e){ alert('เปลี่ยนรหัสไม่สำเร็จ: '+(e.message||e)); }
-    } else if(p!==null){ alert('รหัสผ่านสั้นเกินไป'); }
-  }
+  }catch(e){}
+}
+async function saveAccountProfile(){
+  const g=id=>(document.getElementById(id)?.value||'').trim();
+  const msg=document.getElementById('acc-msg');
+  try{
+    const {error}=await sbClient.rpc('profix_update_my_profile',{
+      p_display_name:g('acc-display'),p_username:g('acc-username'),
+      p_first_name:g('acc-first'),p_last_name:g('acc-last'),p_phone:g('acc-phone')
+    });
+    if(error)throw error;
+    if(AUTH){ AUTH.display_name=g('acc-display')||AUTH.display_name; renderUserChip(); }
+    if(msg){msg.className='login-msg ok';msg.style.textAlign='left';msg.textContent='บันทึกข้อมูลเรียบร้อย';}
+  }catch(e){ if(msg){msg.className='login-msg';msg.style.textAlign='left';msg.textContent='บันทึกไม่สำเร็จ: '+(e.message||e);} }
+}
+async function changeMyPassword(){
+  const p1=document.getElementById('acc-pass')?.value||'';
+  const p2=document.getElementById('acc-pass2')?.value||'';
+  const msg=document.getElementById('acc-pass-msg');
+  if(msg)msg.style.textAlign='left';
+  if(p1.length<6){msg.className='login-msg';msg.textContent='รหัสผ่านอย่างน้อย 6 ตัว';return;}
+  if(p1!==p2){msg.className='login-msg';msg.textContent='รหัสผ่านสองช่องไม่ตรงกัน';return;}
+  try{
+    const {error}=await sbClient.auth.updateUser({password:p1});
+    if(error)throw error;
+    document.getElementById('acc-pass').value='';document.getElementById('acc-pass2').value='';
+    msg.className='login-msg ok';msg.textContent='เปลี่ยนรหัสผ่านสำเร็จ';
+  }catch(e){ msg.className='login-msg';msg.textContent='เปลี่ยนไม่สำเร็จ: '+(e.message||e); }
 }
 // ===== จัดการผู้ใช้ (เฉพาะแอดมินเต็ม) =====
 let USERS_CACHE=[];
@@ -1844,25 +1940,35 @@ function statusBadgeUser(s){
 }
 function usersTableHtml(rows){
   if(!rows.length)return '<div style="padding:16px;color:var(--text2);">ยังไม่มีผู้ใช้</div>';
+  const roleOpts=(sel)=>['admin','staff','viewer'].map(r=>`<option value="${r}"${sel===r?' selected':''}>${roleLabel(r)}</option>`).join('');
   const body=rows.map(function(u){
     const id=u.auth_user_id;
-    const roleSel=`<select onchange="changeUserRole('${id}',this.value)">`
-      +['admin','staff','viewer'].map(r=>`<option value="${r}"${u.role===r?' selected':''}>${roleLabel(r)}</option>`).join('')+`</select>`;
-    let actions='';
+    const fullName=[u.first_name,u.last_name].filter(Boolean).join(' ');
+    const unconfirmed=u.email_confirmed_at?'':' <span class="badge b-reject" title="ยังไม่ยืนยันอีเมล">ยังไม่ยืนยันเมล</span>';
+    let roleCell, actions;
     if(u.status==='pending'){
+      // อนุมัติ: เลือก role ในแถวเลย ไม่มี popup
+      roleCell=`<select id="approve-role-${id}">${roleOpts('viewer')}</select>`;
       actions=`<button class="btn btn-success btn-sm" onclick="approveUser('${id}')">อนุมัติ</button>`
         +`<button class="btn btn-ghost btn-sm" onclick="setUserStatus('${id}','suspended')">ปฏิเสธ</button>`;
-    }else if(u.status==='approved'){
-      actions=`<button class="btn btn-ghost btn-sm" onclick="setUserStatus('${id}','suspended')">ระงับ</button>`;
     }else{
-      actions=`<button class="btn btn-success btn-sm" onclick="setUserStatus('${id}','approved')">คืนสิทธิ์</button>`;
+      roleCell=`<select onchange="changeUserRole('${id}',this.value)">${roleOpts(u.role)}</select>`;
+      actions=(u.status==='approved')
+        ? `<button class="btn btn-ghost btn-sm" onclick="setUserStatus('${id}','suspended')">ระงับ</button>`
+        : `<button class="btn btn-success btn-sm" onclick="setUserStatus('${id}','approved')">คืนสิทธิ์</button>`;
     }
     actions+=`<button class="btn btn-danger btn-sm" onclick="deleteUserAccount('${id}','${esc(u.email||'')}')">ลบ</button>`;
     const last=u.last_sign_in_at?new Date(u.last_sign_in_at).toLocaleString('th-TH'):'-';
-    const roleCell=u.status==='approved'?roleSel:esc(roleLabel(u.role));
-    return `<tr><td>${esc(u.display_name||'-')}</td><td class="mono" style="font-size:12px;">${esc(u.email||'-')}</td><td>${roleCell}</td><td>${statusBadgeUser(u.status)}</td><td style="font-size:12px;">${esc(last)}</td><td><div class="flex g8" style="flex-wrap:wrap;">${actions}</div></td></tr>`;
+    return `<tr>
+      <td>${esc(u.display_name||'-')}${unconfirmed}<div class="tm" style="font-size:11px;">${esc(fullName||'')}</div></td>
+      <td class="mono" style="font-size:12px;">${esc(u.email||'-')}<div class="tm" style="font-size:11px;">@${esc(u.username||'-')} · ${esc(u.phone||'-')}</div></td>
+      <td>${roleCell}</td>
+      <td>${statusBadgeUser(u.status)}</td>
+      <td style="font-size:12px;">${esc(last)}</td>
+      <td><div class="flex g8" style="flex-wrap:wrap;">${actions}</div></td>
+    </tr>`;
   }).join('');
-  return `<table><thead><tr><th>ชื่อ</th><th>อีเมล</th><th>สิทธิ์</th><th>สถานะ</th><th>เข้าระบบล่าสุด</th><th></th></tr></thead><tbody>${body}</tbody></table>`;
+  return `<table><thead><tr><th>ชื่อ</th><th>อีเมล / ติดต่อ</th><th>สิทธิ์</th><th>สถานะ</th><th>เข้าล่าสุด</th><th></th></tr></thead><tbody>${body}</tbody></table>`;
 }
 async function renderUsers(){
   const box=document.getElementById('users-table');
@@ -1878,11 +1984,8 @@ async function renderUsers(){
   }catch(e){ box.innerHTML='<div style="padding:16px;color:var(--red);">โหลดไม่สำเร็จ: '+esc(e.message||String(e))+'</div>'; }
 }
 async function approveUser(id){
-  const u=USERS_CACHE.find(x=>x.auth_user_id===id);
-  const role=prompt('อนุมัติเป็นสิทธิ์ไหน? พิมพ์ admin / staff / viewer', (u&&u.role&&u.role!=='viewer')?u.role:'viewer');
-  if(!role)return;
-  const r=role.trim().toLowerCase();
-  if(!['admin','staff','viewer'].includes(r)){ alert('สิทธิ์ไม่ถูกต้อง (admin/staff/viewer)'); return; }
+  const sel=document.getElementById('approve-role-'+id);
+  const r=(sel&&sel.value)||'viewer';
   try{ const {error}=await sbClient.rpc('profix_admin_approve',{p_target:id,p_role:r}); if(error)throw error; renderUsers(); }
   catch(e){ alert('อนุมัติไม่สำเร็จ: '+(e.message||e)); }
 }
@@ -1922,19 +2025,23 @@ function showLoginForm(){
 }
 async function doSignupSubmit(ev){
   ev.preventDefault();
-  const email=(document.getElementById('signup-email').value||'').trim().toLowerCase();
-  const name=(document.getElementById('signup-name').value||'').trim();
+  const g=id=>(document.getElementById(id)?.value||'').trim();
+  const email=g('signup-email').toLowerCase();
+  const username=g('signup-username'), first=g('signup-first'), last=g('signup-last'), phone=g('signup-phone');
   const p=document.getElementById('signup-pass').value||'';
   const msg=document.getElementById('signup-msg');const btn=document.getElementById('signup-btn');
   if(!email||!p){msg.className='login-msg';msg.textContent='กรอกอีเมลและรหัสผ่าน';return false;}
   if(p.length<6){msg.className='login-msg';msg.textContent='รหัสผ่านอย่างน้อย 6 ตัว';return false;}
   btn.disabled=true;msg.className='login-msg';msg.textContent='กำลังสมัคร...';
   try{
-    const {error}=await sbClient.auth.signUp({email,password:p,options:{data:{display_name:name}}});
+    const display=[first,last].filter(Boolean).join(' ')||username||email.split('@')[0];
+    const {error}=await sbClient.auth.signUp({email,password:p,options:{
+      emailRedirectTo:location.origin+location.pathname,
+      data:{display_name:display,username,first_name:first,last_name:last,phone}
+    }});
     if(error)throw error;
-    await sbClient.auth.signOut();ACCESS_TOKEN=null;   // ยังไม่อนุมัติ — ออกจาก session ทันที
-    msg.className='login-msg ok';msg.textContent='สมัครสำเร็จ! รอแอดมินอนุมัติก่อนเข้าใช้งาน';
-    setTimeout(showLoginForm,2600);
+    // เปิด "Confirm email" ไว้ → ยังไม่มี session จนกว่าจะกดลิงก์ยืนยันในเมล
+    msg.className='login-msg ok';msg.textContent='สมัครสำเร็จ! กรุณาเช็คอีเมลแล้วกดลิงก์ยืนยัน จากนั้นรอแอดมินอนุมัติ';
   }catch(err){msg.className='login-msg';msg.textContent='⚠️ '+(err.message||err);}
   btn.disabled=false;return false;
 }
@@ -2723,7 +2830,8 @@ function goTo(id, el){
     'settings-suppliers':()=>{renderSuppliers();(partsLoaded&&parts.length?refreshPartsSilently():ensurePartsLoaded()).then(renderParts);},
     reports:renderReports,
     'system-safety':renderSystemSafety,
-    users:renderUsers
+    users:renderUsers,
+    account:renderAccount
   };
   if(m[id]) m[id]();
   closeSidebar();
@@ -3571,7 +3679,8 @@ async function acceptCustomerRequest(id){
 }
 async function rejectCustomerRequest(id){
   const r=customerJobRequests.find(x=>x.id===id);if(!r||r.status!=='new')return;
-  const note=prompt('เหตุผลที่ปฏิเสธ / หมายเหตุ',r.note||'')||'';
+  const note=await uiPrompt({title:'ปฏิเสธงานลูกค้า',label:'เหตุผลที่ปฏิเสธ / หมายเหตุ',value:r.note||'',multiline:true,okText:'ยืนยันปฏิเสธ'});
+  if(note===null)return;
   try{
     Object.assign(r,{status:'rejected',note});
     if(r._fallback)await saveCustomerRequestFallbackRows();
@@ -3584,7 +3693,7 @@ async function rejectCustomerRequest(id){
 async function copyCustomerRequestLink(){
   const url=new URL('customer-request.html',location.href).href;
   const text=`แจ้งงานซ่อม/บริการให้ ProFix ได้ที่ลิงก์นี้:\n${url}`;
-  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งงานลูกค้าแล้ว');}catch(e){prompt('คัดลอกลิงก์นี้',text);}
+  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งงานลูกค้าแล้ว');}catch(e){uiCopyModal(text,'คัดลอกลิงก์แจ้งงานลูกค้า');}
 }
 function addAdminName(){
   const v=document.getElementById('fa-assign').value.trim();
@@ -3712,7 +3821,7 @@ async function copyTechnicianLink(id){
   const fullUrl=new URL(technicianFormUrl(id),location.href).href;
   const url=shortUrl||fullUrl;
   const text=`🔧 งานช่าง ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nกรอกฟอร์มงานช่างที่ลิงก์นี้:\n${url}`;
-  try{await navigator.clipboard.writeText(text);alert('คัดลอกฟอร์มลิงก์ช่างแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){prompt('คัดลอกข้อความนี้',text);}
+  try{await navigator.clipboard.writeText(text);alert('คัดลอกฟอร์มลิงก์ช่างแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){uiCopyModal(text,'คัดลอกฟอร์มลิงก์ช่าง');}
 }
 // ===== หน้าแจ้งเข้าซ่อม / เซ็นออนไลน์ (checkin.html) — แยกอิสระจากฟอร์มช่าง =====
 let checkinViewRows=[], checkinViewJob=null;
@@ -3850,7 +3959,7 @@ async function copyCheckinLink(id){
   const fullUrl=new URL(checkinFormUrl(id),location.href).href;
   const url=shortUrl||fullUrl;
   const text=`📝 แจ้งเข้าซ่อม ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nยืนยันเข้างาน + เซ็นชื่อที่ลิงก์นี้:\n${url}`;
-  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งเข้าซ่อมแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){prompt('คัดลอกข้อความนี้',text);}
+  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งเข้าซ่อมแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){uiCopyModal(text,'คัดลอกลิงก์แจ้งเข้าซ่อม');}
 }
 function openDet(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
@@ -5091,9 +5200,9 @@ function renderSalesSignerLists(){
     sel.innerHTML=opts.join('');
   });
 }
-function onSalesSignerSelect(which,val){
+async function onSalesSignerSelect(which,val){
   if(val==='__add__'){
-    const name=(prompt('ชื่อผู้เซ็นใหม่ (เช่น ชื่อแอดมิน)')||'').trim();
+    const name=((await uiPrompt({title:'เพิ่มผู้เซ็นใหม่',label:'ชื่อผู้เซ็นใหม่ (เช่น ชื่อแอดมิน)'}))||'').trim();
     if(!name){renderSalesSignerLists();return;}
     if(!(salesSignerProfiles||[]).some(s=>String(s.name||'').trim().toLowerCase()===name.toLowerCase()))salesSignerProfiles.push({name,signature:''});
     document.getElementById(salesSignerNameId(which)).value=name;
@@ -7395,8 +7504,12 @@ async function returnReportForFix(){
   const id=document.getElementById('mrpt-jobid').value;
   const j=jobs.find(x=>x.id===id);if(!j)return;
   const before=clonePlain(j);
-  const note=document.getElementById('mrpt-review-note').value.trim()||prompt('ระบุเหตุผลที่ต้องแก้ไขรายงาน')||'ต้องแก้ไขรายงาน';
-  if(!note)return;
+  let note=document.getElementById('mrpt-review-note').value.trim();
+  if(!note){
+    const entered=await uiPrompt({title:'ส่งกลับแก้ไขรายงาน',label:'ระบุเหตุผลที่ต้องแก้ไข',multiline:true});
+    if(entered===null)return;
+    note=entered.trim()||'ต้องแก้ไขรายงาน';
+  }
   document.getElementById('mrpt-review-note').value=note;
   const x=syncReportFormToJob();if(!x)return;
   const returnedAt=new Date().toISOString();
@@ -7679,6 +7792,16 @@ function startApp(){ initApp(); }
   // มาจากลิงก์รีเซ็ตรหัสผ่าน → รอ event PASSWORD_RECOVERY (onAuthStateChange จะเรียก showRecoveryForm ให้)
   if((location.hash||'').indexOf('type=recovery')>=0){
     const loader=document.getElementById('app-loader'); if(loader)loader.style.display='none';
+    return;
+  }
+  // มาจากลิงก์ยืนยันอีเมลตอนสมัคร → ยืนยันแล้วแต่ยัง pending → แจ้งให้รอแอดมินอนุมัติ
+  if((location.hash||'').indexOf('type=signup')>=0){
+    try{ await sbClient.auth.signOut(); }catch(e){}
+    ACCESS_TOKEN=null;
+    const loader=document.getElementById('app-loader'); if(loader)loader.style.display='none';
+    const ov=document.getElementById('login-overlay'); if(ov)ov.classList.add('show');
+    const lm=document.getElementById('login-msg'); if(lm){lm.className='login-msg ok';lm.textContent='ยืนยันอีเมลสำเร็จ! รอแอดมินอนุมัติก่อนเข้าใช้งาน';}
+    setTimeout(function(){var u=document.getElementById('login-user'); if(u)u.focus();},120);
     return;
   }
   try{
