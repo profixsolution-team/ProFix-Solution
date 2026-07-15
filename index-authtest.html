@@ -1986,8 +1986,20 @@ async function renderUsers(){
 async function approveUser(id){
   const sel=document.getElementById('approve-role-'+id);
   const r=(sel&&sel.value)||'viewer';
-  try{ const {error}=await sbClient.rpc('profix_admin_approve',{p_target:id,p_role:r}); if(error)throw error; renderUsers(); }
-  catch(e){ alert('อนุมัติไม่สำเร็จ: '+(e.message||e)); }
+  try{
+    const {error}=await sbClient.rpc('profix_admin_approve',{p_target:id,p_role:r});
+    if(error)throw error;
+    // แจ้งเตือนผู้ใช้ทางอีเมลว่าอนุมัติแล้ว (best-effort — เมลล้มเหลวไม่กระทบการอนุมัติ)
+    try{
+      const {data:{session}}=await sbClient.auth.getSession();
+      await fetch(SUPABASE_URL+'/functions/v1/profix-admin-users',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+((session&&session.access_token)||'')},
+        body:JSON.stringify({action:'notify_approved',target_user_id:id})
+      });
+    }catch(mailErr){ console.warn('notify email failed',mailErr); }
+    renderUsers();
+  }catch(e){ alert('อนุมัติไม่สำเร็จ: '+(e.message||e)); }
 }
 async function changeUserRole(id,role){
   try{ const {error}=await sbClient.rpc('profix_admin_set_role',{p_target:id,p_role:role}); if(error)throw error; renderUsers(); }
