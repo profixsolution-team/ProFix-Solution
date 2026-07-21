@@ -25,7 +25,7 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const headers={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
 function showError(html){document.getElementById('sp').style.display='none';document.getElementById('msg').innerHTML=html;}
 // โดเมนที่เราเป็นเจ้าของและอนุญาตให้ redirect ไปได้ (เช็คแค่ hostname ไม่สนใจ http/https กันปัญหาช่วง SSL ของโดเมนใหม่ยังไม่พร้อม)
-const ALLOWED_HOSTS=['profixsolution-team.github.io','www.profixsolution-service.com','profixsolution-service.com'];
+const ALLOWED_HOSTS=['profixsolution-team.github.io','www.console.profixsolution-service.com','console.profixsolution-service.com'];
 function safeTarget(t){
   try{const u=new URL(t,location.href);if(!ALLOWED_HOSTS.includes(u.hostname))return null;return u.href;}catch(e){return null;}
 }
