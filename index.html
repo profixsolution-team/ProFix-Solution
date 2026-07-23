@@ -5135,7 +5135,7 @@ function salesDocHtml(inv,items){
 <table class="items"><thead><tr><th class="no">ลำดับ</th><th class="desc">รายการ</th><th class="qty">จำนวน</th><th class="unit">หน่วย</th><th class="price">ราคา</th><th class="amount">ราคา</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="no muted">ไม่มีรายการ</td></tr>'}${Array.from({length:blankRows}).map(()=>'<tr><td class="no"></td><td class="desc"></td><td class="qty"></td><td class="unit"></td><td class="price"></td><td class="amount"></td></tr>').join('')}</tbody></table>
 <section class="note-total"><div class="note"><h3>หมายเหตุ / เงื่อนไข</h3><div class="box">${esc(noteLines||'-')}</div></div><div class="total"><table>${totalRows}</table></div></section>
 <div class="amount-text"><div>ตัวอักษร</div><div>(${esc(totalText)})</div></div>
-<section class="signs"><div>ลงชื่อผู้เสนอราคา<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ${sellerSignName||'........................................'} )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ${customerSignName||'........................................'} )</div></div></section>
+<section class="signs"><div>ลงชื่อผู้มีอำนาจลงนาม<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ${sellerSignName||'........................................'} )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ${customerSignName||'........................................'} )</div></div></section>
 <div class="footer">${esc(company.displayName)} Team&nbsp;&nbsp;|&nbsp;&nbsp;ขอบคุณที่ใช้บริการ</div></div></body></html>`;
 }
 function salesDocCompanyInfo(inv={}){
