@@ -3581,6 +3581,12 @@ async function saveAdminTask(openQueueAfter=false){
     Object.assign(task,data);
     after=clonePlain(task);
     action='update_admin_task';
+    // sync รายละเอียดที่แก้จาก Admin Tracker → job.note (ฟอร์มแจ้งเข้าซ่อม/checkin.html อ่าน job.note)
+    // เขียนทับเฉพาะตอน note ของ job ยังว่างหรือยังตรงกับ detail เดิม — กันทับ note ที่แก้แยกไว้ในคิวช่าง
+    if(data.jobId){
+      const lj=jobs.find(j=>!isDeletedRecord(j)&&(j.id===data.jobId||normalizePR(j.id)===normalizePR(data.jobId)));
+      if(lj&&(!lj.note||lj.note===(before?.detail||''))&&lj.note!==(data.detail||''))lj.note=data.detail||'';
+    }
   }else{
     taskId=nextAutoId('TASK',adminTasks);
     const row={id:taskId,...data,assignedAt:todayISO(),isNew:true,createdAt:Date.now()};
@@ -3952,6 +3958,9 @@ function checkinFormHtml(r,j){
     .toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}
     .toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}
     .page{width:210mm;min-height:297mm;margin:18px auto;padding:14mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);border:1px solid #111}
+    .doc-main{height:297mm;min-height:297mm;display:flex;flex-direction:column;overflow:hidden}
+    .doc-main .head,.doc-main .meta,.doc-main .signs,.doc-main .foot{flex:0 0 auto}
+    .doc-main .flow{flex:1 1 auto;min-height:0;overflow:hidden}
     .head{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:12px}
     .head img{width:150px;max-height:54px;object-fit:contain}.title{text-align:center}.title h1{font-size:22px;margin:0 0 6px}.title .sub{font-size:13px;color:#4b5563}
     .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.cell{border:1px solid #111;padding:8px;min-height:38px}.label{font-weight:800}
@@ -3965,10 +3974,10 @@ function checkinFormHtml(r,j){
     .foot{font-size:11px;color:#6b7280;text-align:right;margin-top:16px}
     .photo-rows{height:220mm;display:flex;flex-direction:column;gap:5mm;margin-top:10px}.photo-row{display:grid;gap:5mm;height:68mm;break-inside:avoid;page-break-inside:avoid}.photo-row.portrait{grid-template-columns:repeat(3,minmax(0,1fr))}.photo-row.landscape{grid-template-columns:repeat(2,minmax(0,1fr))}.photo-slot{margin:0;border:1px solid #111;border-radius:6px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}.photo-slot img{display:block;width:100%;height:100%;object-fit:contain;background:#fff}
     .photo-page{page-break-before:always}
-    @media print{body{background:#fff}.toolbar{display:none}.page{width:auto;min-height:auto;margin:0;padding:12mm;box-shadow:none}}@page{size:A4;margin:10mm}
+    @media print{body{background:#fff}.toolbar{display:none}.page{margin:0;box-shadow:none;border:0}.doc-main{height:297mm}}@page{size:A4;margin:0}
   </style></head><body>
   <div class="toolbar"><div><b>ใบยืนยันการเข้าซ่อม ${esc(jobId)}</b><div style="font-size:12px;color:#cbd5e1;">สร้างเมื่อ ${generatedAt}</div></div><button onclick="window.print()">พิมพ์ / Save PDF</button></div>
-  <main class="page">
+  <main class="page doc-main">
     <header class="head"><img src="${logo}" alt="ProFix Solution"><div class="title"><h1>ใบยืนยันการเข้าซ่อม / เข้าปฏิบัติงาน</h1><div class="sub">Service Check-in & Acknowledgement Form</div></div></header>
     <div class="meta">
       <div class="cell"><span class="label">หมายเลขงาน:</span> ${esc(jobId)}</div>
@@ -3978,8 +3987,10 @@ function checkinFormHtml(r,j){
       <div class="cell"><span class="label">วันเวลาเข้า:</span> ${esc(r.date_in||'—')} ${esc(r.time_in||'')}</div>
       <div class="cell"><span class="label">วันเวลาเสร็จ:</span> ${doneTxt}</div>
     </div>
-    <section class="section"><h2>รายละเอียดที่แจ้งซ่อม</h2><div class="box">${esc(r.reported_note||'—')}</div></section>
-    <section class="section"><h2>หมายเหตุเพิ่มเติม</h2><div class="box">${esc(r.note||'—')}</div></section>
+    <div class="flow">
+      <section class="section"><h2>รายละเอียดที่แจ้งซ่อม</h2><div class="box">${esc(r.reported_note||'—')}</div></section>
+      <section class="section"><h2>หมายเหตุเพิ่มเติม</h2><div class="box">${esc(r.note||'—')}</div></section>
+    </div>
     <div class="signs">
       ${sigImg(r.signature_data,`ผู้แจ้ง/ลูกค้า (${esc(r.signer_role||'-')})`,r.signer_name)}
       ${sigImg(r.tech_signature_data,'ช่างผู้เข้าปฏิบัติงาน',r.tech_name)}
@@ -5114,7 +5125,7 @@ function salesDocHtml(inv,items){
   const noteLines=[inv.note||'',company.bankAccount?`ชำระเงิน: ${company.bankAccount}`:''].filter(Boolean).join('\n');
   const sellerSignature=salesDocImageUrl(inv.seller_signature_url||'');
   const customerSignature=salesDocImageUrl(inv.customer_signature_url||'');
-  const sellerSignatureHtml=sellerSignature?`<img class="signature-img" src="${esc(sellerSignature)}" alt="ลายเซ็นผู้เสนอราคา">`:'';
+  const sellerSignatureHtml=sellerSignature?`<img class="signature-img" src="${esc(sellerSignature)}" alt="ลายเซ็นผู้มีอำนาจลงนาม">`:'';
   const customerSignatureHtml=customerSignature?`<img class="signature-img" src="${esc(customerSignature)}" alt="ลายเซ็นผู้อนุมัติ / ลูกค้า">`:'';
   const sellerSignName=esc(inv.seller_name||'');const customerSignName=esc(inv.customer_signer_name||'');
   const travelLabel=(travelKm||travelRate)?('ค่าเดินทาง ('+money(travelKm)+' กม. x '+money(travelRate)+' บาท)'):'ค่าเดินทาง';
@@ -7617,7 +7628,7 @@ function partsQuoteHtml(j,doc={}){
   const amountText=doc.amountText||thaiBahtText(grand);
   const sellerSignature=quoteImageUrl(doc.sellerSignatureUrl||doc.sellerSignature||'');
   const customerSignature=quoteImageUrl(doc.customerSignatureUrl||doc.customerSignature||'');
-  const sellerSignatureHtml=sellerSignature?`<img class="signature-img" src="${esc(sellerSignature)}" alt="ลายเซ็นผู้เสนอราคา">`:'';
+  const sellerSignatureHtml=sellerSignature?`<img class="signature-img" src="${esc(sellerSignature)}" alt="ลายเซ็นผู้มีอำนาจลงนาม">`:'';
   const customerSignatureHtml=customerSignature?`<img class="signature-img" src="${esc(customerSignature)}" alt="ลายเซ็นผู้อนุมัติ / ลูกค้า">`:'';
   const sellerSignName=esc(inv.seller_name||'');const customerSignName=esc(inv.customer_signer_name||'');
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>${esc(no)}</title><style>
