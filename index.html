@@ -183,6 +183,7 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .b-done{background:var(--green-dim);color:var(--green);}
 .b-closed{background:var(--surface3);color:var(--text3);}
 .b-reject{background:var(--red-dim);color:var(--red);}
+.b-urgent{background:var(--red);color:#fff;font-weight:800;box-shadow:0 0 0 1px var(--red),0 0 7px rgba(248,81,73,.55);}
 .b-hold{background:var(--orange-dim);color:var(--orange);}
 .b-paid{background:var(--green-dim);color:var(--green);}
 .b-unpaid{background:var(--yellow-dim);color:var(--yellow);}
@@ -213,6 +214,7 @@ body[data-theme="light"] .b-working,body[data-theme="light"] .b-unpaid{color:#9a
 body[data-theme="light"] .b-parts{color:#8250df;}
 body[data-theme="light"] .b-done,body[data-theme="light"] .b-paid{color:#138a3d;}
 body[data-theme="light"] .b-reject{color:#cf222e;}
+body[data-theme="light"] .b-urgent{background:#cf222e;color:#fff;border-color:#cf222e;box-shadow:0 0 0 1px #cf222e;}
 body[data-theme="light"] .b-hold{color:#bc4c00;}
 body[data-theme="light"] .new-pill{background:#fff;border-color:#067a2d;color:#067a2d;box-shadow:none;}
 body[data-theme="light"] .queue-pill{background:#fff;border-color:#9a6700;color:#9a6700;box-shadow:none;}
@@ -1424,7 +1426,7 @@ select option{background:var(--surface2);}
 // DATA
 let J_ST = ['รอเปิดงาน','รอจัดช่าง','จัดช่างแล้ว','ช่างออกงาน','รออะไหล่','เสร็จงาน','รอจ่าย','ปิดงาน','ติดปัญหา','Reject'];
 let A_ST = ['รอดำเนินการ','กำลังทำ','รอลูกค้า','เสร็จแล้ว','ติดปัญหา','Reject'];
-const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','ช่างบันทึกร่าง':'b-working','ช่างส่งงานแล้ว':'b-done','รออนุมัติอะไหล่':'b-parts','รอช่างเข้าซ่อม':'b-open','แอดมินตรวจแล้ว':'b-done','ต้องแก้ไข':'b-reject','ปิดงานสำรวจ':'b-closed','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done'};
+const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','ช่างบันทึกร่าง':'b-working','ช่างส่งงานแล้ว':'b-done','รออนุมัติอะไหล่':'b-parts','รอช่างเข้าซ่อม':'b-open','แอดมินตรวจแล้ว':'b-done','ต้องแก้ไข':'b-reject','ปิดงานสำรวจ':'b-closed','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done','รอขออนุมัติ':'b-urgent','รอช่างส่งงาน':'b-urgent'};
 
 let jobs = [
   {id:'PR-001',client:'บริษัท A',ref:'WO-2001',branch:'เซ็นทรัลลาดพร้าว',type:'ซ่อมแอร์',team:'ทีม A',date:'2025-06-03',status:'เสร็จงาน',pc:3500,pt:2400,partC:300,partR:500,fuel:150,note:'แอร์ไม่เย็น',report:'เติมน้ำยา R22 2 ปอนด์',isNew:false,pay:'unpaid'},
@@ -1598,7 +1600,7 @@ function level1Badge(item){return isLevel1(item)?'<span class="urgent-pill" titl
 function statusSelectColor(item,status,kind='job'){
   if(item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))return isReturnFixUpdate(item)?'var(--red)':isDraftUpdate(item)?'var(--yellow)':'var(--green)';
   if(kind==='admin')return status==='เสร็จแล้ว'?'var(--green)':status==='กำลังทำ'?'var(--yellow)':status==='ติดปัญหา'||status==='Reject'?'var(--red)':'var(--text2)';
-  return status==='เสร็จงาน'||status==='ปิดงาน'||status==='ช่างส่งงานแล้ว'||status==='แอดมินตรวจแล้ว'?'var(--green)':status==='ช่างออกงาน'||status==='รอเปิดงาน'||status==='รอจ่าย'?'var(--yellow)':status==='Reject'||status==='ติดปัญหา'||status==='ต้องแก้ไข'?'var(--red)':status==='รออะไหล่'||status==='รออนุมัติอะไหล่'?'var(--purple)':'var(--text2)';
+  return status==='เสร็จงาน'||status==='ปิดงาน'||status==='ช่างส่งงานแล้ว'||status==='แอดมินตรวจแล้ว'?'var(--green)':status==='ช่างออกงาน'||status==='รอเปิดงาน'||status==='รอจ่าย'?'var(--yellow)':status==='Reject'||status==='ติดปัญหา'||status==='ต้องแก้ไข'||status==='รอขออนุมัติ'||status==='รอช่างส่งงาน'?'var(--red)':status==='รออะไหล่'||status==='รออนุมัติอะไหล่'?'var(--purple)':'var(--text2)';
 }
 function sortByTechUpdateThenDate(arr,dir,isTask=false){
   return [...arr].sort((a,b)=>{
@@ -2332,17 +2334,24 @@ function splitUrl(table,query=''){return `${SUPABASE_URL}/rest/v1/${table}${quer
 // คอลัมน์ที่เพิ่มใน migration phase 3 — ถ้ายังไม่ได้รัน migration จะถูกตัดออกอัตโนมัติเพื่อไม่ให้บันทึกพัง
 const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template','branch_province','customer_province','labor_price','parts_price','labor_cost','parts_cost'];
 function stripKeys(payload,keys){const drop=o=>{const c={...o};keys.forEach(k=>delete c[k]);return c;};return Array.isArray(payload)?payload.map(drop):drop(payload);}
-// POST แบบทนทาน: ถ้า PostgREST แจ้งว่าไม่มีคอลัมน์ (ยังไม่ได้รัน migration) จะลองใหม่โดยตัดคอลัมน์ใหม่ออก
+// POST แบบทนทาน: ถ้า PostgREST แจ้งว่าไม่มีคอลัมน์ (ยังไม่ได้รัน migration) จะลองใหม่โดยตัด "เฉพาะ" คอลัมน์ที่ error ระบุชื่อ
+// (เดิมตัดทั้ง PHASE3_OPTIONAL_KEYS ยกชุด → คอลัมน์ที่ DB มีอยู่จริง เช่น หมวด/รหัส/ลำดับ ถูกตัดทิ้งตามไปด้วย → หายตอนแก้ไขเอกสาร)
 async function sbUpsertResilient(table,query,payload,optionalKeys=PHASE3_OPTIONAL_KEYS){
-  let r=await fetch(splitUrl(table,query),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(payload)});
-  if(r.ok)return r;
-  const txt=await r.text();
-  const missing=/PGRST204|could not find|does not exist|schema cache/i.test(txt)&&optionalKeys.some(k=>txt.includes(k));
-  if(!missing)throw new Error(txt);
-  console.warn(`[${table}] คอลัมน์ใหม่ยังไม่มีใน DB — บันทึกแบบตัดฟิลด์ phase 3 (รัน migration phase 3 เพื่อใช้งานเต็ม)`);
-  r=await fetch(splitUrl(table,query),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(stripKeys(payload,optionalKeys))});
-  if(!r.ok)throw new Error(await r.text());
-  return r;
+  const stripped=[];
+  for(let attempt=0;attempt<=optionalKeys.length;attempt++){
+    const body=stripped.length?stripKeys(payload,stripped):payload;
+    const r=await fetch(splitUrl(table,query),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(body)});
+    if(r.ok)return r;
+    const txt=await r.text();
+    const schemaErr=/PGRST204|could not find|does not exist|schema cache/i.test(txt);
+    if(!schemaErr)throw new Error(txt);
+    // จับเฉพาะคอลัมน์ optional ที่ถูกระบุชื่อใน error จริง ๆ (word-boundary กันจับ discount ใน discount_total ผิด)
+    const bad=optionalKeys.filter(k=>!stripped.includes(k)&&new RegExp('\\b'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b').test(txt));
+    if(!bad.length)throw new Error(txt);
+    bad.forEach(k=>stripped.push(k));
+    console.warn(`[${table}] คอลัมน์ยังไม่มีใน DB: ${bad.join(', ')} — ตัดเฉพาะฟิลด์นั้นแล้วบันทึกต่อ (รัน migration เพื่อใช้งานคอลัมน์นี้เต็ม)`);
+  }
+  throw new Error(`[${table}] upsert ยังไม่สำเร็จหลังตัดคอลัมน์ optional (${stripped.join(', ')})`);
 }
 async function sbFetchJson(table,query=''){
   const r=await fetch(splitUrl(table,query),{headers:sbHeaders()});
@@ -5135,7 +5144,7 @@ function salesDocHtml(inv,items){
 <table class="items"><thead><tr><th class="no">ลำดับ</th><th class="desc">รายการ</th><th class="qty">จำนวน</th><th class="unit">หน่วย</th><th class="price">ราคา</th><th class="amount">ราคา</th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="no muted">ไม่มีรายการ</td></tr>'}${Array.from({length:blankRows}).map(()=>'<tr><td class="no"></td><td class="desc"></td><td class="qty"></td><td class="unit"></td><td class="price"></td><td class="amount"></td></tr>').join('')}</tbody></table>
 <section class="note-total"><div class="note"><h3>หมายเหตุ / เงื่อนไข</h3><div class="box">${esc(noteLines||'-')}</div></div><div class="total"><table>${totalRows}</table></div></section>
 <div class="amount-text"><div>ตัวอักษร</div><div>(${esc(totalText)})</div></div>
-<section class="signs"><div>ลงชื่อผู้มีอำนาจลงนาม<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ${sellerSignName||'........................................'} )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ${customerSignName||'........................................'} )</div></div></section>
+<section class="signs"><div>ลงชื่อผู้เสนอราคา<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ${sellerSignName||'........................................'} )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ${customerSignName||'........................................'} )</div></div></section>
 <div class="footer">${esc(company.displayName)} Team&nbsp;&nbsp;|&nbsp;&nbsp;ขอบคุณที่ใช้บริการ</div></div></body></html>`;
 }
 function salesDocCompanyInfo(inv={}){
@@ -7623,7 +7632,7 @@ function partsQuoteHtml(j,doc={}){
   }).join('')}${Array.from({length:blankRows}).map(()=>'<tr><td class="no"></td><td class="desc"></td><td class="qty"></td><td class="unit"></td><td class="price"></td><td class="amount"></td></tr>').join('')}</tbody></table>
   <section class="note-total"><div class="note"><h3>หมายเหตุ / เงื่อนไข</h3><div class="box">${esc(noteLines||'-')}</div></div><div class="total"><table><tr><td class="label">รวมเป็นเงิน</td><td class="right">${preVat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>ภาษีมูลค่าเพิ่ม<br>7%(VAT)</td><td class="right">${vat.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr><td>หักส่วนลด</td><td class="right">${discount.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr><tr class="grand"><td>ยอดรวมทั้งสิ้น</td><td class="right">${grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table></div></section>
   <div class="amount-text"><div>ตัวอักษร</div><div>(${esc(amountText)})</div></div>
-  <section class="signs"><div>ลงชื่อผู้มีอำนาจลงนาม<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ${sellerSignName||'........................................'} )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ${customerSignName||'........................................'} )</div></div></section>
+  <section class="signs"><div>ลงชื่อผู้เสนอราคา<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ${sellerSignName||'........................................'} )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ${customerSignName||'........................................'} )</div></div></section>
   <div class="footer">${esc(company.displayName)} Team&nbsp;&nbsp;|&nbsp;&nbsp;ขอบคุณที่ใช้บริการ</div>
   </main></body></html>`;
 }
