@@ -5017,8 +5017,8 @@ function boqQuoteDocHtml(inv,items){
   const customer=salesDocCustomerInfo(inv);
   const jobList=salesInvoiceJobs(inv);
   const firstPr=jobList[0]||'';
-  const job=(jobs||[]).find(j=>String(j.id)===String(firstPr)&&!isDeletedRecord(j));
-  const branchText=[...new Set(jobList.map(pr=>{const jj=(jobs||[]).find(j=>String(j.id)===String(pr)&&!isDeletedRecord(j));return jj?jj.branch:'';}).filter(Boolean))].join(', ')||(job?.branch||'');
+  const job=(jobs||[]).find(j=>sameJob(j.id,firstPr)&&!isDeletedRecord(j));
+  const branchText=[...new Set(jobList.map(pr=>{const jj=(jobs||[]).find(j=>sameJob(j.id,pr)&&!isDeletedRecord(j));return jj?jj.branch:'';}).filter(Boolean))].join(', ')||(job?.branch||'');
   const cause=job?.technicianReport?.cause||job?.cause||job?.symptom||'';
   const fix=job?.technicianReport?.fix||job?.fix||'';
   const jobDetail=cause||inv.note||job?.note||''; // รายละเอียดงาน = สาเหตุจากฟอร์มช่าง
@@ -5149,7 +5149,7 @@ function salesDocHtml(inv,items){
   const rows=items.map((it,i)=>`<tr><td class="no">${i+1}</td><td class="desc">${esc(it.description||'')}${it.category?`<div class="muted">${esc(it.category)}</div>`:''}</td><td class="qty">${money(it.quantity||0)}</td><td class="unit">${esc(it.unit||'')}</td><td class="price">${money(it.unit_price||0)}</td><td class="amount">${money(it.subtotal||0)}</td></tr>`).join('');
   const jobList=salesInvoiceJobs(inv);
   const jobText=jobList.join(', ');
-  const branchText=[...new Set(jobList.map(pr=>jobs.find(j=>String(j.id)===String(pr)&&!isDeletedRecord(j))?.branch).filter(Boolean))].join(', ');
+  const branchText=[...new Set(jobList.map(pr=>jobs.find(j=>sameJob(j.id,pr)&&!isDeletedRecord(j))?.branch).filter(Boolean))].join(', ');
   const lineSubtotal=items.reduce((sum,it)=>sum+Number(it.subtotal||0),0);
   const overheadEnabled=!(inv.overhead_enabled===false||inv.overhead_enabled==='false');
   const overheadRate=overheadEnabled?Number(inv.overhead_rate??salesOverheadRateBySubtotal(lineSubtotal)):0;
@@ -5697,7 +5697,7 @@ document.addEventListener('click',e=>{
 });
 function fillSalesFromJob(pr=''){
   const id=String(pr||salesDraftJobs[0]||'').trim();
-  const j=jobs.find(x=>String(x.id)===id&&!isDeletedRecord(x));
+  const j=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x));
   if(!j)return;
   const customer=document.getElementById('sale-customer');
   if(customer&&!customer.value)applySalesCustomerProfile(j.client||'',j.branch||'');
