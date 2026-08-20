@@ -1557,7 +1557,7 @@ function inQuickRange(item,range){const d=itemDateValue(item);if(range==='today'
 function sortByItemDate(arr,dir){return [...arr].sort((a,b)=>{const av=itemDateValue(a)||'';const bv=itemDateValue(b)||'';const c=av.localeCompare(bv)||(Number(a.createdAt||0)-Number(b.createdAt||0));return dir==='asc'?c:-c;});}
 function techUpdateTs(j){return Date.parse(j?.techUpdateAt||j?.technicianReport?.submittedAt||j?.techSubmittedAt||'')||0;}
 function hasTechUpdate(j){return !!(j&&j.techUpdateUnread&&techUpdateTs(j));}
-function jobForTask(t){return t?.jobId?liveJobs().find(j=>String(j.id)===String(t.jobId)):null;}
+function jobForTask(t){return t?.jobId?liveJobs().find(j=>sameJob(j.id,t.jobId)):null;}
 function taskHasTechUpdate(t){return !!(t?.techUpdateUnread||hasTechUpdate(jobForTask(t)));}
 function taskTechUpdateTs(t){return Date.parse(t?.techUpdateAt||'')||techUpdateTs(jobForTask(t));}
 function techUpdateTypeOf(item){
@@ -1678,12 +1678,12 @@ function bumpRecordModified(targetType,targetId){
   }catch(e){}
 }
 function markTechUpdateSeen(jobId,{save=true}={}){
-  const j=jobs.find(x=>String(x.id)===String(jobId));
+  const j=jobs.find(x=>sameJob(x.id,jobId));
   if(j){j.techUpdateUnread=false;j.techUpdateSeenAt=new Date().toISOString();}
-  adminTasks.forEach(t=>{if(String(t.jobId)===String(jobId)){t.techUpdateUnread=false;t.techUpdateSeenAt=new Date().toISOString();}});
+  adminTasks.forEach(t=>{if(sameJob(t.jobId,jobId)){t.techUpdateUnread=false;t.techUpdateSeenAt=new Date().toISOString();}});
   if(save)saveState();
 }
-function adminNeedsQueueBadge(t){return !t?.jobId||!liveJobs().some(j=>j.id===t.jobId);}
+function adminNeedsQueueBadge(t){return !t?.jobId||!liveJobs().some(j=>sameJob(j.id,t.jobId));}
 function isClosedAdminTask(t){return isDeletedRecord(t)||['เสร็จแล้ว','ปิดงาน','Reject'].includes(t?.status);}
 function isClosedJob(j){return isDeletedRecord(j)||['ปิดงาน','Reject','ปิดงานสำรวจ'].includes(j?.status);}
 function activeAdminCount(){return liveAdminTasks().filter(t=>!isClosedAdminTask(t)).length;}
@@ -3561,7 +3561,7 @@ function openAdminModal(){
   openM('m-admin');
 }
 async function saveAdminTask(openQueueAfter=false){
-  const data={type:document.getElementById('fa-type').value,client:document.getElementById('fa-client').value,phone:document.getElementById('fa-phone').value,detail:document.getElementById('fa-detail').value,assign:document.getElementById('fa-assign').value,due:document.getElementById('fa-due').value,jobId:document.getElementById('fa-job').value,pri:document.getElementById('fa-pri').value,status:document.getElementById('fa-status').value};
+  const data={type:document.getElementById('fa-type').value,client:document.getElementById('fa-client').value,phone:document.getElementById('fa-phone').value,detail:document.getElementById('fa-detail').value,assign:document.getElementById('fa-assign').value,due:document.getElementById('fa-due').value,jobId:canonPR(document.getElementById('fa-job').value),pri:document.getElementById('fa-pri').value,status:document.getElementById('fa-status').value};
   if(pendingAdminPdfFile&&!data.jobId){alert('อัปโหลดใบงานแล้ว กรุณาใส่ PR ก่อนบันทึก เพื่อให้ระบบเก็บไฟล์เข้าแฟ้ม PR');return;}
   const adminDup=duplicateAdminPRInfo(data.jobId,{excludeTaskId:editAdminId||''});
   if(adminDup){
@@ -3584,8 +3584,13 @@ async function saveAdminTask(openQueueAfter=false){
     // sync รายละเอียดที่แก้จาก Admin Tracker → job.note (ฟอร์มแจ้งเข้าซ่อม/checkin.html อ่าน job.note)
     // เขียนทับเฉพาะตอน note ของ job ยังว่างหรือยังตรงกับ detail เดิม — กันทับ note ที่แก้แยกไว้ในคิวช่าง
     if(data.jobId){
-      const lj=jobs.find(j=>!isDeletedRecord(j)&&(j.id===data.jobId||normalizePR(j.id)===normalizePR(data.jobId)));
-      if(lj&&(!lj.note||lj.note===(before?.detail||''))&&lj.note!==(data.detail||''))lj.note=data.detail||'';
+      const lj=jobs.find(j=>!isDeletedRecord(j)&&sameJob(j.id,data.jobId));
+      if(lj){
+        // รายละเอียด -> job.note (กันทับ note ที่แก้แยกไว้ในคิวช่าง)
+        if((!lj.note||lj.note===(before?.detail||''))&&lj.note!==(data.detail||''))lj.note=data.detail||'';
+        // ลูกค้า -> job.client (กันทับค่าที่แก้แยกไว้ในคิวช่าง)
+        if((!lj.client||lj.client===(before?.client||''))&&lj.client!==(data.client||''))lj.client=data.client||lj.client;
+      }
     }
   }else{
     taskId=nextAutoId('TASK',adminTasks);
@@ -3754,6 +3759,10 @@ function addAdminName(){
   }
 }
 function normalizePR(v){return String(v||'').trim().replace(/\s+/g,'').toUpperCase();}
+// canonPR = รูปแบบมาตรฐานที่จะ "เก็บ" (ตัดช่องว่างหน้า-หลัง-กลาง แต่คงตัวพิมพ์ตามที่ผู้ใช้กรอก)
+function canonPR(v){return String(v||'').trim().replace(/\s+/g,'');}
+// sameJob = เทียบว่าเป็นงานเดียวกันไหม แบบไม่สน space/ตัวพิมพ์ (กันเลขเพี้ยนเพราะเว้นวรรค)
+function sameJob(a,b){const x=normalizePR(a);return !!x&&x===normalizePR(b);}
 function duplicateAdminPRInfo(pr,{excludeTaskId=''}={}){
   const key=normalizePR(pr);
   if(!key)return null;
@@ -4068,7 +4077,7 @@ function confirmOverwriteIfConflict(label){
   return confirm(`⚠️ มีแอดมินอีกเครื่องเพิ่งแก้${label}นี้ไประหว่างที่คุณกำลังแก้อยู่\n\nกด "ตกลง" = เขียนทับด้วยข้อมูลของคุณ (ข้อมูลของอีกฝั่งจะหาย)\nกด "ยกเลิก" = หยุดก่อน แล้วปิดฟอร์มเพื่อรีเฟรชดูข้อมูลล่าสุด`);
 }
 async function saveJob(){if(!guardEdit())return;
-  const data={client:document.getElementById('fj-client').value,ref:document.getElementById('fj-ref').value||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,status:document.getElementById('fj-status').value,level:document.getElementById('fj-level')?.value||'',pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value};
+  const data={client:document.getElementById('fj-client').value,ref:canonPR(document.getElementById('fj-ref').value)||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,status:document.getElementById('fj-status').value,level:document.getElementById('fj-level')?.value||'',pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value};
   let savedJobId=editJobId;
   let before=null, after=null, action='create_job';
   if(editJobId){
@@ -4079,6 +4088,12 @@ async function saveJob(){if(!guardEdit())return;
     Object.assign(job,data);
     after=clonePlain(job);
     action='update_job';
+    // sync ย้อนกลับ: รายละเอียด/ลูกค้า ที่แก้ในคิวช่าง -> งานแอดมินที่ลิงก์กัน (กันทับค่าที่แก้แยกไว้)
+    liveAdminTasks().forEach(t=>{
+      if(!sameJob(t.jobId,job.id))return;
+      if((!t.detail||t.detail===(before?.note||''))&&t.detail!==(job.note||''))t.detail=job.note||t.detail;
+      if((!t.client||t.client===(before?.client||''))&&t.client!==(job.client||''))t.client=job.client||t.client;
+    });
   }else{
     const isAuto=!(data.ref&&data.ref!=='N/A');
     let id=isAuto?nextAutoId('PR',jobs):data.ref;
@@ -6108,9 +6123,9 @@ async function mergeSalesDocsToTaxInvoice(){
   setAccountingStatus('sales',`รวม ${docs.length} ใบ (${jobIds.length} งาน) เรียบร้อย — ตรวจแล้วกดบันทึก`,'ok');
 }
 function salesInvoiceJobs(inv){return inv.job_ids?String(inv.job_ids).split(',').map(s=>s.trim()).filter(Boolean):(inv.job_id?[String(inv.job_id)]:[]);}
-function salesInvoiceMatchesJob(inv,jobId){return salesInvoiceJobs(inv).some(p=>String(p)===String(jobId));}
-function jobCosts(jobId){return jobCostItems.filter(x=>String(x.job_id)===String(jobId)&&x.status!=='cancelled');}
-function techPartsForJob(jobId){return technicianUsedParts.filter(x=>String(x.job_id)===String(jobId));}
+function salesInvoiceMatchesJob(inv,jobId){return salesInvoiceJobs(inv).some(p=>sameJob(p,jobId));}
+function jobCosts(jobId){return jobCostItems.filter(x=>sameJob(x.job_id,jobId)&&x.status!=='cancelled');}
+function techPartsForJob(jobId){return technicianUsedParts.filter(x=>sameJob(x.job_id,jobId));}
 function purchaseOptionsHtml(){
   const opts=['<option value="">ไม่เลือก</option>'];
   purchaseItems.filter(x=>x.status!=='cancelled').forEach(x=>{
@@ -6128,7 +6143,7 @@ function renderJobAccountingSection(jobId){
   const totalVat=costs.reduce((s,x)=>s+Number(x.vat_amount||0),0);
   const salesTotal=sales.reduce((s,x)=>s+Number(x.total_amount||0),0);
   const pending=techRows.filter(x=>x.matched_status==='pending').length;
-  const stockMoves=stockMovements.filter(m=>String(m.job_id)===String(jobId)&&m.status!=='cancelled');
+  const stockMoves=stockMovements.filter(m=>sameJob(m.job_id,jobId)&&m.status!=='cancelled');
   el.innerHTML=`<div class="table-wrap" style="margin-top:14px;">
     <div class="table-header"><div class="table-title">จับคู่อะไหล่และต้นทุน</div><span class="mono tm" style="font-size:11px;">ขาย ฿${money(salesTotal)} | ต้นทุนจริง ฿${money(totalCost)} | VAT ซื้อ ฿${money(totalVat)} | pending ${pending}</span></div>
     <div class="form-group"><label>บิลขาย / ภาษีขาย</label>${sales.length?`<table><thead><tr><th>เลขบิล</th><th>วันที่</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th>รับเงิน</th></tr></thead><tbody>${sales.map(s=>`<tr><td class="mono ta">${esc(s.sales_invoice_no)}</td><td>${esc(s.invoice_date||'-')}</td><td class="mono tr">฿${money(s.subtotal)}</td><td class="mono tr">฿${money(s.vat_amount)}</td><td class="mono tg">฿${money(s.total_amount)}</td><td><span class="badge ${s.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(s.payment_status||'unpaid')}</span></td></tr>`).join('')}</tbody></table>`:`<div class="text-box">ยังไม่มีบิลขายของ PR นี้<br><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="openSalesForJob('${esc(jobId)}')">ออกบิลขาย</button></div>`}</div>
@@ -6562,11 +6577,11 @@ function allWorkOrderPRs(){
 function workOrderBundle(pr){
   ensureDocsShape();
   return {
-    job:liveJobs().find(j=>j.id===pr),
-    admin:adminTasks.filter(t=>t.jobId===pr),
-    workDocs:docs.workOrders.filter(d=>d.pr===pr),
-    quotes:docs.qt.filter(d=>d.jid===pr),
-    invoices:docs.iv.filter(d=>d.jid===pr)
+    job:liveJobs().find(j=>sameJob(j.id,pr)),
+    admin:adminTasks.filter(t=>sameJob(t.jobId,pr)),
+    workDocs:docs.workOrders.filter(d=>sameJob(d.pr,pr)),
+    quotes:docs.qt.filter(d=>sameJob(d.jid,pr)),
+    invoices:docs.iv.filter(d=>sameJob(d.jid,pr))
   };
 }
 function selectWorkOrderPR(pr){const v=(pr||'').trim();if(!v){alert('กรุณาเลือก PR');return;}workOrderPrFilter=v;renderWorkOrders();saveUIState();}
@@ -7165,7 +7180,7 @@ function syncAdminTasksFromReport(jobId,status,note='',update={}){
   const updateAt=update.updateAt||new Date().toISOString();
   const updateType=update.updateType||'';
   adminTasks.forEach(t=>{
-    if(t.jobId===jobId){
+    if(sameJob(t.jobId,jobId)){
       t.status=status;
       t.isNew=false;
       t.techUpdateUnread=markUnread;
