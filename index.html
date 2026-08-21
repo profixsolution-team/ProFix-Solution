@@ -5186,13 +5186,13 @@ function salesDocHtml(inv,items){
 <style>@page{size:A4 portrait;margin:0;}*{box-sizing:border-box;font-family:Arial,'Noto Sans Thai',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;}body{margin:0;background:#edf2f7;color:#111820;font-size:12px;line-height:1.35;}
 .toolbar{position:fixed;top:0;left:0;right:0;background:#1f2937;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;z-index:2;}
 .toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;}.btn-print{background:#3fb950;color:#fff;}.btn-ghost{background:#374151;color:#fff;margin-right:6px;}
-.sheet{position:relative;width:210mm;min-height:297mm;margin:56px auto 18px;padding:16mm 15mm 12mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);overflow:hidden;}
+.sheet{position:relative;width:210mm;min-height:297mm;margin:56px auto 18px;padding:12mm 15mm 8mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);overflow:hidden;}
 .top{display:grid;grid-template-columns:1fr 78mm;align-items:start;gap:10mm}.brand-logo{width:56mm;max-height:28mm;object-fit:contain;object-position:left top}.doc-title{text-align:right;font-size:20px;font-weight:900;color:#05070a}.doc-meta{margin-top:12px;display:grid;grid-template-columns:1fr 42mm;gap:5px 10px;text-align:right;font-size:13px}.doc-meta b{font-size:14px}
 .party{display:grid;grid-template-columns:1fr 1fr;gap:14mm;margin-top:10mm}.party h3{margin:0 0 6px;color:#6b7280;font-size:13px}.party .name{font-weight:800;color:#111827;margin-bottom:4px}.party div{color:#6b7280;margin:3px 0}
 .items{width:100%;border-collapse:collapse;margin-top:5mm;table-layout:fixed}.items th{background:#666;color:#fff;font-weight:800;font-size:13px;padding:4px 4px;border:1px solid #d4dbe5}.items td{height:6mm;border:1px solid #d4dbe5;padding:2px 5px;vertical-align:middle}.items tbody tr:nth-child(odd){background:#f2f5f9}.items .no{width:8mm;text-align:center}.items .desc{width:auto}.items .qty{width:25mm;text-align:right}.items .unit{width:19mm;text-align:center}.items .price,.items .amount{width:29mm;text-align:right}
 .note-total{display:grid;grid-template-columns:1fr 70mm;gap:10mm;margin-top:4mm;align-items:start}.note h3{margin:0 0 10px;color:#6b7280;font-size:13px}.note .box{white-space:pre-wrap;color:#697386;line-height:1.45}.total table{width:100%;border-collapse:collapse}.total td{padding:3px 4px;font-size:13px}.total .label{font-weight:800}.total .right{text-align:right}.grand td{background:#666;color:#fff;font-size:16px;font-weight:900;border:1px solid #fff}.amount-text{display:grid;grid-template-columns:22mm 1fr;gap:8px;width:70mm;margin:4mm 0 0 auto;font-weight:800}
 .signs{display:grid;grid-template-columns:1fr 1fr;gap:28mm;margin-top:6mm;color:#6b7280;font-size:11px;break-inside:avoid}.signature-box{height:20mm;display:flex;align-items:flex-end;justify-content:center}.signature-img{max-width:54mm;max-height:18mm;object-fit:contain;display:block}.sign-line{color:#111;text-align:center}.footer{margin-top:4mm;text-align:center;color:#7b8492;font-size:10px;font-style:italic;break-inside:avoid}.muted{color:#7b8795;font-size:10px}
-@media print{html,body{width:210mm;background:#fff;}.toolbar{display:none}.sheet{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:16mm 15mm 12mm;}.items thead{display:table-header-group}.items tr,.note-total,.amount-text,.signs,.footer{break-inside:avoid;page-break-inside:avoid}}</style></head>
+@media print{html,body{width:210mm;background:#fff;}.toolbar{display:none}.sheet{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:12mm 15mm 8mm;}.items thead{display:table-header-group}.items tr,.note-total,.amount-text,.signs,.footer{break-inside:avoid;page-break-inside:avoid}}</style></head>
 <body><div class="toolbar"><div>${esc(meta.title)} · ${esc(inv.doc_no||inv.sales_invoice_no||'')}</div><div><button class="btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
 <div class="sheet"><section class="top"><div><img class="brand-logo" src="${esc(company.logoUrl)}" alt="${esc(company.displayName)}"></div><div><div class="doc-title">${esc(meta.label.split(' / ')[1]||'Quotation')}/${esc(meta.title)}</div><div class="doc-meta"><span>เลขที่ :</span><b>${esc(inv.doc_no||inv.sales_invoice_no||'')}</b><span>JOB / PR :</span><b>${esc(jobText||'-')}</b><span>สาขา :</span><b>${esc(branchText||'-')}</b><span>วันที่ :</span><b>${esc(quoteDateText(inv.invoice_date||todayISO()))}</b></div></div></section>
 <section class="party"><div><h3>จากบริษัท</h3><div class="name">${esc(company.displayName)}</div><div>${esc(company.name)}${esc(companyBranch)}</div><div>${esc(company.address)}</div><div>TAX ID : ${esc(company.taxId||'-')}</div>${companyEmail?`<div>${esc(companyEmail)}</div>`:''}</div><div><h3>ลูกค้า</h3><div class="name">${esc(inv.customer_name||inv.customer_id||'-')}</div><div>${esc(customer.address||'-')}</div><div>TAX ID : ${esc(customer.taxId||'-')}</div><div>${customer.phone?`โทร ${esc(customer.phone)}`:''}</div><div>${jobText?`Job / PR : ${esc(jobText)}`:''}</div></div></section>
@@ -6680,19 +6680,24 @@ async function openDocBundle(pr){
   pr=canonPR(pr)||pr;
   let ov=document.getElementById('m-docbundle');
   if(!ov){ov=document.createElement('div');ov.className='modal-overlay';ov.id='m-docbundle';document.body.appendChild(ov);}
-  ov.innerHTML='<div class="modal" style="max-width:460px;"><div class="modal-header"><div class="modal-title">ชุดเอกสาร '+esc(pr)+'</div><button class="close-btn" onclick="closeM(\'m-docbundle\')">×</button></div><div class="modal-body"><div id="docbundle-list" class="tm">กำลังโหลดรายการเอกสาร...</div><div class="flex g8" style="justify-content:flex-end;margin-top:14px;"><button class="btn btn-ghost" onclick="closeM(\'m-docbundle\')">ยกเลิก</button><button class="btn btn-primary" id="docbundle-go" disabled onclick="runDocBundle(\''+esc(pr)+'\')">รวม + เปิดพิมพ์</button></div></div>';
+  ov.innerHTML='<div class="modal" style="max-width:480px;"><div class="modal-header"><div class="modal-title">ชุดเอกสาร '+esc(pr)+'</div><button class="close-btn" onclick="closeM(\'m-docbundle\')">×</button></div><div class="modal-body"><div id="docbundle-list" class="tm">กำลังโหลดรายการเอกสาร...</div><div class="flex g8" style="justify-content:flex-end;margin-top:14px;"><button class="btn btn-ghost" onclick="closeM(\'m-docbundle\')">ยกเลิก</button><button class="btn btn-primary" id="docbundle-go" disabled onclick="runDocBundle(\''+esc(pr)+'\')">รวม + เปิดพิมพ์</button></div></div>';
   openM('m-docbundle');
   const docs=await collectPrDocs(pr);
-  window.__docBundle={pr,docs};
-  const box=document.getElementById('docbundle-list');
-  if(!box)return;
-  if(!docs.length){box.innerHTML='<div class="tm">ยังไม่มีเอกสารสำหรับงานนี้</div>';return;}
-  box.innerHTML='<div style="font-size:12px;color:var(--text3);margin-bottom:8px;">เลือกเอกสารที่จะรวมเป็นไฟล์เดียว</div><div style="display:flex;flex-direction:column;gap:8px;">'+docs.map((d,i)=>`<label class="flex g8" style="align-items:center;cursor:pointer;"><input type="checkbox" class="docbundle-cb" data-i="${i}" checked> <span>${esc(d.label)}</span></label>`).join('')+'</div>';
+  window.__docBundle={pr,docs,order:docs.map((_,i)=>i),checked:new Set(docs.map((_,i)=>i))};
+  renderDocBundleList();
+}
+function renderDocBundleList(){
+  const st=window.__docBundle,box=document.getElementById('docbundle-list');
+  if(!box||!st)return;
+  if(!st.docs.length){box.innerHTML='<div class="tm">ยังไม่มีเอกสารสำหรับงานนี้</div>';return;}
+  box.innerHTML='<div style="font-size:12px;color:var(--text3);margin-bottom:8px;">เลือกเอกสาร + จัดลำดับ (บนสุด = ขึ้นก่อน)</div><div style="display:flex;flex-direction:column;gap:6px;">'+st.order.map((di,pos)=>{const d=st.docs[di],ch=st.checked.has(di);return `<div class="flex g8" style="align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px 8px;"><input type="checkbox" ${ch?'checked':''} onchange="toggleDocBundle(${di},this.checked)"><span style="flex:1;font-size:13px;">${pos+1}. ${esc(d.label)}</span><button class="btn btn-ghost btn-sm" ${pos===0?'disabled':''} onclick="moveDocBundle(${pos},-1)">↑</button><button class="btn btn-ghost btn-sm" ${pos===st.order.length-1?'disabled':''} onclick="moveDocBundle(${pos},1)">↓</button></div>`;}).join('')+'</div>';
   const go=document.getElementById('docbundle-go');if(go)go.disabled=false;
 }
+function toggleDocBundle(di,ch){const st=window.__docBundle;if(!st)return;if(ch)st.checked.add(di);else st.checked.delete(di);}
+function moveDocBundle(pos,dir){const st=window.__docBundle;if(!st)return;const j=pos+dir;if(j<0||j>=st.order.length)return;const a=st.order,t=a[pos];a[pos]=a[j];a[j]=t;renderDocBundleList();}
 async function runDocBundle(pr){
-  const bundle=window.__docBundle;if(!bundle)return;
-  const picked=[...document.querySelectorAll('.docbundle-cb')].filter(c=>c.checked).map(c=>bundle.docs[Number(c.dataset.i)]).filter(Boolean);
+  const st=window.__docBundle;if(!st)return;
+  const picked=st.order.filter(di=>st.checked.has(di)).map(di=>st.docs[di]).filter(Boolean);
   if(!picked.length){alert('เลือกเอกสารอย่างน้อย 1 ฉบับ');return;}
   const go=document.getElementById('docbundle-go');if(go){go.disabled=true;go.textContent='กำลังรวม...';}
   try{
