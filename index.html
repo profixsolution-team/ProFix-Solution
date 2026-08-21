@@ -6703,28 +6703,61 @@ async function runDocBundle(pr){
   }catch(e){alert('รวมเอกสารไม่สำเร็จ: '+(e.message||e));}
   if(go){go.disabled=false;go.textContent='รวม + เปิดพิมพ์';}
 }
+// scope CSS ของเอกสารแต่ละใบให้อยู่ใต้ #scope กันสไตล์ชนกันเวลารวมหลายเอกสารในหน้าเดียว
+function bundleScopeCss(css,scope){
+  css=String(css||'').replace(/\/\*[\s\S]*?\*\//g,'');
+  const n=css.length;let i=0,out='';
+  function readBlock(start){let depth=0;for(let k=start;k<n;k++){if(css[k]==='{')depth++;else if(css[k]==='}'){depth--;if(depth===0)return k;}}return n-1;}
+  while(i<n){
+    while(i<n&&/\s/.test(css[i]))i++;
+    if(i>=n)break;
+    if(css[i]==='@'){
+      let j=i;while(j<n&&css[j]!=='{'&&css[j]!==';')j++;
+      const prelude=css.slice(i,j).trim();
+      if(j>=n||css[j]===';'){out+=prelude+';\n';i=j+1;continue;}
+      const end=readBlock(j),inner=css.slice(j+1,end),name=(prelude.split(/\s+/)[0]||'').toLowerCase();
+      if(name==='@media'||name==='@supports')out+=prelude+'{\n'+bundleScopeCss(inner,scope)+'}\n';
+      else if(name==='@page'){/* ตัดทิ้ง — คุมด้วย named page ระดับบน */}
+      else out+=prelude+'{'+inner+'}\n';
+      i=end+1;continue;
+    }
+    let j=i;while(j<n&&css[j]!=='{')j++;
+    if(j>=n)break;
+    const sel=css.slice(i,j).trim(),end=readBlock(j),decls=css.slice(j+1,end);
+    const sc=sel.split(',').map(s=>{s=s.trim();if(!s)return '';if(/^(html|body|:root)$/i.test(s))return scope;if(/^(html|body|:root)[\s>+~]/i.test(s))return s.replace(/^(html|body|:root)/i,scope);return scope+' '+s;}).filter(Boolean).join(', ');
+    if(sc)out+=sc+'{'+decls+'}\n';
+    i=end+1;
+  }
+  return out;
+}
 function combineDocsHtml(pr,htmls){
-  const frames=htmls.map(h=>{const land=/@page[^}]*landscape/i.test(h);return `<div class="docwrap ${land?'landscape':'portrait'}"><iframe class="doc" srcdoc="${esc(h)}"></iframe></div>`;}).join('');
+  let css='',bodyHtml='';
+  htmls.forEach((h,idx)=>{
+    const id='bd'+idx;
+    let styles='';const sre=/<style[^>]*>([\s\S]*?)<\/style>/gi;let m;while((m=sre.exec(h)))styles+=m[1]+'\n';
+    const bm=/<body[^>]*>([\s\S]*?)<\/body>/i.exec(h);const body=bm?bm[1]:h;
+    const land=/@page[^}]*landscape/i.test(styles);
+    css+='\n/* '+id+' */\n'+bundleScopeCss(styles,'#'+id);
+    bodyHtml+=`<section id="${id}" class="bpage ${land?'landscape':'portrait'}">${body}</section>`;
+  });
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ชุดเอกสาร ${esc(pr)}</title>
-  <style>*{box-sizing:border-box}body{margin:0;background:#e8edf3;font-family:Arial,"Noto Sans Thai",sans-serif}
-  .bar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 20px;background:#111820;color:#fff;box-shadow:0 2px 12px rgba(16,24,40,.18)}
-  .bar b{font-weight:800}.bar .acts{display:flex;gap:8px}.bar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer}.bp{background:#175fff;color:#fff}.bg{background:transparent;border:1px solid #354052;color:#fff}
-  .docwrap{margin:16px auto;background:#fff;box-shadow:0 10px 28px rgba(16,24,40,.16);overflow:hidden}
-  .docwrap.portrait{width:210mm}.docwrap.landscape{width:297mm}
-  iframe.doc{display:block;width:100%;border:0}
+  <style>
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:#e8edf3;font-family:Arial,"Noto Sans Thai",sans-serif}
+  .bbar{position:sticky;top:0;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 20px;background:#111820;color:#fff;box-shadow:0 2px 12px rgba(16,24,40,.18)}
+  .bbar b{font-weight:800}.bbar .acts{display:flex;gap:8px}.bbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer}.bp{background:#175fff;color:#fff}.bg{background:transparent;border:1px solid #354052;color:#fff}
+  .bpage{display:block;margin:16px auto;background:#fff;box-shadow:0 10px 28px rgba(16,24,40,.16);overflow:hidden}
+  .bpage.portrait{width:210mm}.bpage.landscape{width:297mm}
+  .bpage .toolbar{display:none!important}
   @page{size:A4;margin:0}
   @page portraitpg{size:A4 portrait;margin:0}
   @page landscapepg{size:A4 landscape;margin:0}
-  @media print{html,body{background:#fff}.bar{display:none}.docwrap{margin:0;box-shadow:none;break-after:page}.docwrap:last-child{break-after:auto}.docwrap.portrait{page:portraitpg;width:210mm}.docwrap.landscape{page:landscapepg;width:297mm}}</style></head><body>
-  <div class="bar"><b>ชุดเอกสาร ${esc(pr)} · ${htmls.length} ฉบับ</b><div class="acts"><button class="bg" onclick="window.close()">ปิด</button><button class="bp" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
-  ${frames}
-  <script>
-  function fit(f){try{var d=f.contentDocument;if(!d)return;var h=Math.max(d.body?d.body.scrollHeight:0,d.documentElement?d.documentElement.scrollHeight:0);if(h)f.style.height=(h+2)+'px';}catch(e){}}
-  function fitAll(){document.querySelectorAll('iframe.doc').forEach(fit);}
-  document.querySelectorAll('iframe.doc').forEach(function(f){f.addEventListener('load',function(){fit(f);});});
-  setTimeout(fitAll,400);setTimeout(fitAll,1200);
-  window.addEventListener('beforeprint',fitAll);
-  <\/script></body></html>`;
+  ${css}
+  @media print{html,body{background:#fff}.bbar{display:none}.bpage{margin:0;box-shadow:none;overflow:visible;break-after:page}.bpage:last-child{break-after:auto}.bpage.portrait{page:portraitpg}.bpage.landscape{page:landscapepg}}
+  </style></head><body>
+  <div class="bbar"><b>ชุดเอกสาร ${esc(pr)} · ${htmls.length} ฉบับ</b><div class="acts"><button class="bg" onclick="window.close()">ปิด</button><button class="bp" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
+  ${bodyHtml}
+  </body></html>`;
 }
 function renderWorkOrders(){
   ensureDocsShape();
