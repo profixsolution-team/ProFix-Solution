@@ -4026,7 +4026,7 @@ function openDet(id){
   currentDetailJobId=id;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
-  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-success" onclick="openCheckinViewModal('${j.id}')">เช็คข้อมูลแจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button>${salesJobIsBilled(j.id)?`<button class="btn btn-success" onclick="matchFinanceFromSales('${j.id}')">🔗 ดึงราคาเข้าการเงิน</button>`:''}<button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
+  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-success" onclick="openCheckinViewModal('${j.id}')">เช็คข้อมูลแจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button>${salesJobIsBilled(j.id)?`<button class="btn btn-success" onclick="matchFinanceFromSales('${j.id}')">🔗 ดึงราคาเข้าการเงิน</button>`:''}<button class="btn btn-primary" onclick="openDocBundle('${j.id}')">📑 ดาวน์โหลดชุดเอกสาร</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
   ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
   openM('m-detail');
 }
@@ -4932,7 +4932,7 @@ function convertSalesDoc(id,toType){
   document.getElementById('sale-date').value=todayISO();
   document.getElementById('sale-note').value=inv.note||'';
   salesDraftJobs=salesInvoiceJobs(inv).slice();renderSalesJobChips();
-  const srcItems=salesInvoiceItems.filter(x=>x.sales_invoice_id===id&&x.status!=='cancelled');
+  const srcItems=salesInvoiceItems.filter(x=>x.sales_invoice_id===id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0));
   salesDraftItems=srcItems.length?srcItems.map(x=>({...blankSalesItem(),...x,id:newAccountingId('SITEM'),sales_invoice_id:undefined})):[blankSalesItem()];
   salesVatMode=inferVatMode(inv,salesDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0));
   const svm=document.getElementById('sale-vat-mode');if(svm)svm.value=salesVatMode;
@@ -5595,7 +5595,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   accountingAttachments.sales=null;
   updateAttachmentPreview('sales',null);
   setAccountingStatus('sales',inv?.file_url?'มีไฟล์แนบเดิมใน URL แล้ว':'','');
-  salesDraftItems=inv?salesInvoiceItems.filter(x=>x.sales_invoice_id===inv.id).map(x=>({...x})):[blankSalesItem()];
+  salesDraftItems=inv?salesInvoiceItems.filter(x=>x.sales_invoice_id===inv.id).sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0)).map(x=>({...x})):[blankSalesItem()];
   const saleLineSum=salesDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
   salesVatMode=inv?inferVatMode(inv,saleLineSum):'add';
   const svm=document.getElementById('sale-vat-mode');if(svm)svm.value=salesVatMode;
@@ -6654,6 +6654,75 @@ function printAllForPR(pr){
   b.quotes.forEach(q=>printQuoteDoc(q.no));
   if(!b.workDocs.length&&!j&&!b.quotes.length)alert('ยังไม่มีเอกสารสำหรับ PR นี้');
 }
+// ===== ชุดเอกสาร: เลือกเอกสารของงาน แล้วรวมเป็นไฟล์เดียว (พิมพ์/Save PDF) =====
+async function collectPrDocs(pr){
+  try{await ensureAccountingLoaded();}catch(e){}
+  const b=workOrderBundle(pr),j=b.job;
+  const out=[];
+  if(j){
+    out.push({label:'รายงานช่าง',build:()=>serviceReportHtml(j)});
+    out.push({label:'ใบตรวจรับงาน',build:()=>acceptanceReportHtml(j)});
+    out.push({label:'ใบงานรูปภาพ (สำหรับวางบิล)',build:()=>photoBillingReportHtml(j)});
+  }
+  const sales=(salesInvoices||[]).filter(x=>salesInvoiceMatchesJob(x,pr)&&x.status!=='cancelled');
+  sales.forEach(inv=>{
+    const items=(salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===inv.id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0));
+    const t=(SALES_DOC_META[inv.doc_type||'tax_invoice']||{}).title||'เอกสารขาย';
+    out.push({label:t+' '+(inv.doc_no||inv.sales_invoice_no||''),build:()=>salesDocHtmlFor(inv,items)});
+  });
+  try{
+    const rows=await sbFetchAll('job_checkins',`?job_id=eq.${encodeURIComponent(j?j.id:pr)}&select=*&order=created_at.desc`);
+    (rows||[]).forEach((r,i)=>out.push({label:'ใบแจ้งเข้าซ่อม'+((rows.length>1)?(' #'+(i+1)):''),build:()=>checkinFormHtml(r,j||{id:pr,client:'',branch:''})}));
+  }catch(e){}
+  return out;
+}
+async function openDocBundle(pr){
+  pr=canonPR(pr)||pr;
+  let ov=document.getElementById('m-docbundle');
+  if(!ov){ov=document.createElement('div');ov.className='modal-overlay';ov.id='m-docbundle';document.body.appendChild(ov);}
+  ov.innerHTML='<div class="modal" style="max-width:460px;"><div class="modal-header"><div class="modal-title">ชุดเอกสาร '+esc(pr)+'</div><button class="close-btn" onclick="closeM(\'m-docbundle\')">×</button></div><div class="modal-body"><div id="docbundle-list" class="tm">กำลังโหลดรายการเอกสาร...</div><div class="flex g8" style="justify-content:flex-end;margin-top:14px;"><button class="btn btn-ghost" onclick="closeM(\'m-docbundle\')">ยกเลิก</button><button class="btn btn-primary" id="docbundle-go" disabled onclick="runDocBundle(\''+esc(pr)+'\')">รวม + เปิดพิมพ์</button></div></div>';
+  openM('m-docbundle');
+  const docs=await collectPrDocs(pr);
+  window.__docBundle={pr,docs};
+  const box=document.getElementById('docbundle-list');
+  if(!box)return;
+  if(!docs.length){box.innerHTML='<div class="tm">ยังไม่มีเอกสารสำหรับงานนี้</div>';return;}
+  box.innerHTML='<div style="font-size:12px;color:var(--text3);margin-bottom:8px;">เลือกเอกสารที่จะรวมเป็นไฟล์เดียว</div><div style="display:flex;flex-direction:column;gap:8px;">'+docs.map((d,i)=>`<label class="flex g8" style="align-items:center;cursor:pointer;"><input type="checkbox" class="docbundle-cb" data-i="${i}" checked> <span>${esc(d.label)}</span></label>`).join('')+'</div>';
+  const go=document.getElementById('docbundle-go');if(go)go.disabled=false;
+}
+async function runDocBundle(pr){
+  const bundle=window.__docBundle;if(!bundle)return;
+  const picked=[...document.querySelectorAll('.docbundle-cb')].filter(c=>c.checked).map(c=>bundle.docs[Number(c.dataset.i)]).filter(Boolean);
+  if(!picked.length){alert('เลือกเอกสารอย่างน้อย 1 ฉบับ');return;}
+  const go=document.getElementById('docbundle-go');if(go){go.disabled=true;go.textContent='กำลังรวม...';}
+  try{
+    const htmls=[];
+    for(const d of picked){try{htmls.push(await d.build());}catch(e){console.warn('build doc failed',e);}}
+    if(!htmls.length){alert('สร้างเอกสารไม่สำเร็จ');}
+    else{closeM('m-docbundle');generateDocWindow(combineDocsHtml(pr,htmls));}
+  }catch(e){alert('รวมเอกสารไม่สำเร็จ: '+(e.message||e));}
+  if(go){go.disabled=false;go.textContent='รวม + เปิดพิมพ์';}
+}
+function combineDocsHtml(pr,htmls){
+  const frames=htmls.map(h=>`<div class="docwrap"><iframe class="doc" srcdoc="${esc(h)}"></iframe></div>`).join('');
+  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ชุดเอกสาร ${esc(pr)}</title>
+  <style>*{box-sizing:border-box}body{margin:0;background:#e8edf3;font-family:Arial,"Noto Sans Thai",sans-serif}
+  .bar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 20px;background:#111820;color:#fff;box-shadow:0 2px 12px rgba(16,24,40,.18)}
+  .bar b{font-weight:800}.bar .acts{display:flex;gap:8px}.bar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer}.bp{background:#175fff;color:#fff}.bg{background:transparent;border:1px solid #354052;color:#fff}
+  .docwrap{width:210mm;margin:16px auto;background:#fff;box-shadow:0 10px 28px rgba(16,24,40,.16)}
+  iframe.doc{display:block;width:210mm;border:0}
+  @media print{body{background:#fff}.bar{display:none}.docwrap{margin:0;box-shadow:none;break-after:page}.docwrap:last-child{break-after:auto}}
+  @page{size:A4;margin:0}</style></head><body>
+  <div class="bar"><b>ชุดเอกสาร ${esc(pr)} · ${htmls.length} ฉบับ</b><div class="acts"><button class="bg" onclick="window.close()">ปิด</button><button class="bp" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
+  ${frames}
+  <script>
+  function fit(f){try{var d=f.contentDocument;if(!d)return;var h=Math.max(d.body?d.body.scrollHeight:0,d.documentElement?d.documentElement.scrollHeight:0);if(h)f.style.height=(h+2)+'px';}catch(e){}}
+  function fitAll(){document.querySelectorAll('iframe.doc').forEach(fit);}
+  document.querySelectorAll('iframe.doc').forEach(function(f){f.addEventListener('load',function(){fit(f);});});
+  setTimeout(fitAll,400);setTimeout(fitAll,1200);
+  window.addEventListener('beforeprint',fitAll);
+  <\/script></body></html>`;
+}
 function renderWorkOrders(){
   ensureDocsShape();
   const prs=allWorkOrderPRs();
@@ -6681,7 +6750,7 @@ function renderWorkOrders(){
     <div class="detail-item"><div class="detail-label">เบอร์ติดต่อ</div><div class="detail-val">${esc(d.phone)}</div></div>
   </div>
   <div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(d.detail)}</div></div>
-  <div class="flex g8 mb16" style="flex-wrap:wrap;"><button class="btn btn-primary" onclick="printAllForPR('${esc(workOrderPrFilter)}')">พิมพ์เอกสารทั้งหมด</button><button class="btn btn-ghost" onclick="document.getElementById('workorder-pdf-upload').click()">+ อัปโหลดเอกสารเพิ่ม</button>${reportReady?`<button class="btn btn-ghost" onclick="generateDocWindow(acceptanceReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">ใบตรวจรับ</button><button class="btn btn-ghost" onclick="generateDocWindow(serviceReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">รายงานช่าง</button><button class="btn btn-ghost" onclick="generateDocWindow(photoBillingReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">ใบงานรูปภาพ</button>`:'<span class="tm" style="font-size:12px;">ยังไม่มีคิวช่าง/รายงานสำหรับสร้างเอกสารงานช่าง</span>'}</div>
+  <div class="flex g8 mb16" style="flex-wrap:wrap;"><button class="btn btn-primary" onclick="printAllForPR('${esc(workOrderPrFilter)}')">พิมพ์เอกสารทั้งหมด</button><button class="btn btn-primary" onclick="openDocBundle('${esc(workOrderPrFilter)}')">📑 รวมเอกสารเป็นไฟล์เดียว</button><button class="btn btn-ghost" onclick="document.getElementById('workorder-pdf-upload').click()">+ อัปโหลดเอกสารเพิ่ม</button>${reportReady?`<button class="btn btn-ghost" onclick="generateDocWindow(acceptanceReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">ใบตรวจรับ</button><button class="btn btn-ghost" onclick="generateDocWindow(serviceReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">รายงานช่าง</button><button class="btn btn-ghost" onclick="generateDocWindow(photoBillingReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">ใบงานรูปภาพ</button>`:'<span class="tm" style="font-size:12px;">ยังไม่มีคิวช่าง/รายงานสำหรับสร้างเอกสารงานช่าง</span>'}</div>
   <div class="workorder-doc-list">
     ${b.workDocs.map(x=>`<div class="workorder-doc"><div><div class="workorder-doc-title">ใบงานต้นฉบับ PDF</div><div class="workorder-doc-sub">${esc(x.fileName||'workorder.pdf')} · ${x.uploadedAt?new Date(x.uploadedAt).toLocaleString('th-TH'):'—'}</div></div><div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="openStoredWorkOrderDoc('${esc(x.id)}')">เปิด/พิมพ์</button><button class="btn btn-danger btn-sm" onclick="deleteWorkOrderDoc('${esc(x.id)}')">ลบ</button></div></div>`).join('')}
     ${b.quotes.map(x=>`<div class="workorder-doc"><div><div class="workorder-doc-title">ใบเสนอราคา ${esc(x.no)}</div><div class="workorder-doc-sub">ยอด ฿${(x.amt||0).toLocaleString()} · ${esc(x.date||'—')} · ${esc(x.st||'')}</div></div><div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="openQuoteModal('${esc(x.no)}')">แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="printQuoteDoc('${esc(x.no)}')">พิมพ์</button><button class="btn btn-danger btn-sm" onclick="deleteDoc('qt','${esc(x.no)}');renderWorkOrders()">ลบ</button></div></div>`).join('')}
