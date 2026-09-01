@@ -5794,21 +5794,24 @@ function openSalesModal(id='',prefJobId='',docType=''){
   ]).then(()=>{refreshAccountingDatalists();renderSalesItemEditor();}).catch(e=>console.warn('Sales master data preload failed',e));
 }
 // บิลขายของ PR นี้ที่มีอยู่แล้ว (ไม่นับบิลที่กำลังแก้ไข) — ใช้เตือน JOB ซ้ำ
-function existingSalesBillsForJob(pr,excludeId=''){
-  return (salesInvoices||[]).filter(inv=>inv.status!=='cancelled'&&String(inv.id)!==String(excludeId)&&salesInvoiceMatchesJob(inv,pr));
+// เตือนซ้ำเฉพาะ "เอกสารประเภทเดียวกัน" — ใบกำกับภาษีที่ออกต่อจากใบเสนอราคาไม่ใช่การออกซ้ำ
+function existingSalesBillsForJob(pr,excludeId='',docType=''){
+  return (salesInvoices||[]).filter(inv=>inv.status!=='cancelled'&&String(inv.id)!==String(excludeId)&&salesInvoiceMatchesJob(inv,pr)&&(!docType||String(inv.doc_type||'tax_invoice')===String(docType)));
 }
 function renderSalesJobChips(){
   const el=document.getElementById('sale-job-chips');if(!el)return;
   const curId=document.getElementById('sale-id')?.value||'';
+  const curType=document.getElementById('sale-doc-type')?.value||'';
+  const curTypeLabel=(SALES_DOC_META[curType]||{}).title||'เอกสาร';
   let anyDup=false;
   el.innerHTML=salesDraftJobs.length?salesDraftJobs.map((pr,i)=>{
-    const dups=existingSalesBillsForJob(pr,curId);
-    const warn=dups.length?(anyDup=true,`<span title="มีบิลขายของ PR นี้แล้ว: ${esc(dups.map(d=>d.doc_no||d.sales_invoice_no).filter(Boolean).join(', '))}" style="color:var(--yellow);font-weight:700;">⚠</span>`):'';
+    const dups=existingSalesBillsForJob(pr,curId,curType);
+    const warn=dups.length?(anyDup=true,`<span title="มี${esc(curTypeLabel)}ของ PR นี้แล้ว: ${esc(dups.map(d=>d.doc_no||d.sales_invoice_no).filter(Boolean).join(', '))}" style="color:var(--yellow);font-weight:700;">⚠</span>`):'';
     const bg=dups.length?'background:rgba(210,153,34,.18);border:1px solid var(--yellow);':'';
     return `<span class="chip" style="display:inline-flex;align-items:center;gap:4px;${bg}">${warn}${esc(pr)}<button type="button" class="icon-btn" style="padding:0 2px;" onclick="removeSalesJob(${i})">×</button></span>`;
   }).join(''):'<span class="tm" style="font-size:11px;">ยังไม่ได้เลือก PR</span>';
   const note=document.getElementById('sale-dup-note');
-  if(note)note.innerHTML=anyDup?'⚠ มีบางงานที่ออกบิลขายไปแล้ว — ตรวจสอบก่อนบันทึกซ้ำ':'';
+  if(note)note.innerHTML=anyDup?`⚠ มีบางงานที่ออก${esc(curTypeLabel)}ไปแล้ว — ตรวจสอบก่อนบันทึกซ้ำ`:'';
   document.getElementById('sale-job').value=salesDraftJobs.join(',');
 }
 function addSalesJob(){
@@ -6122,9 +6125,11 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     if(pendingInput&&!salesDraftJobs.some(x=>x.toLowerCase()===pendingInput.toLowerCase()))salesDraftJobs.push(pendingInput);
     const jobList=[...new Set(salesDraftJobs.map(x=>String(x).trim()).filter(Boolean))];
     if(!jobList.length){setAccountingStatus('sales','กรุณาระบุ Job ID / PR อย่างน้อย 1 รายการ','err');return;}
-    // เตือนถ้ามีงานที่ออกบิลขายไปแล้ว (ไม่นับบิลที่กำลังแก้ไข)
-    const dupWarn=jobList.map(pr=>{const d=existingSalesBillsForJob(pr,id);return d.length?`${pr}: ${d.map(x=>x.doc_no||x.sales_invoice_no).filter(Boolean).join(', ')}`:'';}).filter(Boolean);
-    if(dupWarn.length&&!confirm('งานต่อไปนี้มีบิลขายอยู่แล้ว:\n'+dupWarn.join('\n')+'\n\nต้องการออกบิลขายซ้ำหรือไม่?')){setAccountingStatus('sales','ยกเลิกการบันทึก (มีบิลขายซ้ำ)','warn');return;}
+    // เตือนถ้ามีเอกสารประเภทเดียวกันของงานนี้อยู่แล้ว (ไม่นับบิลที่กำลังแก้ไข) — ใบกำกับต่อจากใบเสนอราคาไม่นับซ้ำ
+    const saveDocType=document.getElementById('sale-doc-type')?.value||'tax_invoice';
+    const saveDocLabel=(SALES_DOC_META[saveDocType]||{}).title||'เอกสาร';
+    const dupWarn=jobList.map(pr=>{const d=existingSalesBillsForJob(pr,id,saveDocType);return d.length?`${pr}: ${d.map(x=>x.doc_no||x.sales_invoice_no).filter(Boolean).join(', ')}`:'';}).filter(Boolean);
+    if(dupWarn.length&&!confirm(`งานต่อไปนี้มี${saveDocLabel}อยู่แล้ว:\n`+dupWarn.join('\n')+`\n\nต้องการออก${saveDocLabel}ซ้ำหรือไม่?`)){setAccountingStatus('sales',`ยกเลิกการบันทึก (มี${saveDocLabel}ซ้ำ)`,'warn');return;}
     const jobId=jobList[0];
     const rows=salesDraftItems.filter(x=>String(x.description||'').trim()).map((x,idx)=>{
       const quantity=Number(x.quantity||0),unitPrice=Number(x.unit_price||0),discount=Number(x.discount||0),subtotal=Math.max(0,quantity*unitPrice-discount);
