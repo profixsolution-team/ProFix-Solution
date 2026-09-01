@@ -1467,7 +1467,7 @@ let salesDraftJobs=[];
 let financeTeamFilter='ทั้งหมด';
 let financeMonthFilter=new Date().toISOString().slice(0,7); // ค่าเริ่มต้น = เดือนปัจจุบัน
 let purSearch='',purDate='',purRange='',purSort='desc';
-let saleSearch='',saleDate='',saleRange='',saleSort='desc';
+let saleSearch='',saleDate='',saleRange='',saleSort='desc',saleDocType='';
 let stockItems=[], stockMovements=[], stockLoaded=false, stockLoadingPromise=null;
 let stockSearch='', stockShowInactive=false, currentDetailJobId='';
 let accountingLoaded=false, accountingLoadingPromise=null;
@@ -4597,7 +4597,7 @@ async function ensureAccountingLoaded(force=false){
   }).finally(()=>{accountingLoadingPromise=null;});
   return accountingLoadingPromise;
 }
-function accountingFilterState(kind){return kind==='pur'?{search:purSearch,date:purDate,range:purRange,sort:purSort}:{search:saleSearch,date:saleDate,range:saleRange,sort:saleSort};}
+function accountingFilterState(kind){return kind==='pur'?{search:purSearch,date:purDate,range:purRange,sort:purSort}:{search:saleSearch,date:saleDate,range:saleRange,sort:saleSort,docType:saleDocType};}
 function filterAccountingList(list,kind){
   const st=accountingFilterState(kind);
   const q=st.search.trim().toLowerCase();
@@ -4606,6 +4606,7 @@ function filterAccountingList(list,kind){
     if(st.range==='today'&&d!==todayISO())return false;
     if(st.range==='week'&&!isThisWeekDate(d))return false;
     if(st.date&&d!==st.date)return false;
+    if(kind==='sale'&&st.docType&&(inv.doc_type||'tax_invoice')!==st.docType)return false;
     if(!q)return true;
     const fields=kind==='pur'?[inv.purchase_no,inv.supplier_name,inv.supplier_tax_id,inv.invoice_no,inv.note]:[inv.sales_invoice_no,inv.job_id,inv.job_ids,inv.customer_name,inv.note];
     return fields.some(f=>String(f||'').toLowerCase().includes(q));
@@ -4617,13 +4618,15 @@ function buildAccountingControls(kind){
   const b=document.getElementById(kind+'-fbar');if(!b)return;
   const st=accountingFilterState(kind);
   const ph=kind==='pur'?'เลขบิล / Supplier / เลขภาษี / ใบกำกับ':'เลขบิล / PR / ลูกค้า';
-  b.innerHTML=`<span class="filter-label">ค้นหา:</span><input class="search-input" id="${kind}-search-input" value="${esc(st.search)}" placeholder="${ph}" onkeydown="if(event.key==='Enter')applyAccountingSearch('${kind}')"><button class="btn btn-ghost btn-sm" onclick="applyAccountingSearch('${kind}')">ค้นหา</button><span class="filter-label">วันที่:</span><input class="filter-input" type="date" value="${esc(st.date)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDate('${kind}',this.value)"><button class="btn btn-ghost btn-sm" onclick="setAccountingDate('${kind}','')">ล้างวันที่</button><button class="btn btn-ghost btn-sm ${st.range==='today'?'active':''}" onclick="setAccountingRange('${kind}','today')">วันนี้</button><button class="btn btn-ghost btn-sm ${st.range==='week'?'active':''}" onclick="setAccountingRange('${kind}','week')">สัปดาห์นี้</button><button class="btn btn-ghost btn-sm" onclick="toggleAccountingSort('${kind}')">${st.sort==='desc'?'ใหม่→เก่า':'เก่า→ใหม่'}</button><button class="btn btn-ghost btn-sm" onclick="clearAccountingFilter('${kind}')">ล้างตัวกรอง</button>`;
+  const docTypeSel=kind==='sale'?`<span class="filter-label">ประเภท:</span><select class="filter-input" onchange="setAccountingDocType(this.value)"><option value=""${st.docType===''?' selected':''}>ทุกประเภท</option>${Object.keys(SALES_DOC_META).map(k=>`<option value="${k}"${st.docType===k?' selected':''}>${esc(SALES_DOC_META[k].title)}</option>`).join('')}</select>`:'';
+  b.innerHTML=`<span class="filter-label">ค้นหา:</span><input class="search-input" id="${kind}-search-input" value="${esc(st.search)}" placeholder="${ph}" onkeydown="if(event.key==='Enter')applyAccountingSearch('${kind}')"><button class="btn btn-ghost btn-sm" onclick="applyAccountingSearch('${kind}')">ค้นหา</button>${docTypeSel}<span class="filter-label">วันที่:</span><input class="filter-input" type="date" value="${esc(st.date)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDate('${kind}',this.value)"><button class="btn btn-ghost btn-sm" onclick="setAccountingDate('${kind}','')">ล้างวันที่</button><button class="btn btn-ghost btn-sm ${st.range==='today'?'active':''}" onclick="setAccountingRange('${kind}','today')">วันนี้</button><button class="btn btn-ghost btn-sm ${st.range==='week'?'active':''}" onclick="setAccountingRange('${kind}','week')">สัปดาห์นี้</button><button class="btn btn-ghost btn-sm" onclick="toggleAccountingSort('${kind}')">${st.sort==='desc'?'ใหม่→เก่า':'เก่า→ใหม่'}</button><button class="btn btn-ghost btn-sm" onclick="clearAccountingFilter('${kind}')">ล้างตัวกรอง</button>`;
 }
 function applyAccountingSearch(kind){const el=document.getElementById(kind+'-search-input');const v=el?el.value.trim():'';if(kind==='pur')purSearch=v;else saleSearch=v;kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function setAccountingDate(kind,v){if(kind==='pur'){purDate=v;purRange='';}else{saleDate=v;saleRange='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function setAccountingRange(kind,r){if(kind==='pur'){purRange=purRange===r?'':r;purDate='';}else{saleRange=saleRange===r?'':r;saleDate='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function toggleAccountingSort(kind){if(kind==='pur')purSort=purSort==='desc'?'asc':'desc';else saleSort=saleSort==='desc'?'asc':'desc';kind==='pur'?renderPurchaseTax():renderSalesTax();}
-function clearAccountingFilter(kind){if(kind==='pur'){purSearch='';purDate='';purRange='';}else{saleSearch='';saleDate='';saleRange='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
+function setAccountingDocType(v){saleDocType=v||'';renderSalesTax();}
+function clearAccountingFilter(kind){if(kind==='pur'){purSearch='';purDate='';purRange='';}else{saleSearch='';saleDate='';saleRange='';saleDocType='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function renderPurchaseTax(){
   const tb=document.getElementById('purchase-tbody');if(!tb)return;
   buildAccountingControls('pur');
@@ -4890,8 +4893,10 @@ async function maybeAutoOpenSalesFromUrl(){
   const sid=sp.get('sales')||'new', dtype=sp.get('doctype')||'quotation', pr=sp.get('pr')||'';
   try{await Promise.all([ensureAccountingLoaded().catch(()=>{}),ensurePartsLoaded().catch(()=>{})]);}catch(e){}
   goTo('sales-tax');
-  if(sid==='new')openSalesModal('',pr,dtype);
-  else openSalesModal(sid);
+  if(sid==='new'){openSalesModal('',pr,dtype);return;}
+  // แก้ไขเอกสารเดิม: ถ้ายังหาไม่เจอ (โหลดแรกอาจยังไม่เสร็จ) ลองโหลดซ้ำอีกครั้งก่อนเปิดฟอร์ม
+  if(!(salesInvoices||[]).some(x=>x.id===sid)){try{await ensureAccountingLoaded(true);}catch(e){}}
+  openSalesModal(sid);
 }
 // เปิดฟอร์มทำ/แก้เอกสารขายในแท็บใหม่ (โหลดแอปในแท็บใหม่พร้อมพารามิเตอร์ให้เด้งฟอร์มเอง)
 function openSalesInNewTab(id='',prefJobId='',docType=''){
@@ -6303,7 +6308,7 @@ async function mergeSalesDocsToTaxInvoice(){
   setv('sale-company-display',base.company_display_name||quoteCompanyDefaults().displayName);
   setv('sale-company-name',base.company_name||quoteCompanyDefaults().name);
   setv('sale-company-branch',base.company_branch||quoteCompanyDefaults().branch);
-  setv('sale-job', jobIds.join(', '));
+  salesDraftJobs=jobIds.slice();renderSalesJobChips(); // ลิงก์เลข PR ที่ติ๊กเลือกเข้าฟอร์มอัตโนมัติ (เป็น chips จริง ไม่ใช่ช่องซ่อน)
   setv('sale-travel-km', base.travel_km||0);
   setv('sale-travel-rate', base.travel_rate||0);
   if(travel&&!Number(base.travel_km||0)){ setv('sale-travel-km',1); setv('sale-travel-rate',travel); }
@@ -6346,7 +6351,7 @@ async function mergeSalesDocsToSummaryTax(){
   setv('sale-company-display',base.company_display_name||quoteCompanyDefaults().displayName);
   setv('sale-company-name',base.company_name||quoteCompanyDefaults().name);
   setv('sale-company-branch',base.company_branch||quoteCompanyDefaults().branch);
-  setv('sale-job', jobIds.join(', '));
+  salesDraftJobs=jobIds.slice();renderSalesJobChips(); // ลิงก์เลข PR ที่ติ๊กเลือกเข้าฟอร์มอัตโนมัติ (เป็น chips จริง ไม่ใช่ช่องซ่อน)
   // ยอดในบิลสรุป = ยอดก่อน VAT ของแต่ละใบอยู่แล้ว → ไม่บวก Overhead/ค่าเดินทาง/SLA ซ้ำ + คิด VAT 7% ใหม่ท้ายบิล
   setv('sale-overhead-enabled','no');
   setv('sale-travel-km',0); setv('sale-travel-rate',0);
