@@ -5021,7 +5021,8 @@ function boqQuoteDocHtml(inv,items){
   const branchText=[...new Set(jobList.map(pr=>{const jj=(jobs||[]).find(j=>sameJob(j.id,pr)&&!isDeletedRecord(j));return jj?jj.branch:'';}).filter(Boolean))].join(', ')||(job?.branch||'');
   const cause=job?.technicianReport?.cause||job?.cause||job?.symptom||'';
   const fix=job?.technicianReport?.fix||job?.fix||'';
-  const jobDetail=cause||inv.note||job?.note||''; // รายละเอียดงาน = สาเหตุจากฟอร์มช่าง
+  const adminDetail=((adminTasks||[]).find(t=>sameJob(t.jobId,job?.id)&&!isDeletedRecord(t))||{}).detail||'';
+  const jobDetail=adminDetail||job?.note||inv.note||''; // รายละเอียดงาน = รายละเอียดการแจ้งซ่อม (ฝั่ง admin) ไม่ใช่สาเหตุ/การแก้ไขจากช่าง
   const custProvince=inv.customer_province||'ปทุมธานี';
   const lineSubtotal=items.reduce((s,it)=>s+Number(it.subtotal||0),0);
   const overheadEnabled=!(inv.overhead_enabled===false||inv.overhead_enabled==='false');
