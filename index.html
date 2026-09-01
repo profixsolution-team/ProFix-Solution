@@ -1339,7 +1339,7 @@ select option{background:var(--surface2);}
             <div id="sales-items-editor"></div>
           </div>
           <div class="form-group" style="margin-top:16px;"><label>หมายเหตุ</label><textarea id="sale-note"></textarea></div>
-          <input id="sale-sub" type="hidden"><input id="sale-vat-input" type="hidden"><input id="sale-total-input" type="hidden">
+          <input id="sale-sub" type="hidden"><input id="sale-vat-input" type="hidden"><input id="sale-total-input" type="hidden"><input id="sale-summary-flag" type="hidden">
         </div>
         <aside class="accounting-panel accounting-summary">
           <div class="accounting-panel-title">สรุปบิลขาย</div>
@@ -4943,6 +4943,7 @@ function convertSalesDoc(id,toType){
 // พิมพ์ / บันทึก PDF เอกสารขายตามชนิด
 // ===== พรีวิวเอกสารใน modal (คลิกที่ list บิลซื้อ/ขาย) =====
 function salesDocHtmlFor(inv,items){
+  if(inv.doc_type==='tax_invoice'&&inv.doc_template==='summary')return salesTaxSummaryHtml(inv,items);
   const useBoq=inv.doc_type==='quotation'&&(inv.doc_template||'boq')!=='modern';
   return useBoq?boqQuoteDocHtml(inv,items):salesDocHtml(inv,items);
 }
@@ -5007,6 +5008,8 @@ ${inv.note?`<div style="margin-top:12px;"><b>หมายเหตุ:</b> ${esc
 function printSalesDoc(id){
   const inv=salesInvoices.find(x=>x.id===id);if(!inv)return;
   const items=salesInvoiceItems.filter(x=>x.sales_invoice_id===id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0));
+  // ใบกำกับภาษีแบบสรุป (PR+สาขา) → ฟอร์มสรุปรายการ
+  if(inv.doc_type==='tax_invoice'&&inv.doc_template==='summary'){generateDocWindow(salesTaxSummaryHtml(inv,items));return;}
   // ใบเสนอราคาเลือกได้ 2 ดีไซน์: modern (เดิม) / boq (ฟอร์มบริษัท) — ประเภทอื่นใช้เทมเพลตเดิมเสมอ
   const useBoq=inv.doc_type==='quotation'&&(inv.doc_template||'boq')!=='modern';
   generateDocWindow(useBoq?boqQuoteDocHtml(inv,items):salesDocHtml(inv,items));
@@ -5203,6 +5206,175 @@ function salesDocHtml(inv,items){
 <section class="signs"><div>ลงชื่อผู้มีอำนาจลงนาม<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ${sellerSignName||'........................................'} )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ${customerSignName||'........................................'} )</div></div></section>
 <div class="footer">${esc(company.displayName)} Team&nbsp;&nbsp;|&nbsp;&nbsp;ขอบคุณที่ใช้บริการ</div></div></body></html>`;
 }
+function salesTaxSummaryHtml(inv,items){
+  const company=salesDocCompanyInfo(inv);
+  const customer=salesDocCustomerInfo(inv);
+  const jobList=salesInvoiceJobs(inv);
+  const lineRows=(items||[]).map((it,i)=>({
+    no:i+1,
+    pr:String(it.item_code||'').trim()||String(jobList[i]||'').trim()||'',
+    desc:String(it.description||'').trim(),
+    qty:Number(it.quantity||1),
+    unit:String(it.unit||'JOB').trim()||'JOB',
+    amount:Number(it.subtotal||0)
+  }));
+  const lineSum=lineRows.reduce((s,r)=>s+r.amount,0);
+  const subtotal=Number(inv.subtotal||lineSum||0);
+  const discount=Number(inv.discount_total||0);
+  const afterDiscount=Math.max(0,subtotal-discount);
+  const vat=Number(inv.vat_amount||0);
+  const total=Number(inv.total_amount||(afterDiscount+vat));
+  const discPct=subtotal>0?Math.round(discount/subtotal*1000)/10:0;
+  const vatPct=vat>0?7:0;
+  const totalText=thaiBahtText(total);
+  const dateText=quoteDateText(inv.invoice_date||todayISO());
+  const dueText=quoteDateText(inv.due_date||inv.invoice_date||todayISO());
+  const terms=esc(inv.payment_terms||'โอนเข้าบัญชี');
+  const docNo=esc(inv.doc_no||inv.sales_invoice_no||'');
+  const customerName=esc(inv.customer_name||inv.customer_id||'-');
+  const custAddr=esc(customer.address||'-');
+  const custTax=esc(customer.taxId||'-');
+  const coName=esc(company.name||company.displayName||'');
+  const coBranch=esc(company.branch||'สำนักงานใหญ่');
+  const coAddr=esc(company.address||'');
+  const coPhone=esc(company.phone||'-');
+  const coTax=esc(company.taxId||'-');
+  const sellerSig=salesDocImageUrl(inv.seller_signature_url||'');
+  const sellerSigHtml=sellerSig?`<img class="sig-img" src="${esc(sellerSig)}" alt="ลายเซ็นผู้มีอำนาจลงนาม">`:'';
+  const sellerName=esc(inv.seller_name||'');
+  const minRows=16;
+  const blank=Math.max(0,minRows-lineRows.length);
+  const rowsHtml=lineRows.map(r=>`<tr><td class="c">${r.no}</td><td class="c">${esc(r.pr)}</td><td>${esc(r.desc)}</td><td class="c">${money(r.qty).replace(/\.00$/,'')}</td><td class="c">${esc(r.unit)}</td><td class="r">${money(r.amount)}</td></tr>`).join('');
+  const blankHtml=Array.from({length:blank}).map(()=>`<tr><td class="c">&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
+  const money2=v=>Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  const totHtml=`
+    <tr><td class="tl"><b>รวมเงิน</b><div class="en">TOTAL AMOUNT</div></td><td class="tp"></td><td class="tv">${money2(subtotal)}</td></tr>
+    <tr><td class="tl">ส่วนลด<div class="en">DISCOUNT</div></td><td class="tp">${discPct?money(discPct).replace(/\.00$/,''):'0'}%</td><td class="tv">${discount?money2(discount):'-'}</td></tr>
+    <tr><td class="tl">มูลค่าสินค้าหลังหักส่วนลด<div class="en">TOTAL AMOUNT AFTER DISCOUNT</div></td><td class="tp"></td><td class="tv">${money2(afterDiscount)}</td></tr>
+    <tr><td class="tl">ภาษีมูลค่าเพิ่ม<div class="en">VAT</div></td><td class="tp">${vatPct}%</td><td class="tv">${money2(vat)}</td></tr>
+    <tr class="grand"><td class="tl"><b>ยอดเงินสุทธิ</b><div class="en">GRAND TOTAL</div></td><td class="tp"></td><td class="tv">${money2(total)}</td></tr>`;
+  const COPIES=[{k:'original',th:'ต้นฉบับ',en:'ORIGINAL'},{k:'copy',th:'สำเนา',en:'COPY'},{k:'account',th:'สำเนา (สำหรับบัญชี)',en:'COPY - ACCOUNTING'}];
+  const sheet=(c,idx)=>`<section class="sheet" data-copy="${c.k}" style="${idx===0?'':'display:none;'}">
+  <header class="head">
+    <div class="co"><div class="co-name">${coName} <span class="co-branch">${coBranch}</span></div><div class="co-addr">${coAddr}</div><div class="co-addr">โทร. ${coPhone}&nbsp;&nbsp;เลขประจำตัวผู้เสียภาษี ${coTax}</div></div>
+    <div class="copywrap"><div class="copybox">${esc(c.th)}</div><div class="copyen">${esc(c.en)}</div></div>
+  </header>
+  <div class="titlewrap"><div class="titlebox"><div class="t1">ใบกำกับภาษี/ใบส่งสินค้า/ใบเสร็จรับเงิน</div><div class="t2">TAX INVOICE/DELIVERY ORDER /RECEIPT</div></div></div>
+  <section class="cust">
+    <div class="cust-l">
+      <div class="row"><span class="k">นามลูกค้า</span><b class="v">${customerName}</b></div>
+      <div class="row"><span class="k">ที่อยู่</span><span class="v">${custAddr}</span></div>
+      <div class="row"><span class="k">เลขประจำตัวผู้เสียภาษี</span><span class="v">${custTax}&nbsp;&nbsp;&nbsp;<span class="ho">&#9746; สำนักงานใหญ่</span>&nbsp;&nbsp;<span class="ho">&#9744; สาขาที่</span> ..........</span></div>
+    </div>
+    <div class="cust-r">
+      <div class="mrow"><span>เลขที่ใบกำกับ</span><b>${docNo||'-'}</b></div>
+      <div class="mrow"><span>วันที่</span><b>${dateText}</b></div>
+      <div class="mrow"><span>กำหนดชำระเงิน</span><b>${dueText}</b></div>
+      <div class="mrow"><span>เงื่อนไขชำระเงิน</span><b>${terms}</b></div>
+    </div>
+  </section>
+  <table class="tbl"><thead><tr><th class="c-no">ลำดับ</th><th class="c-code">รหัสสินค้า</th><th class="c-desc">รายละเอียด</th><th class="c-qty">จำนวน</th><th class="c-unit">ราคา/หน่วย</th><th class="c-amt">จำนวนเงิน</th></tr></thead><tbody>${rowsHtml}${blankHtml}</tbody></table>
+  <section class="mid">
+    <div class="mid-l">
+      <div class="words"><span class="wl">ตัวอักษร</span><span class="wv">(${esc(totalText)})</span></div>
+      <div class="pay">
+        <div>&#9744; เงินสด</div>
+        <div>&#9744; เงินโอนเข้าบัญชี ....................................................</div>
+        <div>&#9744; เช็คเลขที่.................... ธนาคาร............................</div>
+        <div class="pay-sub">วันที่........................... จำนวนเงิน.....................</div>
+      </div>
+    </div>
+    <div class="mid-r"><table class="tot"><tbody>${totHtml}</tbody></table></div>
+  </section>
+  <section class="notes">
+    <div class="nt">หมายเหตุ :</div>
+    <div>1. กรณีชำระเงินโดยเช็คกรุณาสั่งจ่ายเช็คขีดคร่อมในนาม "${coName}" เท่านั้น</div>
+    <div>2. สินค้าตามรายการข้างต้นแม้จะได้ส่งมอบให้แก่ผู้ซื้อแล้วก็ยังคงเป็นทรัพย์สินของผู้ขายจนกว่าผู้ซื้อจะได้ชำระเงินเรียบร้อยแล้ว</div>
+    <div>3. บริษัทฯ ขอสงวนสิทธิ์ในการแก้ไขใบกำกับภาษีภายใน 7 วัน นับจากวันที่ระบุในใบกำกับภาษี (ผิด ตก ยกเว้น E. &amp; O.E.)</div>
+  </section>
+  <section class="signs">
+    <div class="sg"><div class="sg-top">ได้รับสินค้าตามรายการข้างบนไว้เรียบร้อยแล้ว</div><div class="sg-sp"></div><div class="sg-lbl">ผู้รับสินค้า</div><div class="sg-lbl">วันที่</div></div>
+    <div class="sg"><div class="sg-top">&nbsp;</div><div class="sg-sp"></div><div class="sg-lbl">ผู้ส่งสินค้า</div><div class="sg-lbl">วันที่</div></div>
+    <div class="sg sg-co"><div class="sg-top">${coName}</div><div class="sg-sp">${sellerSigHtml}</div><div class="sg-lbl">${sellerName?'( '+sellerName+' )':'&nbsp;'}</div><div class="sg-lbl">ผู้มีอำนาจลงนาม</div></div>
+  </section>
+  </section>`;
+  const sheets=COPIES.map(sheet).join('');
+  const copyChecks=COPIES.map((c,idx)=>`<label class="ck"><input type="checkbox" ${idx===0?'checked':''} onchange="toggleCopy('${c.k}',this.checked)"> ${esc(c.th)}</label>`).join('');
+  return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>ใบกำกับภาษี ${docNo}</title>
+<style>@page{size:A4 portrait;margin:0;}*{box-sizing:border-box;font-family:'TH Sarabun New','Sarabun',Arial,'Noto Sans Thai',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+body{margin:0;background:#e9edf2;color:#0b1220;font-size:13px;line-height:1.3;}
+.toolbar{position:fixed;top:0;left:0;right:0;background:#1f2937;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;z-index:5;}
+.toolbar .ck{font-size:13px;margin-right:10px;cursor:pointer;user-select:none;}
+.toolbar .grp{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;}.btn-print{background:#3fb950;color:#fff;}.btn-ghost{background:#374151;color:#fff;margin-right:6px;}
+.sheet{position:relative;width:210mm;min-height:297mm;margin:52px auto 16px;padding:12mm 12mm 8mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:10mm;}
+.co-name{font-size:20px;font-weight:800;color:#05070a;}.co-branch{font-size:13px;font-weight:600;}
+.co-addr{font-size:12.5px;margin-top:3px;color:#111820;}
+.copywrap{text-align:center;min-width:32mm;}
+.copybox{border:1px solid #17325c;border-radius:7px;padding:4px 14px;font-weight:700;color:#17325c;font-size:14px;}
+.copyen{font-size:11px;color:#333;margin-top:3px;letter-spacing:1px;}
+.titlewrap{display:flex;justify-content:center;margin:6px 0 4px;}
+.titlebox{border:1px solid #0b1220;border-radius:8px;padding:4px 22px;text-align:center;}
+.titlebox .t1{font-size:17px;font-weight:800;color:#0b1220;}.titlebox .t2{font-size:11px;font-weight:700;letter-spacing:.5px;}
+.cust{display:grid;grid-template-columns:1fr 62mm;gap:6mm;margin-top:4px;}
+.cust .row{display:flex;gap:6px;margin:1px 0;}
+.cust .k{color:#0b1220;min-width:28mm;}.cust .v{color:#17325c;font-weight:600;}
+.cust .row:first-child .k{min-width:22mm;}
+.ho{font-size:12px;}
+.cust-r{font-size:12.5px;}
+.cust-r .mrow{display:grid;grid-template-columns:1fr auto;gap:8px;text-align:right;margin:1px 0;}
+.cust-r .mrow span{color:#0b1220;}.cust-r .mrow b{color:#17325c;}
+.tbl{width:100%;border-collapse:collapse;margin-top:6px;table-layout:fixed;}
+.tbl th{background:#17325c;color:#fff;font-weight:700;font-size:13px;padding:5px 4px;border:1px solid #17325c;}
+.tbl td{border-left:1px solid #b9c4d4;border-right:1px solid #b9c4d4;padding:2px 6px;height:6.2mm;font-size:12.5px;vertical-align:middle;}
+.tbl tbody tr:last-child td{border-bottom:1px solid #17325c;}
+.tbl .c-no{width:12mm;}.tbl .c-code{width:26mm;}.tbl .c-qty{width:16mm;}.tbl .c-unit{width:20mm;}.tbl .c-amt{width:28mm;}
+.tbl td.c{text-align:center;}.tbl td.r{text-align:right;}
+.tbl tbody{border-left:1px solid #17325c;border-right:1px solid #17325c;}
+.mid{display:grid;grid-template-columns:1fr 62mm;gap:0;margin-top:0;border-left:1px solid #17325c;border-right:1px solid #17325c;border-bottom:1px solid #17325c;}
+.mid-l{padding:4px 6px;border-right:1px solid #17325c;}
+.words{display:flex;gap:10px;align-items:baseline;border-bottom:1px dashed #b9c4d4;padding-bottom:3px;margin-bottom:5px;}
+.words .wl{font-weight:700;}.words .wv{font-weight:600;}
+.pay div{margin:3px 0;font-size:12.5px;}
+.pay .pay-sub{margin-left:14px;}
+.mid-r{}
+.tot{width:100%;border-collapse:collapse;height:100%;}
+.tot td{border-bottom:1px solid #b9c4d4;padding:3px 6px;font-size:12px;vertical-align:middle;}
+.tot .tl{width:auto;}.tot .tl .en{font-size:9.5px;color:#556;}
+.tot .tp{width:12mm;text-align:right;color:#0b1220;}
+.tot .tv{width:24mm;text-align:right;font-weight:700;white-space:nowrap;}
+.tot .grand td{background:#17325c;color:#fff;font-weight:800;}
+.tot .grand .en{color:#cdd8ea;}
+.notes{margin-top:6px;font-size:11px;color:#333;line-height:1.35;}
+.notes .nt{font-weight:700;color:#0b1220;}
+.signs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:8px;border:1px solid #17325c;}
+.signs .sg{padding:8px 8px 6px;border-right:1px solid #17325c;min-height:30mm;display:flex;flex-direction:column;}
+.signs .sg:last-child{border-right:0;}
+.signs .sg-top{font-size:11.5px;min-height:14px;}
+.signs .sg-sp{flex:1;display:flex;align-items:flex-end;justify-content:center;}
+.signs .sig-img{max-width:52mm;max-height:16mm;object-fit:contain;}
+.signs .sg-lbl{font-size:12px;margin-top:3px;}
+.signs .sg-co .sg-top{font-weight:700;text-align:right;}
+@media print{html,body{background:#fff;}.toolbar{display:none;}.sheet{width:210mm;min-height:297mm;margin:0;box-shadow:none;page-break-after:always;}.sheet.lastvis{page-break-after:auto;}.tbl thead{display:table-header-group;}.tbl tr,.mid,.signs,.notes{break-inside:avoid;page-break-inside:avoid;}}
+</style></head>
+<body>
+<div class="toolbar">
+  <div class="grp"><b>ใบกำกับภาษี · ${docNo}</b><span style="margin:0 8px;opacity:.6;">เลือกชุดที่จะพิมพ์:</span>${copyChecks}</div>
+  <div class="grp"><button class="btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div>
+</div>
+${sheets}
+<script>
+function toggleCopy(k,on){var el=document.querySelector('.sheet[data-copy="'+k+'"]');if(el)el.style.display=on?'':'none';}
+window.addEventListener('beforeprint',function(){
+  var all=[].slice.call(document.querySelectorAll('.sheet'));
+  all.forEach(function(s){s.classList.remove('lastvis');});
+  var vis=all.filter(function(s){return s.style.display!=='none';});
+  if(vis.length)vis[vis.length-1].classList.add('lastvis');
+});
+<\/script>
+</body></html>`;
+}
 function salesDocCompanyInfo(inv={}){
   const d=quoteCompanyDefaults();
   const logo=inv.company_logo_url||d.logoUrl;
@@ -5227,6 +5399,7 @@ function salesCompanyProfiles(){
   const defaults=[
     {id:'profix',label:'ProFix Solution',displayName:d.displayName,name:d.name,branch:d.branch,address:d.address,phone:d.phone,taxId:d.taxId,email:d.email,logoUrl:d.logoUrl,bankAccount:d.bankAccount},
     {id:'pt-accoolity',label:'บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด',displayName:'ProFix Solution',name:'บริษัท พีที แอคคูลิตี้ เซอร์วิสเซส จำกัด',branch:'สำนักงานใหญ่',address:'88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120',phone:'098-6266622',taxId:'0245557002535',email:'profixsolution.team@gmail.com',logoUrl:d.logoUrl,bankAccount:''},
+    {id:'pp-mp-supply',label:'บริษัท พีพี แอนด์ เอ็มพี ซัพพลาย จำกัด',displayName:'บริษัท พีพี แอนด์ เอ็มพี ซัพพลาย จำกัด',name:'บริษัท พีพี แอนด์ เอ็มพี ซัพพลาย จำกัด',branch:'สำนักงานใหญ่',address:'88/82 หมู่9 ต.คลองห้า อ.คลองหลวง จ.ปทุมธานี 12120',phone:'098-6266622',taxId:'0245557002535',email:'profixsolution.team@gmail.com',logoUrl:d.logoUrl,bankAccount:''},
   ];
   const saved=(salesCompanyProfileItems||[]).map(p=>({...p,label:p.label||p.displayName||p.name||'บริษัท'}));
   return [...defaults,...saved,{id:'custom',label:'กำหนดเอง / Custom'}];
@@ -5550,7 +5723,8 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-id').value=inv?.id||'';
   salesConvertSourceId=inv?.source_doc_id||'';
   document.getElementById('sale-no').value=inv?.doc_no||inv?.sales_invoice_no||nextNo;
-  const tplSel=document.getElementById('sale-doc-template');if(tplSel)tplSel.value=inv?.doc_template||'boq';
+  const tplSel=document.getElementById('sale-doc-template');if(tplSel)tplSel.value=(inv?.doc_template&&inv.doc_template!=='summary')?inv.doc_template:'boq';
+  const sumFlagEl=document.getElementById('sale-summary-flag');if(sumFlagEl)sumFlagEl.value=(inv?.doc_template==='summary')?'1':'';
   const bpEl=document.getElementById('sale-branch-province');if(bpEl)bpEl.innerHTML=provinceOptionsHtml(inv?.branch_province||'');
   const cpEl=document.getElementById('sale-customer-province');if(cpEl)cpEl.innerHTML=provinceOptionsHtml(inv?.customer_province||'');
   const tplRow=document.getElementById('sale-template-row');if(tplRow)tplRow.style.display=dt==='quotation'?'':'none';
@@ -6010,7 +6184,7 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     customer_signature_url:document.getElementById('sale-customer-signature').value.trim(),
     seller_name:document.getElementById('sale-seller-name').value.trim(),
     customer_signer_name:document.getElementById('sale-customer-signer-name').value.trim(),
-    doc_template:document.getElementById('sale-doc-template')?.value||'boq',
+    doc_template:(document.getElementById('sale-summary-flag')?.value==='1')?'summary':(document.getElementById('sale-doc-template')?.value||'boq'),
     branch_province:document.getElementById('sale-branch-province')?.value.trim()||'',
     customer_province:document.getElementById('sale-customer-province')?.value.trim()||'',
     status:'active',
@@ -6093,7 +6267,8 @@ function renderSalesMergeBar(){
     <span class="tm">${jobs.length} งาน · รวม ฿${money(total)}</span>
     ${bad?`<span style="color:var(--red);">⚠️ ลูกค้าไม่ตรงกัน (${customers.map(esc).join(' / ')}) — รวมไม่ได้</span>`:`<span class="tm">ลูกค้า: ${esc(customers[0]||'-')}</span>`}
     <span style="flex:1;"></span>
-    <button class="btn btn-primary btn-sm" ${bad?'disabled style="opacity:.5;"':''} onclick="mergeSalesDocsToTaxInvoice()">🧾 รวมเป็นใบกำกับภาษี</button>
+    <button class="btn btn-primary btn-sm" ${bad?'disabled style="opacity:.5;"':''} onclick="mergeSalesDocsToSummaryTax()" title="แต่ละใบเสนอราคา = 1 บรรทัด (เลข PR + ชื่อสาขา + ยอดก่อน VAT)">🧾 รวมแบบสรุป (PR+สาขา)</button>
+    <button class="btn btn-ghost btn-sm" ${bad?'disabled style="opacity:.5;"':''} onclick="mergeSalesDocsToTaxInvoice()" title="รวมรายการซ่อมทุกบรรทัดจากทุกใบ">🧾 รวมแจกแจงรายการ</button>
     <button class="btn btn-ghost btn-sm" onclick="clearSalesPick()">ล้างที่เลือก</button>
   </div>`;
 }
@@ -6151,6 +6326,49 @@ async function mergeSalesDocsToTaxInvoice(){
   renderSalesItemEditor(); updateSalesSummary&&updateSalesSummary();
   salesPicked.clear();
   setAccountingStatus('sales',`รวม ${docs.length} ใบ (${jobIds.length} งาน) เรียบร้อย — ตรวจแล้วกดบันทึก`,'ok');
+}
+// รวมใบเสนอราคาหลายใบ → ใบกำกับภาษี "แบบสรุป": 1 ใบเสนอราคา = 1 บรรทัด (เลข PR + ชื่อสาขา + ยอดก่อน VAT)
+async function mergeSalesDocsToSummaryTax(){
+  if(!guardEdit())return;
+  const docs=pickedSalesDocs();
+  if(docs.length<1){alert('เลือกเอกสารอย่างน้อย 1 ใบก่อน');return;}
+  const customers=[...new Set(docs.map(d=>String(d.customer_name||d.customer_id||'').trim()))];
+  if(customers.length>1){alert('รวมได้เฉพาะเอกสารของลูกค้าเดียวกัน');return;}
+  await ensureAccountingLoaded().catch(()=>{});
+  const jobIds=[...new Set(docs.flatMap(d=>salesInvoiceJobs(d)))];
+  const base=docs[0];
+  openSalesModal('','', 'tax_invoice');
+  const setv=(id,v)=>{const el=document.getElementById(id); if(el)el.value=v;};
+  setv('sale-customer',base.customer_name||base.customer_id||'');
+  setv('sale-customer-address',base.customer_address||'');
+  setv('sale-customer-taxid',base.customer_tax_id||'');
+  setv('sale-customer-phone',base.customer_phone||'');
+  setv('sale-company-display',base.company_display_name||quoteCompanyDefaults().displayName);
+  setv('sale-company-name',base.company_name||quoteCompanyDefaults().name);
+  setv('sale-company-branch',base.company_branch||quoteCompanyDefaults().branch);
+  setv('sale-job', jobIds.join(', '));
+  // ยอดในบิลสรุป = ยอดก่อน VAT ของแต่ละใบอยู่แล้ว → ไม่บวก Overhead/ค่าเดินทาง/SLA ซ้ำ + คิด VAT 7% ใหม่ท้ายบิล
+  setv('sale-overhead-enabled','no');
+  setv('sale-travel-km',0); setv('sale-travel-rate',0);
+  setSalesSlaStatus('none');
+  salesVatMode='add'; setv('sale-vat-mode','add');
+  setv('sale-summary-flag','1');
+  setv('sale-note','รวมแบบสรุปจากเอกสาร: '+docs.map(d=>d.doc_no||d.sales_invoice_no||d.id).join(', '));
+  salesDraftItems=docs.map(d=>{
+    const prs=salesInvoiceJobs(d);
+    const pr=prs.join(', ');
+    const branch=[...new Set(prs.map(p=>jobs.find(j=>sameJob(j.id,p)&&!isDeletedRecord(j))?.branch).filter(Boolean))].join(', ');
+    const client=(()=>{const j=jobs.find(x=>sameJob(x.id,prs[0])&&!isDeletedRecord(x));return j?String(j.client||'').trim():'';})();
+    const amount=Number(d.subtotal||(Number(d.total_amount||0)-Number(d.vat_amount||0))||0);
+    return {...blankSalesItem(), id:newAccountingId('SITEM'),
+      item_code:pr, category:'', description:branch||client||pr||'-',
+      quantity:1, unit:'JOB', unit_price:amount, discount:0,
+      source_type:'manual', source_ref_id:'', source_doc_id:d.id,
+      note:'จากเอกสาร '+(d.doc_no||d.sales_invoice_no||d.id)};
+  });
+  renderSalesItemEditor(); updateSalesSummary&&updateSalesSummary();
+  salesPicked.clear();
+  setAccountingStatus('sales',`รวมแบบสรุป ${docs.length} ใบ (${jobIds.length} งาน) — ตรวจแล้วกดบันทึก แล้วสั่งพิมพ์`,'ok');
 }
 function salesInvoiceJobs(inv){return inv.job_ids?String(inv.job_ids).split(',').map(s=>s.trim()).filter(Boolean):(inv.job_id?[String(inv.job_id)]:[]);}
 function salesInvoiceMatchesJob(inv,jobId){return salesInvoiceJobs(inv).some(p=>sameJob(p,jobId));}
