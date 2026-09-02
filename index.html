@@ -711,7 +711,7 @@ select option{background:var(--surface2);}
     <div id="sale-merge-bar" style="display:none;background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;"></div>
         <div class="table-wrap mobile-list">
       <div class="table-header"><div class="table-title">รายการบิลขาย</div><span class="mono tm" id="sale-table-count" style="font-size:11px;"></span></div>
-      <table><thead><tr><th style="width:34px;"><input type="checkbox" id="sale-check-all" onclick="event.stopPropagation()" onchange="toggleAllSalesDocs(this.checked)"></th><th>เลขบิลขาย</th><th>PR</th><th>ลูกค้า</th><th>วันที่</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th>รับเงิน</th><th>แก้ล่าสุด</th><th></th></tr></thead><tbody id="sales-tbody"></tbody></table>
+      <table><thead><tr><th style="width:34px;"><input type="checkbox" id="sale-check-all" onclick="event.stopPropagation()" onchange="toggleAllSalesDocs(this.checked)"></th><th>เลขบิลขาย</th><th>PR</th><th>สาขา</th><th>วันที่</th><th>รับเงิน</th><th>แก้ล่าสุด</th><th></th></tr></thead><tbody id="sales-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -4851,14 +4851,14 @@ function renderSalesTax(){
   document.getElementById('sale-count').textContent=list.length+' บิล';
   document.getElementById('sale-unpaid').textContent='฿'+money(unpaid);
   document.getElementById('sale-table-count').textContent=list.length+' รายการ'; renderSalesMergeBar();
-  if(!accountingLoaded){tb.innerHTML='<tr><td colspan="11"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลขาย</div></div></td></tr>';return;}
-  if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-icon">🧾</div><div>${salesInvoices.length?'ไม่พบบิลขายตามตัวกรอง':'ยังไม่มีบิลขาย'}</div></div></td></tr>`;return;}
+  if(!accountingLoaded){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลขาย</div></div></td></tr>';return;}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">🧾</div><div>${salesInvoices.length?'ไม่พบบิลขายตามตัวกรอง':'ยังไม่มีบิลขาย'}</div></div></td></tr>`;return;}
   tb.innerHTML=list.map(inv=>{
     const prBtns=salesInvoiceJobs(inv).map(p=>`<button class="btn btn-ghost btn-sm" onclick="openDet('${esc(p)}')">${esc(p)}</button>`).join(' ')||'-';
     const dt=inv.doc_type||'tax_invoice';const dmeta=SALES_DOC_META[dt]||SALES_DOC_META.tax_invoice;
     const nextType=SALES_DOC_NEXT[dt];const nextMeta=nextType&&nextType!==dt?SALES_DOC_META[nextType]:null;
     const firstPr=salesInvoiceJobs(inv)[0]||'';
-    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td onclick="event.stopPropagation()"><input type="checkbox" class="sale-pick" value="${esc(inv.id)}" ${salesPicked.has(inv.id)?'checked':''} onchange="toggleSalesDocPick('${esc(inv.id)}',this.checked)"></td><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;" onclick="event.stopPropagation()">${prBtns}</td><td>${esc(inv.customer_name||inv.customer_id||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="tm" style="font-size:11px;white-space:nowrap;"><b style="color:var(--text2);">${esc(inv.updated_by||inv.created_by||'-')}</b><br>${esc(editedAtText(inv.updated_at))}</td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesInNewTab('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
+    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td onclick="event.stopPropagation()"><input type="checkbox" class="sale-pick" value="${esc(inv.id)}" ${salesPicked.has(inv.id)?'checked':''} onchange="toggleSalesDocPick('${esc(inv.id)}',this.checked)"></td><td class="mono ta" style="font-size:11px;">${esc(inv.doc_no||inv.sales_invoice_no)}<div><span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">${esc(dmeta.title)}</span></div></td><td style="display:flex;flex-wrap:wrap;gap:4px;" onclick="event.stopPropagation()">${prBtns}</td><td>${esc(salesInvoiceBranchText(inv))}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td><span class="badge ${inv.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(inv.payment_status||'unpaid')}</span></td><td class="tm" style="font-size:11px;white-space:nowrap;"><b style="color:var(--text2);">${esc(inv.updated_by||inv.created_by||'-')}</b><br>${esc(editedAtText(inv.updated_at))}</td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesInNewTab('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
   }).join('');
 }
 // ลบ (ยกเลิก) บิลขาย — soft cancel ทั้งเอกสารและรายการ
@@ -4965,7 +4965,7 @@ function openSalesDocPreview(id){
   const meta=SALES_DOC_META[inv.doc_type||'tax_invoice']||SALES_DOC_META.tax_invoice;
   const firstPr=salesInvoiceJobs(inv)[0]||'';
   document.getElementById('doc-preview-title').textContent=meta.title+' · '+esc(inv.doc_no||inv.sales_invoice_no||'');
-  document.getElementById('doc-preview-sub').textContent=(inv.customer_name||inv.customer_id||'-')+' · ฿'+money(inv.total_amount)+' · แก้ล่าสุดโดย '+(inv.updated_by||inv.created_by||'-')+' ('+editedAtText(inv.updated_at)+')';
+  document.getElementById('doc-preview-sub').textContent='ลูกค้า: '+(inv.customer_name||inv.customer_id||'-')+' · สาขา: '+salesInvoiceBranchText(inv)+' · ก่อน VAT ฿'+money(inv.subtotal)+' · VAT ฿'+money(inv.vat_amount)+' · รวม ฿'+money(inv.total_amount)+' · แก้ล่าสุดโดย '+(inv.updated_by||inv.created_by||'-')+' ('+editedAtText(inv.updated_at)+')';
   document.getElementById('doc-preview-actions').innerHTML=
     `<button class="btn btn-primary btn-sm" onclick="closeM('m-doc-preview');openSalesInNewTab('${esc(id)}')">✏️ แก้ไขเอกสาร</button>`
     +`<button class="btn btn-success btn-sm" onclick="printSalesDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`
@@ -6478,6 +6478,11 @@ async function mergeSalesDocsToSummaryTax(){
   setAccountingStatus('sales',`รวมแบบสรุป ${docs.length} ใบ (${jobIds.length} งาน) — ตรวจแล้วกดบันทึก แล้วสั่งพิมพ์`,'ok');
 }
 function salesInvoiceJobs(inv){return inv.job_ids?String(inv.job_ids).split(',').map(s=>s.trim()).filter(Boolean):(inv.job_id?[String(inv.job_id)]:[]);}
+// ชื่อสาขาของเอกสาร (จากงานที่ผูกไว้) — ใช้แทนชื่อลูกค้าในตารางรายการ (fallback = ชื่อลูกค้า)
+function salesInvoiceBranchText(inv){
+  const branches=[...new Set(salesInvoiceJobs(inv).map(pr=>{const j=jobs.find(x=>sameJob(x.id,pr)&&!isDeletedRecord(x));return j?String(j.branch||'').trim():'';}).filter(Boolean))];
+  return branches.join(', ')||inv.customer_name||inv.customer_id||'-';
+}
 function salesInvoiceMatchesJob(inv,jobId){return salesInvoiceJobs(inv).some(p=>sameJob(p,jobId));}
 function jobCosts(jobId){return jobCostItems.filter(x=>sameJob(x.job_id,jobId)&&x.status!=='cancelled');}
 function techPartsForJob(jobId){return technicianUsedParts.filter(x=>sameJob(x.job_id,jobId));}
