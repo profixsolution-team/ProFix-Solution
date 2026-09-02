@@ -5741,8 +5741,9 @@ const SALES_DOC_META={
   tax_invoice:{label:'ใบกำกับภาษี / Tax Invoice',prefix:'SINV',title:'ใบกำกับภาษี',addLabel:'+ เพิ่มใบกำกับภาษี'},
   receipt:{label:'ใบเสร็จรับเงิน / Receipt',prefix:'RCP',title:'ใบเสร็จรับเงิน',addLabel:'+ เพิ่มใบเสร็จ'}
 };
-// เลขรันใบกำกับภาษี = ปีพ.ศ.2หลัก / เดือน2หลัก + ลำดับในเดือนนั้น (เช่น 69/0901) อิงวันกำหนดชำระเงิน
-// นับเฉพาะเอกสารที่ยัง active → ลบเอกสารแล้วเลขคืนกลับมาใช้ใหม่ได้ ไม่ค้างเลข
+// เลขรันใบกำกับภาษี = ปีพ.ศ.2หลัก / เดือน2หลัก + ลำดับในเดือนนั้น (เช่น 69/0901) อิงวันรับเงิน
+// รันไปข้างหน้าอย่างเดียว (นับรวมใบที่ถูกลบด้วย) → เลขที่โชว์ = เลขที่บันทึกเสมอ ไม่เด้ง, ไม่ใช้เลขซ้ำ
+// (ตรงหลักใบกำกับภาษี: เลขต้องเรียงต่อเนื่อง ห้ามซ้ำ; ถ้าลบใบ เลขนั้นจะเป็นช่องว่างไป ไม่นำกลับมาใช้)
 function taxInvoiceMonthPrefix(refDate){
   const m=String(refDate||todayISO()).match(/^(\d{4})-(\d{2})-(\d{2})/);
   const yr=m?Number(m[1]):new Date().getFullYear();
@@ -5754,7 +5755,7 @@ function nextTaxInvoiceNo(refDate,list){
   const prefix=taxInvoiceMonthPrefix(refDate); // เช่น 69/09
   let max=0;
   (list||salesInvoices||[]).forEach(x=>{
-    if(x.status==='cancelled')return;
+    // นับทุกใบ (รวม cancelled) เพื่อไม่ให้เลขชนกับใบที่ลบไปแล้วใน DB (unique constraint นับ cancelled ด้วย)
     if((x.doc_type||'tax_invoice')!=='tax_invoice')return;
     const m=String(x.doc_no||x.sales_invoice_no||'').match(/^(\d{2}\/\d{2})(\d+)$/);
     if(m&&m[1]===prefix){const n=parseInt(m[2],10);if(Number.isFinite(n)&&n>max)max=n;}
@@ -6259,6 +6260,7 @@ document.addEventListener('click',e=>{
 async function saveSalesInvoice(){if(!guardEdit())return;
   setAccountingStatus('sales','กำลังบันทึกบิลขาย...','warn');
   try{
+    const isNewDoc=!document.getElementById('sale-id').value; // เอกสารใหม่เท่านั้นที่อนุญาตให้ขยับเลขเมื่อชนกัน (แก้ไขของเดิม = ห้ามเปลี่ยนเลข)
     const id=document.getElementById('sale-id').value||newAccountingId('SINV');
     const pendingInput=(document.getElementById('sale-job-input')?.value||'').trim();
     if(pendingInput&&!salesDraftJobs.some(x=>x.toLowerCase()===pendingInput.toLowerCase()))salesDraftJobs.push(pendingInput);
@@ -6348,7 +6350,7 @@ async function saveSalesInvoice(){if(!guardEdit())return;
       try{await sbUpsertResilient('sales_invoices','?on_conflict=id',inv);break;}
       catch(e){
         const m=String(e?.message||e);
-        if(/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)&&attempt<9){
+        if(isNewDoc&&/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)&&attempt<9){
           const cur=String(inv.sales_invoice_no||inv.doc_no||docNo);
           const taxm=cur.match(/^(\d{2}\/\d{2})(\d+)$/); // ใบกำกับภาษี 69/0901 → prefix 69/09, ลำดับ 2 หลัก
           const prefix=taxm?taxm[1]:(cur.replace(/\d+\D*$/,'')||(cur+'-')); // เช่น QT-2026- หรือ 69/09
