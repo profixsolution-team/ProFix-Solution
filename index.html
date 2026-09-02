@@ -5318,11 +5318,11 @@ function salesTaxSummaryHtml(inv,items){
     <tr><td class="tl">มูลค่าสินค้าหลังหักส่วนลด<div class="en">TOTAL AMOUNT AFTER DISCOUNT</div></td><td class="tp"></td><td class="tv">${money2(afterDiscount)}</td></tr>
     <tr><td class="tl">ภาษีมูลค่าเพิ่ม<div class="en">VAT</div></td><td class="tp">${vatPct}%</td><td class="tv">${money2(vat)}</td></tr>
     <tr class="grand"><td class="tl"><b>ยอดเงินสุทธิ</b><div class="en">GRAND TOTAL</div></td><td class="tp"></td><td class="tv">${money2(total)}</td></tr>`;
-  const COPIES=[{k:'original',th:'ต้นฉบับ',en:'ORIGINAL'},{k:'copy',th:'สำเนา',en:'COPY'},{k:'account',th:'สำเนา (สำหรับบัญชี)',en:'COPY - ACCOUNTING'}];
-  const sheet=(c,idx)=>`<section class="sheet" data-copy="${c.k}" style="${idx===0?'':'display:none;'}">
+  const COPIES=[{k:'original',th:'ต้นฉบับ',en:'ORIGINAL',color:'#17325c'},{k:'copy',th:'สำเนา',en:'COPY',color:'#c2560f'},{k:'account',th:'สำเนา (บัญชี)',en:'COPY - ACCOUNTING',color:'#2b7fb8'}];
+  const sheet=(c,idx)=>`<section class="sheet" data-copy="${c.k}" style="--theme:${c.color};${idx===0?'':'display:none;'}">
   <header class="head">
     <div class="co"><div class="co-name">${coName} <span class="co-branch">${coBranch}</span></div><div class="co-addr">${coAddr}</div><div class="co-addr">โทร. ${coPhone}&nbsp;&nbsp;เลขประจำตัวผู้เสียภาษี ${coTax}</div></div>
-    <div class="copywrap"><div class="copybox">${esc(c.th)}</div><div class="copyen">${esc(c.en)}</div></div>
+    <div class="copywrap"><div class="copybox" style="border-color:${c.color};color:${c.color};">${esc(c.th)}</div><div class="copyen" style="color:${c.color};">${esc(c.en)}</div></div>
   </header>
   <div class="titlewrap"><div class="titlebox"><div class="t1">ใบกำกับภาษี/ใบส่งสินค้า/ใบเสร็จรับเงิน</div><div class="t2">TAX INVOICE/DELIVERY ORDER /RECEIPT</div></div></div>
   <section class="cust">
@@ -5366,42 +5366,42 @@ function salesTaxSummaryHtml(inv,items){
   const sheets=COPIES.map(sheet).join('');
   const copyChecks=COPIES.map((c,idx)=>`<label class="ck"><input type="checkbox" ${idx===0?'checked':''} onchange="toggleCopy('${c.k}',this.checked)"> ${esc(c.th)}</label>`).join('');
   return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>ใบกำกับภาษี ${docNo}</title>
-<style>@page{size:A4 portrait;margin:0;}*{box-sizing:border-box;font-family:'TH Sarabun New','Sarabun',Arial,'Noto Sans Thai',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-body{margin:0;background:#e9edf2;color:#0b1220;font-size:13px;line-height:1.3;}
+<style>@page{size:A4 portrait;margin:0;}*{box-sizing:border-box;font-family:Arial,'Noto Sans Thai',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+body{margin:0;background:#e9edf2;color:#0b1220;font-size:12px;line-height:1.32;}
 .toolbar{position:fixed;top:0;left:0;right:0;background:#1f2937;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;z-index:5;}
-.toolbar .ck{font-size:13px;margin-right:10px;cursor:pointer;user-select:none;}
+.toolbar .ck{font-size:12px;margin-right:10px;cursor:pointer;user-select:none;}
 .toolbar .grp{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
-.toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;}.btn-print{background:#3fb950;color:#fff;}.btn-ghost{background:#374151;color:#fff;margin-right:6px;}
+.toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px;}.btn-print{background:#3fb950;color:#fff;}.btn-ghost{background:#374151;color:#fff;margin-right:6px;}
 .sheet{position:relative;width:210mm;min-height:297mm;margin:52px auto 16px;padding:12mm 12mm 8mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);}
 .head{display:flex;justify-content:space-between;align-items:flex-start;gap:10mm;}
-.co-name{font-size:20px;font-weight:800;color:#05070a;}.co-branch{font-size:13px;font-weight:600;}
-.co-addr{font-size:12.5px;margin-top:3px;color:#111820;}
+.co-name{font-size:19px;font-weight:800;color:#05070a;}.co-branch{font-size:12px;font-weight:600;}
+.co-addr{font-size:11.5px;margin-top:3px;color:#111820;}
 .copywrap{text-align:center;min-width:32mm;}
-.copybox{border:1px solid #17325c;border-radius:7px;padding:4px 14px;font-weight:700;color:#17325c;font-size:14px;}
-.copyen{font-size:11px;color:#333;margin-top:3px;letter-spacing:1px;}
+.copybox{border:1px solid var(--theme,#17325c);border-radius:7px;padding:4px 14px;font-weight:700;color:var(--theme,#17325c);font-size:13px;}
+.copyen{font-size:10px;color:#333;margin-top:3px;letter-spacing:1px;}
 .titlewrap{display:flex;justify-content:center;margin:6px 0 4px;}
 .titlebox{border:1px solid #0b1220;border-radius:8px;padding:4px 22px;text-align:center;}
-.titlebox .t1{font-size:17px;font-weight:800;color:#0b1220;}.titlebox .t2{font-size:11px;font-weight:700;letter-spacing:.5px;}
+.titlebox .t1{font-size:16px;font-weight:800;color:#0b1220;}.titlebox .t2{font-size:10px;font-weight:700;letter-spacing:.5px;}
 .cust{display:grid;grid-template-columns:1fr 62mm;gap:6mm;margin-top:4px;}
 .cust .row{display:flex;gap:6px;margin:1px 0;}
-.cust .k{color:#0b1220;min-width:28mm;}.cust .v{color:#17325c;font-weight:600;}
+.cust .k{color:#0b1220;min-width:28mm;}.cust .v{color:var(--theme,#17325c);font-weight:600;}
 .cust .row:first-child .k{min-width:22mm;}
 .ho{font-size:12px;}
-.cust-r{font-size:12.5px;}
+.cust-r{font-size:12px;}
 .cust-r .mrow{display:grid;grid-template-columns:1fr auto;gap:8px;text-align:right;margin:1px 0;}
-.cust-r .mrow span{color:#0b1220;}.cust-r .mrow b{color:#17325c;}
+.cust-r .mrow span{color:#0b1220;}.cust-r .mrow b{color:var(--theme,#17325c);}
 .tbl{width:100%;border-collapse:collapse;margin-top:6px;table-layout:fixed;}
-.tbl th{background:#17325c;color:#fff;font-weight:700;font-size:13px;padding:5px 4px;border:1px solid #17325c;}
-.tbl td{border-left:1px solid #b9c4d4;border-right:1px solid #b9c4d4;padding:2px 6px;height:6.2mm;font-size:12.5px;vertical-align:middle;}
-.tbl tbody tr:last-child td{border-bottom:1px solid #17325c;}
+.tbl th{background:var(--theme,#17325c);color:#fff;font-weight:700;font-size:12px;padding:5px 4px;border:1px solid var(--theme,#17325c);}
+.tbl td{border-left:1px solid #b9c4d4;border-right:1px solid #b9c4d4;padding:2px 6px;height:6.4mm;font-size:12px;vertical-align:middle;}
+.tbl tbody tr:last-child td{border-bottom:1px solid var(--theme,#17325c);}
 .tbl .c-no{width:12mm;}.tbl .c-code{width:26mm;}.tbl .c-qty{width:16mm;}.tbl .c-unit{width:20mm;}.tbl .c-amt{width:28mm;}
 .tbl td.c{text-align:center;}.tbl td.r{text-align:right;}
-.tbl tbody{border-left:1px solid #17325c;border-right:1px solid #17325c;}
-.mid{display:grid;grid-template-columns:1fr 62mm;gap:0;margin-top:0;border-left:1px solid #17325c;border-right:1px solid #17325c;border-bottom:1px solid #17325c;}
-.mid-l{padding:4px 6px;border-right:1px solid #17325c;}
+.tbl tbody{border-left:1px solid var(--theme,#17325c);border-right:1px solid var(--theme,#17325c);}
+.mid{display:grid;grid-template-columns:1fr 62mm;gap:0;margin-top:0;border-left:1px solid var(--theme,#17325c);border-right:1px solid var(--theme,#17325c);border-bottom:1px solid var(--theme,#17325c);}
+.mid-l{padding:4px 6px;border-right:1px solid var(--theme,#17325c);}
 .words{display:flex;gap:10px;align-items:baseline;border-bottom:1px dashed #b9c4d4;padding-bottom:3px;margin-bottom:5px;}
 .words .wl{font-weight:700;}.words .wv{font-weight:600;}
-.pay div{margin:3px 0;font-size:12.5px;}
+.pay div{margin:3px 0;font-size:11.5px;}
 .pay .pay-sub{margin-left:14px;}
 .mid-r{}
 .tot{width:100%;border-collapse:collapse;height:100%;}
@@ -5409,18 +5409,18 @@ body{margin:0;background:#e9edf2;color:#0b1220;font-size:13px;line-height:1.3;}
 .tot .tl{width:auto;}.tot .tl .en{font-size:9.5px;color:#556;}
 .tot .tp{width:12mm;text-align:right;color:#0b1220;}
 .tot .tv{width:24mm;text-align:right;font-weight:700;white-space:nowrap;}
-.tot .grand td{background:#17325c;color:#fff;font-weight:800;}
+.tot .grand td{background:var(--theme,#17325c);color:#fff;font-weight:800;}
 .tot .grand .en{color:#cdd8ea;}
-.notes{margin-top:6px;font-size:11px;color:#333;line-height:1.35;}
+.notes{margin-top:6px;font-size:11.5px;color:#333;line-height:1.4;}
 .notes .nt{font-weight:700;color:#0b1220;}
-.signs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:8px;border:1px solid #17325c;}
-.signs .sg{padding:8px 8px 6px;border-right:1px solid #17325c;min-height:30mm;display:flex;flex-direction:column;}
+.signs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:8px;border:1px solid var(--theme,#17325c);}
+.signs .sg{padding:8px 8px 6px;border-right:1px solid var(--theme,#17325c);min-height:30mm;display:flex;flex-direction:column;}
 .signs .sg:last-child{border-right:0;}
-.signs .sg-top{font-size:11.5px;min-height:14px;}
+.signs .sg-top{font-size:12px;min-height:15px;text-align:center;}
 .signs .sg-sp{flex:1;display:flex;align-items:flex-end;justify-content:center;}
 .signs .sig-img{max-width:52mm;max-height:16mm;object-fit:contain;}
 .signs .sg-lbl{font-size:12px;margin-top:3px;}
-.signs .sg-co .sg-top{font-weight:700;text-align:right;}
+.signs .sg-co .sg-top{font-weight:700;text-align:center;}
 @media print{html,body{background:#fff;}.toolbar{display:none;}.sheet{width:210mm;min-height:297mm;margin:0;box-shadow:none;page-break-after:always;}.sheet.lastvis{page-break-after:auto;}.tbl thead{display:table-header-group;}.tbl tr,.mid,.signs,.notes{break-inside:avoid;page-break-inside:avoid;}}
 </style></head>
 <body>
