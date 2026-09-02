@@ -5742,8 +5742,8 @@ const SALES_DOC_META={
   receipt:{label:'ใบเสร็จรับเงิน / Receipt',prefix:'RCP',title:'ใบเสร็จรับเงิน',addLabel:'+ เพิ่มใบเสร็จ'}
 };
 // เลขรันใบกำกับภาษี = ปีพ.ศ.2หลัก / เดือน2หลัก + ลำดับในเดือนนั้น (เช่น 69/0901) อิงวันรับเงิน
-// รันไปข้างหน้าอย่างเดียว (นับรวมใบที่ถูกลบด้วย) → เลขที่โชว์ = เลขที่บันทึกเสมอ ไม่เด้ง, ไม่ใช้เลขซ้ำ
-// (ตรงหลักใบกำกับภาษี: เลขต้องเรียงต่อเนื่อง ห้ามซ้ำ; ถ้าลบใบ เลขนั้นจะเป็นช่องว่างไป ไม่นำกลับมาใช้)
+// เติม "เลขว่างต่ำสุด" ของเอกสารที่ยัง active → สร้างใหม่รันไปข้างหน้าไม่ซ้ำ, ลบใบเก่าแล้วเลขนั้นกลับมาใช้ได้
+// (ต้องใช้คู่กับ partial unique index บน DB ที่นับเฉพาะ active — ดู console_sales_no_partial_unique.sql)
 function taxInvoiceMonthPrefix(refDate){
   const m=String(refDate||todayISO()).match(/^(\d{4})-(\d{2})-(\d{2})/);
   const yr=m?Number(m[1]):new Date().getFullYear();
@@ -5753,14 +5753,27 @@ function taxInvoiceMonthPrefix(refDate){
 }
 function nextTaxInvoiceNo(refDate,list){
   const prefix=taxInvoiceMonthPrefix(refDate); // เช่น 69/09
-  let max=0;
+  const used=new Set();
   (list||salesInvoices||[]).forEach(x=>{
-    // นับทุกใบ (รวม cancelled) เพื่อไม่ให้เลขชนกับใบที่ลบไปแล้วใน DB (unique constraint นับ cancelled ด้วย)
+    if(x.status==='cancelled')return; // ลบแล้ว = เลขว่าง นำกลับมาใช้ได้
     if((x.doc_type||'tax_invoice')!=='tax_invoice')return;
     const m=String(x.doc_no||x.sales_invoice_no||'').match(/^(\d{2}\/\d{2})(\d+)$/);
-    if(m&&m[1]===prefix){const n=parseInt(m[2],10);if(Number.isFinite(n)&&n>max)max=n;}
+    if(m&&m[1]===prefix)used.add(parseInt(m[2],10));
   });
-  return `${prefix}${String(max+1).padStart(2,'0')}`;
+  let n=1; while(used.has(n))n++; // เลขว่างต่ำสุด (ไม่มีช่องว่าง = รันต่อจากตัวสูงสุด)
+  return `${prefix}${String(n).padStart(2,'0')}`;
+}
+// ถามเลขว่างต่ำสุดจริงจาก server (นับเฉพาะ active) — ใช้ตอนเลขชนกันเพราะออกพร้อมกันหลายเครื่อง
+async function serverNextTaxInvoiceNo(prefix){
+  try{
+    const r=await fetch(splitUrl('sales_invoices',`?sales_invoice_no=like.${encodeURIComponent(prefix+'*')}&status=eq.active&select=sales_invoice_no`),{headers:sbHeaders()});
+    if(!r.ok)return null;
+    const rows=await r.json();
+    const used=new Set();
+    (rows||[]).forEach(x=>{const m=String(x.sales_invoice_no||'').match(/^(\d{2}\/\d{2})(\d+)$/);if(m&&m[1]===prefix)used.add(parseInt(m[2],10));});
+    let n=1; while(used.has(n))n++;
+    return `${prefix}${String(n).padStart(2,'0')}`;
+  }catch(e){return null;}
 }
 function nextSalesDocNo(docType,refDate){
   if(docType==='tax_invoice')return nextTaxInvoiceNo(refDate);
@@ -6353,10 +6366,16 @@ async function saveSalesInvoice(){if(!guardEdit())return;
         if(isNewDoc&&/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)&&attempt<9){
           const cur=String(inv.sales_invoice_no||inv.doc_no||docNo);
           const taxm=cur.match(/^(\d{2}\/\d{2})(\d+)$/); // ใบกำกับภาษี 69/0901 → prefix 69/09, ลำดับ 2 หลัก
-          const prefix=taxm?taxm[1]:(cur.replace(/\d+\D*$/,'')||(cur+'-')); // เช่น QT-2026- หรือ 69/09
-          const pad=taxm?2:3;
-          const smax=await serverMaxSalesNo(prefix);
-          const bumped=`${prefix}${String(smax+1+attempt).padStart(pad,'0')}`;
+          let bumped;
+          if(taxm){
+            // ใบกำกับภาษี: หาเลขว่างต่ำสุดจาก server (นับเฉพาะ active → เลขที่ลบไปแล้วนำกลับมาใช้ได้)
+            bumped=await serverNextTaxInvoiceNo(taxm[1]);
+            if(!bumped)bumped=`${taxm[1]}${String(parseInt(taxm[2],10)+1+attempt).padStart(2,'0')}`;
+          }else{
+            const prefix=cur.replace(/\d+\D*$/,'')||(cur+'-'); // เช่น QT-2026-
+            const smax=await serverMaxSalesNo(prefix);
+            bumped=`${prefix}${String(smax+1+attempt).padStart(3,'0')}`;
+          }
           inv.sales_invoice_no=bumped;inv.doc_no=bumped;
           const noEl=document.getElementById('sale-no');if(noEl)noEl.value=bumped;
           setAccountingStatus('sales','เลขเอกสารซ้ำ — เปลี่ยนเป็น '+bumped,'warn');
