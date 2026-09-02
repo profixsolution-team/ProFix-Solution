@@ -5750,6 +5750,7 @@ function onSalesDocTypeChange(docType){
   // ถ้าเลขยังเป็นค่าเริ่มต้นของชนิดอื่น ให้สร้างเลขใหม่ตามชนิด+วันกำหนดชำระ (เฉพาะตอนสร้างใหม่)
   refreshSalesDocNo();
   const tplRow=document.getElementById('sale-template-row');if(tplRow)tplRow.style.display=docType==='quotation'?'':'none';
+  const jp=document.getElementById('sale-job-picker');if(jp&&jp.style.display!=='none')renderSalesJobPicker(document.getElementById('sale-job-input')?.value||''); // เปลี่ยนประเภท → รีเฟรชรายการงานตามเงื่อนไข
 }
 function openSalesModal(id='',prefJobId='',docType=''){
   const inv=id?salesInvoices.find(x=>x.id===id):null;
@@ -5854,6 +5855,7 @@ function addSalesJob(){
   const inp=document.getElementById('sale-job-input');
   const v=(inp?.value||'').trim();
   if(!v)return;
+  if(!salesGuardJobAddable(v)){if(inp)inp.value='';renderSalesJobPicker('');return;}
   if(!salesDraftJobs.some(x=>x.toLowerCase()===v.toLowerCase())){salesDraftJobs.push(v);salesOnJobAdded(v);}
   if(inp)inp.value='';
   renderSalesJobChips();
@@ -5862,11 +5864,21 @@ function addSalesJob(){
 function removeSalesJob(i){const pr=salesDraftJobs[i];salesDraftJobs.splice(i,1);salesOnJobRemoved(pr);renderSalesJobChips();renderSalesJobPicker(document.getElementById('sale-job-input')?.value||'');}
 // คลิกเลือก PR แทนการพิมพ์: แสดงรายการงานพร้อมลูกค้า/สาขา/สถานะ และไฮไลต์งานที่ยังไม่ได้ออกบิล
 function salesJobIsBilled(id){return (salesInvoices||[]).some(inv=>inv.status!=='cancelled'&&salesInvoiceMatchesJob(inv,id));}
+// ใบกำกับภาษี: เลือกได้เฉพาะงานที่ "ออกใบเสนอราคาแล้ว" (ใบเสนอราคาเลือกได้ทุกงาน)
+function jobHasQuotation(id){return (salesInvoices||[]).some(inv=>inv.status!=='cancelled'&&(inv.doc_type==='quotation')&&salesInvoiceMatchesJob(inv,id));}
+function salesPickerRequiresQuotation(){return (document.getElementById('sale-doc-type')?.value||'')==='tax_invoice';}
+function salesGuardJobAddable(pr){
+  if(!salesPickerRequiresQuotation())return true;
+  if(!accountingLoaded)return true; // ยังโหลดใบเสนอราคาไม่เสร็จ — อนุญาตไว้ก่อน (picker จะกรองเองเมื่อโหลดครบ)
+  if(jobHasQuotation(pr))return true;
+  setAccountingStatus('sales',`งาน ${pr} ยังไม่มีใบเสนอราคา — ใบกำกับภาษีออกได้เฉพาะงานที่ออกใบเสนอราคาแล้ว`,'warn');
+  return false;
+}
 function toggleSalesJob(id){
   id=String(id).trim();if(!id)return;
   const i=salesDraftJobs.findIndex(x=>x.toLowerCase()===id.toLowerCase());
   if(i>=0){salesDraftJobs.splice(i,1);salesOnJobRemoved(id);}
-  else{salesDraftJobs.push(id);salesOnJobAdded(id);}
+  else{if(!salesGuardJobAddable(id))return;salesDraftJobs.push(id);salesOnJobAdded(id);}
   renderSalesJobChips();
   renderSalesJobPicker(document.getElementById('sale-job-input')?.value||'');
 }
@@ -5875,15 +5887,19 @@ function handleSalesJobKey(e){
     const q=(e.target.value||'').trim().toLowerCase();
     const list=salesJobPickerMatches(q);
     if(list.length){toggleSalesJob(list[0].id);e.target.value='';}
+    else if(salesPickerRequiresQuotation()){const v=(e.target.value||'').trim();if(v)setAccountingStatus('sales',`ไม่พบงาน "${v}" ที่ออกใบเสนอราคาแล้ว — ใบกำกับภาษีเลือกได้เฉพาะงานที่มีใบเสนอราคา`,'warn');}
     else addSalesJob();
   }else if(e.key==='Escape'){const p=document.getElementById('sale-job-picker');if(p)p.style.display='none';}
 }
 function salesJobPickerMatches(q){
+  const requireQt=salesPickerRequiresQuotation();
   const live=jobs.filter(j=>!isDeletedRecord(j));
-  const f=live.filter(j=>{
+  let f=live.filter(j=>{
     if(!q)return true;
     return [j.id,j.client,j.branch,j.ref,j.type,j.team].some(v=>String(v||'').toLowerCase().includes(q));
   });
+  // ใบกำกับภาษี: เหลือเฉพาะงานที่มีใบเสนอราคาแล้ว (แต่ยังคงงานที่เลือกไว้แล้วให้เอาออกได้)
+  if(requireQt&&accountingLoaded)f=f.filter(j=>jobHasQuotation(j.id)||salesDraftJobs.some(x=>x.toLowerCase()===String(j.id).toLowerCase()));
   // เรียง: งานที่เลือกแล้วอยู่บน, รองมาคืองานที่ยังไม่ออกบิล, แล้วตามวันที่ล่าสุด
   return f.sort((a,b)=>{
     const sa=salesDraftJobs.some(x=>x.toLowerCase()===String(a.id).toLowerCase())?0:1;
@@ -5896,9 +5912,11 @@ function salesJobPickerMatches(q){
 }
 function renderSalesJobPicker(q){
   const box=document.getElementById('sale-job-picker');if(!box)return;
+  const requireQt=salesPickerRequiresQuotation();
+  if(requireQt&&!accountingLoaded){box.innerHTML='<div class="job-picker-empty">กำลังโหลดรายการใบเสนอราคา...</div>';box.style.display='';ensureAccountingLoaded().then(()=>renderSalesJobPicker(document.getElementById('sale-job-input')?.value||'')).catch(()=>{});return;}
   const list=salesJobPickerMatches(String(q||'').trim().toLowerCase());
-  if(!list.length){box.innerHTML='<div class="job-picker-empty">ไม่พบงานที่ตรงกับคำค้น — กด Enter เพื่อเพิ่ม PR ที่พิมพ์เอง</div>';box.style.display='';return;}
-  const hint='<div class="job-picker-hint">คลิกเพื่อเลือก/เอาออก · ✓ = เลือกแล้ว</div>';
+  if(!list.length){box.innerHTML=`<div class="job-picker-empty">${requireQt?'ไม่พบงานที่ออกใบเสนอราคาแล้ว — ใบกำกับภาษีเลือกได้เฉพาะงานที่มีใบเสนอราคาก่อน':'ไม่พบงานที่ตรงกับคำค้น — กด Enter เพื่อเพิ่ม PR ที่พิมพ์เอง'}</div>`;box.style.display='';return;}
+  const hint=`<div class="job-picker-hint">${requireQt?'ใบกำกับภาษี: เฉพาะงานที่ออกใบเสนอราคาแล้ว · ':''}คลิกเพื่อเลือก/เอาออก · ✓ = เลือกแล้ว</div>`;
   box.innerHTML=hint+list.map(j=>{
     const sel=salesDraftJobs.some(x=>x.toLowerCase()===String(j.id).toLowerCase());
     const billed=salesJobIsBilled(j.id);
