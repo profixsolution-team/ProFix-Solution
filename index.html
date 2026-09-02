@@ -1286,6 +1286,7 @@ select option{background:var(--surface2);}
             <div class="form-row" id="sale-template-row" style="align-items:flex-end;gap:10px;background:linear-gradient(90deg,var(--accent-dim),transparent);border:1px dashed var(--accent);border-radius:10px;padding:10px 12px;margin-top:6px;"><div class="form-group" style="flex:1.3;"><label style="color:var(--accent);font-weight:800;">🖨️ รูปแบบใบเสนอราคา (ตอนพิมพ์)</label><select id="sale-doc-template" style="border-color:var(--accent);font-weight:600;"><option value="boq">📄 ฟอร์ม BOQ (แนวนอน ตามแบบบริษัท)</option><option value="modern">🧾 แบบเดิม (โมเดิร์น แนวตั้ง)</option></select></div><div class="form-group"><label>จังหวัด (สาขา)</label><select id="sale-branch-province"></select></div><div class="form-group"><label>จังหวัด (ศูนย์/ลูกค้า)</label><select id="sale-customer-province"></select></div></div>
             <div class="form-row"><div class="form-group" style="flex:1;"><label>Job ID / PR (คลิกเลือกได้หลายตัว)</label><div style="position:relative;"><input id="sale-job-input" autocomplete="off" placeholder="ค้นหา PR / ลูกค้า / สาขา แล้วคลิกเลือก" oninput="renderSalesJobPicker(this.value)" onfocus="renderSalesJobPicker(this.value)" onkeydown="handleSalesJobKey(event)"><div id="sale-job-picker" class="job-picker" style="display:none;"></div></div><div id="sale-job-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div><div id="sale-dup-note" style="font-size:11px;color:var(--yellow);margin-top:6px;"></div><input type="hidden" id="sale-job"></div></div>
             <div class="form-row"><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันที่รับเงิน</label><input id="sale-payment-date" type="date"></div></div>
+            <div class="form-row"><div class="form-group"><label>กำหนดชำระเงิน <span style="font-size:11px;color:var(--text3);">(ใบกำกับภาษี: ใช้คิดเลขรันเอกสารตามเดือน)</span></label><input id="sale-due-date" type="date" onchange="refreshSalesDocNo()"></div><div class="form-group"><label>เงื่อนไขชำระเงิน</label><input id="sale-payment-terms" placeholder="โอนเข้าบัญชี"></div></div>
             <div class="doc-parties">
               <div class="accounting-panel doc-party" style="border-left:4px solid var(--accent);background:rgba(88,166,255,.06);">
                 <div class="accounting-panel-title">ข้อมูลลูกค้า<button class="btn btn-ghost btn-sm btn-xs" type="button" onclick="openDocCustomerModal()">+ เพิ่มบริษัท</button></div>
@@ -2332,7 +2333,7 @@ function rowHashMap(rows,idOf){
 }
 function splitUrl(table,query=''){return `${SUPABASE_URL}/rest/v1/${table}${query}`;}
 // คอลัมน์ที่เพิ่มใน migration phase 3 — ถ้ายังไม่ได้รัน migration จะถูกตัดออกอัตโนมัติเพื่อไม่ให้บันทึกพัง
-const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template','branch_province','customer_province','labor_price','parts_price','labor_cost','parts_cost'];
+const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template','branch_province','customer_province','labor_price','parts_price','labor_cost','parts_cost','due_date','payment_terms'];
 function stripKeys(payload,keys){const drop=o=>{const c={...o};keys.forEach(k=>delete c[k]);return c;};return Array.isArray(payload)?payload.map(drop):drop(payload);}
 // POST แบบทนทาน: ถ้า PostgREST แจ้งว่าไม่มีคอลัมน์ (ยังไม่ได้รัน migration) จะลองใหม่โดยตัด "เฉพาะ" คอลัมน์ที่ error ระบุชื่อ
 // (เดิมตัดทั้ง PHASE3_OPTIONAL_KEYS ยกชุด → คอลัมน์ที่ DB มีอยู่จริง เช่น หมวด/รหัส/ลำดับ ถูกตัดทิ้งตามไปด้วย → หายตอนแก้ไขเอกสาร)
@@ -4611,7 +4612,13 @@ function filterAccountingList(list,kind){
     const fields=kind==='pur'?[inv.purchase_no,inv.supplier_name,inv.supplier_tax_id,inv.invoice_no,inv.note]:[inv.sales_invoice_no,inv.job_id,inv.job_ids,inv.customer_name,inv.note];
     return fields.some(f=>String(f||'').toLowerCase().includes(q));
   });
-  out.sort((a,b)=>{const c=String(a.invoice_date||'').localeCompare(String(b.invoice_date||''));return st.sort==='asc'?c:-c;});
+  out.sort((a,b)=>{
+    const c=String(a.invoice_date||'').localeCompare(String(b.invoice_date||''));
+    if(c!==0)return st.sort==='asc'?c:-c;
+    // วันเดียวกัน: เรียงตามเวลาที่แก้ล่าสุด (updated_at) ให้ล่าสุดอยู่บน ตามทิศทางการเรียง
+    const c2=String(a.updated_at||a.created_at||'').localeCompare(String(b.updated_at||b.created_at||''));
+    return st.sort==='asc'?c2:-c2;
+  });
   return out;
 }
 function buildAccountingControls(kind){
@@ -5681,7 +5688,28 @@ const SALES_DOC_META={
   tax_invoice:{label:'ใบกำกับภาษี / Tax Invoice',prefix:'SINV',title:'ใบกำกับภาษี',addLabel:'+ เพิ่มใบกำกับภาษี'},
   receipt:{label:'ใบเสร็จรับเงิน / Receipt',prefix:'RCP',title:'ใบเสร็จรับเงิน',addLabel:'+ เพิ่มใบเสร็จ'}
 };
-function nextSalesDocNo(docType){
+// เลขรันใบกำกับภาษี = ปีพ.ศ.2หลัก / เดือน2หลัก + ลำดับในเดือนนั้น (เช่น 69/0901) อิงวันกำหนดชำระเงิน
+// นับเฉพาะเอกสารที่ยัง active → ลบเอกสารแล้วเลขคืนกลับมาใช้ใหม่ได้ ไม่ค้างเลข
+function taxInvoiceMonthPrefix(refDate){
+  const m=String(refDate||todayISO()).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const yr=m?Number(m[1]):new Date().getFullYear();
+  const mo=m?m[2]:String(new Date().getMonth()+1).padStart(2,'0');
+  const yy=String((yr+543)%100).padStart(2,'0');
+  return `${yy}/${mo}`;
+}
+function nextTaxInvoiceNo(refDate,list){
+  const prefix=taxInvoiceMonthPrefix(refDate); // เช่น 69/09
+  let max=0;
+  (list||salesInvoices||[]).forEach(x=>{
+    if(x.status==='cancelled')return;
+    if((x.doc_type||'tax_invoice')!=='tax_invoice')return;
+    const m=String(x.doc_no||x.sales_invoice_no||'').match(/^(\d{2}\/\d{2})(\d+)$/);
+    if(m&&m[1]===prefix){const n=parseInt(m[2],10);if(Number.isFinite(n)&&n>max)max=n;}
+  });
+  return `${prefix}${String(max+1).padStart(2,'0')}`;
+}
+function nextSalesDocNo(docType,refDate){
+  if(docType==='tax_invoice')return nextTaxInvoiceNo(refDate);
   const meta=SALES_DOC_META[docType]||SALES_DOC_META.tax_invoice;
   const prefix=`${meta.prefix}-${new Date().getFullYear()}-`;
   let max=0;
@@ -5690,6 +5718,13 @@ function nextSalesDocNo(docType){
     if(no.startsWith(prefix)){const n=parseInt(no.slice(prefix.length),10);if(Number.isFinite(n)&&n>max)max=n;}
   });
   return `${prefix}${String(max+1).padStart(3,'0')}`;
+}
+// คำนวณเลขเอกสารใหม่ตามประเภท+วันกำหนดชำระ (เฉพาะตอนสร้างใหม่ ยังไม่บันทึก)
+function refreshSalesDocNo(){
+  if(document.getElementById('sale-id')?.value)return; // แก้ไขของเดิม: คงเลขเดิมไว้
+  const dt=document.getElementById('sale-doc-type')?.value||'tax_invoice';
+  const due=document.getElementById('sale-due-date')?.value||document.getElementById('sale-date')?.value||todayISO();
+  const noEl=document.getElementById('sale-no');if(noEl)noEl.value=nextSalesDocNo(dt,due);
 }
 // เพิ่มเลขท้าย +1 (คงความกว้างเลข) ใช้ตอนเลขเอกสารชนกัน
 function bumpDocNo(no){
@@ -5712,16 +5747,15 @@ function onSalesDocTypeChange(docType){
   const meta=SALES_DOC_META[docType]||SALES_DOC_META.tax_invoice;
   const titleEl=document.getElementById('sales-modal-title');
   if(titleEl&&!document.getElementById('sale-id').value)titleEl.textContent='เพิ่ม'+meta.title;
-  const noEl=document.getElementById('sale-no');
-  // ถ้าเลขยังเป็นค่าเริ่มต้นของชนิดอื่น ให้สร้างเลขใหม่ตามชนิด (เฉพาะตอนสร้างใหม่)
-  if(noEl&&!document.getElementById('sale-id').value)noEl.value=nextSalesDocNo(docType);
+  // ถ้าเลขยังเป็นค่าเริ่มต้นของชนิดอื่น ให้สร้างเลขใหม่ตามชนิด+วันกำหนดชำระ (เฉพาะตอนสร้างใหม่)
+  refreshSalesDocNo();
   const tplRow=document.getElementById('sale-template-row');if(tplRow)tplRow.style.display=docType==='quotation'?'':'none';
 }
 function openSalesModal(id='',prefJobId='',docType=''){
   const inv=id?salesInvoices.find(x=>x.id===id):null;
   const dt=inv?.doc_type||docType||'tax_invoice';
   const meta=SALES_DOC_META[dt]||SALES_DOC_META.tax_invoice;
-  const nextNo=nextSalesDocNo(dt);
+  const nextNo=nextSalesDocNo(dt,inv?.due_date||inv?.invoice_date||todayISO());
   const picker=document.getElementById('sale-job-picker');if(picker)picker.style.display='none';
   const dtSel=document.getElementById('sale-doc-type');if(dtSel)dtSel.value=dt;
   document.getElementById('sales-modal-title').textContent=inv?('แก้ไข'+meta.title):('เพิ่ม'+meta.title);
@@ -5739,6 +5773,8 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-customer').value=inv?.customer_name||'';
   renderSalesCustomerOptions(inv?.customer_name||'');
   document.getElementById('sale-date').value=inv?.invoice_date||todayISO();
+  const dueEl=document.getElementById('sale-due-date');if(dueEl)dueEl.value=inv?.due_date||inv?.invoice_date||todayISO();
+  const ptEl=document.getElementById('sale-payment-terms');if(ptEl)ptEl.value=inv?.payment_terms||'โอนเข้าบัญชี';
   document.getElementById('sale-payment').value=inv?.payment_status||'unpaid';
   document.getElementById('sale-payment-date').value=inv?.payment_date||'';
   document.getElementById('sale-file').value=inv?.file_url||'';
@@ -5818,19 +5854,19 @@ function addSalesJob(){
   const inp=document.getElementById('sale-job-input');
   const v=(inp?.value||'').trim();
   if(!v)return;
-  if(!salesDraftJobs.some(x=>x.toLowerCase()===v.toLowerCase())){salesDraftJobs.push(v);fillSalesFromJob(v);}
+  if(!salesDraftJobs.some(x=>x.toLowerCase()===v.toLowerCase())){salesDraftJobs.push(v);salesOnJobAdded(v);}
   if(inp)inp.value='';
   renderSalesJobChips();
   renderSalesJobPicker('');
 }
-function removeSalesJob(i){salesDraftJobs.splice(i,1);renderSalesJobChips();renderSalesJobPicker(document.getElementById('sale-job-input')?.value||'');}
+function removeSalesJob(i){const pr=salesDraftJobs[i];salesDraftJobs.splice(i,1);salesOnJobRemoved(pr);renderSalesJobChips();renderSalesJobPicker(document.getElementById('sale-job-input')?.value||'');}
 // คลิกเลือก PR แทนการพิมพ์: แสดงรายการงานพร้อมลูกค้า/สาขา/สถานะ และไฮไลต์งานที่ยังไม่ได้ออกบิล
 function salesJobIsBilled(id){return (salesInvoices||[]).some(inv=>inv.status!=='cancelled'&&salesInvoiceMatchesJob(inv,id));}
 function toggleSalesJob(id){
   id=String(id).trim();if(!id)return;
   const i=salesDraftJobs.findIndex(x=>x.toLowerCase()===id.toLowerCase());
-  if(i>=0)salesDraftJobs.splice(i,1);
-  else{salesDraftJobs.push(id);fillSalesFromJob(id);}
+  if(i>=0){salesDraftJobs.splice(i,1);salesOnJobRemoved(id);}
+  else{salesDraftJobs.push(id);salesOnJobAdded(id);}
   renderSalesJobChips();
   renderSalesJobPicker(document.getElementById('sale-job-input')?.value||'');
 }
@@ -5895,6 +5931,39 @@ function fillSalesFromJob(pr=''){
     salesDraftItems=[blankSalesItem(j.type||'ค่าบริการ',1,'งาน',amount)];
     renderSalesItemEditor();
   }
+}
+// ===== ทำใบกำกับภาษีเอง: เพิ่ม PR/JOB แล้วให้ขึ้นเป็นบรรทัดสรุป (เลข PR + ชื่อสาขา + ยอดก่อน VAT) อัตโนมัติ =====
+function salesIsTaxInvoiceForm(){return (document.getElementById('sale-doc-type')?.value||'')==='tax_invoice';}
+function salesOnJobAdded(pr){ if(salesIsTaxInvoiceForm())salesAddJobLine(pr); else fillSalesFromJob(pr); }
+function salesOnJobRemoved(pr){ if(salesIsTaxInvoiceForm())salesRemoveJobLine(pr); }
+function latestQuotationForJob(pr){
+  return (salesInvoices||[]).filter(inv=>inv.status!=='cancelled'&&(inv.doc_type==='quotation')&&salesInvoiceMatchesJob(inv,pr))
+    .sort((a,b)=>String(b.invoice_date||'').localeCompare(String(a.invoice_date||''))||String(b.doc_no||'').localeCompare(String(a.doc_no||'')))[0]||null;
+}
+function salesAddJobLine(pr){
+  pr=String(pr||'').trim();if(!pr)return;
+  const j=jobs.find(x=>sameJob(x.id,pr)&&!isDeletedRecord(x));
+  const branch=j?String(j.branch||'').trim():'';
+  const client=j?String(j.client||'').trim():'';
+  const custEl=document.getElementById('sale-customer');
+  if(custEl&&!custEl.value&&j)applySalesCustomerProfile(client,branch);
+  // กันซ้ำ: ถ้ามีบรรทัดของ PR นี้อยู่แล้ว ไม่เพิ่มซ้ำ
+  if(salesDraftItems.some(it=>sameJob(it.item_code,pr)))return;
+  const q=latestQuotationForJob(pr);
+  const amount=q?Number(q.subtotal||0):0;
+  const line={...blankSalesItem(),item_code:pr,category:'',description:branch||client||pr,quantity:1,unit:'JOB',unit_price:amount,discount:0,source_type:'manual',source_ref_id:'',source_doc_id:q?q.id:''};
+  const last=salesDraftItems[salesDraftItems.length-1];
+  if(last&&!String(last.description||'').trim()&&!Number(last.unit_price||0))salesDraftItems[salesDraftItems.length-1]=line;
+  else salesDraftItems.push(line);
+  const sf=document.getElementById('sale-summary-flag');if(sf)sf.value='1'; // ทำเองก็ให้พิมพ์เป็นฟอร์มสรุป
+  renderSalesItemEditor();updateSalesSummary&&updateSalesSummary();
+  // ถ้าราคากลาง/ใบเสนอราคายังไม่โหลด → โหลดแล้วเติมยอดให้ทีหลัง
+  if(amount===0&&!accountingLoaded){ensureAccountingLoaded().then(()=>{const q2=latestQuotationForJob(pr);const it=salesDraftItems.find(x=>sameJob(x.item_code,pr));if(q2&&it&&!Number(it.unit_price||0)){it.unit_price=Number(q2.subtotal||0);it.source_doc_id=q2.id;renderSalesItemEditor();updateSalesSummary&&updateSalesSummary();}}).catch(()=>{});}
+}
+function salesRemoveJobLine(pr){
+  pr=String(pr||'').trim();if(!pr)return;
+  const idx=salesDraftItems.findIndex(it=>sameJob(it.item_code,pr));
+  if(idx>=0){salesDraftItems.splice(idx,1);if(!salesDraftItems.length)salesDraftItems=[blankSalesItem()];renderSalesItemEditor();updateSalesSummary&&updateSalesSummary();}
 }
 function normalizePartKey(v){return String(v||'').trim().toLowerCase();}
 // ราคาขายของรายการในแคตตาล็อก: ใช้ราคาขายก่อน ถ้าไม่มีให้รวมค่าของ+ค่าแรง (รองรับรายการค่าแรง/ค่าบริการที่เก็บราคาไว้ในช่อง labor)
@@ -6161,6 +6230,8 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     customer_id:document.getElementById('sale-customer').value.trim(),
     customer_name:document.getElementById('sale-customer').value.trim(),
     invoice_date:document.getElementById('sale-date').value||todayISO(),
+    due_date:document.getElementById('sale-due-date')?.value||document.getElementById('sale-date').value||todayISO(),
+    payment_terms:document.getElementById('sale-payment-terms')?.value.trim()||'',
     subtotal,
     discount_total:discountTotal,
     overhead_enabled:adj.overheadEnabled,
@@ -6209,9 +6280,11 @@ async function saveSalesInvoice(){if(!guardEdit())return;
         const m=String(e?.message||e);
         if(/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)&&attempt<9){
           const cur=String(inv.sales_invoice_no||inv.doc_no||docNo);
-          const prefix=cur.replace(/\d+\D*$/,'')||(cur+'-'); // เช่น QT-2026-
+          const taxm=cur.match(/^(\d{2}\/\d{2})(\d+)$/); // ใบกำกับภาษี 69/0901 → prefix 69/09, ลำดับ 2 หลัก
+          const prefix=taxm?taxm[1]:(cur.replace(/\d+\D*$/,'')||(cur+'-')); // เช่น QT-2026- หรือ 69/09
+          const pad=taxm?2:3;
           const smax=await serverMaxSalesNo(prefix);
-          const bumped=`${prefix}${String(smax+1+attempt).padStart(3,'0')}`;
+          const bumped=`${prefix}${String(smax+1+attempt).padStart(pad,'0')}`;
           inv.sales_invoice_no=bumped;inv.doc_no=bumped;
           const noEl=document.getElementById('sale-no');if(noEl)noEl.value=bumped;
           setAccountingStatus('sales','เลขเอกสารซ้ำ — เปลี่ยนเป็น '+bumped,'warn');
@@ -6317,6 +6390,9 @@ async function mergeSalesDocsToTaxInvoice(){
   setv('sale-travel-km', base.travel_km||0);
   setv('sale-travel-rate', base.travel_rate||0);
   if(travel&&!Number(base.travel_km||0)){ setv('sale-travel-km',1); setv('sale-travel-rate',travel); }
+  setv('sale-due-date', base.due_date||base.invoice_date||todayISO());
+  setv('sale-payment-terms', base.payment_terms||'โอนเข้าบัญชี');
+  refreshSalesDocNo(); // รันเลขใบกำกับตามเดือนของวันกำหนดชำระ
   setv('sale-note', 'รวมจากเอกสาร: '+docs.map(d=>d.doc_no||d.sales_invoice_no||d.id).join(', '));
 
   salesDraftItems=merged.map(it=>({
@@ -6363,6 +6439,9 @@ async function mergeSalesDocsToSummaryTax(){
   setSalesSlaStatus('none');
   salesVatMode='add'; setv('sale-vat-mode','add');
   setv('sale-summary-flag','1');
+  setv('sale-due-date', base.due_date||base.invoice_date||todayISO());
+  setv('sale-payment-terms', base.payment_terms||'โอนเข้าบัญชี');
+  refreshSalesDocNo(); // รันเลขใบกำกับตามเดือนของวันกำหนดชำระ
   setv('sale-note','รวมแบบสรุปจากเอกสาร: '+docs.map(d=>d.doc_no||d.sales_invoice_no||d.id).join(', '));
   salesDraftItems=docs.map(d=>{
     const prs=salesInvoiceJobs(d);
