@@ -5010,13 +5010,14 @@ function openSalesDocPreview(id){
   const meta=SALES_DOC_META[inv.doc_type||'tax_invoice']||SALES_DOC_META.tax_invoice;
   const firstPr=salesInvoiceJobs(inv)[0]||'';
   document.getElementById('doc-preview-title').textContent=meta.title+' · '+esc(inv.doc_no||inv.sales_invoice_no||'');
+  const _pv=(inv.doc_type==='tax_invoice'&&inv.doc_template==='summary')?liveTaxSummaryTotals(inv,items):{subtotal:Number(inv.subtotal||0),vat:Number(inv.vat_amount||0),total:Number(inv.total_amount||0)};
   document.getElementById('doc-preview-sub').innerHTML=
     `<div class="dp-detail">`
     +`<div class="dp-item"><span class="dp-label">ลูกค้า</span><span class="dp-val">${esc(inv.customer_name||inv.customer_id||'-')}</span></div>`
     +`<div class="dp-item"><span class="dp-label">สาขา</span><span class="dp-val">${esc(salesInvoiceBranchText(inv))}</span></div>`
-    +`<div class="dp-item"><span class="dp-label">ก่อน VAT</span><span class="dp-val">฿${money(inv.subtotal)}</span></div>`
-    +`<div class="dp-item"><span class="dp-label">VAT</span><span class="dp-val">฿${money(inv.vat_amount)}</span></div>`
-    +`<div class="dp-item dp-total"><span class="dp-label">รวมทั้งสิ้น</span><span class="dp-val">฿${money(inv.total_amount)}</span></div>`
+    +`<div class="dp-item"><span class="dp-label">ก่อน VAT</span><span class="dp-val">฿${money(_pv.subtotal)}</span></div>`
+    +`<div class="dp-item"><span class="dp-label">VAT</span><span class="dp-val">฿${money(_pv.vat)}</span></div>`
+    +`<div class="dp-item dp-total"><span class="dp-label">รวมทั้งสิ้น</span><span class="dp-val">฿${money(_pv.total)}</span></div>`
     +`<div class="dp-item"><span class="dp-label">แก้ล่าสุด</span><span class="dp-val">${esc(inv.updated_by||inv.created_by||'-')} · ${esc(editedAtText(inv.updated_at))}</span></div>`
     +`</div>`;
   document.getElementById('doc-preview-actions').innerHTML=
@@ -5281,14 +5282,15 @@ function salesTaxSummaryHtml(inv,items){
     desc:String(it.description||'').trim(),
     qty:Number(it.quantity||1),
     unit:String(it.unit||'JOB').trim()||'JOB',
-    amount:Number(it.subtotal||0)
+    amount:liveTaxSummaryLineAmount(it) // ยอดสดจากใบเสนอราคาต้นทาง (อัปเดตตามการแก้ราคา)
   }));
-  const lineSum=lineRows.reduce((s,r)=>s+r.amount,0);
-  const subtotal=Number(inv.subtotal||lineSum||0);
-  const discount=Number(inv.discount_total||0);
-  const afterDiscount=Math.max(0,subtotal-discount);
-  const vat=Number(inv.vat_amount||0);
-  const total=Number(inv.total_amount||(afterDiscount+vat));
+  const _lt=liveTaxSummaryTotals(inv,items);
+  const lineSum=_lt.lineSum;
+  const subtotal=_lt.subtotal;
+  const discount=_lt.discount;
+  const afterDiscount=_lt.afterDiscount;
+  const vat=_lt.vat;
+  const total=_lt.total;
   const discPct=subtotal>0?Math.round(discount/subtotal*1000)/10:0;
   const vatPct=vat>0?7:0;
   const totalText=thaiBahtText(total);
@@ -6024,6 +6026,56 @@ function latestQuotationForJob(pr){
   return (salesInvoices||[]).filter(inv=>inv.status!=='cancelled'&&(inv.doc_type==='quotation')&&salesInvoiceMatchesJob(inv,pr))
     .sort((a,b)=>String(b.invoice_date||'').localeCompare(String(a.invoice_date||''))||String(b.doc_no||'').localeCompare(String(a.doc_no||'')))[0]||null;
 }
+// ลิงค์สด: ยอดของแต่ละบรรทัดในใบกำกับแบบสรุป = ยอดก่อน VAT "ปัจจุบัน" ของใบเสนอราคาต้นทาง
+// (ใช้ source_doc_id ก่อน ถ้าไม่มีค่อยใช้ใบเสนอราคาล่าสุดของ PR) → แก้ราคาใบเสนอราคาแล้วใบกำกับอัปเดตตามทันทีตอนแสดง/พิมพ์
+function liveTaxSummaryLineAmount(it){
+  let q=null;
+  if(it&&it.source_doc_id)q=(salesInvoices||[]).find(d=>d.id===it.source_doc_id&&d.status!=='cancelled'&&d.doc_type==='quotation');
+  if(!q){const pr=String((it&&it.item_code)||'').trim();if(pr)q=latestQuotationForJob(pr);}
+  return q?Number(q.subtotal||0):Number((it&&it.subtotal)||0);
+}
+function liveTaxSummaryTotals(inv,items){
+  const lineSum=(items||[]).reduce((s,it)=>s+liveTaxSummaryLineAmount(it),0);
+  const discount=Number(inv.discount_total||0);
+  const afterDiscount=Math.max(0,lineSum-discount);
+  const hadVat=Number(inv.vat_amount||0)>0||(inv.doc_type==='tax_invoice');
+  const vat=hadVat?Math.round(afterDiscount*0.07*100)/100:0;
+  const total=Math.round((afterDiscount+vat)*100)/100;
+  return {lineSum,subtotal:lineSum,discount,afterDiscount,vat,total};
+}
+// เมื่อบันทึกใบเสนอราคา → ไล่อัปเดตยอดในใบกำกับแบบสรุปที่อ้างถึงใบเสนอราคานี้ให้ตรงกัน (บันทึกลง DB จริง)
+async function syncSummaryTaxInvoicesForQuotation(quotationId,newSub,qPrs){
+  newSub=Number(newSub||0); qPrs=qPrs||[];
+  const taxes=(salesInvoices||[]).filter(x=>x.status!=='cancelled'&&x.doc_type==='tax_invoice'&&x.doc_template==='summary');
+  let changedAny=false;
+  for(const tx of taxes){
+    const its=(salesInvoiceItems||[]).filter(it=>it.sales_invoice_id===tx.id&&it.status!=='cancelled');
+    let touched=false;
+    for(const it of its){
+      const bySrc=it.source_doc_id&&String(it.source_doc_id)===String(quotationId);
+      const byPr=!it.source_doc_id&&qPrs.some(pr=>sameJob(it.item_code,pr))&&(latestQuotationForJob(String(it.item_code||''))?.id===quotationId);
+      if((bySrc||byPr)&&Number(it.subtotal||0)!==newSub){
+        const r=await fetch(splitUrl('sales_invoice_items',`?id=eq.${encodeURIComponent(it.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({unit_price:newSub,subtotal:newSub,total_amount:newSub,source_doc_id:String(quotationId),updated_by:getActorName()})});
+        if(!r.ok)throw new Error(await r.text());
+        it.unit_price=newSub;it.subtotal=newSub;it.total_amount=newSub;it.source_doc_id=String(quotationId);
+        touched=true;
+      }
+    }
+    if(touched){
+      const lineSum=its.reduce((s,it)=>s+Number(it.subtotal||0),0);
+      const discount=Number(tx.discount_total||0);
+      const afterDisc=Math.max(0,lineSum-discount);
+      const hadVat=Number(tx.vat_amount||0)>0;
+      const vat=hadVat?Math.round(afterDisc*0.07*100)/100:0;
+      const total=Math.round((afterDisc+vat)*100)/100;
+      const r2=await fetch(splitUrl('sales_invoices',`?id=eq.${encodeURIComponent(tx.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({subtotal:lineSum,vat_amount:vat,total_amount:total,updated_by:getActorName()})});
+      if(!r2.ok)throw new Error(await r2.text());
+      tx.subtotal=lineSum;tx.vat_amount=vat;tx.total_amount=total;
+      changedAny=true;
+    }
+  }
+  return changedAny;
+}
 function salesAddJobLine(pr){
   pr=String(pr||'').trim();if(!pr)return;
   const j=jobs.find(x=>sameJob(x.id,pr)&&!isDeletedRecord(x));
@@ -6391,6 +6443,8 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     }
     if(rows.length)await sbUpsertResilient('sales_invoice_items','?on_conflict=id',rows);
     upsertClientFromBill(inv.customer_name);
+    // ใบเสนอราคาถูกแก้ราคา → อัปเดตใบกำกับแบบสรุปที่อ้างถึงงานนี้อัตโนมัติ (ลิงค์กัน)
+    if(docType==='quotation'){try{await syncSummaryTaxInvoicesForQuotation(id,subtotal,jobList);}catch(e){console.warn('ซิงก์ใบกำกับจากใบเสนอราคาไม่สำเร็จ',e);}}
     let jobTouched=false;
     jobList.forEach(pr=>{
       const j=jobs.find(x=>sameJob(x.id,pr)&&!isDeletedRecord(x));
