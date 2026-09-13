@@ -1332,6 +1332,7 @@ select option{background:var(--surface2);}
                   <select id="sale-customer-select" onchange="applySalesCustomerProfile(this.value)"></select>
                   <textarea id="sale-customer-address" placeholder="ที่อยู่ลูกค้า" style="min-height:56px;"></textarea>
                   <input id="sale-customer-taxid" placeholder="เลขประจำตัวผู้เสียภาษี">
+                  <input id="sale-customer-branch-no" placeholder="สาขาที่ (เว้นว่าง = สำนักงานใหญ่)">
                   <input id="sale-customer-phone" placeholder="โทรศัพท์">
                 </div>
                 <input id="sale-customer" type="hidden">
@@ -2370,7 +2371,7 @@ function rowHashMap(rows,idOf){
 }
 function splitUrl(table,query=''){return `${SUPABASE_URL}/rest/v1/${table}${query}`;}
 // คอลัมน์ที่เพิ่มใน migration phase 3 — ถ้ายังไม่ได้รัน migration จะถูกตัดออกอัตโนมัติเพื่อไม่ให้บันทึกพัง
-const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template','branch_province','customer_province','labor_price','parts_price','labor_cost','parts_cost','due_date','payment_terms'];
+const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template','branch_province','customer_province','labor_price','parts_price','labor_cost','parts_cost','due_date','payment_terms','customer_branch_no'];
 function stripKeys(payload,keys){const drop=o=>{const c={...o};keys.forEach(k=>delete c[k]);return c;};return Array.isArray(payload)?payload.map(drop):drop(payload);}
 // POST แบบทนทาน: ถ้า PostgREST แจ้งว่าไม่มีคอลัมน์ (ยังไม่ได้รัน migration) จะลองใหม่โดยตัด "เฉพาะ" คอลัมน์ที่ error ระบุชื่อ
 // (เดิมตัดทั้ง PHASE3_OPTIONAL_KEYS ยกชุด → คอลัมน์ที่ DB มีอยู่จริง เช่น หมวด/รหัส/ลำดับ ถูกตัดทิ้งตามไปด้วย → หายตอนแก้ไขเอกสาร)
@@ -4059,12 +4060,23 @@ async function copyCheckinLink(id){
   const text=`📝 แจ้งเข้าซ่อม ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nยืนยันเข้างาน + เซ็นชื่อที่ลิงก์นี้:\n${url}`;
   try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งเข้าซ่อมแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){uiCopyModal(text,'คัดลอกลิงก์แจ้งเข้าซ่อม');}
 }
+// ===== หน้าตรวจรับงาน (acceptance.html) — ลูกค้าเซ็นรับงานหลังซ่อมเสร็จ + ดึงสิ่งที่ช่างแก้มาโชว์ =====
+function acceptanceFormUrl(id){return `acceptance.html?job=${encodeURIComponent(id)}`;}
+function openAcceptanceForm(id){window.open(new URL(acceptanceFormUrl(id),location.href).href,'_blank');}
+async function copyAcceptanceLink(id){
+  const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||jobs.find(x=>x.id===id)||{id,branch:''};
+  let shortUrl=null;
+  try{shortUrl=await getOrCreateShortLink(j,'acceptance','acceptance.html');}catch(e){console.warn('Acceptance short link create failed',e);}
+  const url=shortUrl||new URL(acceptanceFormUrl(id),location.href).href;
+  const text=`✅ ตรวจรับงาน ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nตรวจรับ + เซ็นรับงานที่ลิงก์นี้:\n${url}`;
+  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์ตรวจรับงานแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){uiCopyModal(text,'คัดลอกลิงก์ตรวจรับงาน');}
+}
 function openDet(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   currentDetailJobId=id;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
-  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-success" onclick="openCheckinViewModal('${j.id}')">เช็คข้อมูลแจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button>${salesJobIsBilled(j.id)?`<button class="btn btn-success" onclick="matchFinanceFromSales('${j.id}')">🔗 ดึงราคาเข้าการเงิน</button>`:''}<button class="btn btn-primary" onclick="openDocBundle('${j.id}')">📑 ดาวน์โหลดชุดเอกสาร</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
+  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-success" onclick="openCheckinViewModal('${j.id}')">เช็คข้อมูลแจ้งเข้าซ่อม</button><button class="btn btn-ghost" onclick="copyAcceptanceLink('${j.id}')">คัดลอกลิงก์ตรวจรับงาน</button><button class="btn btn-primary" onclick="openAcceptanceForm('${j.id}')">เปิดหน้าตรวจรับงาน</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button>${salesJobIsBilled(j.id)?`<button class="btn btn-success" onclick="matchFinanceFromSales('${j.id}')">🔗 ดึงราคาเข้าการเงิน</button>`:''}<button class="btn btn-primary" onclick="openDocBundle('${j.id}')">📑 ดาวน์โหลดชุดเอกสาร</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
   ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
   openM('m-detail');
 }
@@ -5301,6 +5313,10 @@ function salesTaxSummaryHtml(inv,items){
   const customerName=esc(inv.customer_name||inv.customer_id||'-');
   const custAddr=esc(customer.address||'-');
   const custTax=esc(customer.taxId||'-');
+  const custBranchNo=String(customer.branchNo||'').trim();
+  const custBranchHtml=custBranchNo
+    ?`<span class="ho">&#9744; สำนักงานใหญ่</span>&nbsp;&nbsp;<span class="ho">&#9746; สาขาที่</span> ${esc(custBranchNo)}`
+    :`<span class="ho">&#9746; สำนักงานใหญ่</span>&nbsp;&nbsp;<span class="ho">&#9744; สาขาที่</span> ..........`;
   const coName=esc(company.name||company.displayName||'');
   const coBranch=esc(company.branch||'สำนักงานใหญ่');
   const coAddr=esc(company.address||'');
@@ -5331,7 +5347,7 @@ function salesTaxSummaryHtml(inv,items){
     <div class="cust-l">
       <div class="row"><span class="k">นามลูกค้า</span><b class="v">${customerName}</b></div>
       <div class="row"><span class="k">ที่อยู่</span><span class="v">${custAddr}</span></div>
-      <div class="row"><span class="k">เลขประจำตัวผู้เสียภาษี</span><span class="v">${custTax}&nbsp;&nbsp;&nbsp;<span class="ho">&#9746; สำนักงานใหญ่</span>&nbsp;&nbsp;<span class="ho">&#9744; สาขาที่</span> ..........</span></div>
+      <div class="row"><span class="k">เลขประจำตัวผู้เสียภาษี</span><span class="v">${custTax}&nbsp;&nbsp;&nbsp;${custBranchHtml}</span></div>
     </div>
     <div class="cust-r">
       <div class="mrow"><span>เลขที่ใบกำกับ</span><b>${docNo||'-'}</b></div>
@@ -5458,7 +5474,7 @@ function salesDocCompanyInfo(inv={}){
   };
 }
 function salesDocCustomerInfo(inv={}){
-  return {taxId:inv.customer_tax_id||'',address:inv.customer_address||'',phone:inv.customer_phone||''};
+  return {taxId:inv.customer_tax_id||'',address:inv.customer_address||'',phone:inv.customer_phone||'',branchNo:inv.customer_branch_no||''};
 }
 function salesDocImageUrl(v){return quoteImageUrl(v);}
 function salesCompanyProfiles(){
@@ -5853,6 +5869,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   renderSalesCompanyProfileOptions(inferSalesCompanyProfile(saleCompany));
   document.getElementById('sale-customer-address').value=saleCustomer.address;
   document.getElementById('sale-customer-taxid').value=saleCustomer.taxId;
+  {const el=document.getElementById('sale-customer-branch-no');if(el)el.value=saleCustomer.branchNo||'';}
   document.getElementById('sale-customer-phone').value=saleCustomer.phone;
   document.getElementById('sale-company-display').value=saleCompany.displayName;
   document.getElementById('sale-company-name').value=saleCompany.name;
@@ -6387,6 +6404,7 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     file_url:fileUrl,
     note:document.getElementById('sale-note').value.trim(),
     customer_tax_id:document.getElementById('sale-customer-taxid').value.trim(),
+    customer_branch_no:document.getElementById('sale-customer-branch-no')?.value.trim()||'',
     customer_address:document.getElementById('sale-customer-address').value.trim(),
     customer_phone:document.getElementById('sale-customer-phone').value.trim(),
     company_display_name:document.getElementById('sale-company-display').value.trim(),
@@ -8534,9 +8552,10 @@ async function runDailyBackupIfNeeded(){
 function clearRptFilter(){rptSearch='';rptDateFilter='';rptMonthFilter='';rptFilter='ทั้งหมด';rptReviewFilter='ทั้งหมด';renderReports();saveUIState();}
 let remoteRefreshTimer=null, remoteRefreshRunning=false;
 const REMOTE_AUTO_REFRESH_ENABLED=true;
-const REMOTE_REFRESH_INTERVAL_MS=60*1000; // ใช้งานหลาย account พร้อมกัน → ซิงก์ทุก 60 วิ (จากเดิม 5 นาที)
-const REMOTE_FOCUS_REFRESH_MIN_MS=20*1000;
-let lastRemoteRefreshAt=0;
+const REMOTE_REFRESH_INTERVAL_MS=150*1000; // poll เบา ๆ ทุก ~2.5 นาที (ความสดหลักมาจาก BroadcastChannel ทันที + refresh ตอนสลับแท็บ)
+const REMOTE_FOCUS_REFRESH_MIN_MS=15*1000;
+const REMOTE_ACCOUNTING_REFRESH_MIN_MS=3*60*1000; // reload บัญชี/เอกสาร (ตัวหนัก) ในรอบ poll อย่างมากทุก 3 นาที กันหน่วงตอนเปิดหน้าเอกสารค้าง
+let lastRemoteRefreshAt=0, lastAccountingRefreshAt=0;
 function canAutoRefreshRemote(){
   // ไม่รีเฟรชตอนเปิด modal (กันรบกวนการแก้ไข), ตอนมีงานค้างบันทึก (กันทับงานที่ยังไม่ขึ้น server), หรือยังไม่ hydrate
   return REMOTE_AUTO_REFRESH_ENABLED && isHydrated && !hasUnsyncedLocalChanges && !document.querySelector('.modal-overlay.open');
@@ -8552,7 +8571,7 @@ async function refreshRemoteIfIdle(){
     ensureMeta();
     // รีเฟรชบัญชี/สต็อกเฉพาะตอนกำลังดูหน้านั้นจริง (ไม่ดึงทุกรอบทุกหน้า เพื่อไม่ให้หน่วง)
     const active=document.querySelector('.page.active')?.id||'';
-    if(accountingLoaded&&/sales-tax|purchase-tax|finance|documents/.test(active)){try{await ensureAccountingLoaded(true);}catch(e){}}
+    if(accountingLoaded&&/sales-tax|purchase-tax|finance|documents/.test(active)&&Date.now()-lastAccountingRefreshAt>=REMOTE_ACCOUNTING_REFRESH_MIN_MS){try{await ensureAccountingLoaded(true);lastAccountingRefreshAt=Date.now();}catch(e){}}
     if(stockLoaded&&/stock/.test(active)){try{await ensureStockLoaded(true);}catch(e){}}
     cacheFastState();
     fillSelects();
@@ -8582,6 +8601,7 @@ function onProfixSync(kind){
   if(document.getElementById('m-sales')?.classList.contains('open')||document.getElementById('m-purchase')?.classList.contains('open')||hasUnsyncedLocalChanges)return;
   if(!accountingLoaded)return;
   ensureAccountingLoaded(true).then(()=>{
+    lastAccountingRefreshAt=Date.now(); // เพิ่งรีโหลดสด → กัน poll รีโหลดซ้ำติดกัน
     const a=document.querySelector('.page.active')?.id||'';
     if(/sales-tax/.test(a))renderSalesTax();
     else if(/purchase-tax/.test(a))renderPurchaseTax();
