@@ -210,8 +210,8 @@ textarea{resize:vertical;min-height:64px;}
       </div>
     </div>
 
-    <div class="card" style="display:none;">
-      <div class="sec-title">🛠️ ลายเซ็นช่างผู้ส่งงาน <span class="req-star">*</span></div>
+    <div class="card">
+      <div class="sec-title">🛠️ ลายเซ็นช่างผู้เข้าซ่อม <span class="req-star">*</span></div>
       <div class="sec-sub">ช่างเซ็นยืนยันการส่งมอบงาน</div>
       <div class="form-group"><label>ชื่อช่าง <span class="req-star">*</span></label><input id="f-tech-name" placeholder="ชื่อ-นามสกุล ช่าง"></div>
       <div class="sig-wrap" id="sig-wrap-tech">
@@ -628,6 +628,9 @@ async function submitCheckin(){
   const signerName = document.getElementById('f-signer-name').value.trim();
   if(!signerName){ alert('กรุณากรอกชื่อผู้ตรวจรับงาน'); document.getElementById('f-signer-name').focus(); return; }
   if(!sigPads.customer?.hasStroke){ alert('กรุณาเซ็นชื่อยืนยันตรวจรับงานก่อนบันทึก'); return; }
+  const techName = document.getElementById('f-tech-name').value.trim();
+  if(!techName){ alert('กรุณากรอกชื่อช่างผู้เข้าซ่อม'); document.getElementById('f-tech-name').focus(); return; }
+  if(!sigPads.tech?.hasStroke){ alert('กรุณาให้ช่างเซ็นชื่อก่อนบันทึก'); return; }
 
   const jobId = manualMode ? (document.getElementById('m-job-id').value.trim() || '') : (jobRecord?.id || JOB_ID || '');
   const client = manualMode ? document.getElementById('m-client').value.trim() : (jobRecord?.client || document.getElementById('j-client')?.textContent || '');
@@ -656,8 +659,8 @@ async function submitCheckin(){
     signer_name: signerName,
     signer_role: document.getElementById('f-signer-role')?.value || 'ลูกค้า',
     signature_data: document.getElementById('sig-canvas-customer').toDataURL('image/png'),
-    tech_name: null,
-    tech_signature_data: null,
+    tech_name: techName,
+    tech_signature_data: document.getElementById('sig-canvas-tech').toDataURL('image/png'),
     source: 'acceptance_page'
   };
 
@@ -686,6 +689,7 @@ function showDone(row){
     ['ลูกค้า / สาขา', `${row.client_snapshot||'—'} / ${row.branch_snapshot||'—'}`],
     ['วันเวลาที่ตรวจรับ', `${row.date_in} ${row.time_in}`],
     ['ผู้ตรวจรับ', `${row.signer_name} (${row.signer_role})`],
+    ['ช่างผู้เข้าซ่อม', row.tech_name || '—'],
   ];
   document.getElementById('done-summary').innerHTML = rows.map(([k,v])=>`<div class="summary-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
 }
