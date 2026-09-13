@@ -396,7 +396,7 @@ async function loadJobRecord(jobId){
       const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=ilike.*${encodeURIComponent(digits)}*&select=id,data`, { headers: sbHeaders() });
       if(r.ok){
         const rows = await r.json();
-        const row = rows.find(x=>sameJobId(x.id, cleanJobId)) || (rows.length === 1 ? rows[0] : null);
+        const row = rows.find(x=>sameJobId(x.id, cleanJobId)) || rows.find(x=>String(x.id||'').replace(/[^0-9A-Za-zก-๛]/g,'').toUpperCase()===String(cleanJobId||'').replace(/[^0-9A-Za-zก-๛]/g,'').toUpperCase());
         if(row?.data){
           jobStorageMode = 'split';
           return row.data;
