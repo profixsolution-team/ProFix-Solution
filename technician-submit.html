@@ -961,6 +961,7 @@ async function showForm(){
   });
   // โหลดรูปเดิมจาก technician_report_images (รูปที่อัปไว้รอบก่อน/ฉบับร่าง) — job data เก็บแค่จำนวน ไม่ได้เก็บรูปจริง
   await loadExistingPhotosIntoForm(jobData.id || JOB_ID);
+  await loadCheckinSurveyPhotos(jobData.id || JOB_ID); // ดึงรูปสำรวจจากหน้าแจ้งเข้าซ่อม → รูปก่อนดำเนินการ
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
   renderThumbs('documents');
   toggleQuoteMode();
@@ -982,6 +983,28 @@ async function loadExistingPhotosIntoForm(jobId){
       photos[cat].push({ id: row.id || im.id || ('old-'+Math.random().toString(36).slice(2)), existing:true, uploadedMeta:im, dataUrl:url, url, status:'ready', width:im.width||0, height:im.height||0, fileKey: im.name || url });
     });
   }catch(e){ console.warn('load existing photos failed', e); }
+}
+// ดึงรูปที่ลูกค้า/แอดมินอัปไว้ตอน "แจ้งเข้าซ่อม/เข้าสำรวจ" (job_checkins) มาเป็นรูปก่อนดำเนินการอัตโนมัติ
+async function loadCheckinSurveyPhotos(jobId){
+  const clean = String(jobId||'').trim(); if(!clean) return;
+  const pick = async q => { try{ const r = await fetch(`${SUPABASE_URL}/rest/v1/job_checkins${q}`,{headers:sbHeaders()}); if(!r.ok) return null; return await r.json(); }catch(e){ return null; } };
+  try{
+    let rows = await pick(`?job_id=eq.${encodeURIComponent(clean)}&select=job_id,photos,created_at&order=created_at.asc`);
+    if(!Array.isArray(rows) || !rows.length){
+      const digitKey = (clean.match(/\d+/g)||[]).sort((a,b)=>b.length-a.length)[0] || '';
+      if(digitKey.length >= 3){
+        rows = await pick(`?job_id=ilike.*${encodeURIComponent(digitKey)}*&select=job_id,photos,created_at&order=created_at.asc`);
+        rows = (rows||[]).filter(r=>normJobId(r.job_id)===normJobId(clean)); // จับคู่ตรงเท่านั้น (กันงานเลขคล้าย)
+      }
+    }
+    (rows||[]).forEach(rec=>{
+      (Array.isArray(rec.photos)?rec.photos:[]).forEach(p=>{
+        const url = p && p.url; if(!url) return;
+        if(photos.before.some(x=>(x.url||x.fileKey)===url)) return; // กันซ้ำกับรูปที่มีอยู่แล้ว
+        photos.before.push({ id:'checkin-'+Math.random().toString(36).slice(2), existing:true, fromCheckin:true, uploadedMeta:{url,storage:p.storage||'external'}, dataUrl:url, url, status:'ready', width:p.width||0, height:p.height||0, fileKey:url });
+      });
+    });
+  }catch(e){ console.warn('load checkin survey photos failed', e); }
 }
 
 // ============================================================
