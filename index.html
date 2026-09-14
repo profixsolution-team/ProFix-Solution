@@ -5035,7 +5035,8 @@ function openSalesDocPreview(id){
   document.getElementById('doc-preview-actions').innerHTML=
     `<button class="btn btn-primary btn-sm" onclick="closeM('m-doc-preview');openSalesInNewTab('${esc(id)}')">✏️ แก้ไขเอกสาร</button>`
     +`<button class="btn btn-success btn-sm" onclick="printSalesDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`
-    +(firstPr?`<button class="btn btn-ghost btn-sm" onclick="matchFinanceFromSales('${esc(firstPr)}')">🔗 ดึงราคาเข้าการเงิน</button>`:'');
+    +(firstPr?`<button class="btn btn-ghost btn-sm" onclick="matchFinanceFromSales('${esc(firstPr)}')">🔗 ดึงราคาเข้าการเงิน</button>`:'')
+    +(firstPr?`<button class="btn btn-sm" style="margin-left:auto;background:var(--orange);color:#fff;border:0;" onclick="closeM('m-doc-preview');openDocBundle('${esc(firstPr)}')">📑 ดาวน์โหลดชุดเอกสาร</button>`:'');
   document.getElementById('doc-preview-frame').srcdoc=salesDocHtmlFor(inv,items);
   openM('m-doc-preview');
 }
