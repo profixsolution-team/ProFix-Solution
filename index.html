@@ -4664,8 +4664,8 @@ function filterAccountingList(list,kind){
   out.sort((a,b)=>{
     const c=String(a.invoice_date||'').localeCompare(String(b.invoice_date||''));
     if(c!==0)return st.sort==='asc'?c:-c;
-    // วันเดียวกัน: เรียงตามเวลาที่แก้ล่าสุด (updated_at) ให้ล่าสุดอยู่บน ตามทิศทางการเรียง
-    const c2=String(a.updated_at||a.created_at||'').localeCompare(String(b.updated_at||b.created_at||''));
+    // วันเดียวกัน: เรียงตาม "เลขที่เอกสาร" (เสถียร + เรียงลำดับจริง) ไม่ใช้ updated_at เพราะโดนเด้งเวลาระบบอัปเดตลิงค์
+    const c2=String(a.doc_no||a.sales_invoice_no||a.purchase_no||'').localeCompare(String(b.doc_no||b.sales_invoice_no||b.purchase_no||''),undefined,{numeric:true});
     return st.sort==='asc'?c2:-c2;
   });
   return out;
@@ -7138,8 +7138,7 @@ async function collectPrDocs(pr){
   const b=workOrderBundle(pr),j=b.job;
   const out=[];
   if(j){
-    out.push({label:'รายงานช่าง',build:()=>serviceReportHtml(j)});
-    out.push({label:'ใบตรวจรับงาน',build:()=>acceptanceReportHtml(j)});
+    // รายงานช่าง + ใบตรวจรับงาน ตัดออกจากชุดเอกสาร (ไม่ได้ใช้จริง) — ยังพิมพ์แยกได้ที่หน้าใบงาน
     out.push({label:'ใบงานรูปภาพ (สำหรับวางบิล)',build:()=>photoBillingReportHtml(j)});
   }
   const sales=(salesInvoices||[]).filter(x=>salesInvoiceMatchesJob(x,pr)&&x.status!=='cancelled');
