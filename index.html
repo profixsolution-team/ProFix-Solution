@@ -1003,6 +1003,7 @@ select option{background:var(--surface2);}
       <div class="form-row"><div class="form-group"><label>ผู้ติดต่อหลัก</label><input type="text" id="fc-contact" placeholder="ชื่อ-นามสกุล"></div><div class="form-group"><label>เบอร์โทร</label><input type="text" id="fc-phone" placeholder="08x-xxx-xxxx"></div></div>
       <div class="form-group"><label>เลขประจำตัวผู้เสียภาษี</label><input type="text" id="fc-taxid" placeholder="Tax ID"></div>
       <div class="form-group"><label>ที่อยู่บริษัทลูกค้า (กด Enter เพื่อขึ้นบรรทัดใหม่)</label><textarea id="fc-address" placeholder="ที่อยู่สำหรับออกเอกสาร&#10;เว้นบรรทัดได้" style="min-height:88px;resize:vertical;line-height:1.5;"></textarea></div>
+      <div class="form-group"><label>โลโก้บริษัทลูกค้า (ใช้ที่หัวใบงานรูปภาพ — ไม่ใส่ = ใช้โลโก้ ProFix)</label><input type="hidden" id="fc-logo"><input type="file" accept="image/*" onchange="loadClientLogoFile(this)"><div id="fc-logo-preview" style="margin-top:6px;"></div></div>
       <div class="form-row"><div class="form-group"><label>เงื่อนไขจ่ายเงิน</label><select id="fc-pay"><option>จ่ายทุก 2 อาทิตย์</option><option>จ่ายทุกเดือน</option><option>จ่ายทันที</option><option>30 วัน</option><option>45 วัน</option><option>60 วัน</option></select></div><div class="form-group"><label>วงเงินเครดิต (฿)</label><input type="number" id="fc-credit" placeholder="0"></div></div>
       <div class="form-group"><label>หมายเหตุ</label><textarea id="fc-note" placeholder="เงื่อนไขพิเศษ..." style="min-height:38px;"></textarea></div>
     </div>
@@ -7697,7 +7698,62 @@ let salesSignerProfiles=[]; // [{name, signature(base64)}] — จำลาย�
 // ===== SETTINGS RENDERS =====
 function detailText(obj){return Object.entries(obj).map(([k,v])=>`${k}: ${v||'-'}`).join('\n');}
 function actionCell(prefix,i,items){return `<td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${prefix}-${i}',event)">...</button><div class="action-menu" id="${prefix}-${i}">${items}</div></td>`;}
-function openClientModal(i=''){editClientIndex=i;if(i===''){['fc-id','fc-name','fc-contact','fc-phone','fc-taxid','fc-address','fc-credit','fc-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fc-id').value='CLT-'+String(clients.length+1).padStart(3,'0');document.getElementById('fc-pay').value='30 วัน';}else{const c=clients[i];document.getElementById('fc-id').value=c.id;document.getElementById('fc-name').value=c.name;document.getElementById('fc-contact').value=c.contact;document.getElementById('fc-phone').value=c.phone;document.getElementById('fc-taxid').value=c.taxId||c.tax_id||'';document.getElementById('fc-address').value=c.address||c.addr||'';document.getElementById('fc-pay').value=c.payTerm;document.getElementById('fc-credit').value=c.credit;document.getElementById('fc-note').value=c.note||'';}openM('m-client');}
+function openClientModal(i=''){editClientIndex=i;if(i===''){['fc-id','fc-name','fc-contact','fc-phone','fc-taxid','fc-address','fc-credit','fc-note','fc-logo'].forEach(id=>document.getElementById(id).value='');document.getElementById('fc-id').value='CLT-'+String(clients.length+1).padStart(3,'0');document.getElementById('fc-pay').value='30 วัน';}else{const c=clients[i];document.getElementById('fc-id').value=c.id;document.getElementById('fc-name').value=c.name;document.getElementById('fc-contact').value=c.contact;document.getElementById('fc-phone').value=c.phone;document.getElementById('fc-taxid').value=c.taxId||c.tax_id||'';document.getElementById('fc-address').value=c.address||c.addr||'';document.getElementById('fc-pay').value=c.payTerm;document.getElementById('fc-credit').value=c.credit;document.getElementById('fc-note').value=c.note||'';document.getElementById('fc-logo').value=c.logo||'';}renderClientLogoPreview();openM('m-client');}
+// ===== โลโก้ลูกค้า (หัวใบงานรูปภาพ) — อัปขึ้น R2 เก็บเป็น URL ไม่ให้ข้อมูลลูกค้าที่ sync ทุกเครื่องบวม =====
+function clientLogoUrl(name){
+  const key=String(name||'').trim().toLowerCase();
+  if(!key)return '';
+  const c=(clients||[]).find(x=>String((x&&x.name)||'').trim().toLowerCase()===key);
+  return (c&&c.logo)||'';
+}
+async function uploadClientLogo(file,clientId){
+  const fd=new FormData();
+  fd.append('file',file,file.name||'client-logo');
+  fd.append('job_id',('client-logo-'+(clientId||'')).replace(/[^A-Za-z0-9_-]/g,'')||'client-logo');
+  fd.append('category','client_logo');
+  fd.append('token','admin-accounting');
+  const r=await fetch(ACCOUNTING_UPLOAD_ENDPOINT,{method:'POST',body:fd});
+  if(!r.ok)throw new Error(await r.text());
+  const data=await r.json().catch(()=>({}));
+  return data.url||data.fileUrl||data.publicUrl||'';
+}
+// สำรองตอนอัปไม่ได้: ย่อรูปก่อนเก็บเป็น base64 (ไฟล์เต็มจะทำให้ข้อมูลลูกค้าบวมทุกเครื่อง)
+async function shrinkImageToDataUrl(file,maxW){
+  const src=await fileToDataUrl(file);
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const w=img.width||maxW,h=img.height||maxW;
+      const scale=Math.min(1,maxW/w);
+      if(scale>=1)return resolve(src);
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.round(w*scale);canvas.height=Math.round(h*scale);
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror=()=>resolve(src);
+    img.src=src;
+  });
+}
+async function loadClientLogoFile(input){
+  const file=input?.files?.[0];if(!file)return;
+  if(!file.type.startsWith('image/')){alert('กรุณาเลือกไฟล์รูปโลโก้');input.value='';return;}
+  renderClientLogoPreview('กำลังอัปโหลดโลโก้...');
+  let url='';
+  try{url=await uploadClientLogo(file,document.getElementById('fc-id')?.value);}catch(e){console.warn('อัปโลโก้ขึ้น R2 ไม่สำเร็จ — เก็บเป็นรูปย่อแทน',e);}
+  if(!url){try{url=await shrinkImageToDataUrl(file,420);}catch(e){console.warn('ย่อรูปโลโก้ไม่สำเร็จ',e);}}
+  input.value='';
+  if(!url){alert('อ่านไฟล์โลโก้ไม่สำเร็จ');renderClientLogoPreview();return;}
+  const el=document.getElementById('fc-logo');if(el)el.value=url;
+  renderClientLogoPreview();
+}
+function renderClientLogoPreview(msg){
+  const box=document.getElementById('fc-logo-preview');if(!box)return;
+  if(msg){box.innerHTML=`<span class="tm" style="font-size:12px;">${esc(msg)}</span>`;return;}
+  const v=document.getElementById('fc-logo')?.value||'';
+  box.innerHTML=v?`<div style="display:flex;align-items:center;gap:10px;"><img src="${esc(v)}" alt="โลโก้ลูกค้า" style="max-height:46px;max-width:170px;object-fit:contain;background:#fff;border:1px solid var(--border);border-radius:6px;padding:4px;"><button type="button" class="btn btn-ghost btn-sm" onclick="clearClientLogo()">ลบโลโก้</button></div>`:'<span class="tm" style="font-size:12px;">ยังไม่มีโลโก้ — ใบงานรูปภาพจะใช้โลโก้ ProFix</span>';
+}
+function clearClientLogo(){const el=document.getElementById('fc-logo');if(el)el.value='';renderClientLogoPreview();}
 function openTeamModal(i=''){editTeamIndex=i;if(i===''){['ft-name','ft-lead','ft-phone','ft-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('ft-skill').value='แอร์';}else{const t=teams[i];document.getElementById('ft-name').value=t.name;document.getElementById('ft-lead').value=t.lead;document.getElementById('ft-phone').value=t.phone;document.getElementById('ft-skill').value=t.skill;document.getElementById('ft-note').value=t.note||'';}openM('m-team');}
 function openBranchModal(i=''){editBranchIndex=i;renderClients();if(i===''){['fb-name','fb-mgr','fb-phone','fb-hours','fb-addr'].forEach(id=>document.getElementById(id).value='');document.getElementById('fb-id').value='BRN-'+String(branches.length+1).padStart(3,'0');}else{const b=branches[i];document.getElementById('fb-id').value=b.id;document.getElementById('fb-name').value=b.name;document.getElementById('fb-client').value=b.client;document.getElementById('fb-mgr').value=b.mgr;document.getElementById('fb-phone').value=b.phone;document.getElementById('fb-hours').value=b.hours;document.getElementById('fb-addr').value=b.addr;}openM('m-branch');}
 function openSupplierModal(i=''){editSupplierIndex=i;if(i===''){['fs-name','fs-taxid','fs-contact','fs-phone','fs-terms','fs-lead','fs-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('fs-type').value='อะไหล่แอร์';}else{const x=suppliers[i];document.getElementById('fs-name').value=x.name;document.getElementById('fs-type').value=x.type;document.getElementById('fs-taxid').value=x.taxId||x.tax_id||'';document.getElementById('fs-contact').value=x.contact;document.getElementById('fs-phone').value=x.phone;document.getElementById('fs-terms').value=x.terms;document.getElementById('fs-lead').value=x.lead;document.getElementById('fs-note').value=x.note||'';}openM('m-supplier');}
@@ -7719,7 +7775,7 @@ function renderClients() {
   fillSelects();
   const tb=document.getElementById('cl-tbody');
   if(tb)tb.innerHTML = clients.map((c,i)=>`
-    <tr style="cursor:pointer;" onclick="openClientModal(${i})"><td class="mono ta" style="font-size:11px;">${esc(c.id)}</td><td style="font-weight:600;">${esc(c.name)}</td><td><span class="chip">${esc(c.payTerm)}</span></td><td>${esc(c.contact)}</td><td class="mono" style="font-size:12px;">${esc(c.phone)}</td><td><span class="badge b-done">ใช้งาน</span></td>${actionCell('clm',i,`<button onclick="event.stopPropagation();openClientModal(${i})">แก้ไข</button><button onclick="event.stopPropagation();delClient(${i})">ลบ</button>`)}</tr>`).join('');
+    <tr style="cursor:pointer;" onclick="openClientModal(${i})"><td class="mono ta" style="font-size:11px;">${esc(c.id)}</td><td style="font-weight:600;">${c.logo?`<img src="${esc(c.logo)}" alt="" style="height:20px;max-width:64px;object-fit:contain;vertical-align:middle;margin-right:7px;background:#fff;border-radius:3px;padding:1px;">`:''}${esc(c.name)}</td><td><span class="chip">${esc(c.payTerm)}</span></td><td>${esc(c.contact)}</td><td class="mono" style="font-size:12px;">${esc(c.phone)}</td><td><span class="badge b-done">ใช้งาน</span></td>${actionCell('clm',i,`<button onclick="event.stopPropagation();openClientModal(${i})">แก้ไข</button><button onclick="event.stopPropagation();delClient(${i})">ลบ</button>`)}</tr>`).join('');
   renderPricing();
 }
 function renderPricing() {
@@ -7732,7 +7788,7 @@ function openAddPricing(clientName) {document.getElementById('fp-client').value 
 function editPricing(i) {const p = pricing[i];document.getElementById('fp-client').value = p.client;document.getElementById('fp-type').value = p.type;document.getElementById('fp-price').value = p.price;document.getElementById('fp-note').value = p.note;openM('m-pricing');}
 function savePricing() {const cl=document.getElementById('fp-client').value,tp=document.getElementById('fp-type').value,pr=parseFloat(document.getElementById('fp-price').value)||0,nt=document.getElementById('fp-note').value;const ex=pricing.find(p=>p.client===cl&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{pricing.push({client:cl,type:tp,price:pr,note:nt});}closeM('m-pricing');renderPricing();saveState();}
 function delPricing(i){if(confirm('ลบราคากลางนี้?')){pricing.splice(i,1);renderPricing();saveState();}}
-function saveClient(){if(!guardEdit())return;const data={id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,taxId:document.getElementById('fc-taxid').value,address:document.getElementById('fc-address').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value};if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;closeM('m-client');renderClients();fillSelects();saveState();}
+function saveClient(){if(!guardEdit())return;const data={id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,taxId:document.getElementById('fc-taxid').value,address:document.getElementById('fc-address').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value,logo:document.getElementById('fc-logo').value||''};if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;closeM('m-client');renderClients();fillSelects();saveState();}
 function delClient(i){if(confirm('ลบลูกค้านี้?')){clients.splice(i,1);renderClients();fillSelects();saveState();}}
 
 function renderTeams() {
@@ -8204,7 +8260,8 @@ function acceptanceReportHtml(j){
 }
 function photoBillingReportHtml(j){
   const imgs=reportImages(j);
-  const essLogo=new URL('assets/ess-logo.jpg',location.href).href;
+  // โลโก้หัวเอกสาร = โลโก้ของลูกค้าเจ้านั้น (ตั้งที่ทะเบียนลูกค้า) — ไม่ได้ตั้งไว้ก็ใช้โลโก้ ProFix
+  const headLogo=clientLogoUrl(j.client)||new URL('assets/profix-logo-dark.svg',location.href).href;
   const imageOrientation=im=>{
     const w=Number(im.width)||0;
     const h=Number(im.height)||0;
@@ -8237,7 +8294,7 @@ function photoBillingReportHtml(j){
   const pageTitle=page=>REPORT_DOC_IMAGE_TITLES[page.cat]||'รูปการปฏิบัติงาน';
   const pageHtml=(page,pageIndex)=>{
     return `<main class="photo-page">
-    <table class="doc-head"><tr><td rowspan="3" class="logo-cell"><img src="${essLogo}" alt="ESS"></td><td>Project : ${esc(project)}</td><td>Page</td><td>${pageIndex+1} of ${total}</td></tr><tr><td>Station Name : ${esc(station)}</td><td>ID</td><td></td></tr><tr><td>Class of Trade : </td><td>Job No.</td><td>${esc(j.id)}</td></tr></table>
+    <table class="doc-head"><tr><td rowspan="3" class="logo-cell"><img src="${esc(headLogo)}" alt="${esc(j.client||'โลโก้')}"></td><td>Project : ${esc(project)}</td><td>Page</td><td>${pageIndex+1} of ${total}</td></tr><tr><td>Station Name : ${esc(station)}</td><td>ID</td><td></td></tr><tr><td>Class of Trade : </td><td>Job No.</td><td>${esc(j.id)}</td></tr></table>
     <div class="work-detail">Work Detail : ${esc(workDetail)}</div>
     <div class="photo-title">${esc(pageTitle(page))}</div>
     ${page.rows.length?`<div class="photo-rows">${page.rows.map(row=>`<div class="photo-row ${row.orientation}">${row.items.map(im=>`<figure class="photo-slot"><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน')}"></figure>`).join('')}</div>`).join('')}</div>`:'<div class="billing-empty">ยังไม่มีรูปจากช่าง</div>'}
