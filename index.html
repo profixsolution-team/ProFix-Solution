@@ -7281,6 +7281,10 @@ async function collectPrDocs(pr){
     const rows=await sbFetchAll('job_checkins',`?job_id=eq.${encodeURIComponent(j?j.id:pr)}&select=*&order=created_at.desc`);
     (rows||[]).forEach((r,i)=>out.push({label:'ใบแจ้งเข้าซ่อม'+((rows.length>1)?(' #'+(i+1)):''),build:()=>checkinFormHtml(r,j||{id:pr,client:'',branch:''})}));
   }catch(e){}
+  try{
+    const rows=await sbFetchAll('job_acceptances',`?job_id=eq.${encodeURIComponent(j?j.id:pr)}&select=*&order=created_at.desc`);
+    (rows||[]).forEach((r,i)=>out.push({label:'ใบตรวจรับงาน'+((rows.length>1)?(' #'+(i+1)):''),build:()=>acceptanceSignedFormHtml(r,j||{id:pr,client:'',branch:''})}));
+  }catch(e){}
   return out;
 }
 async function openDocBundle(pr){
