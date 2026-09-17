@@ -4127,18 +4127,28 @@ function printAcceptanceForm(idx){
 }
 // สรุปสิ่งที่ช่างแก้ — อ่านสดจากรายงานช่างก่อนเสมอ แล้วค่อย fallback ไป acceptance_note ที่ snapshot ไว้ตอนเซ็น
 // (ลูกค้ามักเซ็นตรวจรับก่อนช่างกดส่งรายงาน → ค่าที่ snapshot ไว้ตอนนั้นเป็น null ค้างตลอด)
+// ไม่ใส่ "อาการ/ปัญหา" — ซ้ำกับช่องรายละเอียดที่แจ้งซ่อมด้านบนของเอกสาร
 function acceptanceFixSummary(r,j){
   const tr=(j&&j.technicianReport)||{};
   const lines=[];
-  const symptom=(j&&j.symptom)||tr.symptom;
   const cause=(j&&j.cause)||tr.cause;
   const fix=(j&&(j.fix||j.report))||tr.fix;
   const parts=(j&&j.partsUsed)||tr.parts;
-  if(symptom)lines.push('อาการ/ปัญหา: '+symptom);
   if(cause)lines.push('สาเหตุ: '+cause);
   if(fix)lines.push('การแก้ไข: '+fix);
   if(parts)lines.push('อะไหล่ที่ใช้: '+parts);
-  return lines.length?lines.join('\n'):((r&&r.acceptance_note)||'');
+  return lines.length?lines.join('\n'):stripSymptomLines((r&&r.acceptance_note)||'');
+}
+// ตัดบล็อก "อาการ/ปัญหา:" (รวมบรรทัดต่อเนื่องของมัน) ออกจากสรุปที่ snapshot ไว้
+function stripSymptomLines(text){
+  if(!text)return '';
+  const keep=[];let skipping=false;
+  String(text).split('\n').forEach(line=>{
+    if(/^\s*อาการ\/ปัญหา\s*:/.test(line)){skipping=true;return;}
+    if(/^\s*(สาเหตุ|การแก้ไข|อะไหล่ที่ใช้)\s*:/.test(line))skipping=false;
+    if(!skipping)keep.push(line);
+  });
+  return keep.join('\n').trim();
 }
 // เวลาที่ช่างกดส่งฟอร์มงาน (techSubmittedAt) — fallback เป็นเวลาที่บันทึกใบตรวจรับ
 // แปลงเป็นเวลาเครื่อง (ไทย) ก่อนแสดงเสมอ: created_at เป็น UTC ถ้า slice ตรง ๆ จะเพี้ยนไป 7 ชม.
