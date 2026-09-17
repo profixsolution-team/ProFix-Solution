@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -4071,12 +4071,142 @@ async function copyAcceptanceLink(id){
   const text=`✅ ตรวจรับงาน ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nตรวจรับ + เซ็นรับงานที่ลิงก์นี้:\n${url}`;
   try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์ตรวจรับงานแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){uiCopyModal(text,'คัดลอกลิงก์ตรวจรับงาน');}
 }
+// ===== ประวัติ/เอกสารตรวจรับงาน (job_acceptances) — ดูข้อมูลที่ลูกค้าเซ็นจริง + พิมพ์เป็นเอกสาร =====
+let acceptanceViewRows=[], acceptanceViewJob=null;
+async function openAcceptanceViewModal(id){
+  const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||{id,client:'',branch:''};
+  acceptanceViewJob=j;
+  document.getElementById('acv-sub').textContent=`${esc(j.id)} · ${esc(j.client||'-')} · ${esc(j.branch||'-')}`;
+  const body=document.getElementById('acv-body');
+  body.innerHTML='<div class="text-box">กำลังโหลด...</div>';
+  openM('m-acceptance-view');
+  let rows=[];
+  try{
+    rows=await sbFetchAll('job_acceptances',`?job_id=eq.${encodeURIComponent(id)}&select=*&order=created_at.desc`);
+  }catch(e){
+    const msg=e?.message||String(e);
+    if(/find the table|does not exist|42P01|PGRST205|schema cache|relation/i.test(msg)){
+      body.innerHTML='<div class="text-box">ยังไม่มีตาราง job_acceptances — รัน migration console_job_acceptances_table.txt ใน Supabase ก่อน</div>';
+      return;
+    }
+    body.innerHTML='<div class="text-box">โหลดข้อมูลไม่สำเร็จ: '+esc(msg)+'</div>';
+    return;
+  }
+  if(!rows.length){
+    body.innerHTML=`<div class="empty"><div class="empty-icon">✅</div><div>ยังไม่มีข้อมูลตรวจรับงาน / เซ็นยืนยันสำหรับ PR นี้</div></div>`;
+    return;
+  }
+  acceptanceViewRows=rows;
+  body.innerHTML=rows.map((r,i)=>{
+    const inTxt=formatDateTime(j.dateIn,j.timeIn)!=='—'?formatDateTime(j.dateIn,j.timeIn):(r.date_in?`${esc(r.date_in)} ${esc(r.time_in||'')}`:'-');
+    const doneTxt=formatDateTime(j.dateDone,j.timeDone)!=='—'?formatDateTime(j.dateDone,j.timeDone):(r.date_done?`${esc(r.date_done)} ${esc(r.time_done||'')}`:'ยังไม่ระบุ');
+    return `<div class="card" style="margin-bottom:12px;">
+      <div class="table-header" style="padding:0 0 10px;border:0;"><div class="table-title" style="font-size:13px;">ตรวจรับงาน #${i+1}</div><button class="btn btn-primary btn-sm" onclick="printAcceptanceForm(${i})">🖨️ พิมพ์ฟอร์ม</button></div>
+      <div class="detail-grid mb12">
+        <div class="detail-item"><div class="detail-label">เวลาเข้างานจริง</div><div class="detail-val">${esc(inTxt)}</div></div>
+        <div class="detail-item"><div class="detail-label">เวลาเสร็จงาน</div><div class="detail-val">${esc(doneTxt)}</div></div>
+        <div class="detail-item"><div class="detail-label">ตรวจรับเมื่อ</div><div class="detail-val">${esc((r.created_at||'').replace('T',' ').slice(0,16))}</div></div>
+      </div>
+      ${r.reported_note?`<div class="form-group"><label>รายละเอียดที่แจ้งซ่อม</label><div class="text-box">${esc(r.reported_note)}</div></div>`:''}
+      ${r.acceptance_note?`<div class="form-group"><label>สรุปสิ่งที่ช่างแก้ไข (จากฟอร์มช่าง)</label><div class="text-box">${esc(r.acceptance_note)}</div></div>`:''}
+      ${r.note?`<div class="form-group"><label>หมายเหตุเพิ่มเติม</label><div class="text-box">${esc(r.note)}</div></div>`:''}
+      <div class="form-group">
+        <label>ลายเซ็นผู้ตรวจรับ/ลูกค้า — ${esc(r.signer_name||'-')} (${esc(r.signer_role||'-')})</label>
+        ${r.signature_data?`<div style="background:#fff;border-radius:8px;padding:8px;border:1px solid var(--border);"><img src="${esc(r.signature_data)}" style="max-width:100%;height:auto;display:block;"></div>`:'<div class="text-box">ไม่มีลายเซ็น</div>'}
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>ลายเซ็นช่าง — ${esc(r.tech_name||'-')}</label>
+        ${r.tech_signature_data?`<div style="background:#fff;border-radius:8px;padding:8px;border:1px solid var(--border);"><img src="${esc(r.tech_signature_data)}" style="max-width:100%;height:auto;display:block;"></div>`:'<div class="text-box">ไม่มีลายเซ็นช่าง</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+function printAcceptanceForm(idx){
+  const r=acceptanceViewRows[idx];if(!r)return;
+  generateDocWindow(acceptanceSignedFormHtml(r,acceptanceViewJob||{}));
+}
+// เอกสารตรวจรับงาน — ข้อมูลสรุปเวลาเข้างาน/เสร็จงานจากฟอร์มช่าง (j.dateIn/dateDone) + สิ่งที่ช่างแก้ + ลายเซ็นจริงจาก job_acceptances
+function acceptanceSignedFormHtml(r,j){
+  const logo=new URL('assets/profix-logo-dark.svg',location.href).href;
+  const generatedAt=new Date().toLocaleString('th-TH');
+  const jobId=r.job_id||j.id||'—';
+  const client=j.client||r.client_snapshot||'—';
+  const branch=j.branch||r.branch_snapshot||'—';
+  const types=j.type||(Array.isArray(r.job_type)&&r.job_type.length?r.job_type.join(', '):'—');
+  const inTxt=formatDateTime(j.dateIn,j.timeIn)!=='—'?formatDateTime(j.dateIn,j.timeIn):(r.date_in?`${r.date_in} ${r.time_in||''}`:'—');
+  const doneTxt=formatDateTime(j.dateDone,j.timeDone)!=='—'?formatDateTime(j.dateDone,j.timeDone):(r.date_done?`${r.date_done} ${r.time_done||''}`:'— (ยังไม่เสร็จ ณ ตอนตรวจรับ)');
+  const sigImg=(data,label,name)=>`<div class="sign-box">${data?`<img class="sig-img" src="${esc(data)}" alt="ลายเซ็น">`:'<div class="sig-line"></div>'}<div class="sig-name">${esc(name||'')}</div><div class="sig-label">${esc(label)}</div></div>`;
+  const photos=Array.isArray(r.photos)?r.photos.filter(p=>p&&p.url):[];
+  const photoOrientation=p=>{
+    const w=Number(p.width)||0;
+    const h=Number(p.height)||0;
+    if(w>0&&h>0)return h>w?'portrait':'landscape';
+    if(p.orientation==='portrait'||p.orientation==='landscape')return p.orientation;
+    return 'landscape';
+  };
+  const photoPages=()=>{
+    const rows=[];
+    ['portrait','landscape'].forEach(orientation=>{
+      imageChunks(photos.filter(p=>photoOrientation(p)===orientation),orientation==='portrait'?3:2).forEach(items=>{
+        rows.push({orientation,items});
+      });
+    });
+    return imageChunks(rows,3);
+  };
+  const photoPage=photos.length?photoPages().map((rows,pageIndex)=>`<main class="page photo-page"><header class="head"><img src="${logo}" alt="ProFix Solution"><div class="title"><h1>รูปหลังตรวจรับงาน</h1><div class="sub">Acceptance Photos — งาน ${esc(jobId)} · ${esc(branch)} · หน้า ${pageIndex+1}</div></div></header><div class="photo-rows">${rows.map(row=>`<div class="photo-row ${row.orientation}">${row.items.map(p=>`<figure class="photo-slot"><img src="${esc(p.url)}" alt="รูปตรวจรับงาน"></figure>`).join('')}</div>`).join('')}</div><div class="foot">Generated by ProFix Service Console</div></main>`).join(''):'';
+  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ใบตรวจรับงาน ${esc(jobId)}</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#edf2f7;color:#111827;font-family:Arial,"Noto Sans Thai",sans-serif;font-size:14px;line-height:1.45}
+    .toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff}
+    .toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;background:#175fff;color:#fff}
+    .page{width:210mm;min-height:297mm;margin:18px auto;padding:14mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);border:1px solid #111}
+    .doc-main{height:297mm;min-height:297mm;display:flex;flex-direction:column;overflow:hidden}
+    .doc-main .head,.doc-main .meta,.doc-main .signs,.doc-main .foot{flex:0 0 auto}
+    .doc-main .flow{flex:1 1 auto;min-height:0;overflow:hidden}
+    .head{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:12px}
+    .head img{width:150px;max-height:54px;object-fit:contain}.title{text-align:center}.title h1{font-size:22px;margin:0 0 6px}.title .sub{font-size:13px;color:#4b5563}
+    .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.cell{border:1px solid #111;padding:8px;min-height:38px}.label{font-weight:800}
+    .section{margin-top:10px}.section h2{font-size:15px;margin:0;background:#e5e7eb;border:1px solid #111;padding:6px 8px}.box{border:1px solid #111;border-top:0;min-height:52px;padding:9px;white-space:pre-wrap}
+    .signs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+    .sign-box{border:1px solid #111;border-radius:6px;padding:10px;height:150px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}
+    .sig-img{max-height:80px;max-width:90%;object-fit:contain;margin-bottom:auto;margin-top:6px}
+    .sig-line{width:80%;border-top:1px solid #111;margin-bottom:auto;margin-top:60px}
+    .sig-name{font-weight:800;font-size:13px;border-top:1px solid #111;width:90%;text-align:center;padding-top:4px}
+    .sig-label{font-size:12px;color:#4b5563;margin-top:2px}
+    .foot{font-size:11px;color:#6b7280;text-align:right;margin-top:16px}
+    .photo-rows{height:220mm;display:flex;flex-direction:column;gap:5mm;margin-top:10px}.photo-row{display:grid;gap:5mm;height:68mm;break-inside:avoid;page-break-inside:avoid}.photo-row.portrait{grid-template-columns:repeat(3,minmax(0,1fr))}.photo-row.landscape{grid-template-columns:repeat(2,minmax(0,1fr))}.photo-slot{margin:0;border:1px solid #111;border-radius:6px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}.photo-slot img{display:block;width:100%;height:100%;object-fit:contain;background:#fff}
+    .photo-page{page-break-before:always}
+    @media print{body{background:#fff}.toolbar{display:none}.page{margin:0;box-shadow:none;border:0}.doc-main{height:297mm}}@page{size:A4;margin:0}
+  </style></head><body>
+  <div class="toolbar"><div><b>ใบตรวจรับงาน ${esc(jobId)}</b><div style="font-size:12px;color:#cbd5e1;">สร้างเมื่อ ${generatedAt}</div></div><button onclick="window.print()">พิมพ์ / Save PDF</button></div>
+  <main class="page doc-main">
+    <header class="head"><img src="${logo}" alt="ProFix Solution"><div class="title"><h1>ใบตรวจรับงานซ่อม / ปรับปรุง</h1><div class="sub">Job Acceptance &amp; Sign-off Form</div></div></header>
+    <div class="meta">
+      <div class="cell"><span class="label">หมายเลขงาน:</span> ${esc(jobId)}</div>
+      <div class="cell"><span class="label">ลูกค้า / สาขา:</span> ${esc(client)} / ${esc(branch)}</div>
+      <div class="cell"><span class="label">ประเภทงาน:</span> ${esc(types)}</div>
+      <div class="cell"><span class="label">ตรวจรับเมื่อ:</span> ${esc((r.created_at||'').replace('T',' ').slice(0,16))}</div>
+      <div class="cell"><span class="label">วันเวลาเข้างานจริง:</span> ${esc(inTxt)}</div>
+      <div class="cell"><span class="label">วันเวลาเสร็จงาน:</span> ${esc(doneTxt)}</div>
+    </div>
+    <div class="flow">
+      <section class="section"><h2>รายละเอียดที่แจ้งซ่อม</h2><div class="box">${esc(r.reported_note||j.note||'—')}</div></section>
+      <section class="section"><h2>สรุปสิ่งที่ช่างแก้ไข (จากฟอร์มช่าง)</h2><div class="box">${esc(r.acceptance_note||'—')}</div></section>
+      <section class="section"><h2>หมายเหตุเพิ่มเติม</h2><div class="box">${esc(r.note||'—')}</div></section>
+    </div>
+    <div class="signs">
+      ${sigImg(r.signature_data,`ผู้ตรวจรับงาน/ลูกค้า (${esc(r.signer_role||'-')})`,r.signer_name)}
+      ${sigImg(r.tech_signature_data,'ช่างผู้เข้าปฏิบัติงาน',r.tech_name)}
+    </div>
+    <div class="foot">Generated by ProFix Service Console</div>
+  </main>${photoPage}</body></html>`;
+}
 function openDet(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   currentDetailJobId=id;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
-  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-success" onclick="openCheckinViewModal('${j.id}')">เช็คข้อมูลแจ้งเข้าซ่อม</button><button class="btn btn-ghost" onclick="copyAcceptanceLink('${j.id}')">คัดลอกลิงก์ตรวจรับงาน</button><button class="btn btn-primary" onclick="openAcceptanceForm('${j.id}')">เปิดหน้าตรวจรับงาน</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button>${salesJobIsBilled(j.id)?`<button class="btn btn-success" onclick="matchFinanceFromSales('${j.id}')">🔗 ดึงราคาเข้าการเงิน</button>`:''}<button class="btn btn-primary" onclick="openDocBundle('${j.id}')">📑 ดาวน์โหลดชุดเอกสาร</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
+  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div><div class="form-row"><button class="btn btn-success" onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="editJob('${j.id}')">แก้ไขงาน</button><button class="btn btn-ghost" onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button class="btn btn-ghost" onclick="copyTechnicianLink('${j.id}')">คัดลอกลิงก์ช่าง</button><button class="btn btn-primary" onclick="openTechnicianForm('${j.id}')">เปิดฟอร์มช่าง</button><button class="btn btn-ghost" onclick="copyCheckinLink('${j.id}')">คัดลอกลิงก์แจ้งเข้าซ่อม</button><button class="btn btn-primary" onclick="openCheckinForm('${j.id}')">เปิดหน้าแจ้งเข้าซ่อม</button><button class="btn btn-success" onclick="openCheckinViewModal('${j.id}')">เช็คข้อมูลแจ้งเข้าซ่อม</button><button class="btn btn-ghost" onclick="copyAcceptanceLink('${j.id}')">คัดลอกลิงก์ตรวจรับงาน</button><button class="btn btn-primary" onclick="openAcceptanceForm('${j.id}')">เปิดหน้าตรวจรับงาน</button><button class="btn btn-success" onclick="openAcceptanceViewModal('${j.id}')">เช็คข้อมูลตรวจรับงาน</button><button class="btn btn-primary" onclick="openSalesForJob('${j.id}')">ออกบิลขาย</button>${salesJobIsBilled(j.id)?`<button class="btn btn-success" onclick="matchFinanceFromSales('${j.id}')">🔗 ดึงราคาเข้าการเงิน</button>`:''}<button class="btn btn-primary" onclick="openDocBundle('${j.id}')">📑 ดาวน์โหลดชุดเอกสาร</button><button class="btn btn-primary" onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button></div>`;
   ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
   openM('m-detail');
 }
@@ -8804,6 +8934,24 @@ function startApp(){ initApp(); }
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeM('m-checkin-view')">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="m-acceptance-view">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">ประวัติตรวจรับงาน / เซ็นยืนยัน</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;" id="acv-sub"></div>
+      </div>
+      <button class="close-btn" onclick="closeM('m-acceptance-view')">×</button>
+    </div>
+    <div class="modal-body" id="acv-body">
+      <div class="text-box">กำลังโหลด...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeM('m-acceptance-view')">ปิด</button>
     </div>
   </div>
 </div>
