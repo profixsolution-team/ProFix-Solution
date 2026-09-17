@@ -4105,10 +4105,10 @@ async function openAcceptanceViewModal(id){
       <div class="detail-grid mb12">
         <div class="detail-item"><div class="detail-label">เวลาเข้างานจริง</div><div class="detail-val">${esc(inTxt)}</div></div>
         <div class="detail-item"><div class="detail-label">เวลาเสร็จงาน</div><div class="detail-val">${esc(doneTxt)}</div></div>
-        <div class="detail-item"><div class="detail-label">ตรวจรับเมื่อ</div><div class="detail-val">${esc((r.created_at||'').replace('T',' ').slice(0,16))}</div></div>
+        <div class="detail-item"><div class="detail-label">ตรวจรับเมื่อ</div><div class="detail-val">${esc(acceptanceStampText(r,j))}</div></div>
       </div>
       ${r.reported_note?`<div class="form-group"><label>รายละเอียดที่แจ้งซ่อม</label><div class="text-box">${esc(r.reported_note)}</div></div>`:''}
-      ${r.acceptance_note?`<div class="form-group"><label>สรุปสิ่งที่ช่างแก้ไข (จากฟอร์มช่าง)</label><div class="text-box">${esc(r.acceptance_note)}</div></div>`:''}
+      ${acceptanceFixSummary(r,j)?`<div class="form-group"><label>สรุปสิ่งที่ช่างแก้ไข</label><div class="text-box" style="white-space:pre-wrap;">${esc(acceptanceFixSummary(r,j))}</div></div>`:''}
       ${r.note?`<div class="form-group"><label>หมายเหตุเพิ่มเติม</label><div class="text-box">${esc(r.note)}</div></div>`:''}
       <div class="form-group">
         <label>ลายเซ็นผู้ตรวจรับ/ลูกค้า — ${esc(r.signer_name||'-')} (${esc(r.signer_role||'-')})</label>
@@ -4124,6 +4124,31 @@ async function openAcceptanceViewModal(id){
 function printAcceptanceForm(idx){
   const r=acceptanceViewRows[idx];if(!r)return;
   generateDocWindow(acceptanceSignedFormHtml(r,acceptanceViewJob||{}));
+}
+// สรุปสิ่งที่ช่างแก้ — อ่านสดจากรายงานช่างก่อนเสมอ แล้วค่อย fallback ไป acceptance_note ที่ snapshot ไว้ตอนเซ็น
+// (ลูกค้ามักเซ็นตรวจรับก่อนช่างกดส่งรายงาน → ค่าที่ snapshot ไว้ตอนนั้นเป็น null ค้างตลอด)
+function acceptanceFixSummary(r,j){
+  const tr=(j&&j.technicianReport)||{};
+  const lines=[];
+  const symptom=(j&&j.symptom)||tr.symptom;
+  const cause=(j&&j.cause)||tr.cause;
+  const fix=(j&&(j.fix||j.report))||tr.fix;
+  const parts=(j&&j.partsUsed)||tr.parts;
+  if(symptom)lines.push('อาการ/ปัญหา: '+symptom);
+  if(cause)lines.push('สาเหตุ: '+cause);
+  if(fix)lines.push('การแก้ไข: '+fix);
+  if(parts)lines.push('อะไหล่ที่ใช้: '+parts);
+  return lines.length?lines.join('\n'):((r&&r.acceptance_note)||'');
+}
+// เวลาที่ช่างกดส่งฟอร์มงาน (techSubmittedAt) — fallback เป็นเวลาที่บันทึกใบตรวจรับ
+// แปลงเป็นเวลาเครื่อง (ไทย) ก่อนแสดงเสมอ: created_at เป็น UTC ถ้า slice ตรง ๆ จะเพี้ยนไป 7 ชม.
+function acceptanceStampText(r,j){
+  const ts=(j&&(j.techSubmittedAt||(j.technicianReport||{}).submittedAt))||(r&&r.created_at)||'';
+  if(!ts)return '—';
+  const d=new Date(ts);
+  if(isNaN(d.getTime()))return String(ts).replace('T',' ').slice(0,16);
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 // เอกสารตรวจรับงาน — ข้อมูลสรุปเวลาเข้างาน/เสร็จงานจากฟอร์มช่าง (j.dateIn/dateDone) + สิ่งที่ช่างแก้ + ลายเซ็นจริงจาก job_acceptances
 function acceptanceSignedFormHtml(r,j){
@@ -4185,13 +4210,13 @@ function acceptanceSignedFormHtml(r,j){
       <div class="cell"><span class="label">หมายเลขงาน:</span> ${esc(jobId)}</div>
       <div class="cell"><span class="label">ลูกค้า / สาขา:</span> ${esc(client)} / ${esc(branch)}</div>
       <div class="cell"><span class="label">ประเภทงาน:</span> ${esc(types)}</div>
-      <div class="cell"><span class="label">ตรวจรับเมื่อ:</span> ${esc((r.created_at||'').replace('T',' ').slice(0,16))}</div>
+      <div class="cell"><span class="label">ตรวจรับเมื่อ:</span> ${esc(acceptanceStampText(r,j))}</div>
       <div class="cell"><span class="label">วันเวลาเข้างานจริง:</span> ${esc(inTxt)}</div>
       <div class="cell"><span class="label">วันเวลาเสร็จงาน:</span> ${esc(doneTxt)}</div>
     </div>
     <div class="flow">
       <section class="section"><h2>รายละเอียดที่แจ้งซ่อม</h2><div class="box">${esc(r.reported_note||j.note||'—')}</div></section>
-      <section class="section"><h2>สรุปสิ่งที่ช่างแก้ไข (จากฟอร์มช่าง)</h2><div class="box">${esc(r.acceptance_note||'—')}</div></section>
+      <section class="section"><h2>สรุปสิ่งที่ช่างแก้ไข</h2><div class="box">${esc(acceptanceFixSummary(r,j)||'—')}</div></section>
       <section class="section"><h2>หมายเหตุเพิ่มเติม</h2><div class="box">${esc(r.note||'—')}</div></section>
     </div>
     <div class="signs">
