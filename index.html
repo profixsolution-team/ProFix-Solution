@@ -4201,7 +4201,7 @@ function acceptanceSignedFormHtml(r,j){
     .doc-main .flow{flex:1 1 auto;min-height:0;overflow:hidden}
     .head{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:12px}
     .head img{width:150px;max-height:54px;object-fit:contain}.title{text-align:center}.title h1{font-size:22px;margin:0 0 6px}.title .sub{font-size:13px;color:#4b5563}
-    .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.cell{border:1px solid #111;padding:8px;min-height:38px}.label{font-weight:800}
+    .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.cell{border:1px solid #111;padding:8px;min-height:38px}.cell.wide{grid-column:1/-1}.label{font-weight:800}
     .section{margin-top:10px}.section h2{font-size:15px;margin:0;background:#e5e7eb;border:1px solid #111;padding:6px 8px}.box{border:1px solid #111;border-top:0;min-height:52px;padding:9px;white-space:pre-wrap}
     .signs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
     .sign-box{border:1px solid #111;border-radius:6px;padding:10px;height:150px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}
@@ -4220,8 +4220,7 @@ function acceptanceSignedFormHtml(r,j){
     <div class="meta">
       <div class="cell"><span class="label">หมายเลขงาน:</span> ${esc(jobId)}</div>
       <div class="cell"><span class="label">ลูกค้า / สาขา:</span> ${esc(client)} / ${esc(branch)}</div>
-      <div class="cell"><span class="label">ประเภทงาน:</span> ${esc(types)}</div>
-      <div class="cell"><span class="label">ตรวจรับเมื่อ:</span> ${esc(acceptanceStampText(r,j))}</div>
+      <div class="cell wide"><span class="label">ประเภทงาน:</span> ${esc(types)}</div>
       <div class="cell"><span class="label">วันเวลาเข้างานจริง:</span> ${esc(inTxt)}</div>
       <div class="cell"><span class="label">วันเวลาเสร็จงาน:</span> ${esc(doneTxt)}</div>
     </div>
