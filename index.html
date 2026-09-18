@@ -2761,9 +2761,17 @@ async function syncSplitRowsChanged(table,rows,mapRow,knownKey,idOf,force=false,
   if(table==='jobs'&&changed.length)await preserveNewerRemoteJobReports(changed);
   if(changed.length)await upsertSplitRows(table,changed,mapRow);
   if(allowDelete){
+    const known=(splitKnownIds[knownKey]||new Set()).size;
     const missing=[...(splitKnownIds[knownKey]||new Set())].filter(id=>!current.has(id));
-    if(missing.length)await deleteSplitRows(table,missing);
-    splitKnownIds[knownKey]=current;
+    // กันลบหมู่: ผู้ใช้ลบทีละรายการเสมอ ถ้าอยู่ ๆ หายพร้อมกันเกิน 25% ของที่เคยมี (หรือหายเกลี้ยง)
+    // แปลว่าลิสต์ในเครื่องผิดปกติ (โหลดไม่ครบ/ถูกล้าง) ไม่ใช่เจตนาผู้ใช้ → ไม่ลบ ปล่อยให้ข้อมูลบน server อยู่
+    const massDelete=missing.length&&known&&missing.length>Math.max(3,known*0.25);
+    if(massDelete){
+      console.warn(`[กันข้อมูลหาย] ข้ามการลบ ${missing.length}/${known} แถวของ ${table} — ดูเหมือนลิสต์ในเครื่องไม่ครบ ไม่ใช่การลบโดยผู้ใช้`);
+    }else if(missing.length){
+      await deleteSplitRows(table,missing);
+    }
+    splitKnownIds[knownKey]=massDelete?new Set([...(splitKnownIds[knownKey]||new Set()),...current]):current;
   }else{
     splitKnownIds[knownKey]=new Set([...(splitKnownIds[knownKey]||new Set()),...current]);
   }
