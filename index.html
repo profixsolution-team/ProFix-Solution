@@ -2743,7 +2743,11 @@ async function syncSplitRows(table,rows,mapRow,knownKey,idOf){
   if(missing.length)await deleteSplitRows(table,missing);
   splitKnownIds[knownKey]=current;
 }
-async function syncSplitRowsChanged(table,rows,mapRow,knownKey,idOf,force=false){
+// allowDelete=false → ห้ามลบแถวบน server เด็ดขาด (ใช้กับ jobs/admin_tasks)
+// เหตุผล: การลบงานจากหน้าเว็บเป็น soft delete (ติดธง deletedAt ในแถว) อยู่แล้ว การลบแถวจริงตรงนี้
+// จึงไม่เคยจำเป็น และจะทำงานก็ต่อเมื่อ "งานหายไปจากลิสต์ในหน่วยความจำโดยไม่ตั้งใจ"
+// (เช่นโหลดไม่ครบ / ถูก filter หรือ merge ตอน repairDuplicateJobs) → กลายเป็นลบข้อมูลจริงทิ้ง
+async function syncSplitRowsChanged(table,rows,mapRow,knownKey,idOf,force=false,allowDelete=true){
   const prev=splitRowHashes[knownKey]||{};
   const current=new Set();
   const changed=[];
@@ -2756,9 +2760,13 @@ async function syncSplitRowsChanged(table,rows,mapRow,knownKey,idOf,force=false)
   });
   if(table==='jobs'&&changed.length)await preserveNewerRemoteJobReports(changed);
   if(changed.length)await upsertSplitRows(table,changed,mapRow);
-  const missing=[...(splitKnownIds[knownKey]||new Set())].filter(id=>!current.has(id));
-  if(missing.length)await deleteSplitRows(table,missing);
-  splitKnownIds[knownKey]=current;
+  if(allowDelete){
+    const missing=[...(splitKnownIds[knownKey]||new Set())].filter(id=>!current.has(id));
+    if(missing.length)await deleteSplitRows(table,missing);
+    splitKnownIds[knownKey]=current;
+  }else{
+    splitKnownIds[knownKey]=new Set([...(splitKnownIds[knownKey]||new Set()),...current]);
+  }
   splitRowHashes[knownKey]=rowHashMap(rows,idOf);
 }
 async function upsertSystemData(data){
@@ -2769,8 +2777,8 @@ async function saveSplitStateNow(force=false){
   const snap=splitStateSnapshot();
   const now=new Date().toISOString();
   const jobsHash=stableJson(snap.jobs), adminHash=stableJson(snap.adminTasks), partsHash=stableJson(snap.parts), woHash=stableJson(snap.workOrders), docHash=stableJson(snap.documents), metaHash=stableJson(snap.meta);
-  if(force||splitSaveHashes.jobs!==jobsHash){await syncSplitRowsChanged('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}),'jobs',j=>j.id,force);splitSaveHashes.jobs=stableJson(snap.jobs);}
-  if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRowsChanged('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id,force);splitSaveHashes.adminTasks=adminHash;}
+  if(force||splitSaveHashes.jobs!==jobsHash){await syncSplitRowsChanged('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}),'jobs',j=>j.id,force,false);splitSaveHashes.jobs=stableJson(snap.jobs);}
+  if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRowsChanged('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id,force,false);splitSaveHashes.adminTasks=adminHash;}
   if(workOrdersLoaded&&(force||splitSaveHashes.workOrders!==woHash)){await syncSplitRowsChanged('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id,force);splitSaveHashes.workOrders=woHash;}
   if(docsLoaded&&(force||splitSaveHashes.documents!==docHash)){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
   if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await upsertPartsCatalogRows(snap.parts);splitSaveHashes.parts=partsHash;}
