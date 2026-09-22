@@ -223,6 +223,23 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .b-urgent{background:var(--red);color:#fff;font-weight:800;box-shadow:0 0 0 1px var(--red),0 0 7px rgba(248,81,73,.55);}
 .b-hold{background:var(--orange-dim);color:var(--orange);}
 .b-paid{background:var(--green-dim);color:var(--green);}
+.b-temp{background:var(--yellow-dim);color:var(--yellow);}
+.b-blacklist{background:var(--red);color:#fff;font-weight:800;}
+.b-inactive{background:var(--surface3);color:var(--text3);}
+.vsec{margin-top:18px;padding-top:16px;border-top:1px solid var(--border);}
+.vsec:first-child{margin-top:0;padding-top:0;border-top:0;}
+.vsec-title{font-size:11px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}
+.vrow{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface2);}
+.vrow .form-group{margin-bottom:0;}
+.vrow input{width:100%;}
+.vdocrow{display:grid;grid-template-columns:1fr 130px 150px auto;gap:8px;align-items:center;padding:9px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface2);font-size:12px;}
+.vdocrow a{color:var(--accent);text-decoration:none;font-weight:700;}
+.vexpire-ok{color:var(--text2);}
+.vexpire-soon{color:var(--yellow);font-weight:700;}
+.vexpire-over{color:var(--red);font-weight:700;}
+.vendor-alert-bar{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;background:var(--yellow-dim);border:1px solid var(--yellow);color:var(--yellow);font-size:12px;margin-bottom:14px;}
+.vendor-alert-bar.over{background:var(--red-dim);border-color:var(--red);color:var(--red);}
+.vendor-alert-bar b{cursor:pointer;text-decoration:underline;}
 .b-unpaid{background:var(--yellow-dim);color:var(--yellow);}
 .badge.tech-update-status{background:var(--green-dim);color:var(--green);border:1px solid var(--green);}
 .badge.tech-update-status.return-fix{background:var(--red-dim);color:var(--red);border-color:var(--red);}
@@ -562,7 +579,7 @@ select option{background:var(--surface2);}
     <button class="nav-item" data-page="purchase-tax" onclick="goTo('purchase-tax',this)"><span class="nav-icon">🧾</span>บิลซื้อ / ภาษีซื้อ</button>
     <button class="nav-item" data-page="sales-tax" onclick="goTo('sales-tax',this)"><span class="nav-icon">🧾</span>บิลขาย / ภาษีขาย</button>
     <div class="nav-section">ข้อมูลระบบ</div>
-    <button class="nav-item" data-page="settings-clients" onclick="goTo('settings-clients',this)"><span class="nav-icon">🏢</span>ลูกค้า</button>
+    <button class="nav-item" data-page="settings-clients" onclick="goTo('settings-clients',this)"><span class="nav-icon">🏢</span>ลูกค้า / Vendor</button>
     <button class="nav-item" data-page="settings-teams" onclick="goTo('settings-teams',this)"><span class="nav-icon">👷</span>ทีมช่าง & ราคา</button>
     <button class="nav-item" data-page="master-price" onclick="goTo('master-price',this)"><span class="nav-icon">🏷️</span>ราคากลาง</button>
     <button class="nav-item" data-page="settings-suppliers" onclick="goTo('settings-suppliers',this)"><span class="nav-icon">🔩</span>ซัพพลายเออร์</button>
@@ -899,12 +916,13 @@ select option{background:var(--surface2);}
 <!-- SETTINGS: CLIENTS -->
 <div class="page" id="page-settings-clients">
   <div class="page-header">
-    <div><div class="page-title">ลูกค้า</div><div class="page-sub">ข้อมูลบริษัทลูกค้า / ที่อยู่ / ผู้ติดต่อ — คลิกแถวเพื่อดู/แก้ไข <span class="system-updated tm"></span></div></div>
-    <button class="btn btn-primary" onclick="openClientModal()">+ เพิ่มลูกค้า</button>
+    <div><div class="page-title">ลูกค้า / Vendor</div><div class="page-sub">ข้อมูลบริษัท / เอกสาร / ผู้ติดต่อ / ประวัติการรับงาน — คลิกแถวเพื่อดู/แก้ไข <span class="system-updated tm"></span></div></div>
+    <button class="btn btn-primary" onclick="openClientModal()">+ เพิ่ม Vendor</button>
   </div>
   <div class="content">
+    <div id="vendor-alert-bar" style="display:none;"></div>
     <div class="table-wrap mb16">
-      <div class="table-header"><div class="table-title">รายชื่อลูกค้า</div></div>
+      <div class="table-header"><div class="table-title">รายชื่อ Vendor</div></div>
       <table><thead><tr><th>รหัส</th><th>ชื่อบริษัท</th><th>เงื่อนไขจ่าย</th><th>ผู้ติดต่อ</th><th>เบอร์</th><th>สถานะ</th><th></th></tr></thead>
       <tbody id="cl-tbody"></tbody></table>
     </div>
@@ -996,16 +1014,60 @@ select option{background:var(--surface2);}
 
 <!-- MODAL: CLIENT -->
 <div class="modal-overlay" id="m-client">
-  <div class="modal">
-    <div class="modal-header"><div class="modal-title">เพิ่ม/แก้ไขลูกค้า</div><button class="close-btn" onclick="closeM('m-client')">×</button></div>
-    <div class="modal-body">
-      <div class="form-row"><div class="form-group"><label>รหัสลูกค้า</label><input type="text" id="fc-id" placeholder="CLT-001"></div><div class="form-group"><label>ชื่อบริษัท</label><input type="text" id="fc-name" placeholder="บริษัท ABC จำกัด"></div></div>
-      <div class="form-row"><div class="form-group"><label>ผู้ติดต่อหลัก</label><input type="text" id="fc-contact" placeholder="ชื่อ-นามสกุล"></div><div class="form-group"><label>เบอร์โทร</label><input type="text" id="fc-phone" placeholder="08x-xxx-xxxx"></div></div>
-      <div class="form-group"><label>เลขประจำตัวผู้เสียภาษี</label><input type="text" id="fc-taxid" placeholder="Tax ID"></div>
-      <div class="form-group"><label>ที่อยู่บริษัทลูกค้า (กด Enter เพื่อขึ้นบรรทัดใหม่)</label><textarea id="fc-address" placeholder="ที่อยู่สำหรับออกเอกสาร&#10;เว้นบรรทัดได้" style="min-height:88px;resize:vertical;line-height:1.5;"></textarea></div>
-      <div class="form-group"><label>โลโก้บริษัทลูกค้า (ใช้ที่หัวใบงานรูปภาพ — ไม่ใส่ = ใช้โลโก้ ProFix)</label><input type="hidden" id="fc-logo"><input type="file" accept="image/*" onchange="loadClientLogoFile(this)"><div id="fc-logo-preview" style="margin-top:6px;"></div></div>
-      <div class="form-row"><div class="form-group"><label>เงื่อนไขจ่ายเงิน</label><select id="fc-pay"><option>จ่ายทุก 2 อาทิตย์</option><option>จ่ายทุกเดือน</option><option>จ่ายทันที</option><option>30 วัน</option><option>45 วัน</option><option>60 วัน</option></select></div><div class="form-group"><label>วงเงินเครดิต (฿)</label><input type="number" id="fc-credit" placeholder="0"></div></div>
-      <div class="form-group"><label>หมายเหตุ</label><textarea id="fc-note" placeholder="เงื่อนไขพิเศษ..." style="min-height:38px;"></textarea></div>
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header"><div><div class="modal-title" id="m-client-title">เพิ่ม/แก้ไข Vendor</div><div style="font-size:11px;color:var(--text2);margin-top:2px;" id="fc-id-sub"></div></div><button class="close-btn" onclick="closeM('m-client')">×</button></div>
+    <div class="modal-body" style="max-height:72vh;overflow-y:auto;">
+
+      <div class="vsec">
+        <div class="vsec-title">📋 ข้อมูลหลัก</div>
+        <input type="hidden" id="fc-id">
+        <div class="form-row"><div class="form-group"><label>ชื่อบริษัท / ชื่อร้าน</label><input type="text" id="fc-name" placeholder="บริษัท ABC จำกัด"></div><div class="form-group"><label>ชื่อสำหรับแสดงในระบบ</label><input type="text" id="fc-display" placeholder="ชื่อย่อ (ไม่ใส่ = ใช้ชื่อบริษัท)"></div></div>
+        <div class="form-row"><div class="form-group"><label>ประเภท Vendor</label><select id="fc-vtype"><option>ผู้รับเหมางานซ่อม</option><option>ช่างเฉพาะทาง</option><option>Supplier / อะไหล่</option><option>งาน PM</option><option>อื่น ๆ</option></select></div><div class="form-group"><label>สถานะ</label><select id="fc-status"><option value="Active">Active</option><option value="Temporarily unavailable">Temporarily unavailable</option><option value="Blacklist">Blacklist</option><option value="Inactive">Inactive</option></select></div></div>
+        <div class="form-row"><div class="form-group"><label>เลขประจำตัวผู้เสียภาษี</label><input type="text" id="fc-taxid" placeholder="Tax ID"></div><div class="form-group"><label>จังหวัด / พื้นที่ให้บริการ</label><input type="text" id="fc-province" placeholder="เช่น กรุงเทพฯ, ปริมณฑล"></div></div>
+        <div class="form-group"><label>ที่อยู่บริษัท (กด Enter เพื่อขึ้นบรรทัดใหม่)</label><textarea id="fc-address" placeholder="ที่อยู่สำหรับออกเอกสาร&#10;เว้นบรรทัดได้" style="min-height:72px;resize:vertical;line-height:1.5;"></textarea></div>
+        <div class="form-group"><label>โลโก้ (ใช้ที่หัวใบงานรูปภาพ — ไม่ใส่ = ใช้โลโก้ ProFix)</label><input type="hidden" id="fc-logo"><input type="file" accept="image/*" onchange="loadClientLogoFile(this)"><div id="fc-logo-preview" style="margin-top:6px;"></div></div>
+      </div>
+
+      <div class="vsec">
+        <div class="vsec-title">👤 ผู้ติดต่อ</div>
+        <div class="form-row"><div class="form-group"><label>ผู้ติดต่อหลัก</label><input type="text" id="fc-contact" placeholder="ชื่อ-นามสกุล"></div><div class="form-group"><label>เบอร์โทร</label><input type="text" id="fc-phone" placeholder="08x-xxx-xxxx"></div></div>
+        <div id="fc-contacts-list"></div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addVendorContactRow()">+ เพิ่มผู้ติดต่อ</button>
+      </div>
+
+      <div class="vsec">
+        <div class="vsec-title">💼 เชิงพาณิชย์</div>
+        <div class="form-row"><div class="form-group"><label>เงื่อนไขจ่ายเงิน</label><select id="fc-pay"><option>จ่ายทุก 2 อาทิตย์</option><option>จ่ายทุกเดือน</option><option>จ่ายทันที</option><option>30 วัน</option><option>45 วัน</option><option>60 วัน</option></select></div><div class="form-group"><label>วงเงินเครดิต (฿)</label><input type="number" id="fc-credit" placeholder="0"></div></div>
+        <div class="form-row"><div class="form-group"><label>Service Charge (%)</label><input type="number" id="fc-service-charge" placeholder="0" step="0.01"></div><div class="form-group"><label>VAT</label><select id="fc-vat"><option value="">ไม่ระบุ</option><option value="yes">จด VAT</option><option value="no">ไม่จด VAT</option></select></div></div>
+      </div>
+
+      <div class="vsec">
+        <div class="vsec-title">📎 เอกสาร Vendor</div>
+        <div id="fc-docs-list"></div>
+        <div class="form-row" style="align-items:end;">
+          <div class="form-group"><label>ประเภทเอกสาร</label><select id="fc-doc-type"><option>หนังสือรับรองบริษัท</option><option>ภ.พ.20</option><option>สำเนาบัตรประชาชน</option><option>ใบทะเบียนพาณิชย์</option><option>หนังสือรับรองบัญชีธนาคาร</option><option>ใบเสนอราคามาตรฐาน</option><option>สัญญา Vendor</option><option>ประกันภัย / ใบอนุญาตเฉพาะทาง</option><option>อื่น ๆ</option></select></div>
+          <div class="form-group"><label>วันหมดอายุ (ถ้ามี)</label><input type="date" id="fc-doc-expire" onclick="openDatePicker(this)" onfocus="openDatePicker(this)"></div>
+        </div>
+        <input type="file" id="fc-doc-file" onchange="uploadVendorDocumentFile(this)">
+        <div id="fc-doc-upload-status" style="font-size:11px;color:var(--text2);margin-top:4px;"></div>
+      </div>
+
+      <div class="vsec">
+        <div class="vsec-title">🏦 ข้อมูลรับเงิน (Bank Information)</div>
+        <div class="form-row"><div class="form-group"><label>ธนาคาร</label><input type="text" id="fc-bank-name" placeholder="เช่น กสิกรไทย"></div><div class="form-group"><label>เลขบัญชี</label><input type="text" id="fc-bank-no" placeholder="xxx-x-xxxxx-x"></div></div>
+        <div class="form-group"><label>ชื่อบัญชี</label><input type="text" id="fc-bank-account-name" placeholder="ชื่อบัญชีตามสมุด"></div>
+      </div>
+
+      <div class="vsec">
+        <div class="vsec-title">📝 หมายเหตุ</div>
+        <textarea id="fc-note" placeholder="เงื่อนไขพิเศษ..." style="min-height:38px;"></textarea>
+      </div>
+
+      <div class="vsec" id="fc-history-sec" style="display:none;">
+        <div class="vsec-title">📊 ประวัติการรับงาน</div>
+        <div id="fc-history-body"></div>
+      </div>
+
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-client')">ยกเลิก</button><button class="btn btn-primary" onclick="saveClient()">✓ บันทึก</button></div>
   </div>
@@ -7782,7 +7844,149 @@ let salesSignerProfiles=[]; // [{name, signature(base64)}] — จำลาย�
 // ===== SETTINGS RENDERS =====
 function detailText(obj){return Object.entries(obj).map(([k,v])=>`${k}: ${v||'-'}`).join('\n');}
 function actionCell(prefix,i,items){return `<td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${prefix}-${i}',event)">...</button><div class="action-menu" id="${prefix}-${i}">${items}</div></td>`;}
-function openClientModal(i=''){editClientIndex=i;if(i===''){['fc-id','fc-name','fc-contact','fc-phone','fc-taxid','fc-address','fc-credit','fc-note','fc-logo'].forEach(id=>document.getElementById(id).value='');document.getElementById('fc-id').value='CLT-'+String(clients.length+1).padStart(3,'0');document.getElementById('fc-pay').value='30 วัน';}else{const c=clients[i];document.getElementById('fc-id').value=c.id;document.getElementById('fc-name').value=c.name;document.getElementById('fc-contact').value=c.contact;document.getElementById('fc-phone').value=c.phone;document.getElementById('fc-taxid').value=c.taxId||c.tax_id||'';document.getElementById('fc-address').value=c.address||c.addr||'';document.getElementById('fc-pay').value=c.payTerm;document.getElementById('fc-credit').value=c.credit;document.getElementById('fc-note').value=c.note||'';document.getElementById('fc-logo').value=c.logo||'';}renderClientLogoPreview();openM('m-client');}
+// ===== Vendor (ต่อยอดจากระบบลูกค้าเดิม — ฟิลด์ใหม่ทั้งหมดเป็น additive เก็บใน client object เดิม เจ้าเก่าที่ยังไม่มีฟิลด์เหล่านี้ใช้งานปกติ) =====
+let editingVendorContacts=[], editingVendorDocs=[];
+function nextVendorId(){
+  let max=0;
+  (clients||[]).forEach(c=>{const m=/^VEN-(\d+)$/.exec(String(c&&c.id||''));if(m)max=Math.max(max,parseInt(m[1],10));});
+  return 'VEN-'+String(max+1).padStart(4,'0');
+}
+function openClientModal(i=''){
+  editClientIndex=i;
+  const blankIds=['fc-name','fc-display','fc-taxid','fc-province','fc-contact','fc-phone','fc-address','fc-credit','fc-note','fc-logo','fc-service-charge','fc-bank-name','fc-bank-no','fc-bank-account-name'];
+  if(i===''){
+    blankIds.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('fc-id').value=nextVendorId();
+    document.getElementById('fc-id-sub').textContent='รหัสจะออกให้อัตโนมัติเมื่อบันทึก: '+document.getElementById('fc-id').value;
+    document.getElementById('fc-pay').value='30 วัน';
+    document.getElementById('fc-vtype').value='ผู้รับเหมางานซ่อม';
+    document.getElementById('fc-status').value='Active';
+    document.getElementById('fc-vat').value='';
+    editingVendorContacts=[];
+    editingVendorDocs=[];
+    document.getElementById('fc-history-sec').style.display='none';
+  }else{
+    const c=clients[i];
+    document.getElementById('fc-id').value=c.id;
+    document.getElementById('fc-id-sub').textContent='รหัส: '+(c.id||'');
+    document.getElementById('fc-name').value=c.name||'';
+    document.getElementById('fc-display').value=c.displayName||'';
+    document.getElementById('fc-vtype').value=c.vendorType||'ผู้รับเหมางานซ่อม';
+    document.getElementById('fc-status').value=c.status||'Active';
+    document.getElementById('fc-contact').value=c.contact||'';
+    document.getElementById('fc-phone').value=c.phone||'';
+    document.getElementById('fc-taxid').value=c.taxId||c.tax_id||'';
+    document.getElementById('fc-province').value=c.province||'';
+    document.getElementById('fc-address').value=c.address||c.addr||'';
+    document.getElementById('fc-pay').value=c.payTerm||'30 วัน';
+    document.getElementById('fc-credit').value=c.credit||0;
+    document.getElementById('fc-service-charge').value=c.serviceCharge||'';
+    document.getElementById('fc-vat').value=c.vatRegistered||'';
+    document.getElementById('fc-note').value=c.note||'';
+    document.getElementById('fc-logo').value=c.logo||'';
+    document.getElementById('fc-bank-name').value=c.bankName||'';
+    document.getElementById('fc-bank-no').value=c.bankAccountNo||'';
+    document.getElementById('fc-bank-account-name').value=c.bankAccountName||'';
+    editingVendorContacts=Array.isArray(c.contacts)?clonePlain(c.contacts):[];
+    editingVendorDocs=Array.isArray(c.documents)?clonePlain(c.documents):[];
+    renderVendorHistory(c);
+  }
+  renderClientLogoPreview();
+  renderVendorContacts();
+  renderVendorDocs();
+  document.getElementById('fc-doc-type').value='สัญญา Vendor';
+  document.getElementById('fc-doc-expire').value='';
+  document.getElementById('fc-doc-upload-status').textContent='';
+  openM('m-client');
+}
+function addVendorContactRow(){
+  editingVendorContacts.push({id:'C'+Date.now().toString(36),name:'',role:'',phone:'',line:'',email:''});
+  renderVendorContacts();
+}
+function removeVendorContactRow(idx){editingVendorContacts.splice(idx,1);renderVendorContacts();}
+function updateVendorContactField(idx,field,val){if(editingVendorContacts[idx])editingVendorContacts[idx][field]=val;}
+function renderVendorContacts(){
+  const box=document.getElementById('fc-contacts-list');if(!box)return;
+  box.innerHTML=editingVendorContacts.map((p,idx)=>`<div class="vrow">
+    <div class="form-group"><label>ชื่อ</label><input type="text" value="${esc(p.name||'')}" placeholder="ชื่อผู้ติดต่อ" oninput="updateVendorContactField(${idx},'name',this.value)"></div>
+    <div class="form-group"><label>ตำแหน่ง</label><input type="text" value="${esc(p.role||'')}" placeholder="เช่น Supervisor" oninput="updateVendorContactField(${idx},'role',this.value)"></div>
+    <div class="form-group"><label>โทร</label><input type="text" value="${esc(p.phone||'')}" placeholder="08x-xxx-xxxx" oninput="updateVendorContactField(${idx},'phone',this.value)"></div>
+    <div class="form-group"><label>LINE / Email</label><input type="text" value="${esc(p.line||p.email||'')}" placeholder="LINE ID หรือ Email" oninput="updateVendorContactField(${idx},'line',this.value)"></div>
+    <button type="button" class="icon-btn" onclick="removeVendorContactRow(${idx})" title="ลบ">✕</button>
+  </div>`).join('')||'<div class="tm" style="font-size:12px;margin-bottom:8px;">ยังไม่มีผู้ติดต่อเพิ่มเติม (ใช้ผู้ติดต่อหลักด้านบนได้)</div>';
+}
+// เอกสาร Vendor — อัปขึ้น R2 (endpoint เดียวกับโลโก้/เอกสารบัญชี) เก็บเป็น URL ใน client.documents[] ไม่ต้องมีตารางใหม่
+async function uploadVendorDocumentFile(input){
+  const file=input?.files?.[0];if(!file)return;
+  const type=document.getElementById('fc-doc-type').value;
+  const expire=document.getElementById('fc-doc-expire').value||'';
+  const statusEl=document.getElementById('fc-doc-upload-status');
+  statusEl.textContent='กำลังอัปโหลด '+file.name+' ...';
+  try{
+    const fd=new FormData();
+    fd.append('file',file,file.name);
+    fd.append('job_id',('vendor-doc-'+(document.getElementById('fc-id')?.value||'')).replace(/[^A-Za-z0-9_-]/g,'')||'vendor-doc');
+    fd.append('category','vendor_document');
+    fd.append('token','admin-accounting');
+    const r=await fetch(ACCOUNTING_UPLOAD_ENDPOINT,{method:'POST',body:fd});
+    if(!r.ok)throw new Error(await r.text());
+    const data=await r.json().catch(()=>({}));
+    const url=data.url||data.fileUrl||data.publicUrl||'';
+    if(!url)throw new Error('ไม่ได้รับ URL ไฟล์กลับมา');
+    editingVendorDocs.push({id:'D'+Date.now().toString(36),name:file.name,category:type,url,expireDate:expire,uploadedAt:new Date().toISOString()});
+    renderVendorDocs();
+    statusEl.textContent='อัปโหลดสำเร็จ: '+file.name;
+    input.value='';
+    document.getElementById('fc-doc-expire').value='';
+  }catch(e){
+    statusEl.textContent='อัปโหลดไม่สำเร็จ: '+(e?.message||e);
+  }
+}
+function removeVendorDoc(idx){editingVendorDocs.splice(idx,1);renderVendorDocs();}
+function vendorDocExpireInfo(d){
+  if(!d||!d.expireDate)return {cls:'vexpire-ok',text:'—'};
+  const diff=Math.round((new Date(d.expireDate+'T00:00:00')-new Date(new Date().toDateString()))/86400000);
+  if(diff<0)return {cls:'vexpire-over',text:'หมดอายุแล้ว ('+d.expireDate+')'};
+  if(diff<=30)return {cls:'vexpire-soon',text:'ใกล้หมดอายุ '+d.expireDate+' (อีก '+diff+' วัน)'};
+  return {cls:'vexpire-ok',text:'หมดอายุ '+d.expireDate};
+}
+function renderVendorDocs(){
+  const box=document.getElementById('fc-docs-list');if(!box)return;
+  box.innerHTML=editingVendorDocs.map((d,idx)=>{
+    const ei=vendorDocExpireInfo(d);
+    return `<div class="vdocrow"><div><a href="${esc(d.url)}" target="_blank">${esc(d.name)}</a><div class="tm" style="font-size:10px;">${esc(d.category||'')}</div></div><div class="${ei.cls}" style="font-size:11px;">${esc(ei.text)}</div><div></div><button type="button" class="icon-btn" onclick="removeVendorDoc(${idx})" title="ลบ">✕</button></div>`;
+  }).join('')||'<div class="tm" style="font-size:12px;margin-bottom:8px;">ยังไม่มีเอกสารแนบ</div>';
+}
+// ประวัติการรับงาน — คำนวณจากตาราง jobs (จับคู่ด้วยชื่อบริษัท) ไม่ต้องมีตารางใหม่
+const VENDOR_JOB_DONE_STATUSES=new Set(['ปิดงาน','แอดมินตรวจแล้ว']);
+const VENDOR_JOB_CANCEL_STATUSES=new Set(['ยกเลิก','ต้องแก้ไข']);
+function vendorJobsFor(client){
+  const key=String((client&&client.name)||'').trim().toLowerCase();
+  if(!key)return [];
+  return liveJobs().filter(j=>String(j.client||'').trim().toLowerCase()===key);
+}
+function renderVendorHistory(client){
+  const sec=document.getElementById('fc-history-sec'),body=document.getElementById('fc-history-body');
+  if(!sec||!body)return;
+  const list=vendorJobsFor(client);
+  if(!list.length){sec.style.display='none';return;}
+  sec.style.display='';
+  let done=0,cancel=0,inprog=0;
+  list.forEach(j=>{
+    if(VENDOR_JOB_CANCEL_STATUSES.has(j.status))cancel++;
+    else if(VENDOR_JOB_DONE_STATUSES.has(j.status))done++;
+    else inprog++;
+  });
+  const rework=list.filter(j=>j.reportReviewStatus==='ต้องแก้ไข'||j.status==='ต้องแก้ไข').length;
+  body.innerHTML=`<div class="flex g8 mb8" style="flex-wrap:wrap;">
+    <span class="badge b-done">Completed ${done}</span>
+    <span class="badge b-working">In progress ${inprog}</span>
+    <span class="badge b-reject">Cancelled ${cancel}</span>
+    <span class="badge b-hold">Rework ${rework}</span>
+    <span class="tm" style="font-size:11px;">รวม ${list.length} งาน</span>
+  </div>
+  <div style="max-height:160px;overflow-y:auto;">${list.slice(0,30).map(j=>`<div class="flex" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span><button class="link-btn" onclick="closeM('m-client');openDet('${esc(j.id)}')">${esc(j.id)}</button> · ${esc(j.branch||'-')}</span>${statusBadge(j,j.status)}</div>`).join('')}</div>`;
+}
 // ===== โลโก้ลูกค้า (หัวใบงานรูปภาพ) — อัปขึ้น R2 เก็บเป็น URL ไม่ให้ข้อมูลลูกค้าที่ sync ทุกเครื่องบวม =====
 function clientLogoUrl(name){
   const key=String(name||'').trim().toLowerCase();
@@ -7854,12 +8058,44 @@ function fillPartDatalists(){
 }
 async function openPartModal(i=''){await ensurePartsLoaded();editPartIndex=i;renderSuppliers();fillPartDatalists();if(i===''){['fpa-code','fpa-cat','fpa-name','fpa-brand','fpa-unit','fpa-sup','fpa-cost','fpa-labor','fpa-buycost','fpa-buylabor','fpa-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('fpa-code').value=nextPartSeq();calcPartMargin();}else{const x=parts[i];document.getElementById('fpa-code').value=x.code||'';document.getElementById('fpa-cat').value=x.cat||x.category||'';document.getElementById('fpa-name').value=x.name||'';document.getElementById('fpa-brand').value=x.brand||x.spec||'';document.getElementById('fpa-unit').value=x.unit||'';document.getElementById('fpa-sup').value=x.sup||'';document.getElementById('fpa-cost').value=x.cost||0;document.getElementById('fpa-labor').value=x.labor||0;document.getElementById('fpa-buycost').value=x.buy_cost||0;document.getElementById('fpa-buylabor').value=x.buy_labor||0;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
 
+// แถบเตือนสัญญา Vendor ใกล้หมดอายุ/หมดแล้ว — วางไว้บนหน้ารายชื่อ ให้เห็นรวมโดยไม่ต้องเปิดทีละราย
+function renderVendorAlertBar(){
+  const box=document.getElementById('vendor-alert-bar');if(!box)return;
+  const rows=(clients||[]).map(c=>({c,alert:vendorContractAlert(c)})).filter(x=>x.alert);
+  if(!rows.length){box.innerHTML='';box.style.display='none';return;}
+  box.style.display='';
+  const over=rows.filter(x=>x.alert.diff<0);
+  const soon=rows.filter(x=>x.alert.diff>=0);
+  box.innerHTML=(over.length?`<div class="vendor-alert-bar over">⚠️ สัญญาหมดอายุแล้ว ${over.length} ราย: ${over.map(x=>`<b onclick="openClientModal(${clients.indexOf(x.c)})">${esc(x.c.displayName||x.c.name)}</b>`).join(', ')}</div>`:'')
+    +(soon.length?`<div class="vendor-alert-bar">⏰ สัญญาใกล้หมดอายุ (ภายใน 30 วัน) ${soon.length} ราย: ${soon.map(x=>`<b onclick="openClientModal(${clients.indexOf(x.c)})">${esc(x.c.displayName||x.c.name)}</b> (${x.alert.diff} วัน)`).join(', ')}</div>`:'');
+}
+function vendorStatusBadge(status){
+  const map={'Active':'b-done','Temporarily unavailable':'b-temp','Blacklist':'b-blacklist','Inactive':'b-inactive'};
+  return `<span class="badge ${map[status]||'b-done'}">${esc(status||'Active')}</span>`;
+}
+// สัญญาที่ใกล้/เกินหมดอายุของ vendor นี้ (เอาเฉพาะเอกสารประเภท "สัญญา Vendor" ตามที่ user ขอ — เอกสารอื่นไม่ต้องเตือน)
+function vendorContractAlert(c){
+  const docs=(c&&c.documents)||[];
+  const contracts=docs.filter(d=>d&&d.category==='สัญญา Vendor'&&d.expireDate);
+  if(!contracts.length)return null;
+  const today=new Date(new Date().toDateString());
+  let worst=null;
+  contracts.forEach(d=>{
+    const diff=Math.round((new Date(d.expireDate+'T00:00:00')-today)/86400000);
+    if(diff<=30&&(!worst||diff<worst.diff))worst={diff,expireDate:d.expireDate};
+  });
+  return worst;
+}
 function renderClients() {
   updateSystemUpdated();
   fillSelects();
   const tb=document.getElementById('cl-tbody');
-  if(tb)tb.innerHTML = clients.map((c,i)=>`
-    <tr style="cursor:pointer;" onclick="openClientModal(${i})"><td class="mono ta" style="font-size:11px;">${esc(c.id)}</td><td style="font-weight:600;">${c.logo?`<img src="${esc(c.logo)}" alt="" style="height:20px;max-width:64px;object-fit:contain;vertical-align:middle;margin-right:7px;background:#fff;border-radius:3px;padding:1px;">`:''}${esc(c.name)}</td><td><span class="chip">${esc(c.payTerm)}</span></td><td>${esc(c.contact)}</td><td class="mono" style="font-size:12px;">${esc(c.phone)}</td><td><span class="badge b-done">ใช้งาน</span></td>${actionCell('clm',i,`<button onclick="event.stopPropagation();openClientModal(${i})">แก้ไข</button><button onclick="event.stopPropagation();delClient(${i})">ลบ</button>`)}</tr>`).join('');
+  if(tb)tb.innerHTML = clients.map((c,i)=>{
+    const alert=vendorContractAlert(c);
+    const alertBadge=alert?`<span class="badge ${alert.diff<0?'b-blacklist':'b-temp'}" style="margin-left:6px;" title="สัญญา Vendor ${alert.diff<0?'หมดอายุแล้ว':'ใกล้หมดอายุ'} ${esc(alert.expireDate)}">📄${alert.diff<0?'หมดสัญญา':'สัญญาใกล้หมด'}</span>`:'';
+    return `<tr style="cursor:pointer;" onclick="openClientModal(${i})"><td class="mono ta" style="font-size:11px;">${esc(c.id)}</td><td style="font-weight:600;">${c.logo?`<img src="${esc(c.logo)}" alt="" style="height:20px;max-width:64px;object-fit:contain;vertical-align:middle;margin-right:7px;background:#fff;border-radius:3px;padding:1px;">`:''}${esc(c.displayName||c.name)}${c.vendorType?`<div class="tm" style="font-size:10px;font-weight:400;">${esc(c.vendorType)}</div>`:''}</td><td><span class="chip">${esc(c.payTerm)}</span></td><td>${esc(c.contact)}</td><td class="mono" style="font-size:12px;">${esc(c.phone)}</td><td>${vendorStatusBadge(c.status)}${alertBadge}</td>${actionCell('clm',i,`<button onclick="event.stopPropagation();openClientModal(${i})">แก้ไข</button><button onclick="event.stopPropagation();delClient(${i})">ลบ</button>`)}</tr>`;
+  }).join('');
+  renderVendorAlertBar();
   renderPricing();
 }
 function renderPricing() {
@@ -7872,7 +8108,38 @@ function openAddPricing(clientName) {document.getElementById('fp-client').value 
 function editPricing(i) {const p = pricing[i];document.getElementById('fp-client').value = p.client;document.getElementById('fp-type').value = p.type;document.getElementById('fp-price').value = p.price;document.getElementById('fp-note').value = p.note;openM('m-pricing');}
 function savePricing() {const cl=document.getElementById('fp-client').value,tp=document.getElementById('fp-type').value,pr=parseFloat(document.getElementById('fp-price').value)||0,nt=document.getElementById('fp-note').value;const ex=pricing.find(p=>p.client===cl&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{pricing.push({client:cl,type:tp,price:pr,note:nt});}closeM('m-pricing');renderPricing();saveState();}
 function delPricing(i){if(confirm('ลบราคากลางนี้?')){pricing.splice(i,1);renderPricing();saveState();}}
-function saveClient(){if(!guardEdit())return;const data={id:document.getElementById('fc-id').value,name:document.getElementById('fc-name').value,contact:document.getElementById('fc-contact').value,phone:document.getElementById('fc-phone').value,taxId:document.getElementById('fc-taxid').value,address:document.getElementById('fc-address').value,payTerm:document.getElementById('fc-pay').value,credit:parseFloat(document.getElementById('fc-credit').value)||0,note:document.getElementById('fc-note').value,logo:document.getElementById('fc-logo').value||''};if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;closeM('m-client');renderClients();fillSelects();saveState();}
+function saveClient(){
+  if(!guardEdit())return;
+  const name=document.getElementById('fc-name').value.trim();
+  if(!name){alert('กรุณากรอกชื่อบริษัท/ร้าน');return;}
+  const existing=editClientIndex===''?null:clients[+editClientIndex];
+  const data={
+    id:document.getElementById('fc-id').value,
+    name,
+    displayName:document.getElementById('fc-display').value,
+    vendorType:document.getElementById('fc-vtype').value,
+    status:document.getElementById('fc-status').value,
+    contact:document.getElementById('fc-contact').value,
+    phone:document.getElementById('fc-phone').value,
+    taxId:document.getElementById('fc-taxid').value,
+    province:document.getElementById('fc-province').value,
+    address:document.getElementById('fc-address').value,
+    payTerm:document.getElementById('fc-pay').value,
+    credit:parseFloat(document.getElementById('fc-credit').value)||0,
+    serviceCharge:document.getElementById('fc-service-charge').value,
+    vatRegistered:document.getElementById('fc-vat').value,
+    note:document.getElementById('fc-note').value,
+    logo:document.getElementById('fc-logo').value||'',
+    bankName:document.getElementById('fc-bank-name').value,
+    bankAccountNo:document.getElementById('fc-bank-no').value,
+    bankAccountName:document.getElementById('fc-bank-account-name').value,
+    contacts:clonePlain(editingVendorContacts),
+    documents:clonePlain(editingVendorDocs)
+  };
+  if(existing&&existing._id)data._id=existing._id; // คง _id เดิมไว้ (primary key sync กับ profix_clients) กัน sync สร้างแถวใหม่ซ้อน
+  if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;
+  closeM('m-client');renderClients();fillSelects();saveState();
+}
 function delClient(i){if(confirm('ลบลูกค้านี้?')){clients.splice(i,1);renderClients();fillSelects();saveState();}}
 
 function renderTeams() {
