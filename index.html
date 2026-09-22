@@ -698,7 +698,7 @@ select option{background:var(--surface2);}
     </div>
     <div class="filter-bar" id="fin-fbar" style="margin-bottom:16px;border-radius:8px;border:1px solid var(--border);"></div>
     <div class="table-wrap mobile-list mb16">
-      <div class="table-header"><div class="table-title" id="fin-tbl-title">P&L ต่องาน</div><span class="mono tm" style="font-size:11px;" id="fin-cnt"></span></div>
+      <div class="table-header"><div class="table-title" id="fin-tbl-title">P&L ต่องาน</div><div class="flex g8" style="align-items:center;"><button class="btn btn-primary btn-sm" id="fin-bulk-pull" onclick="bulkMatchFinanceFromSales()">💰 ดึงราคาเข้าการเงิน (ทั้งชุด)</button><span class="mono tm" style="font-size:11px;" id="fin-cnt"></span></div></div>
       <table><thead><tr><th>PR</th><th>สาขา</th><th>ทีม</th><th>รายรับ</th><th>จ่ายช่าง</th><th>ต้นทุนอะไหล่</th><th>กำไร</th><th>สถานะเงิน</th><th></th></tr></thead><tbody id="fin-tbody"></tbody></table>
     </div>
     <div class="table-wrap">
@@ -4507,11 +4507,11 @@ function financeSourceDocForJob(jobId){
   const single=docs.filter(d=>salesInvoiceJobs(d).length<=1);
   return single.length?pick(single):pick(docs);
 }
-async function matchFinanceFromSales(jobId){
-  const j=jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));if(!j)return;
-  await ensureAccountingLoaded().catch(()=>{});
+// คำนวณยอดการเงินจากเอกสารขายของงานนี้ (ไม่แก้ข้อมูล) — ใช้ร่วมกันทั้งปุ่มรายงานเดี่ยวและปุ่มดึงทั้งหมด
+function computeFinanceFromSales(jobId){
+  const j=jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));if(!j)return null;
   const inv=financeSourceDocForJob(jobId);
-  if(!inv){alert('ยังไม่มีใบเสนอราคา/บิลขายของงานนี้ — ออกเอกสารก่อนแล้วค่อยดึงข้อมูล');return;}
+  if(!inv)return null;
   let items=(salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===inv.id&&x.status!=='cancelled');
   let sharedDoc=salesInvoiceJobs(inv).length>1;
   // ถ้าเป็นใบกำกับที่รวมหลายใบมา: หยิบเฉพาะรายการที่มาจาก "ใบเสนอราคาของงานนี้"
@@ -4545,6 +4545,16 @@ async function matchFinanceFromSales(jobId){
     pt=tp?Number(tp.price||0):Number(j.pt||0);
     ptSrc=tp?' (ราคาทีม)':' (คงค่าเดิม)';
   }
+  return {job:j,inv,items,sharedDoc,pc,partR,pt,partC,fuel,ptSrc,partCSrc};
+}
+async function matchFinanceFromSales(jobId){
+  await ensureAccountingLoaded().catch(()=>{});
+  const res=computeFinanceFromSales(jobId);
+  if(!res){
+    if(!jobs.find(x=>x.id===jobId&&!isDeletedRecord(x)))return;
+    alert('ยังไม่มีใบเสนอราคา/บิลขายของงานนี้ — ออกเอกสารก่อนแล้วค่อยดึงข้อมูล');return;
+  }
+  const {job:j,inv,sharedDoc,pc,partR,pt,partC,fuel,ptSrc,partCSrc}=res;
   const newGp=(pc-pt)+(partR-partC)+fuel;
   const msg=`ดึงจากเอกสาร: ${inv.doc_no||inv.sales_invoice_no||inv.id}\n\n`
     +(sharedDoc?`⚠️ เอกสารนี้ครอบ ${salesInvoiceJobs(inv).length} งาน — ยอดที่ดึงเป็นของทั้งใบ\n   ควรออกใบเสนอราคาแยกต่องานเพื่อให้ยอดตรง\n\n`:'')
@@ -4562,6 +4572,53 @@ async function matchFinanceFromSales(jobId){
   renderFin();renderDash();saveState();
   writeAuditLog('match_finance_from_sales','job',jobId,before,patchFromDiff(before,j),clonePlain(j),{salesDoc:inv.id});
   alert(`อัปเดตการเงินงาน ${jobId} แล้ว — กำไรสุทธิ ฿${money(newGp)}`);
+}
+// ดึงราคาเข้าการเงินทีเดียวหลายงาน — ใช้สูตรเดียวกับปุ่มรายงานเดี่ยวเป๊ะ (computeFinanceFromSales)
+// แตะเฉพาะงานที่ "ยังไม่มียอดรายรับเลย" เพื่อไม่ให้ทับตัวเลขที่แอดมินกรอกเองไว้
+async function bulkMatchFinanceFromSales(){
+  if(!guardEdit())return;
+  const btn=document.getElementById('fin-bulk-pull');
+  if(btn){btn.disabled=true;btn.textContent='กำลังตรวจเอกสาร...';}
+  try{
+    await ensureAccountingLoaded(true).catch(()=>{});
+    const scope=financeScopedJobs();
+    const hits=[];
+    scope.forEach(j=>{
+      if(Number(j.pc||0)||Number(j.partR||0)||Number(j.fuel||0))return; // มียอดแล้ว ไม่แตะ
+      const res=computeFinanceFromSales(j.id);
+      if(!res)return;
+      if(!(res.pc||res.partR||res.fuel))return;                        // เอกสารไม่มียอด ข้าม
+      hits.push(res);
+    });
+    if(!hits.length){
+      alert('ไม่พบงานที่ต้องดึงราคาในช่วงที่เลือก\n\n(ดึงเฉพาะงานที่ยังไม่มียอดรายรับ และมีใบเสนอราคา/บิลขายอยู่แล้ว)');
+      return;
+    }
+    const totalInc=hits.reduce((s,r)=>s+r.pc+r.partR+r.fuel,0);
+    const totalGp=hits.reduce((s,r)=>s+(r.pc-r.pt)+(r.partR-r.partC)+r.fuel,0);
+    const shared=hits.filter(r=>r.sharedDoc);
+    const preview=hits.slice(0,12).map(r=>`  ${r.job.id} · ${r.inv.doc_no||r.inv.sales_invoice_no||''} → ฿${money(r.pc+r.partR+r.fuel)}`).join('\n');
+    const msg=`พบ ${hits.length} งานที่ดึงราคาได้ (ช่วงที่กรองอยู่: ${financeMonthFilter||'ทุกเดือน'}${financeTeamFilter&&financeTeamFilter!=='ทั้งหมด'?' · '+financeTeamFilter:''})\n\n`
+      +preview+(hits.length>12?`\n  ... และอีก ${hits.length-12} งาน`:'')
+      +`\n─────────────\nรายรับรวมที่จะเพิ่ม: ฿${money(totalInc)}\nกำไรสุทธิรวมที่คำนวณได้: ฿${money(totalGp)}\n`
+      +(shared.length?`\n⚠️ ${shared.length} งานใช้เอกสารที่ครอบหลายงาน — ยอดที่ดึงเป็นของทั้งใบ ควรตรวจซ้ำภายหลัง\n`:'')
+      +`\nยืนยันนำยอดเหล่านี้ใส่การเงินทั้งหมด?`;
+    if(!confirm(msg))return;
+    const audits=[];
+    hits.forEach(r=>{
+      const j=r.job, before=clonePlain(j);
+      Object.assign(j,{pc:r.pc,partR:r.partR,pt:r.pt,partC:r.partC,fuel:r.fuel});
+      j.financeNote=[j.financeNote||'',`ดึงจากเอกสาร ${r.inv.doc_no||r.inv.sales_invoice_no||''} เมื่อ ${todayISO()} (ดึงทั้งชุด)`].filter(Boolean).join('\n');
+      audits.push({before,after:clonePlain(j),id:j.id,doc:r.inv.id});
+    });
+    renderFin();renderDash();saveState();
+    for(const a of audits){
+      try{await writeAuditLog('match_finance_from_sales','job',a.id,a.before,patchFromDiff(a.before,a.after),a.after,{salesDoc:a.doc,bulk:true});}catch(e){}
+    }
+    alert(`อัปเดตการเงินแล้ว ${hits.length} งาน\nรายรับรวมที่เพิ่ม ฿${money(totalInc)} · กำไรสุทธิรวม ฿${money(totalGp)}`);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='💰 ดึงราคาเข้าการเงิน (ทั้งชุด)';}
+  }
 }
 // ===== #8 ขอบเขตงานตาม filter เดือน/ทีม (ไม่ซ่อนงานปิด — ใช้กับ export/สรุป) =====
 function financeScopedJobs(){
