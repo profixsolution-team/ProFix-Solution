@@ -228,6 +228,12 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .b-inactive{background:var(--surface3);color:var(--text3);}
 .vsec{margin-top:18px;padding-top:16px;border-top:1px solid var(--border);}
 .vsec:first-child{margin-top:0;padding-top:0;border-top:0;}
+.vsec>.vsec-title{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+.vsec>.vsec-title:after{content:'▾';font-size:11px;color:var(--text3);transition:transform .15s ease;flex-shrink:0;}
+.vsec.collapsed>.vsec-title{margin-bottom:0;}
+.vsec.collapsed>.vsec-title:after{transform:rotate(-90deg);}
+.vsec.collapsed>.vsec-body{display:none;}
+.vsec>.vsec-title .vsec-badge{font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-dim);border-radius:20px;padding:1px 8px;margin-left:auto;margin-right:4px;font-family:var(--mono);}
 .vsec-title{font-size:11px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}
 .vrow{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface2);}
 .vrow .form-group{margin-bottom:0;}
@@ -1018,31 +1024,56 @@ select option{background:var(--surface2);}
     <div class="modal-header"><div><div class="modal-title" id="m-client-title">เพิ่ม/แก้ไข Vendor</div><div style="font-size:11px;color:var(--text2);margin-top:2px;" id="fc-id-sub"></div></div><button class="close-btn" onclick="closeM('m-client')">×</button></div>
     <div class="modal-body" style="max-height:72vh;overflow-y:auto;">
 
-      <div class="vsec">
-        <div class="vsec-title">📋 ข้อมูลหลัก</div>
+      <div class="vsec" data-vsec="basic">
+        <div class="vsec-title" onclick="toggleVsec(this)">📋 ข้อมูลหลัก</div>
+        <div class="vsec-body">
         <input type="hidden" id="fc-id">
         <div class="form-row"><div class="form-group"><label>ชื่อบริษัท / ชื่อร้าน</label><input type="text" id="fc-name" placeholder="บริษัท ABC จำกัด"></div><div class="form-group"><label>ชื่อสำหรับแสดงในระบบ</label><input type="text" id="fc-display" placeholder="ชื่อย่อ (ไม่ใส่ = ใช้ชื่อบริษัท)"></div></div>
         <div class="form-row"><div class="form-group"><label>ประเภท Vendor</label><select id="fc-vtype"><option>ผู้รับเหมางานซ่อม</option><option>ช่างเฉพาะทาง</option><option>Supplier / อะไหล่</option><option>งาน PM</option><option>อื่น ๆ</option></select></div><div class="form-group"><label>สถานะ</label><select id="fc-status"><option value="Active">Active</option><option value="Temporarily unavailable">Temporarily unavailable</option><option value="Blacklist">Blacklist</option><option value="Inactive">Inactive</option></select></div></div>
         <div class="form-row"><div class="form-group"><label>เลขประจำตัวผู้เสียภาษี</label><input type="text" id="fc-taxid" placeholder="Tax ID"></div><div class="form-group"><label>จังหวัด / พื้นที่ให้บริการ</label><input type="text" id="fc-province" placeholder="เช่น กรุงเทพฯ, ปริมณฑล"></div></div>
         <div class="form-group"><label>ที่อยู่บริษัท (กด Enter เพื่อขึ้นบรรทัดใหม่)</label><textarea id="fc-address" placeholder="ที่อยู่สำหรับออกเอกสาร&#10;เว้นบรรทัดได้" style="min-height:72px;resize:vertical;line-height:1.5;"></textarea></div>
         <div class="form-group"><label>โลโก้ (ใช้ที่หัวใบงานรูปภาพ — ไม่ใส่ = ใช้โลโก้ ProFix)</label><input type="hidden" id="fc-logo"><input type="file" accept="image/*" onchange="loadClientLogoFile(this)"><div id="fc-logo-preview" style="margin-top:6px;"></div></div>
+        </div>
       </div>
 
-      <div class="vsec">
-        <div class="vsec-title">👤 ผู้ติดต่อ</div>
+      <div class="vsec" data-vsec="contact">
+        <div class="vsec-title" onclick="toggleVsec(this)">👤 ผู้ติดต่อ</div>
+        <div class="vsec-body">
         <div class="form-row"><div class="form-group"><label>ผู้ติดต่อหลัก</label><input type="text" id="fc-contact" placeholder="ชื่อ-นามสกุล"></div><div class="form-group"><label>เบอร์โทร</label><input type="text" id="fc-phone" placeholder="08x-xxx-xxxx"></div></div>
         <div id="fc-contacts-list"></div>
         <button type="button" class="btn btn-ghost btn-sm" onclick="addVendorContactRow()">+ เพิ่มผู้ติดต่อ</button>
+        </div>
       </div>
 
-      <div class="vsec">
-        <div class="vsec-title">💼 เชิงพาณิชย์</div>
+      <div class="vsec" data-vsec="branches">
+        <div class="vsec-title" onclick="toggleVsec(this)">🏬 สาขา (บริษัทเดียวกัน หลายสาขา — เลือกได้ตอนออกเอกสาร)</div>
+        <div class="vsec-body">
+        <div id="fc-branches-list"></div>
+        <div class="vrow" style="grid-template-columns:1.4fr 1fr 1.6fr auto;">
+          <div class="form-group"><label>ชื่อสาขา</label><input type="text" id="fc-branch-name" placeholder="เช่น Maguro - Nirvana PORCH"></div>
+          <div class="form-group"><label>สาขาที่ (ตัวเลข)</label><input type="text" id="fc-branch-no" placeholder="เว้นว่าง = สนญ."></div>
+          <div class="form-group"><label>ที่อยู่สาขา (ถ้าต่างจากสำนักงานใหญ่)</label><input type="text" id="fc-branch-addr" placeholder="ไม่ใส่ = ใช้ที่อยู่บริษัท"></div>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addVendorBranchRow()">+ เพิ่ม</button>
+        </div>
+        <div class="flex g8" style="align-items:center;margin-top:4px;">
+          <label class="btn btn-ghost btn-sm" style="margin:0;cursor:pointer;">📤 นำเข้าจากไฟล์ (Excel/CSV)<input type="file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importVendorBranchesFile(this)"></label>
+          <span id="fc-branch-import-status" style="font-size:11px;color:var(--text2);"></span>
+        </div>
+        <div class="tm" style="font-size:10px;margin-top:4px;">ไฟล์ต้องมีหัวคอลัมน์ (ไทยหรืออังกฤษก็ได้): ชื่อสาขา/name, สาขาที่/branch no, ที่อยู่/address, เบอร์โทร/phone</div>
+        </div>
+      </div>
+
+      <div class="vsec" data-vsec="commercial">
+        <div class="vsec-title" onclick="toggleVsec(this)">💼 เชิงพาณิชย์</div>
+        <div class="vsec-body">
         <div class="form-row"><div class="form-group"><label>เงื่อนไขจ่ายเงิน</label><select id="fc-pay"><option>จ่ายทุก 2 อาทิตย์</option><option>จ่ายทุกเดือน</option><option>จ่ายทันที</option><option>30 วัน</option><option>45 วัน</option><option>60 วัน</option></select></div><div class="form-group"><label>วงเงินเครดิต (฿)</label><input type="number" id="fc-credit" placeholder="0"></div></div>
         <div class="form-row"><div class="form-group"><label>Service Charge (%)</label><input type="number" id="fc-service-charge" placeholder="0" step="0.01"></div><div class="form-group"><label>VAT</label><select id="fc-vat"><option value="">ไม่ระบุ</option><option value="yes">จด VAT</option><option value="no">ไม่จด VAT</option></select></div></div>
+        </div>
       </div>
 
-      <div class="vsec">
-        <div class="vsec-title">📎 เอกสาร Vendor</div>
+      <div class="vsec" data-vsec="documents">
+        <div class="vsec-title" onclick="toggleVsec(this)">📎 เอกสาร Vendor</div>
+        <div class="vsec-body">
         <div id="fc-docs-list"></div>
         <div class="form-row" style="align-items:end;">
           <div class="form-group"><label>ประเภทเอกสาร</label><select id="fc-doc-type"><option>หนังสือรับรองบริษัท</option><option>ภ.พ.20</option><option>สำเนาบัตรประชาชน</option><option>ใบทะเบียนพาณิชย์</option><option>หนังสือรับรองบัญชีธนาคาร</option><option>ใบเสนอราคามาตรฐาน</option><option>สัญญา Vendor</option><option>ประกันภัย / ใบอนุญาตเฉพาะทาง</option><option>อื่น ๆ</option></select></div>
@@ -1050,22 +1081,27 @@ select option{background:var(--surface2);}
         </div>
         <input type="file" id="fc-doc-file" onchange="uploadVendorDocumentFile(this)">
         <div id="fc-doc-upload-status" style="font-size:11px;color:var(--text2);margin-top:4px;"></div>
+        </div>
       </div>
 
-      <div class="vsec">
-        <div class="vsec-title">🏦 ข้อมูลรับเงิน (Bank Information)</div>
+      <div class="vsec" data-vsec="bank">
+        <div class="vsec-title" onclick="toggleVsec(this)">🏦 ข้อมูลรับเงิน (Bank Information)</div>
+        <div class="vsec-body">
         <div class="form-row"><div class="form-group"><label>ธนาคาร</label><input type="text" id="fc-bank-name" placeholder="เช่น กสิกรไทย"></div><div class="form-group"><label>เลขบัญชี</label><input type="text" id="fc-bank-no" placeholder="xxx-x-xxxxx-x"></div></div>
         <div class="form-group"><label>ชื่อบัญชี</label><input type="text" id="fc-bank-account-name" placeholder="ชื่อบัญชีตามสมุด"></div>
+        </div>
       </div>
 
-      <div class="vsec">
-        <div class="vsec-title">📝 หมายเหตุ</div>
+      <div class="vsec" data-vsec="note">
+        <div class="vsec-title" onclick="toggleVsec(this)">📝 หมายเหตุ</div>
+        <div class="vsec-body">
         <textarea id="fc-note" placeholder="เงื่อนไขพิเศษ..." style="min-height:38px;"></textarea>
+        </div>
       </div>
 
       <div class="vsec" id="fc-history-sec" style="display:none;">
         <div class="vsec-title">📊 ประวัติการรับงาน</div>
-        <div id="fc-history-body"></div>
+        <div class="vsec-body"><div id="fc-history-body"></div></div>
       </div>
 
     </div>
@@ -1395,7 +1431,7 @@ select option{background:var(--surface2);}
                   <select id="sale-customer-select" onchange="applySalesCustomerProfile(this.value)"></select>
                   <textarea id="sale-customer-address" placeholder="ที่อยู่ลูกค้า" style="min-height:56px;"></textarea>
                   <input id="sale-customer-taxid" placeholder="เลขประจำตัวผู้เสียภาษี">
-                  <input id="sale-customer-branch-no" placeholder="สาขาที่ (เว้นว่าง = สำนักงานใหญ่)">
+                  <input id="sale-customer-branch-no" list="sale-customer-branch-list" placeholder="สาขาที่ (เว้นว่าง = สำนักงานใหญ่) — เลือกจากสาขาที่บันทึกไว้ หรือพิมพ์เอง" oninput="onSalesCustomerBranchPick(this.value)"><datalist id="sale-customer-branch-list"></datalist>
                   <input id="sale-customer-phone" placeholder="โทรศัพท์">
                 </div>
                 <input id="sale-customer" type="hidden">
@@ -6004,16 +6040,40 @@ function saveDocIssuer(){
 }
 function salesClientProfile(name, branchName=''){
   const client=(clients||[]).find(c=>String(c.name||'').trim()===String(name||'').trim())||{};
-  const branch=(branches||[]).find(b=>
-    String(b.client||'').trim()===String(name||'').trim() &&
-    (!branchName || String(b.name||'').trim()===String(branchName||'').trim())
-  ) || (branches||[]).find(b=>String(b.name||'').trim()===String(branchName||'').trim()) || {};
+  // จับคู่สาขาเฉพาะเมื่อระบุ branchName มาจริง ๆ เท่านั้น — ไม่งั้นตอนแค่เลือกบริษัทลูกค้าเฉย ๆ (ไม่ได้ระบุสาขา)
+  // จะไปหยิบสาขาแรกที่เจอมาเติมที่อยู่/เลขสาขาให้แบบสุ่ม ๆ ซึ่งผิดเจตนา (ค่าเริ่มต้นควรเป็นสำนักงานใหญ่)
+  const branch=branchName?(
+    (branches||[]).find(b=>String(b.client||'').trim()===String(name||'').trim()&&String(b.name||'').trim()===String(branchName||'').trim())
+    || (branches||[]).find(b=>String(b.name||'').trim()===String(branchName||'').trim())
+  ):null;
+  const b=branch||{};
   return {
     name:name||client.name||'',
-    address:branch.addr||client.addr||client.address||'',
+    address:b.addr||client.addr||client.address||'',
     taxId:client.taxId||client.tax_id||'',
-    phone:branch.phone||client.phone||''
+    phone:b.phone||client.phone||'',
+    branchNo:b.taxBranchNo||''
   };
+}
+// รายชื่อสาขา (จาก collection branches[] ที่จัดการในหน้า Vendor) ของบริษัทลูกค้าที่เลือกอยู่ — ใช้ทำ suggestion ในช่อง "สาขาที่"
+function vendorBranchesOf(clientName){
+  const key=String(clientName||'').trim();
+  if(!key)return [];
+  return (branches||[]).filter(b=>String(b&&b.client||'').trim()===key);
+}
+function refreshSalesCustomerBranchOptions(clientName){
+  const dl=document.getElementById('sale-customer-branch-list');if(!dl)return;
+  const list=vendorBranchesOf(clientName).filter(b=>b.taxBranchNo);
+  dl.innerHTML=list.map(b=>`<option value="${esc(b.taxBranchNo)}" label="${esc(b.name)}${b.addr?' — '+esc(b.addr):''}"></option>`).join('');
+}
+// เลือก/พิมพ์เลขสาขาในช่อง "สาขาที่" — ถ้าตรงกับสาขาที่มีบันทึกไว้ของลูกค้ารายนี้ ดึงที่อยู่สาขานั้นมาแทนอัตโนมัติ
+function onSalesCustomerBranchPick(val){
+  const clientName=document.getElementById('sale-customer')?.value||'';
+  const match=vendorBranchesOf(clientName).find(b=>String(b.taxBranchNo||'').trim()===String(val||'').trim()&&val);
+  if(match&&match.addr){
+    const addr=document.getElementById('sale-customer-address');
+    if(addr)addr.value=match.addr;
+  }
 }
 function renderSalesCustomerOptions(selected=''){
   const sel=document.getElementById('sale-customer-select');if(!sel)return;
@@ -6033,6 +6093,9 @@ function applySalesCustomerProfile(name, branchName=''){
   if(addr)addr.value=p.address||'';
   if(tax)tax.value=p.taxId||'';
   if(phone)phone.value=p.phone||'';
+  refreshSalesCustomerBranchOptions(name);
+  const branchNoEl=document.getElementById('sale-customer-branch-no');
+  if(branchNoEl&&p.branchNo&&!branchNoEl.value)branchNoEl.value=p.branchNo; // เติมเฉพาะตอนช่องยังว่าง — ไม่ทับค่าที่แก้ไขเอกสารเดิมไว้แล้ว
 }
 // ดึงราคาแยก ค่าของ/ค่าแรง × ขาย/ต้นทุน (ต่อหน่วย) จากราคากลาง
 // ใช้กับการเงินเท่านั้น — เอกสารยังใช้ราคารวม (unit_price) เหมือนเดิม
@@ -6171,6 +6234,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   renderSalesJobChips();
   document.getElementById('sale-customer').value=inv?.customer_name||'';
   renderSalesCustomerOptions(inv?.customer_name||'');
+  refreshSalesCustomerBranchOptions(inv?.customer_name||'');
   document.getElementById('sale-date').value=inv?.invoice_date||todayISO();
   const ptEl=document.getElementById('sale-payment-terms');if(ptEl)ptEl.value=inv?.payment_terms||'โอนเข้าบัญชี';
   document.getElementById('sale-payment').value=inv?.payment_status||'unpaid';
@@ -7845,7 +7909,7 @@ let salesSignerProfiles=[]; // [{name, signature(base64)}] — จำลาย�
 function detailText(obj){return Object.entries(obj).map(([k,v])=>`${k}: ${v||'-'}`).join('\n');}
 function actionCell(prefix,i,items){return `<td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${prefix}-${i}',event)">...</button><div class="action-menu" id="${prefix}-${i}">${items}</div></td>`;}
 // ===== Vendor (ต่อยอดจากระบบลูกค้าเดิม — ฟิลด์ใหม่ทั้งหมดเป็น additive เก็บใน client object เดิม เจ้าเก่าที่ยังไม่มีฟิลด์เหล่านี้ใช้งานปกติ) =====
-let editingVendorContacts=[], editingVendorDocs=[];
+let editingVendorContacts=[], editingVendorDocs=[], editingVendorBranches=[], editingVendorOrigName='';
 function nextVendorId(){
   let max=0;
   (clients||[]).forEach(c=>{const m=/^VEN-(\d+)$/.exec(String(c&&c.id||''));if(m)max=Math.max(max,parseInt(m[1],10));});
@@ -7864,6 +7928,8 @@ function openClientModal(i=''){
     document.getElementById('fc-vat').value='';
     editingVendorContacts=[];
     editingVendorDocs=[];
+    editingVendorBranches=[];
+    editingVendorOrigName='';
     document.getElementById('fc-history-sec').style.display='none';
   }else{
     const c=clients[i];
@@ -7889,15 +7955,54 @@ function openClientModal(i=''){
     document.getElementById('fc-bank-account-name').value=c.bankAccountName||'';
     editingVendorContacts=Array.isArray(c.contacts)?clonePlain(c.contacts):[];
     editingVendorDocs=Array.isArray(c.documents)?clonePlain(c.documents):[];
+    editingVendorOrigName=c.name||'';
+    editingVendorBranches=clonePlain((branches||[]).filter(b=>String(b&&b.client||'').trim()===String(c.name||'').trim()));
     renderVendorHistory(c);
   }
   renderClientLogoPreview();
   renderVendorContacts();
   renderVendorDocs();
+  renderVendorBranches();
+  ['fc-branch-name','fc-branch-no','fc-branch-addr'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('fc-branch-import-status').textContent='';
   document.getElementById('fc-doc-type').value='สัญญา Vendor';
   document.getElementById('fc-doc-expire').value='';
   document.getElementById('fc-doc-upload-status').textContent='';
+  applyVendorSectionCollapse(i===''?null:clients[i]);
   openM('m-client');
+}
+// ===== ฟอร์ม Vendor แบบพับ/กาง (accordion) — กันฟอร์มยาวมากตอนกรอกครบทุกช่อง =====
+function toggleVsec(titleEl){
+  const sec=titleEl.closest('.vsec');if(!sec)return;
+  sec.classList.toggle('collapsed');
+}
+function setVsecCollapsed(key,collapsed){
+  const el=document.querySelector('.vsec[data-vsec="'+key+'"]');
+  if(el)el.classList.toggle('collapsed',!!collapsed);
+}
+function updateVsecBadge(key,count){
+  const title=document.querySelector('.vsec[data-vsec="'+key+'"] > .vsec-title');
+  if(!title)return;
+  let badge=title.querySelector('.vsec-badge');
+  if(count>0){
+    if(!badge){badge=document.createElement('span');badge.className='vsec-badge';title.appendChild(badge);}
+    badge.textContent=count;
+  }else if(badge){badge.remove();}
+}
+// vendor ใหม่ → เปิดแค่ "ข้อมูลหลัก" ให้กรอกก่อน ส่วนอื่นพับไว้ (ลดความยาวตอนเปิดครั้งแรก)
+// vendor เดิม → เปิดเฉพาะหมวดที่มีข้อมูลอยู่แล้ว ให้เห็นทันทีว่ากรอกอะไรไว้บ้าง ที่เหลือพับไว้
+function applyVendorSectionCollapse(c){
+  setVsecCollapsed('basic',false);
+  if(!c){
+    ['contact','branches','commercial','documents','bank','note'].forEach(k=>setVsecCollapsed(k,true));
+    return;
+  }
+  setVsecCollapsed('contact',!(editingVendorContacts.length||c.contact||c.phone));
+  setVsecCollapsed('branches',!editingVendorBranches.length);
+  setVsecCollapsed('commercial',!(Number(c.credit)>0||c.serviceCharge||c.vatRegistered));
+  setVsecCollapsed('documents',!editingVendorDocs.length);
+  setVsecCollapsed('bank',!(c.bankName||c.bankAccountNo||c.bankAccountName));
+  setVsecCollapsed('note',!(c.note&&String(c.note).trim()));
 }
 function addVendorContactRow(){
   editingVendorContacts.push({id:'C'+Date.now().toString(36),name:'',role:'',phone:'',line:'',email:''});
@@ -7914,6 +8019,7 @@ function renderVendorContacts(){
     <div class="form-group"><label>LINE / Email</label><input type="text" value="${esc(p.line||p.email||'')}" placeholder="LINE ID หรือ Email" oninput="updateVendorContactField(${idx},'line',this.value)"></div>
     <button type="button" class="icon-btn" onclick="removeVendorContactRow(${idx})" title="ลบ">✕</button>
   </div>`).join('')||'<div class="tm" style="font-size:12px;margin-bottom:8px;">ยังไม่มีผู้ติดต่อเพิ่มเติม (ใช้ผู้ติดต่อหลักด้านบนได้)</div>';
+  updateVsecBadge('contact',editingVendorContacts.length);
 }
 // เอกสาร Vendor — อัปขึ้น R2 (endpoint เดียวกับโลโก้/เอกสารบัญชี) เก็บเป็น URL ใน client.documents[] ไม่ต้องมีตารางใหม่
 async function uploadVendorDocumentFile(input){
@@ -7956,6 +8062,76 @@ function renderVendorDocs(){
     const ei=vendorDocExpireInfo(d);
     return `<div class="vdocrow"><div><a href="${esc(d.url)}" target="_blank">${esc(d.name)}</a><div class="tm" style="font-size:10px;">${esc(d.category||'')}</div></div><div class="${ei.cls}" style="font-size:11px;">${esc(ei.text)}</div><div></div><button type="button" class="icon-btn" onclick="removeVendorDoc(${idx})" title="ลบ">✕</button></div>`;
   }).join('')||'<div class="tm" style="font-size:12px;margin-bottom:8px;">ยังไม่มีเอกสารแนบ</div>';
+  updateVsecBadge('documents',editingVendorDocs.length);
+}
+// สาขาของ vendor นี้ — เก็บใน collection กลาง `branches` เดิม (มี CRUD/sync อยู่แล้ว แค่ไม่เคยมีใครใช้)
+// แก้ไขในโมดัล vendor นี้เป็น draft (editingVendorBranches) แล้วค่อย reconcile เข้า branches[] ตอนกด บันทึก
+function renderVendorBranches(){
+  const box=document.getElementById('fc-branches-list');if(!box)return;
+  box.innerHTML=editingVendorBranches.map((b,idx)=>`<div class="vdocrow" style="grid-template-columns:1.4fr 1fr 1.6fr auto;">
+    <div style="font-weight:600;">${esc(b.name||'-')}</div>
+    <div class="tm">${b.taxBranchNo?('สาขาที่ '+esc(b.taxBranchNo)):'สำนักงานใหญ่'}</div>
+    <div class="tm" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(b.addr||b.address||'-')}</div>
+    <button type="button" class="icon-btn" onclick="removeVendorBranchRow(${idx})" title="ลบ">✕</button>
+  </div>`).join('')||'<div class="tm" style="font-size:12px;margin-bottom:8px;">ยังไม่มีสาขา (ถ้าไม่เพิ่ม เอกสารจะถือว่าเป็นสำนักงานใหญ่)</div>';
+  updateVsecBadge('branches',editingVendorBranches.length);
+}
+function addVendorBranchRow(){
+  const name=document.getElementById('fc-branch-name').value.trim();
+  if(!name){alert('กรอกชื่อสาขาก่อน');return;}
+  const no=document.getElementById('fc-branch-no').value.trim();
+  const addr=document.getElementById('fc-branch-addr').value.trim();
+  editingVendorBranches.push({id:'BRN-'+Date.now().toString(36)+'-'+editingVendorBranches.length,name,taxBranchNo:no,addr,phone:'',mgr:'',hours:''});
+  ['fc-branch-name','fc-branch-no','fc-branch-addr'].forEach(id=>{document.getElementById(id).value='';});
+  renderVendorBranches();
+}
+function removeVendorBranchRow(idx){editingVendorBranches.splice(idx,1);renderVendorBranches();}
+// นำเข้าสาขาจากไฟล์ Excel/CSV — จับหัวคอลัมน์แบบยืดหยุ่น (ไทย/อังกฤษ) ด้วย XLSX ที่โหลดไว้อยู่แล้วทั้งระบบ
+function vendorBranchImportHeaderMap(headerRow){
+  const norm=s=>String(s||'').trim().toLowerCase();
+  const map={name:-1,no:-1,addr:-1,phone:-1};
+  headerRow.forEach((h,i)=>{
+    const v=norm(h);
+    if(map.name<0&&/ชื่อสาขา|branch\s*name|^name$|สาขา$/.test(v))map.name=i;
+    else if(map.no<0&&/สาขาที่|เลขสาขา|branch\s*no|branch\s*code|^no$|^code$/.test(v))map.no=i;
+    else if(map.addr<0&&/ที่อยู่|address|addr/.test(v))map.addr=i;
+    else if(map.phone<0&&/เบอร์|โทร|phone|tel/.test(v))map.phone=i;
+  });
+  if(map.name<0)map.name=0; // เผื่อไฟล์ไม่มีหัวคอลัมน์ที่จับคู่ได้ — ใช้คอลัมน์แรกเป็นชื่อสาขา
+  return map;
+}
+async function importVendorBranchesFile(input){
+  const file=input?.files?.[0];if(!file)return;
+  const statusEl=document.getElementById('fc-branch-import-status');
+  statusEl.textContent='กำลังอ่านไฟล์...';
+  try{
+    if(typeof XLSX==='undefined')throw new Error('ไลบรารีอ่านไฟล์ยังโหลดไม่เสร็จ ลองใหม่อีกครั้ง');
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const sheet=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:''});
+    if(!rows.length)throw new Error('ไฟล์ว่างเปล่า');
+    const map=vendorBranchImportHeaderMap(rows[0]);
+    let added=0,skipped=0;
+    rows.slice(1).forEach((r,idx)=>{
+      const name=String(r[map.name]||'').trim();
+      if(!name){skipped++;return;}
+      editingVendorBranches.push({
+        id:'BRN-'+Date.now().toString(36)+'-imp'+idx,
+        name,
+        taxBranchNo:map.no>=0?String(r[map.no]||'').trim():'',
+        addr:map.addr>=0?String(r[map.addr]||'').trim():'',
+        phone:map.phone>=0?String(r[map.phone]||'').trim():'',
+        mgr:'',hours:''
+      });
+      added++;
+    });
+    renderVendorBranches();
+    statusEl.textContent=`นำเข้าสำเร็จ ${added} สาขา${skipped?` (ข้าม ${skipped} แถวที่ไม่มีชื่อสาขา)`:''}`;
+    input.value='';
+  }catch(e){
+    statusEl.textContent='นำเข้าไม่สำเร็จ: '+(e?.message||e);
+  }
 }
 // ประวัติการรับงาน — คำนวณจากตาราง jobs (จับคู่ด้วยชื่อบริษัท) ไม่ต้องมีตารางใหม่
 const VENDOR_JOB_DONE_STATUSES=new Set(['ปิดงาน','แอดมินตรวจแล้ว']);
@@ -8138,7 +8314,15 @@ function saveClient(){
   };
   if(existing&&existing._id)data._id=existing._id; // คง _id เดิมไว้ (primary key sync กับ profix_clients) กัน sync สร้างแถวใหม่ซ้อน
   if(editClientIndex==='')clients.push(data);else clients[+editClientIndex]=data;
+  reconcileVendorBranches(name);
   closeM('m-client');renderClients();fillSelects();saveState();
+}
+// รวมสาขาที่แก้ในโมดัลนี้เข้า collection กลาง branches[] — ลบของเดิมของ vendor นี้ (ตามชื่อก่อนแก้ กันชื่อเปลี่ยนแล้วสาขาลอย) แล้วใส่ชุดใหม่แทน
+function reconcileVendorBranches(newName){
+  if(!editingVendorOrigName&&!editingVendorBranches.length)return; // vendor ใหม่ที่ไม่ได้แตะสาขาเลย — ไม่ต้องยุ่งกับ branches[]
+  const others=(branches||[]).filter(b=>String(b&&b.client||'').trim()!==String(editingVendorOrigName||'').trim());
+  const mine=editingVendorBranches.map(b=>({...b,client:newName}));
+  branches=[...others,...mine];
 }
 function delClient(i){if(confirm('ลบลูกค้านี้?')){clients.splice(i,1);renderClients();fillSelects();saveState();}}
 
