@@ -1741,6 +1741,7 @@ function setAppLoading(on,msg='กำลังโหลด...',sub='กำลั
   if(main)main.textContent=msg;
   if(small)small.textContent=sub;
 }
+let legacyBlobFallbackActive=false; // true = เซสชันนี้โหลดจากก้อนสำรองเก่า app_state → ห้ามบันทึกทับข้อมูลจริง
 let saveTimer=null, isHydrated=false, supabaseOnline=false, splitTablesOnline=false, loadedFromSplitTables=false, partsLoaded=false, docsLoaded=false, workOrdersLoaded=false, partsLoadingPromise=null, docsLoadingPromise=null, workOrdersLoadingPromise=null, hasUnsyncedLocalChanges=false, lastSaveErrorAt=0;
 // true เฉพาะเมื่อโหลดข้อมูลจาก server สำเร็จจริงในเซสชันนี้ (ไม่ใช่แค่ isHydrated ซึ่งอาจ true ได้แม้โหลดล้มเหลวทั้งหมด)
 // ใช้กันการ sync master collections (ลูกค้า/ทีม/ราคากลาง ฯลฯ) ทับ DB ด้วยค่า default/ค่าที่ยังไม่ได้โหลดจริง
@@ -2782,6 +2783,11 @@ async function upsertSystemData(data){
   if(!r.ok)throw new Error(await r.text());
 }
 async function saveSplitStateNow(force=false){
+  // กันเขียนทับด้วยข้อมูลเก่า: ถ้าเซสชันนี้โหลดมาจากก้อนสำรอง app_state (โหมดฉุกเฉิน) ห้ามบันทึกขึ้น server เด็ดขาด
+  if(legacyBlobFallbackActive){
+    console.warn('[โหมดฉุกเฉิน] ข้ามการบันทึกขึ้น server — ข้อมูลในหน้านี้มาจากก้อนสำรองรุ่นเก่า');
+    return;
+  }
   const snap=splitStateSnapshot();
   const now=new Date().toISOString();
   const jobsHash=stableJson(snap.jobs), adminHash=stableJson(snap.adminTasks), partsHash=stableJson(snap.parts), woHash=stableJson(snap.workOrders), docHash=stableJson(snap.documents), metaHash=stableJson(snap.meta);
@@ -2828,9 +2834,15 @@ async function loadState(opts={}){
   try{
     const data=await loadAppStateData();
     if(data){
+      // โหลดจากก้อนเก่า app_state = โหมดฉุกเฉิน (อ่านอย่างเดียว)
+      // ก้อนนี้ถูกแช่ไว้ตั้งแต่ย้ายมาใช้ตารางแยกราย row (มิ.ย. 2026) ข้อมูลข้างในจึงเก่ามาก
+      // เดิมมีการ "auto migrate" เอาก้อนนี้เขียนทับตารางจริงทันที → เคยทำให้สถานะ/ตัวเลขการเงิน
+      // ของงานเก่าย้อนกลับไปเป็นค่าเดือน มิ.ย. ทั้งหมด จึงเลิกเขียนกลับถาวร และล็อกไม่ให้เซสชันนี้บันทึกทับ
+      legacyBlobFallbackActive=true;
       applyState(data);supabaseOnline=true;masterMetaTrusted=true;if(Array.isArray(data.parts))partsLoaded=true;if(data.docs){docsLoaded=true;workOrdersLoaded=true;}
       try{await loadTechnicianReportTables();}catch(reportErr){console.warn('Technician report table load failed after app_state fallback',reportErr);}
-      if(splitTablesOnline){try{await saveSplitStateNow(true);}catch(migErr){console.warn('Auto migration to split tables failed',migErr);}}
+      console.warn('[โหมดฉุกเฉิน] โหลดข้อมูลจากก้อนสำรองเก่า app_state — ข้อมูลอาจไม่ใช่ล่าสุด และเซสชันนี้จะไม่บันทึกทับข้อมูลจริง กรุณารีโหลดหน้าใหม่');
+      if(!silent)alert('โหลดข้อมูลล่าสุดไม่สำเร็จ ระบบกำลังแสดงข้อมูลสำรองรุ่นเก่าแบบอ่านอย่างเดียว (จะไม่บันทึกทับของจริง)\n\nกรุณารีเฟรชหน้าใหม่อีกครั้ง');
     }
   }catch(e){
     supabaseOnline=false;
