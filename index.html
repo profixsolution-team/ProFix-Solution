@@ -1458,7 +1458,8 @@ select option{background:var(--surface2);}
                   <select id="sale-customer-select" onchange="applySalesCustomerProfile(this.value)"></select>
                   <textarea id="sale-customer-address" placeholder="ที่อยู่ลูกค้า" style="min-height:56px;"></textarea>
                   <input id="sale-customer-taxid" placeholder="เลขประจำตัวผู้เสียภาษี">
-                  <input id="sale-customer-branch-no" list="sale-customer-branch-list" placeholder="สาขาที่ (เว้นว่าง = สำนักงานใหญ่) — เลือกจากสาขาที่บันทึกไว้ หรือพิมพ์เอง" oninput="onSalesCustomerBranchPick(this.value)"><datalist id="sale-customer-branch-list"></datalist>
+                  <select id="sale-customer-branch-pick" onchange="onSalesBranchSelect(this.value)"></select>
+                  <input id="sale-customer-branch-no" placeholder="สาขาที่ (เว้นว่าง = สำนักงานใหญ่)" oninput="onSalesCustomerBranchPick(this.value)">
                   <input id="sale-customer-phone" placeholder="โทรศัพท์">
                 </div>
                 <input id="sale-customer" type="hidden">
@@ -6165,19 +6166,42 @@ function vendorBranchesOf(clientName){
   if(!key)return [];
   return (branches||[]).filter(b=>String(b&&b.client||'').trim()===key);
 }
+// เติมตัวเลือกสาขาลง dropdown ของลูกค้าที่เลือกอยู่ (ใช้ select จริง ไม่ใช่ datalist — datalist ต้องพิมพ์ก่อนถึงจะเห็นตัวเลือก)
 function refreshSalesCustomerBranchOptions(clientName){
-  const dl=document.getElementById('sale-customer-branch-list');if(!dl)return;
-  const list=vendorBranchesOf(clientName).filter(b=>b.taxBranchNo);
-  dl.innerHTML=list.map(b=>`<option value="${esc(b.taxBranchNo)}" label="${esc(b.name)}${b.addr?' — '+esc(b.addr):''}"></option>`).join('');
+  const sel=document.getElementById('sale-customer-branch-pick');if(!sel)return;
+  const cur=(document.getElementById('sale-customer-branch-no')?.value||'').trim();
+  const list=vendorBranchesOf(clientName);
+  const opts=['<option value="">สำนักงานใหญ่ (ไม่มีเลขสาขา)</option>'];
+  list.forEach(b=>{
+    const no=String(b.taxBranchNo||'').trim();
+    if(!no)return; // สาขาที่ไม่ได้ใส่เลข = สำนักงานใหญ่อยู่แล้ว ไม่ต้องมีตัวเลือกซ้ำ
+    opts.push(`<option value="${esc(no)}"${no===cur?' selected':''}>${esc(b.name||'สาขา')} — สาขาที่ ${esc(no)}</option>`);
+  });
+  const known=list.some(b=>String(b.taxBranchNo||'').trim()===cur);
+  if(cur&&!known)opts.push(`<option value="${esc(cur)}" selected>สาขาที่ ${esc(cur)} (พิมพ์เอง)</option>`);
+  opts.push(`<option value="__custom__">✎ พิมพ์เลขสาขาเอง...</option>`);
+  sel.innerHTML=opts.join('');
+  if(!cur)sel.value='';
+  sel.title=list.length?`ลูกค้ารายนี้มี ${list.length} สาขาที่บันทึกไว้`:'ลูกค้ารายนี้ยังไม่ได้บันทึกสาขา — เพิ่มได้ที่หน้า ลูกค้า / Vendor';
 }
-// เลือก/พิมพ์เลขสาขาในช่อง "สาขาที่" — ถ้าตรงกับสาขาที่มีบันทึกไว้ของลูกค้ารายนี้ ดึงที่อยู่สาขานั้นมาแทนอัตโนมัติ
+// เลือกสาขาจาก dropdown → ใส่เลขสาขาลงช่องจริง + ดึงที่อยู่สาขามาแทนให้
+function onSalesBranchSelect(val){
+  const input=document.getElementById('sale-customer-branch-no');if(!input)return;
+  if(val==='__custom__'){input.value='';input.focus();return;}
+  input.value=val||'';
+  onSalesCustomerBranchPick(val);
+}
+// พิมพ์เลขสาขาเอง — ถ้าตรงกับสาขาที่บันทึกไว้ของลูกค้ารายนี้ ดึงที่อยู่สาขานั้นมาแทน + sync dropdown ให้ตรงกัน
 function onSalesCustomerBranchPick(val){
   const clientName=document.getElementById('sale-customer')?.value||'';
-  const match=vendorBranchesOf(clientName).find(b=>String(b.taxBranchNo||'').trim()===String(val||'').trim()&&val);
+  const v=String(val||'').trim();
+  const match=vendorBranchesOf(clientName).find(b=>String(b.taxBranchNo||'').trim()===v&&v);
   if(match&&match.addr){
     const addr=document.getElementById('sale-customer-address');
     if(addr)addr.value=match.addr;
   }
+  const sel=document.getElementById('sale-customer-branch-pick');
+  if(sel&&[...sel.options].some(o=>o.value===v))sel.value=v;
 }
 function renderSalesCustomerOptions(selected=''){
   const sel=document.getElementById('sale-customer-select');if(!sel)return;
@@ -6338,7 +6362,6 @@ function openSalesModal(id='',prefJobId='',docType=''){
   renderSalesJobChips();
   document.getElementById('sale-customer').value=inv?.customer_name||'';
   renderSalesCustomerOptions(inv?.customer_name||'');
-  refreshSalesCustomerBranchOptions(inv?.customer_name||'');
   document.getElementById('sale-date').value=inv?.invoice_date||todayISO();
   const ptEl=document.getElementById('sale-payment-terms');if(ptEl)ptEl.value=inv?.payment_terms||'โอนเข้าบัญชี';
   document.getElementById('sale-payment').value=inv?.payment_status||'unpaid';
@@ -6351,6 +6374,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-customer-address').value=saleCustomer.address;
   document.getElementById('sale-customer-taxid').value=saleCustomer.taxId;
   {const el=document.getElementById('sale-customer-branch-no');if(el)el.value=saleCustomer.branchNo||'';}
+  refreshSalesCustomerBranchOptions(inv?.customer_name||''); // ต้องเรียกหลังใส่ค่าเลขสาขาแล้ว dropdown ถึงจะเลือกค้างไว้ถูกตัว
   document.getElementById('sale-customer-phone').value=saleCustomer.phone;
   document.getElementById('sale-company-display').value=saleCompany.displayName;
   document.getElementById('sale-company-name').value=saleCompany.name;
