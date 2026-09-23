@@ -1624,6 +1624,11 @@ let listDraft=[];
 // ค่าเดินทาง (fuel) = เงินที่เก็บจากลูกค้าโดยตรง จึงเป็น "รายรับ" ไม่ใช่ต้นทุน
 const gp = j => (j.pc - j.pt) + (j.partR - j.partC) + Number(j.fuel||0);
 const jobIncome = j => Number(j.pc||0) + Number(j.partR||0) + Number(j.fuel||0);
+// กลุ่มสถานะงานที่ใช้สรุปตัวเลขหน้าแดชบอร์ด/จ่ายช่าง — ต้องตรงกับสถานะจริงใน J_ST
+// (ของเดิมกรองด้วยชื่อสถานะที่ไม่มีอยู่จริง เช่น 'รอเปิดงาน'/'Reject'/'เสร็จงาน' → การ์ดเลยขึ้น 0 ตลอด)
+const JOB_DONE_STATUSES=new Set(['ปิดงาน','แอดมินตรวจแล้ว','ดำเนินการแล้ว','ปิดงานสำรวจ']);
+const JOB_PENDING_STATUSES=new Set(['รอดำเนินการ','รอช่างเข้าซ่อม']);
+const JOB_PROBLEM_STATUSES=new Set(['ต้องแก้ไข','ติดปัญหา','Reject']);
 const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const payLabel = p => ({unpaid:'รอเก็บเงิน',paid:'เก็บแล้ว',overdue:'เกินกำหนด'}[p]||p);
 function closeMenus(){document.querySelectorAll('.action-menu.open').forEach(m=>m.classList.remove('open'));document.querySelectorAll('.action-menu[data-floating="1"]').forEach(m=>m.remove());}
@@ -3270,18 +3275,18 @@ function commitListManager(){const key=document.getElementById('lm-key').value;s
 function renderDash(){
   updateNavBadges();
   const jRows=liveJobs(), tRows=liveAdminTasks();
-  const nw=jRows.filter(j=>isTodayItem(j)&&j.status==='รอเปิดงาน').length;
-  const rj=jRows.filter(j=>j.status==='Reject'||j.status==='ติดปัญหา').length;
+  const nw=jRows.filter(j=>isTodayItem(j)&&JOB_PENDING_STATUSES.has(j.status)).length;
+  const rj=jRows.filter(j=>JOB_PROBLEM_STATUSES.has(j.status)).length;
   const cl=jRows.filter(j=>j.status==='ปิดงาน').length;
   document.getElementById('ds-total').textContent=jRows.length;
   document.getElementById('ds-new').textContent=nw;
   document.getElementById('ds-reject').textContent=rj;
   document.getElementById('ds-closed').textContent=cl;
-  const unp=jRows.filter(j=>payLabel(j.pay)==='รอเก็บเงิน'&&(j.status==='ปิดงาน'||j.status==='เสร็จงาน'));
+  const unp=jRows.filter(j=>payLabel(j.pay)==='รอเก็บเงิน'&&JOB_DONE_STATUSES.has(j.status));
   const pd=jRows.filter(j=>payLabel(j.pay)==='เก็บแล้ว');
   const ua=unp.reduce((s,j)=>s+jobIncome(j),0);
   const pa=pd.reduce((s,j)=>s+jobIncome(j),0);
-  const ow=jRows.filter(j=>j.status!=='รอเปิดงาน'&&j.status!=='Reject').reduce((s,j)=>s+j.pt,0);
+  const ow=jRows.filter(j=>!JOB_PROBLEM_STATUSES.has(j.status)).reduce((s,j)=>s+Number(j.pt||0),0);
   document.getElementById('ds-unpaid').textContent='฿'+ua.toLocaleString();
   document.getElementById('ds-unpaid-c').textContent=unp.length+' รายการ';
   document.getElementById('ds-paid').textContent='฿'+pa.toLocaleString();
@@ -7363,7 +7368,7 @@ function deleteFixedExpense(i){if(confirm('ลบรายจ่าย Fixed น
 function renderTP(){
   const ts=teams.map(t=>t.name);
   const c=document.getElementById('techpay-list');
-  const h=ts.map(t=>{const tj=sortByTechUpdateThenDate(liveJobs().filter(j=>j.team===t&&j.status!=='รอเปิดงาน'&&j.status!=='Reject'),'desc');const tot=tj.reduce((s,j)=>s+j.pt,0);if(!tot)return'';return`<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${t}</div><div class="flex g8"><span class="mono fw7 tg">฿${tot.toLocaleString()}</span><button class="btn btn-success btn-sm" onclick="alert('ยืนยันจ่าย ${t}')">✓ จ่ายแล้ว</button></div></div><table><thead><tr><th>PR</th><th>สาขา</th><th>วันที่</th><th>ประเภท</th><th>ค่าแรงช่าง</th><th>สถานะ</th></tr></thead><tbody>${tj.map(j=>`<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${techUpdateMark(j)}${j.id}${techUpdatePill(j)}</td><td style="font-size:12px;">${j.branch}</td><td class="tm" style="font-size:11px;">${j.date}</td><td><span class="chip">${j.type}</span></td><td class="mono fw7 tg">฿${j.pt.toLocaleString()}</td><td>${statusBadge(j,j.status)}</td></tr>`).join('')}</tbody></table></div>`;}).join('');
+  const h=ts.map(t=>{const tj=sortByTechUpdateThenDate(liveJobs().filter(j=>j.team===t&&!JOB_PROBLEM_STATUSES.has(j.status)),'desc');const tot=tj.reduce((s,j)=>s+Number(j.pt||0),0);if(!tot)return'';return`<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${t}</div><div class="flex g8"><span class="mono fw7 tg">฿${tot.toLocaleString()}</span><button class="btn btn-success btn-sm" onclick="alert('ยืนยันจ่าย ${t}')">✓ จ่ายแล้ว</button></div></div><table><thead><tr><th>PR</th><th>สาขา</th><th>วันที่</th><th>ประเภท</th><th>ค่าแรงช่าง</th><th>สถานะ</th></tr></thead><tbody>${tj.map(j=>`<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${techUpdateMark(j)}${j.id}${techUpdatePill(j)}</td><td style="font-size:12px;">${j.branch}</td><td class="tm" style="font-size:11px;">${j.date}</td><td><span class="chip">${j.type}</span></td><td class="mono fw7 tg">฿${Number(j.pt||0).toLocaleString()}</td><td>${statusBadge(j,j.status)}</td></tr>`).join('')}</tbody></table></div>`;}).join('');
   c.innerHTML=h||'<div class="empty"><div class="empty-icon">✅</div><div>ไม่มียอดค้างจ่าย</div></div>';
 }
 
