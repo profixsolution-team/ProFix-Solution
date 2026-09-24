@@ -1632,8 +1632,10 @@ let purchaseVatMode='add', salesVatMode='add'; // 'add' บวกเพิ่ม
 let salesDraftJobs=[];
 let financeTeamFilter='ทั้งหมด';
 let financeMonthFilter=new Date().toISOString().slice(0,7); // ค่าเริ่มต้น = เดือนปัจจุบัน
-let purSearch='',purDate='',purRange='',purSort='desc';
-let saleSearch='',saleDate='',saleRange='',saleSort='desc',saleDocType='';
+let purSearch='',purDate='',purRange='',purSort='desc',purSortBy='date';
+let saleSearch='',saleDate='',saleRange='',saleSort='desc',saleDocType='',saleSortBy='date';
+// เรียงตาม: date = วันที่บนเอกสาร (ค่าเริ่มต้น) · updated = แก้ล่าสุด · no = เลขที่เอกสาร
+const ACCOUNTING_SORT_FIELDS={date:'วันที่เอกสาร',updated:'แก้ล่าสุด',no:'เลขที่เอกสาร'};
 let stockItems=[], stockMovements=[], stockLoaded=false, stockLoadingPromise=null;
 let stockSearch='', stockShowInactive=false, currentDetailJobId='';
 let accountingLoaded=false, accountingLoadingPromise=null;
@@ -5100,7 +5102,7 @@ async function ensureAccountingLoaded(force=false){
   }).finally(()=>{accountingLoadingPromise=null;});
   return accountingLoadingPromise;
 }
-function accountingFilterState(kind){return kind==='pur'?{search:purSearch,date:purDate,range:purRange,sort:purSort}:{search:saleSearch,date:saleDate,range:saleRange,sort:saleSort,docType:saleDocType};}
+function accountingFilterState(kind){return kind==='pur'?{search:purSearch,date:purDate,range:purRange,sort:purSort,sortBy:purSortBy}:{search:saleSearch,date:saleDate,range:saleRange,sort:saleSort,docType:saleDocType,sortBy:saleSortBy};}
 function filterAccountingList(list,kind){
   const st=accountingFilterState(kind);
   const q=st.search.trim().toLowerCase();
@@ -5114,11 +5116,21 @@ function filterAccountingList(list,kind){
     const fields=kind==='pur'?[inv.purchase_no,inv.supplier_name,inv.supplier_tax_id,inv.invoice_no,inv.note]:[inv.sales_invoice_no,inv.job_id,inv.job_ids,inv.customer_name,inv.note];
     return fields.some(f=>String(f||'').toLowerCase().includes(q));
   });
+  const docNoOf=x=>String(x.doc_no||x.sales_invoice_no||x.purchase_no||'');
+  const cmpDocNo=(a,b)=>docNoOf(a).localeCompare(docNoOf(b),undefined,{numeric:true});
   out.sort((a,b)=>{
-    const c=String(a.invoice_date||'').localeCompare(String(b.invoice_date||''));
+    let c=0;
+    if(st.sortBy==='updated'){
+      // แก้ล่าสุด: ใช้เวลาที่แก้จริง (บิลที่เพิ่งทำจะอยู่บนสุด แม้วันที่บนเอกสารจะเป็นอนาคต)
+      c=(Date.parse(a.updated_at||a.created_at||'')||0)-(Date.parse(b.updated_at||b.created_at||'')||0);
+    }else if(st.sortBy==='no'){
+      c=cmpDocNo(a,b);
+    }else{
+      c=String(a.invoice_date||'').localeCompare(String(b.invoice_date||''));
+    }
     if(c!==0)return st.sort==='asc'?c:-c;
-    // วันเดียวกัน: เรียงตาม "เลขที่เอกสาร" (เสถียร + เรียงลำดับจริง) ไม่ใช้ updated_at เพราะโดนเด้งเวลาระบบอัปเดตลิงค์
-    const c2=String(a.doc_no||a.sales_invoice_no||a.purchase_no||'').localeCompare(String(b.doc_no||b.sales_invoice_no||b.purchase_no||''),undefined,{numeric:true});
+    // ค่าเท่ากัน: ตัดสินด้วยเลขที่เอกสาร (เสถียร ไม่สลับไปมา) — ไม่ใช้ updated_at เพราะโดนเด้งเวลาระบบอัปเดตลิงค์ราคา
+    const c2=cmpDocNo(a,b);
     return st.sort==='asc'?c2:-c2;
   });
   return out;
@@ -5128,14 +5140,15 @@ function buildAccountingControls(kind){
   const st=accountingFilterState(kind);
   const ph=kind==='pur'?'เลขบิล / Supplier / เลขภาษี / ใบกำกับ':'เลขบิล / PR / ลูกค้า';
   const docTypeSel=kind==='sale'?`<span class="filter-label">ประเภท:</span><select class="filter-input" onchange="setAccountingDocType(this.value)"><option value=""${st.docType===''?' selected':''}>ทุกประเภท</option>${Object.keys(SALES_DOC_META).map(k=>`<option value="${k}"${st.docType===k?' selected':''}>${esc(SALES_DOC_META[k].title)}</option>`).join('')}</select>`:'';
-  b.innerHTML=`<span class="filter-label">ค้นหา:</span><input class="search-input" id="${kind}-search-input" value="${esc(st.search)}" placeholder="${ph}" onkeydown="if(event.key==='Enter')applyAccountingSearch('${kind}')"><button class="btn btn-ghost btn-sm" onclick="applyAccountingSearch('${kind}')">ค้นหา</button>${docTypeSel}<span class="filter-label">วันที่:</span><input class="filter-input" type="date" value="${esc(st.date)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDate('${kind}',this.value)"><button class="btn btn-ghost btn-sm" onclick="setAccountingDate('${kind}','')">ล้างวันที่</button><button class="btn btn-ghost btn-sm ${st.range==='today'?'active':''}" onclick="setAccountingRange('${kind}','today')">วันนี้</button><button class="btn btn-ghost btn-sm ${st.range==='week'?'active':''}" onclick="setAccountingRange('${kind}','week')">สัปดาห์นี้</button><button class="btn btn-ghost btn-sm" onclick="toggleAccountingSort('${kind}')">${st.sort==='desc'?'ใหม่→เก่า':'เก่า→ใหม่'}</button><button class="btn btn-ghost btn-sm" onclick="clearAccountingFilter('${kind}')">ล้างตัวกรอง</button>`;
+  b.innerHTML=`<span class="filter-label">ค้นหา:</span><input class="search-input" id="${kind}-search-input" value="${esc(st.search)}" placeholder="${ph}" onkeydown="if(event.key==='Enter')applyAccountingSearch('${kind}')"><button class="btn btn-ghost btn-sm" onclick="applyAccountingSearch('${kind}')">ค้นหา</button>${docTypeSel}<span class="filter-label">วันที่:</span><input class="filter-input" type="date" value="${esc(st.date)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDate('${kind}',this.value)"><button class="btn btn-ghost btn-sm" onclick="setAccountingDate('${kind}','')">ล้างวันที่</button><button class="btn btn-ghost btn-sm ${st.range==='today'?'active':''}" onclick="setAccountingRange('${kind}','today')">วันนี้</button><button class="btn btn-ghost btn-sm ${st.range==='week'?'active':''}" onclick="setAccountingRange('${kind}','week')">สัปดาห์นี้</button><span class="filter-label">เรียงตาม:</span><select class="filter-input" onchange="setAccountingSortBy('${kind}',this.value)">${Object.keys(ACCOUNTING_SORT_FIELDS).map(k=>`<option value="${k}"${st.sortBy===k?' selected':''}>${esc(ACCOUNTING_SORT_FIELDS[k])}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="toggleAccountingSort('${kind}')">${st.sort==='desc'?'ใหม่→เก่า':'เก่า→ใหม่'}</button><button class="btn btn-ghost btn-sm" onclick="clearAccountingFilter('${kind}')">ล้างตัวกรอง</button>`;
 }
 function applyAccountingSearch(kind){const el=document.getElementById(kind+'-search-input');const v=el?el.value.trim():'';if(kind==='pur')purSearch=v;else saleSearch=v;kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function setAccountingDate(kind,v){if(kind==='pur'){purDate=v;purRange='';}else{saleDate=v;saleRange='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function setAccountingRange(kind,r){if(kind==='pur'){purRange=purRange===r?'':r;purDate='';}else{saleRange=saleRange===r?'':r;saleDate='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function toggleAccountingSort(kind){if(kind==='pur')purSort=purSort==='desc'?'asc':'desc';else saleSort=saleSort==='desc'?'asc':'desc';kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function setAccountingDocType(v){saleDocType=v||'';renderSalesTax();}
-function clearAccountingFilter(kind){if(kind==='pur'){purSearch='';purDate='';purRange='';}else{saleSearch='';saleDate='';saleRange='';saleDocType='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
+function setAccountingSortBy(kind,v){const f=ACCOUNTING_SORT_FIELDS[v]?v:'date';if(kind==='pur')purSortBy=f;else saleSortBy=f;kind==='pur'?renderPurchaseTax():renderSalesTax();}
+function clearAccountingFilter(kind){if(kind==='pur'){purSearch='';purDate='';purRange='';purSortBy='date';}else{saleSearch='';saleDate='';saleRange='';saleDocType='';saleSortBy='date';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function renderPurchaseTax(){
   const tb=document.getElementById('purchase-tbody');if(!tb)return;
   buildAccountingControls('pur');
@@ -5967,6 +5980,7 @@ function applySalesCompanyProfile(id){
   document.getElementById('sale-company-email').value=p.email||'';
   document.getElementById('sale-bank-account').value=p.bankAccount||'';
   updateSalesCompanyLogoPreview(); // ดึงโลโก้ที่บันทึกไว้กับบริษัทมาแสดง/ใช้ทันที
+  refreshSalesDocNo(); // เปลี่ยนบริษัทที่ออกบิล → คำนวณเลขเอกสารใหม่ตามลำดับของบริษัทนั้น (เอกสารที่กำลังแก้ไขอยู่จะไม่ถูกแตะ)
 }
 function currentSalesCompanyFormData(){
   const idBase=document.getElementById('sale-company-name')?.value||document.getElementById('sale-company-display')?.value||'company';
@@ -6273,22 +6287,27 @@ function taxInvoiceMonthPrefix(refDate){
   const yy=String((yr+543)%100).padStart(2,'0');
   return `${yy}/${mo}`;
 }
-function nextTaxInvoiceNo(refDate,list){
+// เลขเอกสารแยกกันตามบริษัทที่ออกบิล (company_name) — คนละบริษัทใช้เลขซ้ำกันได้ ไม่รันต่อกัน
+function nextTaxInvoiceNo(refDate,list,companyName){
   const prefix=taxInvoiceMonthPrefix(refDate); // เช่น 69/09
+  const cname=String(companyName||'').trim();
   const used=new Set();
   (list||salesInvoices||[]).forEach(x=>{
     if(x.status==='cancelled')return; // ลบแล้ว = เลขว่าง นำกลับมาใช้ได้
     if((x.doc_type||'tax_invoice')!=='tax_invoice')return;
+    if(String(x.company_name||'').trim()!==cname)return; // แยกนับตามบริษัท
     const m=String(x.doc_no||x.sales_invoice_no||'').match(/^(\d{2}\/\d{2})(\d+)$/);
     if(m&&m[1]===prefix)used.add(parseInt(m[2],10));
   });
   let n=1; while(used.has(n))n++; // เลขว่างต่ำสุด (ไม่มีช่องว่าง = รันต่อจากตัวสูงสุด)
   return `${prefix}${String(n).padStart(2,'0')}`;
 }
-// ถามเลขว่างต่ำสุดจริงจาก server (นับเฉพาะ active) — ใช้ตอนเลขชนกันเพราะออกพร้อมกันหลายเครื่อง
-async function serverNextTaxInvoiceNo(prefix){
+// ถามเลขว่างต่ำสุดจริงจาก server (นับเฉพาะ active + บริษัทเดียวกัน) — ใช้ตอนเลขชนกันเพราะออกพร้อมกันหลายเครื่อง
+async function serverNextTaxInvoiceNo(prefix,companyName){
   try{
-    const r=await fetch(splitUrl('sales_invoices',`?sales_invoice_no=like.${encodeURIComponent(prefix+'*')}&status=eq.active&select=sales_invoice_no`),{headers:sbHeaders()});
+    const cname=String(companyName||'').trim();
+    const q=`?sales_invoice_no=like.${encodeURIComponent(prefix+'*')}&status=eq.active&company_name=eq.${encodeURIComponent(cname)}&select=sales_invoice_no`;
+    const r=await fetch(splitUrl('sales_invoices',q),{headers:sbHeaders()});
     if(!r.ok)return null;
     const rows=await r.json();
     const used=new Set();
@@ -6297,23 +6316,26 @@ async function serverNextTaxInvoiceNo(prefix){
     return `${prefix}${String(n).padStart(2,'0')}`;
   }catch(e){return null;}
 }
-function nextSalesDocNo(docType,refDate){
-  if(docType==='tax_invoice')return nextTaxInvoiceNo(refDate);
+function nextSalesDocNo(docType,refDate,companyName){
+  if(docType==='tax_invoice')return nextTaxInvoiceNo(refDate,null,companyName);
   const meta=SALES_DOC_META[docType]||SALES_DOC_META.tax_invoice;
   const prefix=`${meta.prefix}-${new Date().getFullYear()}-`;
+  const cname=String(companyName||'').trim();
   let max=0;
   (salesInvoices||[]).forEach(x=>{
+    if(String(x.company_name||'').trim()!==cname)return; // แยกนับตามบริษัท
     const no=String(x.doc_no||x.sales_invoice_no||'');
     if(no.startsWith(prefix)){const n=parseInt(no.slice(prefix.length),10);if(Number.isFinite(n)&&n>max)max=n;}
   });
   return `${prefix}${String(max+1).padStart(3,'0')}`;
 }
-// คำนวณเลขเอกสารใหม่ตามประเภท+วันกำหนดชำระ (เฉพาะตอนสร้างใหม่ ยังไม่บันทึก)
+// คำนวณเลขเอกสารใหม่ตามประเภท+วันกำหนดชำระ+บริษัทที่เลือก (เฉพาะตอนสร้างใหม่ ยังไม่บันทึก)
 function refreshSalesDocNo(){
   if(document.getElementById('sale-id')?.value)return; // แก้ไขของเดิม: คงเลขเดิมไว้
   const dt=document.getElementById('sale-doc-type')?.value||'tax_invoice';
   const due=document.getElementById('sale-payment-date')?.value||document.getElementById('sale-date')?.value||todayISO();
-  const noEl=document.getElementById('sale-no');if(noEl)noEl.value=nextSalesDocNo(dt,due);
+  const companyName=document.getElementById('sale-company-name')?.value||quoteCompanyDefaults().name;
+  const noEl=document.getElementById('sale-no');if(noEl)noEl.value=nextSalesDocNo(dt,due,companyName);
 }
 // เพิ่มเลขท้าย +1 (คงความกว้างเลข) ใช้ตอนเลขเอกสารชนกัน
 function bumpDocNo(no){
@@ -6322,9 +6344,11 @@ function bumpDocNo(no){
   return m[1]+String(parseInt(m[2],10)+1).padStart(m[2].length,'0')+m[3];
 }
 // ถามเลขเอกสารสูงสุดจริงจาก server ตาม prefix (กันเลขซ้ำเมื่อ list ในเครื่องไม่ครบ/มีหลายเครื่องออกบิลพร้อมกัน)
-async function serverMaxSalesNo(prefix){
+async function serverMaxSalesNo(prefix,companyName){
   try{
-    const r=await fetch(splitUrl('sales_invoices',`?sales_invoice_no=like.${encodeURIComponent(prefix+'*')}&select=sales_invoice_no`),{headers:sbHeaders()});
+    const cname=String(companyName||'').trim();
+    const q=`?sales_invoice_no=like.${encodeURIComponent(prefix+'*')}&company_name=eq.${encodeURIComponent(cname)}&select=sales_invoice_no`;
+    const r=await fetch(splitUrl('sales_invoices',q),{headers:sbHeaders()});
     if(!r.ok)return 0;
     const rows=await r.json();
     let max=0;
@@ -6345,7 +6369,8 @@ function openSalesModal(id='',prefJobId='',docType=''){
   const inv=id?salesInvoices.find(x=>x.id===id):null;
   const dt=inv?.doc_type||docType||'tax_invoice';
   const meta=SALES_DOC_META[dt]||SALES_DOC_META.tax_invoice;
-  const nextNo=nextSalesDocNo(dt,inv?.due_date||inv?.invoice_date||todayISO());
+  const saleCompany=salesDocCompanyInfo(inv||{}); // ต้องรู้บริษัทก่อน เพื่อคำนวณเลขเอกสารแยกตามบริษัท
+  const nextNo=nextSalesDocNo(dt,inv?.due_date||inv?.invoice_date||todayISO(),saleCompany.name);
   const picker=document.getElementById('sale-job-picker');if(picker)picker.style.display='none';
   const dtSel=document.getElementById('sale-doc-type');if(dtSel)dtSel.value=dt;
   document.getElementById('sales-modal-title').textContent=inv?('แก้ไข'+meta.title):('เพิ่ม'+meta.title);
@@ -6368,7 +6393,6 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-payment-date').value=inv?.payment_date||inv?.due_date||'';
   document.getElementById('sale-file').value=inv?.file_url||'';
   document.getElementById('sale-note').value=inv?.note||'';
-  const saleCompany=salesDocCompanyInfo(inv||{});
   const saleCustomer=salesDocCustomerInfo(inv||{});
   renderSalesCompanyProfileOptions(inferSalesCompanyProfile(saleCompany));
   document.getElementById('sale-customer-address').value=saleCustomer.address;
@@ -6944,11 +6968,11 @@ async function saveSalesInvoice(){if(!guardEdit())return;
           let bumped;
           if(taxm){
             // ใบกำกับภาษี: หาเลขว่างต่ำสุดจาก server (นับเฉพาะ active → เลขที่ลบไปแล้วนำกลับมาใช้ได้)
-            bumped=await serverNextTaxInvoiceNo(taxm[1]);
+            bumped=await serverNextTaxInvoiceNo(taxm[1],inv.company_name);
             if(!bumped)bumped=`${taxm[1]}${String(parseInt(taxm[2],10)+1+attempt).padStart(2,'0')}`;
           }else{
             const prefix=cur.replace(/\d+\D*$/,'')||(cur+'-'); // เช่น QT-2026-
-            const smax=await serverMaxSalesNo(prefix);
+            const smax=await serverMaxSalesNo(prefix,inv.company_name);
             bumped=`${prefix}${String(smax+1+attempt).padStart(3,'0')}`;
           }
           inv.sales_invoice_no=bumped;inv.doc_no=bumped;
