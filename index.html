@@ -5562,6 +5562,7 @@ function printSalesDoc(id){
 // ===== ฟอร์มใบเสนอราคา BOQ (แนวนอน A4) — เลียนแบบ FM-SS-013 =====
 function boqQuoteDocHtml(inv,items){
   const company=salesDocCompanyInfo(inv);
+  const docTheme=salesDocTheme(company); // สีหัวตาราง/ยอดรวม ตามบริษัทที่ออกบิล
   const customer=salesDocCustomerInfo(inv);
   const jobList=salesInvoiceJobs(inv);
   const firstPr=jobList[0]||'';
@@ -5616,13 +5617,13 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
 .company{text-align:center;}
 .company .cbig{font-weight:800;font-size:13px;margin-bottom:2px;}
 .company div{line-height:1.4;}
-.ihead th{background:#e6e6e6;font-weight:800;text-align:center;font-size:10.5px;color:#000;}
+.ihead th{background:${docTheme.primary};font-weight:800;text-align:center;font-size:10.5px;color:${docTheme.primaryText};}
 .irow td{height:6.2mm;}
 .c{text-align:center;}.r{text-align:right;}
 .title{text-align:center;font-weight:800;font-size:15px;margin:0 0 5px;color:#000;}
 .tk{font-weight:700;color:#000;}
 .tv{text-align:right;font-variant-numeric:tabular-nums;color:#000;}
-.gr{background:#d9d9d9;color:#000;font-weight:800;font-size:12.5px;}
+.gr{background:${docTheme.primary};color:${docTheme.primaryText};font-weight:800;font-size:12.5px;}
 .tl{text-align:left !important;}
 .notes-wrap{display:flex;flex-direction:column;height:100%;min-height:100%;}
 .notes-inner{width:100%;border-collapse:collapse;}
@@ -5694,6 +5695,7 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
 function salesDocHtml(inv,items){
   const meta=SALES_DOC_META[inv.doc_type||'tax_invoice']||SALES_DOC_META.tax_invoice;
   const company=salesDocCompanyInfo(inv);
+  const docTheme=salesDocTheme(company); // สีหัวตาราง/ยอดรวม ตามบริษัทที่ออกบิล
   const customer=salesDocCustomerInfo(inv);
   const rows=items.map((it,i)=>`<tr><td class="no">${i+1}</td><td class="cat">${esc(it.category||'')}</td><td class="desc">${esc(it.description||'')}</td><td class="qty">${money(it.quantity||0)}</td><td class="unit">${esc(it.unit||'')}</td><td class="price">${money(it.unit_price||0)}</td><td class="amount">${money(it.subtotal||0)}</td></tr>`).join('');
   const jobList=salesInvoiceJobs(inv);
@@ -5738,8 +5740,8 @@ function salesDocHtml(inv,items){
 .sheet{position:relative;width:210mm;min-height:297mm;margin:56px auto 18px;padding:12mm 15mm 8mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);overflow:hidden;}
 .top{display:grid;grid-template-columns:1fr 78mm;align-items:start;gap:10mm}.brand-logo{width:56mm;max-height:28mm;object-fit:contain;object-position:left top}.doc-title{text-align:right;font-size:20px;font-weight:900;color:#05070a}.doc-meta{margin-top:10px;display:grid;grid-template-columns:1fr 54mm;gap:4px 8px;text-align:right;font-size:12px}.doc-meta b{font-size:13px;white-space:nowrap}
 .party{display:grid;grid-template-columns:1fr 1fr;gap:14mm;margin-top:6mm}.party h3{margin:0 0 4px;color:#6b7280;font-size:13px}.party .name{font-weight:800;color:#111827;margin-bottom:3px}.party div{color:#6b7280;margin:2px 0}
-.items{width:100%;border-collapse:collapse;margin-top:4mm;table-layout:fixed}.items th{background:#666;color:#fff;font-weight:800;font-size:13px;padding:4px 4px;border:1px solid #d4dbe5}.items td{height:6.5mm;border:1px solid #d4dbe5;padding:2px 5px;vertical-align:middle}.items tbody tr:nth-child(odd){background:#f2f5f9}.items .no{width:8mm;text-align:center}.items .cat{width:22mm;font-size:11px;text-align:center}.items td.cat{color:#4b5563}.items .desc{width:auto}.items .qty{width:18mm;text-align:right}.items .unit{width:14mm;text-align:center}.items .price,.items .amount{width:26mm;text-align:right}
-.note-total{display:grid;grid-template-columns:1fr 70mm;gap:10mm;margin-top:3mm;align-items:start}.note h3{margin:0 0 5px;color:#6b7280;font-size:13px}.note .box{white-space:pre-wrap;color:#697386;line-height:1.3;font-size:11px}.total table{width:100%;border-collapse:collapse}.total td{padding:3px 4px;font-size:13px}.total .label{font-weight:800}.total .right{text-align:right}.grand td{background:#666;color:#fff;font-size:16px;font-weight:900;border:1px solid #fff}.amount-text{display:grid;grid-template-columns:22mm 1fr;gap:8px;width:70mm;margin:3mm 0 0 auto;font-weight:800}
+.items{width:100%;border-collapse:collapse;margin-top:4mm;table-layout:fixed}.items th{background:${docTheme.primary};color:${docTheme.primaryText};font-weight:800;font-size:13px;padding:4px 4px;border:1px solid #d4dbe5}.items td{height:6.5mm;border:1px solid #d4dbe5;padding:2px 5px;vertical-align:middle}.items tbody tr:nth-child(odd){background:${docTheme.soft}}.items .no{width:8mm;text-align:center}.items .cat{width:22mm;font-size:11px;text-align:center}.items td.cat{color:#4b5563}.items .desc{width:auto}.items .qty{width:18mm;text-align:right}.items .unit{width:14mm;text-align:center}.items .price,.items .amount{width:26mm;text-align:right}
+.note-total{display:grid;grid-template-columns:1fr 70mm;gap:10mm;margin-top:3mm;align-items:start}.note h3{margin:0 0 5px;color:#6b7280;font-size:13px}.note .box{white-space:pre-wrap;color:#697386;line-height:1.3;font-size:11px}.total table{width:100%;border-collapse:collapse}.total td{padding:3px 4px;font-size:13px}.total .label{font-weight:800}.total .right{text-align:right}.grand td{background:${docTheme.primary};color:${docTheme.primaryText};font-size:16px;font-weight:900;border:1px solid #fff}.amount-text{display:grid;grid-template-columns:22mm 1fr;gap:8px;width:70mm;margin:3mm 0 0 auto;font-weight:800}
 .signs{display:grid;grid-template-columns:1fr 1fr;gap:28mm;margin-top:4mm;color:#6b7280;font-size:11px;break-inside:avoid}.signature-box{height:16mm;display:flex;align-items:flex-end;justify-content:center}.signature-img{max-width:54mm;max-height:15mm;object-fit:contain;display:block}.sign-line{color:#111;text-align:center}.footer{margin-top:2mm;text-align:center;color:#7b8492;font-size:10px;font-style:italic;break-inside:avoid}.muted{color:#7b8795;font-size:10px}
 @media print{html,body{width:210mm;background:#fff;}.toolbar{display:none}.sheet{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:12mm 15mm 8mm;}.items thead{display:table-header-group}.items tr,.note-total,.amount-text,.signs,.footer{break-inside:avoid;page-break-inside:avoid}}</style></head>
 <body><div class="toolbar"><div>${esc(meta.title)} · ${esc(inv.doc_no||inv.sales_invoice_no||'')}</div><div><button class="btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
@@ -5803,7 +5805,8 @@ function salesTaxSummaryHtml(inv,items){
     <tr><td class="tl">มูลค่าสินค้าหลังหักส่วนลด<div class="en">TOTAL AMOUNT AFTER DISCOUNT</div></td><td class="tp"></td><td class="tv">${money2(afterDiscount)}</td></tr>
     <tr><td class="tl">ภาษีมูลค่าเพิ่ม<div class="en">VAT</div></td><td class="tp">${vatPct}%</td><td class="tv">${money2(vat)}</td></tr>
     <tr class="grand"><td class="tl"><b>ยอดเงินสุทธิ</b><div class="en">GRAND TOTAL</div></td><td class="tp"></td><td class="tv">${money2(total)}</td></tr>`;
-  const COPIES=[{k:'original',th:'ต้นฉบับ',en:'ORIGINAL',color:'#17325c'},{k:'copy',th:'สำเนา',en:'COPY',color:'#c2560f'},{k:'account',th:'สำเนา (บัญชี)',en:'COPY - ACCOUNTING',color:'#2b7fb8'}];
+  const _cc=salesDocTheme(company).copies; // สีตามบริษัทที่ออกบิล (ProFix=เขียว, อื่นๆ=น้ำเงิน/ส้ม/ฟ้า)
+  const COPIES=[{k:'original',th:'ต้นฉบับ',en:'ORIGINAL',color:_cc[0]},{k:'copy',th:'สำเนา',en:'COPY',color:_cc[1]},{k:'account',th:'สำเนา (บัญชี)',en:'COPY - ACCOUNTING',color:_cc[2]}];
   const sheet=(c,idx)=>`<section class="sheet" data-copy="${c.k}" style="--theme:${c.color};${idx===0?'':'display:none;'}">
   <header class="head">
     <div class="co"><div class="co-name">${coName} <span class="co-branch">${coBranch}</span></div><div class="co-addr">${coAddr}</div><div class="co-addr">โทร. ${coPhone}&nbsp;&nbsp;เลขประจำตัวผู้เสียภาษี ${coTax}</div></div>
@@ -5944,6 +5947,16 @@ function salesDocCustomerInfo(inv={}){
   return {taxId:inv.customer_tax_id||'',address:inv.customer_address||'',phone:inv.customer_phone||'',branchNo:inv.customer_branch_no||''};
 }
 function salesDocImageUrl(v){return quoteImageUrl(v);}
+// สีเอกสารตามบริษัทที่ออกบิล — แยก ProFix (โทนเขียว) ออกจากบริษัทอื่น (โทนน้ำเงินเดิม เช่น พีพี แอนด์ เอ็มพี / พีที แอคคูลิตี้)
+// ตรวจจากชื่อบริษัท ไม่ใช้ Tax ID เพราะ ProFix กับ PP&MP ใช้เลขภาษีเดียวกัน
+// copies = สี 3 ชุดของใบกำกับภาษีแบบสรุป (ต้นฉบับ / สำเนา / สำเนาบัญชี)
+function salesDocTheme(company){
+  const key=String((company&&(company.name||company.displayName||company.label))||'').toLowerCase();
+  if(/profix|โปรฟิกซ์/.test(key)){
+    return {primary:'#1b5e20',primaryText:'#ffffff',soft:'#e8f5e9',copies:['#1b5e20','#43a047','#6b7280']}; // เขียวเข้ม / เขียวอ่อน / เทา
+  }
+  return {primary:'#17325c',primaryText:'#ffffff',soft:'#eef2f8',copies:['#17325c','#c2560f','#2b7fb8']}; // น้ำเงิน / ส้ม / ฟ้า (เดิม)
+}
 function salesCompanyProfiles(){
   const d=quoteCompanyDefaults();
   const defaults=[
