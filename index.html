@@ -1510,7 +1510,9 @@ select option{background:var(--surface2);}
         <aside class="accounting-panel accounting-summary">
           <div class="accounting-panel-title">สรุปบิลขาย</div>
           <div class="form-group" style="margin-bottom:10px;"><label>การคิด VAT</label><select id="sale-vat-mode" onchange="salesVatMode=this.value;updateSalesSummary();"><option value="add">บวก VAT 7% เพิ่มท้ายบิล</option><option value="inclusive">ราคารวม VAT 7% มาแล้ว</option><option value="none">ไม่มี VAT</option></select></div>
-          <div class="form-group" style="margin-bottom:10px;"><label>Overhead</label><select id="sale-overhead-enabled" onchange="updateSalesSummary();"><option value="yes">คิด Overhead อัตโนมัติ</option><option value="no">ไม่มี Overhead</option></select></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>Overhead</label><select id="sale-overhead-enabled" onchange="updateSalesSummary();"><option value="yes">คิด Overhead อัตโนมัติ</option><option value="no">ไม่มี Overhead</option></select>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-top:8px;cursor:pointer;"><input type="checkbox" id="sale-overhead-custom-on" onchange="onOverheadCustomToggle()"> กำหนด % เอง (แทนอัตราอัตโนมัติ)</label>
+            <input id="sale-overhead-custom-rate" type="number" min="0" step="0.01" value="" placeholder="% Overhead ที่ต้องการ" oninput="updateSalesSummary()" style="display:none;margin-top:6px;"></div>
           <div class="form-row" style="gap:8px;"><div class="form-group"><label>ค่าเดินทาง (กม.)</label><input id="sale-travel-km" type="number" min="0" step="0.01" value="0" oninput="updateSalesSummary()"></div><div class="form-group"><label>บาท / กม.</label><input id="sale-travel-rate" type="number" min="0" step="0.01" value="0" oninput="updateSalesSummary()"></div></div>
           <div class="form-group" style="margin-bottom:10px;"><label>SLA</label><div class="segmented" style="display:flex;gap:6px;flex-wrap:wrap;"><button type="button" id="sale-sla-ontime" class="filter-tab active" onclick="setSalesSlaStatus('ontime')">ทัน SLA +1,000</button><button type="button" id="sale-sla-late" class="filter-tab" onclick="setSalesSlaStatus('late')">ไม่ทัน SLA +500</button><button type="button" id="sale-sla-none" class="filter-tab" onclick="setSalesSlaStatus('none')">ไม่มีค่าดำเนินการ +0</button></div><input id="sale-sla-status" type="hidden" value="ontime"></div>
           <div class="accounting-total-row"><span>รวมค่าสินค้า/บริการ</span><strong id="sale-ui-line-subtotal">0.00</strong></div>
@@ -5276,14 +5278,49 @@ function salesSlaMeta(status){
   return {status:'ontime',label:'ค่าดำเนินการเร่งด่วน',amount:1000};
 }
 function salesAdjustmentTotals(lineSubtotal){
-  const overheadEnabled=(document.getElementById('sale-overhead-enabled')?.value||'yes')!=='no';
-  const overheadRate=overheadEnabled?salesOverheadRateBySubtotal(lineSubtotal):0;
+  // ติ๊ก "กำหนด % เอง" → override อัตราอัตโนมัติด้วย % ที่กรอก (ไม่แตะ logic อัตโนมัติเดิม ใช้เฉพาะตอนติ๊ก)
+  const overheadCustomOn=!!document.getElementById('sale-overhead-custom-on')?.checked;
+  let overheadEnabled,overheadRate;
+  if(overheadCustomOn){
+    overheadEnabled=true;
+    overheadRate=Number(document.getElementById('sale-overhead-custom-rate')?.value||0);
+  }else{
+    overheadEnabled=(document.getElementById('sale-overhead-enabled')?.value||'yes')!=='no';
+    overheadRate=overheadEnabled?salesOverheadRateBySubtotal(lineSubtotal):0;
+  }
   const overheadAmount=overheadEnabled?Math.round(Number(lineSubtotal||0)*overheadRate)/100:0;
   const travelKm=Number(document.getElementById('sale-travel-km')?.value||0);
   const travelRate=Number(document.getElementById('sale-travel-rate')?.value||0);
   const travelAmount=Math.round(travelKm*travelRate*100)/100;
   const sla=salesSlaMeta(document.getElementById('sale-sla-status')?.value||'ontime');
   return {overheadEnabled,overheadRate,overheadAmount,travelKm,travelRate,travelAmount,slaStatus:sla.status,slaLabel:sla.label,slaAmount:sla.amount,baseBeforeVat:lineSubtotal+overheadAmount+travelAmount+sla.amount};
+}
+// ติ๊ก/ยกเลิก "กำหนด % เอง" → โชว์/ซ่อนช่อง % + ปิด dropdown อัตโนมัติชั่วคราวตอนติ๊ก (custom override)
+function onOverheadCustomToggle(){
+  const on=!!document.getElementById('sale-overhead-custom-on')?.checked;
+  const rateEl=document.getElementById('sale-overhead-custom-rate');
+  const sel=document.getElementById('sale-overhead-enabled');
+  if(rateEl)rateEl.style.display=on?'':'none';
+  if(sel)sel.disabled=on; // ติ๊ก custom → หรี่ dropdown อัตโนมัติให้ชัดว่ากำลังใช้ % เอง
+  updateSalesSummary();
+}
+// ตั้งค่าฟอร์ม Overhead จากเอกสารที่เปิด/แปลง: เดาว่าเป็น % กำหนดเองไหม (rate ต่างจากอัตราอัตโนมัติของยอดนี้)
+function applyOverheadFormFromInv(inv){
+  const sel=document.getElementById('sale-overhead-enabled');
+  const en=!(inv?.overhead_enabled===false||inv?.overhead_enabled==='false');
+  if(sel)sel.value=en?'yes':'no';
+  const rate=Number(inv?.overhead_rate||0);
+  const ovAmt=Number(inv?.overhead_amount||0);
+  const travelAmt=Number(inv?.travel_amount||0);
+  const slaAmt=Number(inv?.sla_fee_amount??0);
+  const lineSub=Number(inv?.subtotal||0)-ovAmt-travelAmt-slaAmt; // ยอดค่าสินค้าก่อนบวก overhead/เดินทาง/SLA
+  const autoRate=salesOverheadRateBySubtotal(lineSub);
+  const isCustom=en&&rate>0&&Math.abs(rate-autoRate)>0.001; // rate ที่เก็บไว้ไม่ตรงอัตราอัตโนมัติ = เคยกำหนดเอง
+  const cbOn=document.getElementById('sale-overhead-custom-on');
+  const cbRate=document.getElementById('sale-overhead-custom-rate');
+  if(cbOn)cbOn.checked=isCustom;
+  if(cbRate)cbRate.value=isCustom?rate:'';
+  onOverheadCustomToggle();
 }
 function inferVatMode(inv,lineSum){
   const vat=Number(inv?.vat_amount||0);
@@ -5457,7 +5494,7 @@ function convertSalesDoc(id,toType){
   document.getElementById('sale-company-taxid').value=inv.company_tax_id||quoteCompanyDefaults().taxId;
   document.getElementById('sale-company-email').value=inv.company_email||quoteCompanyDefaults().email;
   document.getElementById('sale-bank-account').value=inv.bank_account||'';
-  const overheadSelect=document.getElementById('sale-overhead-enabled');if(overheadSelect)overheadSelect.value=(inv.overhead_enabled===false||inv.overhead_enabled==='false')?'no':'yes';
+  applyOverheadFormFromInv(inv);
   document.getElementById('sale-travel-km').value=inv.travel_km??'';
   document.getElementById('sale-travel-rate').value=inv.travel_rate??'';
   setSalesSlaStatus(inv.sla_status||'ontime');
@@ -6422,7 +6459,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-company-phone').value=saleCompany.phone;
   document.getElementById('sale-company-email').value=saleCompany.email;
   document.getElementById('sale-bank-account').value=saleCompany.bankAccount;
-  const overheadSelect=document.getElementById('sale-overhead-enabled');if(overheadSelect)overheadSelect.value=(inv?.overhead_enabled===false||inv?.overhead_enabled==='false')?'no':'yes';
+  applyOverheadFormFromInv(inv);
   document.getElementById('sale-travel-km').value=inv?.travel_km??'';
   document.getElementById('sale-travel-rate').value=inv?.travel_rate??'';
   const slaStatus=inv?.sla_status||'ontime';
