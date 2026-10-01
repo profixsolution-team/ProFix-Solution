@@ -5660,7 +5660,7 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
 .title{text-align:center;font-weight:800;font-size:15px;margin:0 0 5px;color:#000;}
 .tk{font-weight:700;color:#000;}
 .tv{text-align:right;font-variant-numeric:tabular-nums;color:#000;}
-.gr{background:${docTheme.primary};color:${docTheme.primaryText};font-weight:800;font-size:12.5px;}
+.grid td.gr{background:${docTheme.primary};color:${docTheme.primaryText};font-weight:800;font-size:12.5px;}
 .tl{text-align:left !important;}
 .notes-wrap{display:flex;flex-direction:column;height:100%;min-height:100%;}
 .notes-inner{width:100%;border-collapse:collapse;}
@@ -5984,12 +5984,18 @@ function salesDocCustomerInfo(inv={}){
   return {taxId:inv.customer_tax_id||'',address:inv.customer_address||'',phone:inv.customer_phone||'',branchNo:inv.customer_branch_no||''};
 }
 function salesDocImageUrl(v){return quoteImageUrl(v);}
+// ตรวจว่าเป็นบริษัท ProFix ไหม (จากชื่อ ไม่ใช้ Tax ID เพราะ ProFix กับ PP&MP ใช้เลขภาษีเดียวกัน)
+// ใช้ร่วมกันทั้งสีเอกสาร + รูปแบบเลขรันใบกำกับ (ProFix=ปี ค.ศ. 4 หลัก, อื่นๆ=ปี พ.ศ. 2 หลัก)
+function isProfixCompany(nameOrCompany){
+  const key=String((nameOrCompany&&typeof nameOrCompany==='object')
+    ?(nameOrCompany.name||nameOrCompany.displayName||nameOrCompany.label||'')
+    :(nameOrCompany||'')).toLowerCase();
+  return /profix|โปรฟิกซ์/.test(key);
+}
 // สีเอกสารตามบริษัทที่ออกบิล — แยก ProFix (โทนเขียว) ออกจากบริษัทอื่น (โทนน้ำเงินเดิม เช่น พีพี แอนด์ เอ็มพี / พีที แอคคูลิตี้)
-// ตรวจจากชื่อบริษัท ไม่ใช้ Tax ID เพราะ ProFix กับ PP&MP ใช้เลขภาษีเดียวกัน
 // copies = สี 3 ชุดของใบกำกับภาษีแบบสรุป (ต้นฉบับ / สำเนา / สำเนาบัญชี)
 function salesDocTheme(company){
-  const key=String((company&&(company.name||company.displayName||company.label))||'').toLowerCase();
-  if(/profix|โปรฟิกซ์/.test(key)){
+  if(isProfixCompany(company)){
     return {primary:'#1b5e20',primaryText:'#ffffff',soft:'#e8f5e9',copies:['#1b5e20','#43a047','#6b7280']}; // เขียวเข้ม / เขียวอ่อน / เทา
   }
   return {primary:'#17325c',primaryText:'#ffffff',soft:'#eef2f8',copies:['#17325c','#c2560f','#2b7fb8']}; // น้ำเงิน / ส้ม / ฟ้า (เดิม)
@@ -6327,41 +6333,59 @@ const SALES_DOC_META={
   tax_invoice:{label:'ใบกำกับภาษี / Tax Invoice',prefix:'SINV',title:'ใบกำกับภาษี',addLabel:'+ เพิ่มใบกำกับภาษี'},
   receipt:{label:'ใบเสร็จรับเงิน / Receipt',prefix:'RCP',title:'ใบเสร็จรับเงิน',addLabel:'+ เพิ่มใบเสร็จ'}
 };
-// เลขรันใบกำกับภาษี = ปีพ.ศ.2หลัก / เดือน2หลัก + ลำดับในเดือนนั้น (เช่น 69/0901) อิงวันรับเงิน
+// เลขรันใบกำกับภาษี = ปี / เดือน2หลัก + ลำดับในเดือนนั้น อิงวันรับเงิน
+//   ProFix = ปี ค.ศ. 4 หลัก (เช่น 2026/1001) · บริษัทอื่น (พีพี/พีที) = ปี พ.ศ. 2 หลัก (เช่น 69/0901)
 // เติม "เลขว่างต่ำสุด" ของเอกสารที่ยัง active → สร้างใหม่รันไปข้างหน้าไม่ซ้ำ, ลบใบเก่าแล้วเลขนั้นกลับมาใช้ได้
 // (ต้องใช้คู่กับ partial unique index บน DB ที่นับเฉพาะ active — ดู console_sales_no_partial_unique.sql)
-function taxInvoiceMonthPrefix(refDate){
+function taxInvoiceMonthPrefix(refDate,companyName){
   const m=String(refDate||todayISO()).match(/^(\d{4})-(\d{2})-(\d{2})/);
   const yr=m?Number(m[1]):new Date().getFullYear();
   const mo=m?m[2]:String(new Date().getMonth()+1).padStart(2,'0');
-  const yy=String((yr+543)%100).padStart(2,'0');
-  return `${yy}/${mo}`;
+  const yStr=isProfixCompany(companyName)?String(yr):String((yr+543)%100).padStart(2,'0'); // ProFix ค.ศ.4หลัก, อื่นๆ พ.ศ.2หลัก
+  return `${yStr}/${mo}`;
+}
+// แยกเลขที่เก็บไว้เป็น (prefix=ปี/เดือน, ลำดับ) — รองรับทั้งปี 2 หลัก (69/0901) และ 4 หลัก (2026/1001)
+// เดือนเป็น 2 หลักเสมอ, ลำดับ 2 หลักขึ้นไป → ไม่กำกวมเพราะ "/" คั่นปีไว้
+function parseTaxInvoiceNo(no){return String(no||'').match(/^(\d{2,4}\/\d{2})(\d{2,})$/);}
+// แปลง prefix (ปี/เดือน) เป็น "เดือนตามปฏิทิน ค.ศ." เพื่อรวมลำดับข้ามรูปแบบปี (69/10 กับ 2026/10 = เดือนเดียวกัน)
+// → ทำให้ ProFix เลขชุดใหม่ 2026/MM "รันต่อ" จากเลขเดิม 69/MM ของเดือนเดียวกัน ไม่เริ่ม 01 ใหม่
+function taxInvoiceCanonMonth(prefix){
+  const m=String(prefix||'').match(/^(\d{2,4})\/(\d{2})$/);
+  if(!m)return null;
+  let y=parseInt(m[1],10);
+  if(m[1].length<=2)y=1957+y;      // ปี พ.ศ. 2 หลัก (yy) → ค.ศ.: 2500+yy-543 = 1957+yy (เช่น 69→2026)
+  else if(y>=2500)y-=543;          // เผลอเก็บ พ.ศ. 4 หลัก → ค.ศ.
+  return y+'/'+m[2];
 }
 // เลขเอกสารแยกกันตามบริษัทที่ออกบิล (company_name) — คนละบริษัทใช้เลขซ้ำกันได้ ไม่รันต่อกัน
+// ลำดับรวมข้ามรูปแบบปีของ "เดือนเดียวกัน" → เปลี่ยน 69/→2026/ แล้วเลขรันต่อ ไม่ชน ไม่เริ่มใหม่
 function nextTaxInvoiceNo(refDate,list,companyName){
-  const prefix=taxInvoiceMonthPrefix(refDate); // เช่น 69/09
+  const prefix=taxInvoiceMonthPrefix(refDate,companyName); // prefix ที่จะใช้สร้าง (ตามบริษัท) เช่น 2026/10 หรือ 69/09
+  const targetMonth=taxInvoiceCanonMonth(prefix);          // เดือนตามปฏิทินสำหรับรวมลำดับข้ามรูปแบบปี
   const cname=String(companyName||'').trim();
   const used=new Set();
   (list||salesInvoices||[]).forEach(x=>{
     if(x.status==='cancelled')return; // ลบแล้ว = เลขว่าง นำกลับมาใช้ได้
     if((x.doc_type||'tax_invoice')!=='tax_invoice')return;
     if(String(x.company_name||'').trim()!==cname)return; // แยกนับตามบริษัท
-    const m=String(x.doc_no||x.sales_invoice_no||'').match(/^(\d{2}\/\d{2})(\d+)$/);
-    if(m&&m[1]===prefix)used.add(parseInt(m[2],10));
+    const m=parseTaxInvoiceNo(x.doc_no||x.sales_invoice_no||'');
+    if(m&&taxInvoiceCanonMonth(m[1])===targetMonth)used.add(parseInt(m[2],10));
   });
   let n=1; while(used.has(n))n++; // เลขว่างต่ำสุด (ไม่มีช่องว่าง = รันต่อจากตัวสูงสุด)
   return `${prefix}${String(n).padStart(2,'0')}`;
 }
-// ถามเลขว่างต่ำสุดจริงจาก server (นับเฉพาะ active + บริษัทเดียวกัน) — ใช้ตอนเลขชนกันเพราะออกพร้อมกันหลายเครื่อง
+// ถามเลขว่างต่ำสุดจริงจาก server (นับเฉพาะ active + บริษัทเดียวกัน + เดือนเดียวกันทุกรูปแบบปี) — ใช้ตอนเลขชนกัน
 async function serverNextTaxInvoiceNo(prefix,companyName){
   try{
     const cname=String(companyName||'').trim();
-    const q=`?sales_invoice_no=like.${encodeURIComponent(prefix+'*')}&status=eq.active&company_name=eq.${encodeURIComponent(cname)}&select=sales_invoice_no`;
+    const targetMonth=taxInvoiceCanonMonth(prefix);
+    // ดึงใบ active ของบริษัทนี้ทั้งหมด แล้วกรองเฉพาะใบกำกับเดือนเดียวกัน (parseTaxInvoiceNo คัดเฉพาะรูปแบบเลขใบกำกับอยู่แล้ว)
+    const q=`?status=eq.active&company_name=eq.${encodeURIComponent(cname)}&select=sales_invoice_no`;
     const r=await fetch(splitUrl('sales_invoices',q),{headers:sbHeaders()});
     if(!r.ok)return null;
     const rows=await r.json();
     const used=new Set();
-    (rows||[]).forEach(x=>{const m=String(x.sales_invoice_no||'').match(/^(\d{2}\/\d{2})(\d+)$/);if(m&&m[1]===prefix)used.add(parseInt(m[2],10));});
+    (rows||[]).forEach(x=>{const m=parseTaxInvoiceNo(x.sales_invoice_no||'');if(m&&taxInvoiceCanonMonth(m[1])===targetMonth)used.add(parseInt(m[2],10));});
     let n=1; while(used.has(n))n++;
     return `${prefix}${String(n).padStart(2,'0')}`;
   }catch(e){return null;}
@@ -7014,7 +7038,7 @@ async function saveSalesInvoice(){if(!guardEdit())return;
         const m=String(e?.message||e);
         if(isNewDoc&&/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)&&attempt<9){
           const cur=String(inv.sales_invoice_no||inv.doc_no||docNo);
-          const taxm=cur.match(/^(\d{2}\/\d{2})(\d+)$/); // ใบกำกับภาษี 69/0901 → prefix 69/09, ลำดับ 2 หลัก
+          const taxm=parseTaxInvoiceNo(cur); // ใบกำกับภาษี 69/0901 หรือ 2026/1001 → prefix ปี/เดือน + ลำดับ
           let bumped;
           if(taxm){
             // ใบกำกับภาษี: หาเลขว่างต่ำสุดจาก server (นับเฉพาะ active → เลขที่ลบไปแล้วนำกลับมาใช้ได้)
