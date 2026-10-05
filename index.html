@@ -2059,7 +2059,28 @@ async function logout(){
   ACCESS_TOKEN=null;AUTH=null;location.reload();
 }
 function canEdit(){return !AUTH || AUTH.role!=='viewer';}  // viewer = ดูอย่างเดียว
-function guardEdit(){ if(canEdit())return true; alert('บัญชีนี้เป็นสิทธิ์ "ดูอย่างเดียว" — แก้ไขข้อมูลไม่ได้'); return false; }
+function guardEdit(){
+  // โหมดฉุกเฉิน (โหลดข้อมูลล่าสุดไม่สำเร็จ → ใช้ก้อนสำรองอ่านอย่างเดียว): ห้ามแก้ไข เพราะ saveSplitStateNow จะไม่บันทึกทับ
+  // → กันการสร้าง "งานผี" (งานที่มีอยู่แค่ในหน่วยความจำ แต่ไม่เคยขึ้นเซิร์ฟเวอร์ แล้วหายตอนรีโหลด)
+  if(legacyBlobFallbackActive){alert('ตอนนี้กำลังแสดงข้อมูลสำรองแบบอ่านอย่างเดียว (โหลดข้อมูลล่าสุดไม่สำเร็จ) — แก้ไข/สร้าง/บันทึกไม่ได้ กรุณารีเฟรชหน้าก่อน แล้วลองใหม่');return false;}
+  if(canEdit())return true;
+  alert('บัญชีนี้เป็นสิทธิ์ "ดูอย่างเดียว" — แก้ไขข้อมูลไม่ได้');
+  return false;
+}
+// ก่อนแจก/ส่งลิงก์งานให้ช่างหรือลูกค้า: ยืนยันว่างานถูกบันทึกขึ้นเซิร์ฟเวอร์จริง
+// กัน "งานผี" — เคยเกิดเคสมีลิงก์ช่าง/ตรวจรับ (short_links เขียนแยกอิสระ สำเร็จ) แต่ row งานไม่เคยขึ้นเซิร์ฟเวอร์ → งานหายจากคิวช่าง
+async function ensureJobOnServer(job){
+  const id=job&&job.id;
+  if(!id){alert('ไม่พบเลขงาน');return false;}
+  if(legacyBlobFallbackActive){alert('ตอนนี้กำลังแสดงข้อมูลสำรองแบบอ่านอย่างเดียว — ยังสร้าง/ส่งลิงก์งานไม่ได้ กรุณารีเฟรชหน้าก่อน (กันงานหายจากคิวช่าง)');return false;}
+  try{await saveStateNow(false);}catch(e){alert('บันทึกงานขึ้นเซิร์ฟเวอร์ไม่สำเร็จ — ยังไม่ส่งลิงก์ กรุณาลองใหม่อีกครั้ง\n\n'+((e&&e.message)||e));return false;}
+  // ยืนยันว่ามี row งานบนเซิร์ฟเวอร์จริง (ถ้า fetch ไม่ได้/RLS ให้ผ่าน เพราะ saveStateNow ผ่านแล้ว — กันบล็อกเกินเหตุ)
+  try{
+    const r=await fetch(splitUrl('jobs',`?id=eq.${encodeURIComponent(id)}&select=id&limit=1`),{headers:sbHeaders()});
+    if(r.ok){const rows=await r.json();if(!rows||!rows.length){alert('ยังไม่พบงาน '+id+' บนเซิร์ฟเวอร์ — อาจบันทึกไม่สำเร็จ กรุณารีเฟรชแล้วลองใหม่ก่อนส่งลิงก์ให้ช่าง (กันงานผี)');return false;}}
+  }catch(e){/* เครือข่ายมีปัญหา: saveStateNow ผ่านแล้วถือว่าโอเค */}
+  return true;
+}
 function applyRolePermissions(){
   const role=(AUTH&&AUTH.role)||'admin';
   document.body.classList.remove('role-admin','role-staff','role-viewer');
@@ -4074,6 +4095,7 @@ async function setJS(id,s){if(!guardEdit())return;
 }
 function technicianFormUrl(id){return `technician-submit.html?job=${encodeURIComponent(id)}&rev=${Date.now()}`;}
 async function openTechnicianForm(id){
+  if(legacyBlobFallbackActive){alert('ตอนนี้กำลังแสดงข้อมูลสำรองแบบอ่านอย่างเดียว — ยังเปิดฟอร์มช่างไม่ได้ กรุณารีเฟรชหน้าก่อน (กันงานหาย)');return;}
   const url=new URL(technicianFormUrl(id),location.href).href;
   window.open(url,'_blank');
   saveStateNow(false).catch(e=>console.warn('Open technician form before remote save completed',e));
@@ -4103,7 +4125,7 @@ async function getOrCreateShortLink(job,docType,targetFile){
 async function getOrCreateTechShortLink(job){return getOrCreateShortLink(job,'tech','technician-submit.html');}
 async function copyTechnicianLink(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||jobs.find(x=>x.id===id)||{id,branch:''};
-  try{await saveStateNow(false);}catch(e){console.warn('Copy technician link before remote save completed',e);}
+  if(!await ensureJobOnServer(j))return; // กันส่งลิงก์ให้ช่างทั้งที่งานยังไม่ขึ้นเซิร์ฟเวอร์ (งานผี)
   let shortUrl=null;
   try{shortUrl=await getOrCreateTechShortLink(j);}catch(e){console.warn('Short link create failed',e);}
   const fullUrl=new URL(technicianFormUrl(id),location.href).href;
@@ -4242,11 +4264,13 @@ function checkinFormHtml(r,j){
 }
 function checkinFormUrl(id){return `checkin.html?job=${encodeURIComponent(id)}`;}
 function openCheckinForm(id){
+  if(legacyBlobFallbackActive){alert('ตอนนี้กำลังแสดงข้อมูลสำรองแบบอ่านอย่างเดียว — ยังเปิดฟอร์มแจ้งเข้าซ่อมไม่ได้ กรุณารีเฟรชหน้าก่อน');return;}
   const url=new URL(checkinFormUrl(id),location.href).href;
   window.open(url,'_blank');
 }
 async function copyCheckinLink(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||jobs.find(x=>x.id===id)||{id,branch:''};
+  if(!await ensureJobOnServer(j))return; // กันส่งลิงก์แจ้งเข้าซ่อมทั้งที่งานยังไม่ขึ้นเซิร์ฟเวอร์ (งานผี)
   let shortUrl=null;
   try{shortUrl=await getOrCreateShortLink(j,'checkin','checkin.html');}catch(e){console.warn('Checkin short link create failed',e);}
   const fullUrl=new URL(checkinFormUrl(id),location.href).href;
@@ -4256,9 +4280,10 @@ async function copyCheckinLink(id){
 }
 // ===== หน้าตรวจรับงาน (acceptance.html) — ลูกค้าเซ็นรับงานหลังซ่อมเสร็จ + ดึงสิ่งที่ช่างแก้มาโชว์ =====
 function acceptanceFormUrl(id){return `acceptance.html?job=${encodeURIComponent(id)}`;}
-function openAcceptanceForm(id){window.open(new URL(acceptanceFormUrl(id),location.href).href,'_blank');}
+function openAcceptanceForm(id){if(legacyBlobFallbackActive){alert('ตอนนี้กำลังแสดงข้อมูลสำรองแบบอ่านอย่างเดียว — ยังเปิดฟอร์มตรวจรับงานไม่ได้ กรุณารีเฟรชหน้าก่อน');return;}window.open(new URL(acceptanceFormUrl(id),location.href).href,'_blank');}
 async function copyAcceptanceLink(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||jobs.find(x=>x.id===id)||{id,branch:''};
+  if(!await ensureJobOnServer(j))return; // กันส่งลิงก์ตรวจรับงานทั้งที่งานยังไม่ขึ้นเซิร์ฟเวอร์ (งานผี)
   let shortUrl=null;
   try{shortUrl=await getOrCreateShortLink(j,'acceptance','acceptance.html');}catch(e){console.warn('Acceptance short link create failed',e);}
   const url=shortUrl||new URL(acceptanceFormUrl(id),location.href).href;
