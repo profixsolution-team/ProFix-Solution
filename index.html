@@ -2081,6 +2081,38 @@ async function ensureJobOnServer(job){
   }catch(e){/* เครือข่ายมีปัญหา: saveStateNow ผ่านแล้วถือว่าโอเค */}
   return true;
 }
+// ชั้น 4: หลังเปิดงานใหม่ → flush save ทันที + ยืนยันว่ามี row งานบนเซิร์ฟเวอร์จริง ถ้าไม่ขึ้นให้เตือนทันที (ไม่ต้องรอให้หายแล้วค่อยรู้)
+async function verifyJobPersisted(jobId){
+  if(!jobId||legacyBlobFallbackActive)return; // โหมดฉุกเฉิน guardEdit บล็อกตั้งแต่ต้นอยู่แล้ว
+  let saveErr=null;
+  try{await saveStateNow(false);}catch(e){saveErr=e;}
+  try{
+    const r=await fetch(splitUrl('jobs',`?id=eq.${encodeURIComponent(jobId)}&select=id&limit=1`),{headers:sbHeaders()});
+    if(r.ok){const rows=await r.json();if(rows&&rows.length)return;} // ยืนยันแล้วว่ามีจริง → เงียบ
+  }catch(e){if(!saveErr)return;} // verify ยิงไม่ได้แต่ save ผ่าน → ถือว่าโอเค
+  alert('⚠️ งาน '+jobId+' อาจยังไม่ได้บันทึกขึ้นเซิร์ฟเวอร์\nกรุณารีเฟรชหน้า แล้วตรวจว่ามีงานนี้ในคิวช่างก่อนส่งลิงก์ให้ช่าง (กันงานหาย)');
+}
+// ชั้น 5: ตรวจ "งานผี" อัตโนมัติตอนโหลด — เลขงานที่มีลิงก์/รายงานช่าง/เช็คอิน/ตรวจรับ แต่ไม่มี row ในคิวช่าง
+// เตือนเองถ้าเจอ (ไม่มีปุ่ม) ข้าม tombstone (#DEL-) + งานที่ลบแล้ว + โหมดฉุกเฉิน/ออฟไลน์ ; รันครั้งเดียวต่อเซสชัน
+let ghostScanRan=false;
+async function scanGhostJobsAuto(){
+  if(ghostScanRan||legacyBlobFallbackActive||!(splitTablesOnline||loadedFromSplitTables))return;
+  ghostScanRan=true;
+  try{
+    // ชุด "มี row อยู่จริง" = งานทั้งหมดรวมที่ลบแล้ว (soft-delete ก็ยังมี row ไม่นับเป็นงานผี) — ผีคือไม่มี row เลยแบบ MGR009
+    const jobKeys=new Set((jobs||[]).map(j=>normalizePR(j.id)));
+    const isTomb=id=>/#DEL-/i.test(String(id||''));
+    const pull=async table=>{try{const r=await fetch(splitUrl(table,'?select=job_id'),{headers:sbHeaders()});if(!r.ok)return [];return (await r.json()).map(x=>x.job_id);}catch(e){return [];}};
+    const [lk,tr,ck,ac]=await Promise.all([pull('short_links'),pull('technician_reports'),pull('job_checkins'),pull('job_acceptances')]);
+    const ghosts=new Map();
+    const add=(arr,field)=>arr.forEach(jid=>{const k=normalizePR(jid);if(!k||isTomb(jid)||jobKeys.has(k))return;const g=ghosts.get(k)||{links:0,tr:0,ck:0,ac:0};g[field]++;ghosts.set(k,g);});
+    add(lk,'links');add(tr,'tr');add(ck,'ck');add(ac,'ac');
+    if(!ghosts.size)return;
+    const lines=[...ghosts.entries()].map(([k,g])=>`• ${k} — ${(g.tr+g.ck+g.ac)>0?'มีรายงานช่าง/เซ็นแล้ว':'ส่งลิงก์แล้ว'} (ลิงก์:${g.links} ช่าง:${g.tr} เช็คอิน:${g.ck} ตรวจรับ:${g.ac})`);
+    console.warn('[ตรวจงานผี] พบเลขงานที่อ้างถึงแต่ไม่มีใน row คิวช่าง:',[...ghosts.keys()]);
+    alert('⚠️ พบงานที่อาจหายจากคิวช่าง '+ghosts.size+' รายการ\n(มีลิงก์/รายงานช่าง แต่ไม่มีงานในคิวช่าง)\n\n'+lines.join('\n')+'\n\nวิธีแก้: เปิดงานเหล่านี้กลับในคิวช่าง (เปิดจากงานแอดมิน/PR เดิม แล้วบันทึก) ลิงก์ช่างเดิมจะกลับมาใช้ได้ทันที');
+  }catch(e){console.warn('ghost scan failed',e);}
+}
 function applyRolePermissions(){
   const role=(AUTH&&AUTH.role)||'admin';
   document.body.classList.remove('role-admin','role-staff','role-viewer');
@@ -4613,6 +4645,7 @@ async function saveJob(){if(!guardEdit())return;
     saveUIState();
   }
   saveState();
+  if(savedJobId&&action!=='update_job')verifyJobPersisted(savedJobId); // ชั้น 4: ยืนยันงานเปิดใหม่ขึ้นเซิร์ฟเวอร์จริง (ไม่บล็อก UI)
   writeAuditLog(action,'job',savedJobId,before,patchFromDiff(before||{},after||{}),after);
 }
 function editJob(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;closeM('m-detail');fillSelects();editJobId=id;editJobRefOrig=canonPR(j.ref);captureEditBaseline('jobs',id,j);document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';const fjl=document.getElementById('fj-level');if(fjl)fjl.value=jobLevel(j)||'';document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
@@ -9659,6 +9692,7 @@ async function initApp(){
       runDailyBackupIfNeeded(); // โหมดเอกสารไม่ต้องแบ็กอัป
       // preload/refresh อะไหล่เบื้องหลัง → หน้าซัพพลายเออร์พร้อมทันที + cache สด
       (partsLoaded&&parts.length?refreshPartsSilently():ensurePartsLoaded()).then(()=>{if(document.getElementById('page-settings-suppliers')?.classList.contains('active'))renderParts();}).catch(()=>{});
+      scanGhostJobsAuto(); // ชั้น 5: ตรวจงานผีอัตโนมัติหลังโหลดเสร็จ (เตือนเองถ้าเจอ ไม่มีปุ่ม)
     }
     startRemoteRefresh();
     maybeAutoOpenSalesFromUrl();
