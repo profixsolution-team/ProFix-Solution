@@ -1755,7 +1755,10 @@ function techUpdatePill(item){
 function techUpdateRowClass(item){return (item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))?` tech-update-row${techUpdateClass(item)}`:'';}
 function statusBadge(item,status){
   const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);
-  return `<span class="badge ${on?`tech-update-status${techUpdateClass(item)}`:(SB[status]||'b-wait')}">${on?`<span class="tech-update-dot${techUpdateClass(item)}"></span>`:''}${esc(status||'-')}</span>`;
+  // สถานะเร่งด่วน (b-urgent เช่น รอขออนุมัติ/รอช่างส่งงาน) ให้ badge แดงชัดชนะเสมอ แม้มี tech-update — แต่ยังคงจุดแจ้งอัปเดตไว้
+  const urgent=SB[status]==='b-urgent';
+  const cls=urgent?'b-urgent':(on?`tech-update-status${techUpdateClass(item)}`:(SB[status]||'b-wait'));
+  return `<span class="badge ${cls}">${on?`<span class="tech-update-dot${techUpdateClass(item)}"></span>`:''}${esc(status||'-')}</span>`;
 }
 // ===== ระดับงาน (Level) จากใบ PR/work order =====
 function parseLevelValue(v){const m=String(v||'').match(/(?:level\s*)?\b([1-3])\b/i);return m?m[1]:'';}
@@ -1773,6 +1776,7 @@ function jobLevel(item){
 function isLevel1(item){return jobLevel(item)==='1';}
 function level1Badge(item){return isLevel1(item)?'<span class="urgent-pill" title="งานเร่งด่วนระดับ 1 จากใบ PR">⚠ URGENT LEVEL-1</span>':'';}
 function statusSelectColor(item,status,kind='job'){
+  if(SB[status]==='b-urgent')return 'var(--red)'; // สถานะเร่งด่วน (รอขออนุมัติ/รอช่างส่งงาน) ให้ตัวหนังสือแดงเสมอ (ชนะสี tech-update)
   if(item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item))return isReturnFixUpdate(item)?'var(--red)':isDraftUpdate(item)?'var(--yellow)':'var(--green)';
   if(kind==='admin')return status==='เสร็จแล้ว'?'var(--green)':status==='กำลังทำ'?'var(--yellow)':status==='ติดปัญหา'||status==='Reject'?'var(--red)':'var(--text2)';
   return status==='เสร็จงาน'||status==='ปิดงาน'||status==='ช่างส่งงานแล้ว'||status==='แอดมินตรวจแล้ว'?'var(--green)':status==='ช่างออกงาน'||status==='รอเปิดงาน'||status==='รอจ่าย'?'var(--yellow)':status==='Reject'||status==='ติดปัญหา'||status==='ต้องแก้ไข'||status==='รอขออนุมัติ'||status==='รอช่างส่งงาน'?'var(--red)':status==='รออะไหล่'||status==='รออนุมัติอะไหล่'?'var(--purple)':'var(--text2)';
