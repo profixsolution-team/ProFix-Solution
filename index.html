@@ -5865,14 +5865,19 @@ function salesTaxSummaryHtml(inv,items){
   // ใบแจ้งหนี้/ใบวางบิล ใช้ฟอร์มสรุปเดียวกับใบกำกับภาษี แต่คอลัมน์ = รหัส PO / เลขที่ใบกำกับภาษี / ราคาต่อหน่วย (ดึงจากใบกำกับภาษี)
   const isInv=(inv.doc_type==='invoice');
   const lineRows=(items||[]).map((it,i)=>{
-    const srcTax=isInv?(salesInvoices||[]).find(x=>String(x.id)===String(it.source_doc_id)):null;
     const unitPrice=Number(it.unit_price||0);
     const qty=Number(it.quantity||1);
+    const pr=String(it.item_code||'').trim()||String(jobList[i]||'').trim()||'';
+    let po='', taxNo='';
+    if(isInv){
+      // หาใบกำกับภาษีต้นทาง: 1) จาก source_doc_id (ตอนรวมเป็นใบแจ้งหนี้) 2) จาก PR → ใบกำกับภาษีที่คลุม PR นั้น (ใบแจ้งหนี้เก่า)
+      let srcTax=(salesInvoices||[]).find(x=>x&&x.doc_type==='tax_invoice'&&x.status!=='cancelled'&&String(x.id)===String(it.source_doc_id));
+      if(!srcTax){const firstPr=pr.split(',')[0].trim();if(firstPr)srcTax=(salesInvoices||[]).find(x=>x&&x.doc_type==='tax_invoice'&&x.status!=='cancelled'&&salesInvoiceMatchesJob(x,firstPr));}
+      po=String(srcTax?.po_number||'').trim();                                                   // รหัส PO (จากใบกำกับภาษีจริง)
+      taxNo=String(srcTax?.doc_no||srcTax?.sales_invoice_no||it.source_ref_id||'').trim();        // เลขที่ใบกำกับภาษี (จริง, fallback snapshot)
+    }
     return {
-      no:i+1,
-      pr:String(it.item_code||'').trim()||String(jobList[i]||'').trim()||'',
-      po:String(it.item_code||'').trim()||String(srcTax?.po_number||'').trim()||'',             // รหัส PO
-      taxNo:String(it.source_ref_id||'').trim()||String(srcTax?.doc_no||srcTax?.sales_invoice_no||'').trim()||'', // เลขที่ใบกำกับภาษีอ้างอิง
+      no:i+1, pr:pr, po:po, taxNo:taxNo,
       desc:String(it.description||'').trim(),
       qty:qty,
       unit:String(it.unit||'JOB').trim()||'JOB',
@@ -7367,11 +7372,11 @@ async function mergeTaxInvoicesToBillingInvoice(){
     const client=(()=>{const j=jobs.find(x=>sameJob(x.id,prs[0])&&!isDeletedRecord(x));return j?String(j.client||'').trim():'';})();
     const amount=Number(d.total_amount||0)||(Number(d.subtotal||0)+Number(d.vat_amount||0));
     return {...blankSalesItem(), id:newAccountingId('SITEM'),
-      item_code:String(d.po_number||'').trim(),                                   // รหัส PO
+      item_code:prs.join(', '),                                                   // PR (ใช้หาใบกำกับภาษี + สำรอง) — PO/เลขใบกำกับ ดึงสดจากใบกำกับภาษีตอนแสดง
       category:'', description:branch||client||prs.join(', ')||'-',
       quantity:1, unit:'JOB', unit_price:amount, discount:0,
       source_type:'manual',
-      source_ref_id:String(d.doc_no||d.sales_invoice_no||'').trim(),              // เลขที่ใบกำกับภาษี (snapshot)
+      source_ref_id:String(d.doc_no||d.sales_invoice_no||'').trim(),              // เลขที่ใบกำกับภาษี (snapshot เผื่อใบกำกับถูกลบ)
       source_doc_id:d.id,
       note:'จากใบกำกับภาษี '+(d.doc_no||d.sales_invoice_no||d.id)};
   });
