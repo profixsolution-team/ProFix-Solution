@@ -1455,7 +1455,7 @@ select option{background:var(--surface2);}
             <div class="form-row" id="sale-template-row" style="align-items:flex-end;gap:10px;background:linear-gradient(90deg,var(--accent-dim),transparent);border:1px dashed var(--accent);border-radius:10px;padding:10px 12px;margin-top:6px;"><div class="form-group" style="flex:1.3;"><label style="color:var(--accent);font-weight:800;">🖨️ รูปแบบใบเสนอราคา (ตอนพิมพ์)</label><select id="sale-doc-template" style="border-color:var(--accent);font-weight:600;"><option value="boq">📄 ฟอร์ม BOQ (แนวนอน ตามแบบบริษัท)</option><option value="modern">🧾 แบบเดิม (โมเดิร์น แนวตั้ง)</option></select></div><div class="form-group"><label>จังหวัด (สาขา)</label><select id="sale-branch-province"></select></div><div class="form-group"><label>จังหวัด (ศูนย์/ลูกค้า)</label><select id="sale-customer-province"></select></div></div>
             <div class="form-row"><div class="form-group" style="flex:1;"><label>Job ID / PR (คลิกเลือกได้หลายตัว)</label><div style="position:relative;"><input id="sale-job-input" autocomplete="off" placeholder="ค้นหา PR / ลูกค้า / สาขา แล้วคลิกเลือก" oninput="renderSalesJobPicker(this.value)" onfocus="renderSalesJobPicker(this.value)" onkeydown="handleSalesJobKey(event)"><div id="sale-job-picker" class="job-picker" style="display:none;"></div></div><div id="sale-job-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div><div id="sale-dup-note" style="font-size:11px;color:var(--yellow);margin-top:6px;"></div><input type="hidden" id="sale-job"></div></div>
             <div class="form-row"><div class="form-group"><label>วันที่ออกบิล</label><input id="sale-date" type="date"></div><div class="form-group"><label>สถานะรับเงิน</label><select id="sale-payment"><option value="unpaid">ยังไม่รับเงิน</option><option value="paid">รับเงินแล้ว</option><option value="partial">รับบางส่วน</option></select></div><div class="form-group"><label>วันรับเงิน <span style="font-size:11px;color:var(--text3);">(ใบกำกับภาษี: ใช้คิดเลขรันเอกสารตามเดือน)</span></label><input id="sale-payment-date" type="date" onchange="refreshSalesDocNo()"></div></div>
-            <div class="form-row"><div class="form-group"><label>เงื่อนไขชำระเงิน</label><input id="sale-payment-terms" placeholder="โอนเข้าบัญชี"></div></div>
+            <div class="form-row"><div class="form-group"><label>เงื่อนไขชำระเงิน</label><input id="sale-payment-terms" placeholder="โอนเข้าบัญชี"></div><div class="form-group"><label>เลขที่ PO (ลูกค้า) <span style="font-size:11px;color:var(--text3);">ใบแจ้งหนี้ดึงไปใช้ได้</span></label><input id="sale-po-number" placeholder="เลขที่ใบสั่งซื้อจากลูกค้า"></div></div>
             <div class="doc-parties">
               <div class="accounting-panel doc-party" style="border-left:4px solid var(--accent);background:rgba(88,166,255,.06);">
                 <div class="accounting-panel-title">ข้อมูลลูกค้า<button class="btn btn-ghost btn-sm btn-xs" type="button" onclick="openDocCustomerModal()">+ เพิ่มบริษัท</button></div>
@@ -2571,7 +2571,7 @@ function rowHashMap(rows,idOf){
 }
 function splitUrl(table,query=''){return `${SUPABASE_URL}/rest/v1/${table}${query}`;}
 // คอลัมน์ที่เพิ่มใน migration phase 3 — ถ้ายังไม่ได้รัน migration จะถูกตัดออกอัตโนมัติเพื่อไม่ให้บันทึกพัง
-const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template','branch_province','customer_province','labor_price','parts_price','labor_cost','parts_cost','due_date','payment_terms','customer_branch_no'];
+const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template','branch_province','customer_province','labor_price','parts_price','labor_cost','parts_cost','due_date','payment_terms','customer_branch_no','po_number'];
 function stripKeys(payload,keys){const drop=o=>{const c={...o};keys.forEach(k=>delete c[k]);return c;};return Array.isArray(payload)?payload.map(drop):drop(payload);}
 // POST แบบทนทาน: ถ้า PostgREST แจ้งว่าไม่มีคอลัมน์ (ยังไม่ได้รัน migration) จะลองใหม่โดยตัด "เฉพาะ" คอลัมน์ที่ error ระบุชื่อ
 // (เดิมตัดทั้ง PHASE3_OPTIONAL_KEYS ยกชุด → คอลัมน์ที่ DB มีอยู่จริง เช่น หมวด/รหัส/ลำดับ ถูกตัดทิ้งตามไปด้วย → หายตอนแก้ไขเอกสาร)
@@ -5581,10 +5581,8 @@ function convertSalesDoc(id,toType){
 }
 // พิมพ์ / บันทึก PDF เอกสารขายตามชนิด
 // ===== พรีวิวเอกสารใน modal (คลิกที่ list บิลซื้อ/ขาย) =====
-// เอกสารแบบสรุป (PR+สาขา, ดึงยอดจากใบเสนอราคา) ใช้ได้ทั้งใบกำกับภาษีและใบแจ้งหนี้
-function salesDocIsSummary(inv){return (inv?.doc_type==='tax_invoice'||inv?.doc_type==='invoice')&&inv?.doc_template==='summary';}
 function salesDocHtmlFor(inv,items){
-  if(salesDocIsSummary(inv))return salesTaxSummaryHtml(inv,items);
+  if(((inv.doc_type==='tax_invoice'||inv.doc_type==='invoice')&&inv.doc_template==='summary'))return salesTaxSummaryHtml(inv,items);
   const useBoq=inv.doc_type==='quotation'&&(inv.doc_template||'boq')!=='modern';
   return useBoq?boqQuoteDocHtml(inv,items):salesDocHtml(inv,items);
 }
@@ -5595,7 +5593,7 @@ function openSalesDocPreview(id){
   const meta=SALES_DOC_META[inv.doc_type||'tax_invoice']||SALES_DOC_META.tax_invoice;
   const firstPr=salesInvoiceJobs(inv)[0]||'';
   document.getElementById('doc-preview-title').textContent=meta.title+' · '+esc(inv.doc_no||inv.sales_invoice_no||'');
-  const _pv=salesDocIsSummary(inv)?liveTaxSummaryTotals(inv,items):{subtotal:Number(inv.subtotal||0),vat:Number(inv.vat_amount||0),total:Number(inv.total_amount||0)};
+  const _pv=(inv.doc_type==='tax_invoice'&&inv.doc_template==='summary')?liveTaxSummaryTotals(inv,items):{subtotal:Number(inv.subtotal||0),vat:Number(inv.vat_amount||0),total:Number(inv.total_amount||0)};
   document.getElementById('doc-preview-sub').innerHTML=
     `<div class="dp-detail">`
     +`<div class="dp-item"><span class="dp-label">ลูกค้า</span><span class="dp-val">${esc(inv.customer_name||inv.customer_id||'-')}</span></div>`
@@ -5661,7 +5659,7 @@ function printSalesDoc(id){
   const inv=salesInvoices.find(x=>x.id===id);if(!inv)return;
   const items=salesInvoiceItems.filter(x=>x.sales_invoice_id===id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0));
   // ใบกำกับภาษีแบบสรุป (PR+สาขา) → ฟอร์มสรุปรายการ
-  if(salesDocIsSummary(inv)){generateDocWindow(salesTaxSummaryHtml(inv,items));return;}
+  if((inv.doc_type==='tax_invoice'||inv.doc_type==='invoice')&&inv.doc_template==='summary'){generateDocWindow(salesTaxSummaryHtml(inv,items));return;}
   // ใบเสนอราคาเลือกได้ 2 ดีไซน์: modern (เดิม) / boq (ฟอร์มบริษัท) — ประเภทอื่นใช้เทมเพลตเดิมเสมอ
   const useBoq=inv.doc_type==='quotation'&&(inv.doc_template||'boq')!=='modern';
   generateDocWindow(useBoq?boqQuoteDocHtml(inv,items):salesDocHtml(inv,items));
@@ -5864,21 +5862,36 @@ function salesTaxSummaryHtml(inv,items){
   const company=salesDocCompanyInfo(inv);
   const customer=salesDocCustomerInfo(inv);
   const jobList=salesInvoiceJobs(inv);
-  const lineRows=(items||[]).map((it,i)=>({
-    no:i+1,
-    pr:String(it.item_code||'').trim()||String(jobList[i]||'').trim()||'',
-    desc:String(it.description||'').trim(),
-    qty:Number(it.quantity||1),
-    unit:String(it.unit||'JOB').trim()||'JOB',
-    amount:liveTaxSummaryLineAmount(it) // ยอดสดจากใบเสนอราคาต้นทาง (อัปเดตตามการแก้ราคา)
-  }));
-  const _lt=liveTaxSummaryTotals(inv,items);
-  const lineSum=_lt.lineSum;
-  const subtotal=_lt.subtotal;
-  const discount=_lt.discount;
-  const afterDiscount=_lt.afterDiscount;
-  const vat=_lt.vat;
-  const total=_lt.total;
+  // ใบแจ้งหนี้/ใบวางบิล ใช้ฟอร์มสรุปเดียวกับใบกำกับภาษี แต่คอลัมน์ = รหัส PO / เลขที่ใบกำกับภาษี / ราคาต่อหน่วย (ดึงจากใบกำกับภาษี)
+  const isInv=(inv.doc_type==='invoice');
+  const lineRows=(items||[]).map((it,i)=>{
+    const srcTax=isInv?(salesInvoices||[]).find(x=>String(x.id)===String(it.source_doc_id)):null;
+    const unitPrice=Number(it.unit_price||0);
+    const qty=Number(it.quantity||1);
+    return {
+      no:i+1,
+      pr:String(it.item_code||'').trim()||String(jobList[i]||'').trim()||'',
+      po:String(it.item_code||'').trim()||String(srcTax?.po_number||'').trim()||'',             // รหัส PO
+      taxNo:String(it.source_ref_id||'').trim()||String(srcTax?.doc_no||srcTax?.sales_invoice_no||'').trim()||'', // เลขที่ใบกำกับภาษีอ้างอิง
+      desc:String(it.description||'').trim(),
+      qty:qty,
+      unit:String(it.unit||'JOB').trim()||'JOB',
+      unitPrice:unitPrice,
+      amount:isInv?Math.round(unitPrice*qty*100)/100:liveTaxSummaryLineAmount(it)
+    };
+  });
+  let lineSum,subtotal,discount,afterDiscount,vat,total;
+  if(isInv){ // ใบวางบิล: ยอดแต่ละบรรทัดรวม VAT แล้ว ใช้ยอดที่เก็บไว้บนเอกสาร ไม่คิด VAT ซ้ำ
+    lineSum=lineRows.reduce((s,r)=>s+Number(r.amount||0),0);
+    discount=Number(inv.discount_total||0);
+    subtotal=Number(inv.subtotal??lineSum);
+    afterDiscount=Math.max(0,subtotal-discount);
+    vat=Number(inv.vat_amount||0);
+    total=Number(inv.total_amount??(afterDiscount+vat));
+  }else{
+    const _lt=liveTaxSummaryTotals(inv,items);
+    lineSum=_lt.lineSum; subtotal=_lt.subtotal; discount=_lt.discount; afterDiscount=_lt.afterDiscount; vat=_lt.vat; total=_lt.total;
+  }
   const discPct=subtotal>0?Math.round(discount/subtotal*1000)/10:0;
   const vatPct=vat>0?7:0;
   const totalText=thaiBahtText(total);
@@ -5886,12 +5899,10 @@ function salesTaxSummaryHtml(inv,items){
   const dueText=quoteDateText(inv.due_date||inv.invoice_date||todayISO());
   const terms=esc(inv.payment_terms||'โอนเข้าบัญชี');
   const docNo=esc(inv.doc_no||inv.sales_invoice_no||'');
-  // หัวเอกสาร: ใบแจ้งหนี้ (invoice) ใช้ฟอร์มสรุปเดียวกับใบกำกับภาษี แค่เปลี่ยนหัว/ชื่อ
-  const isInvoiceDoc=(inv.doc_type==='invoice');
-  const docWord=isInvoiceDoc?'ใบแจ้งหนี้':'ใบกำกับภาษี';
-  const titleTh=isInvoiceDoc?'ใบแจ้งหนี้/ใบวางบิล':'ใบกำกับภาษี/ใบส่งสินค้า/ใบเสร็จรับเงิน';
-  const titleEn=isInvoiceDoc?'INVOICE / BILLING NOTE':'TAX INVOICE/DELIVERY ORDER /RECEIPT';
-  const docNoLabel=isInvoiceDoc?'เลขที่ใบแจ้งหนี้':'เลขที่ใบกำกับ';
+  const docWord=isInv?'ใบแจ้งหนี้':'ใบกำกับภาษี';
+  const titleTh=isInv?'ใบแจ้งหนี้/ใบวางบิล':'ใบกำกับภาษี/ใบส่งสินค้า/ใบเสร็จรับเงิน';
+  const titleEn=isInv?'INVOICE / BILLING NOTE':'TAX INVOICE/DELIVERY ORDER /RECEIPT';
+  const docNoLabel=isInv?'เลขที่ใบแจ้งหนี้':'เลขที่ใบกำกับ';
   const customerName=esc(inv.customer_name||inv.customer_id||'-');
   const custAddr=esc(customer.address||'-');
   const custTax=esc(customer.taxId||'-');
@@ -5909,10 +5920,21 @@ function salesTaxSummaryHtml(inv,items){
   const sellerName=esc(inv.seller_name||'');
   const minRows=16;
   const blank=Math.max(0,minRows-lineRows.length);
-  const rowsHtml=lineRows.map(r=>`<tr><td class="c">${r.no}</td><td class="c">${esc(r.pr)}</td><td>${esc(r.desc)}</td><td class="c">${money(r.qty).replace(/\.00$/,'')}</td><td class="c">${esc(r.unit)}</td><td class="r">${money(r.amount)}</td></tr>`).join('');
-  const blankHtml=Array.from({length:blank}).map(()=>`<tr><td class="c">&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>`).join('');
+  const rowsHtml=lineRows.map(r=>isInv
+    ?`<tr><td class="c">${r.no}</td><td class="c">${esc(r.po)}</td><td>${esc(r.desc)}</td><td class="c">${esc(r.taxNo)}</td><td class="c">${money(r.qty).replace(/\.00$/,'')}</td><td class="r">${money(r.unitPrice)}</td><td class="r">${money(r.amount)}</td></tr>`
+    :`<tr><td class="c">${r.no}</td><td class="c">${esc(r.pr)}</td><td>${esc(r.desc)}</td><td class="c">${money(r.qty).replace(/\.00$/,'')}</td><td class="c">${esc(r.unit)}</td><td class="r">${money(r.amount)}</td></tr>`
+  ).join('');
+  const blankCells=isInv?7:6;
+  const blankHtml=Array.from({length:blank}).map(()=>'<tr><td class="c">&nbsp;</td>'+Array.from({length:blankCells-1}).map(()=>'<td></td>').join('')+'</tr>').join('');
+  const theadHtml=isInv
+    ?`<tr><th class="c-no">ลำดับ</th><th class="c-po">รหัส PO</th><th class="c-desc">รายละเอียด</th><th class="c-txno">เลขที่ใบกำกับภาษี</th><th class="c-qty">จำนวน</th><th class="c-price">ราคาต่อหน่วย</th><th class="c-amt">จำนวนเงิน</th></tr>`
+    :`<tr><th class="c-no">ลำดับ</th><th class="c-code">รหัสสินค้า</th><th class="c-desc">รายละเอียด</th><th class="c-qty">จำนวน</th><th class="c-unit">ราคา/หน่วย</th><th class="c-amt">จำนวนเงิน</th></tr>`;
   const money2=v=>Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  const totHtml=`
+  const totHtml=isInv?`
+    <tr><td class="tl"><b>รวมเงิน</b><div class="en">TOTAL AMOUNT</div></td><td class="tp"></td><td class="tv">${money2(subtotal)}</td></tr>
+    ${discount?`<tr><td class="tl">ส่วนลด<div class="en">DISCOUNT</div></td><td class="tp">${discPct?money(discPct).replace(/\.00$/,''):'0'}%</td><td class="tv">${money2(discount)}</td></tr>`:''}
+    <tr class="grand"><td class="tl"><b>ยอดเงินสุทธิ</b><div class="en">GRAND TOTAL</div></td><td class="tp"></td><td class="tv">${money2(total)}</td></tr>`
+  :`
     <tr><td class="tl"><b>รวมเงิน</b><div class="en">TOTAL AMOUNT</div></td><td class="tp"></td><td class="tv">${money2(subtotal)}</td></tr>
     <tr><td class="tl">ส่วนลด<div class="en">DISCOUNT</div></td><td class="tp">${discPct?money(discPct).replace(/\.00$/,''):'0'}%</td><td class="tv">${discount?money2(discount):'-'}</td></tr>
     <tr><td class="tl">มูลค่าสินค้าหลังหักส่วนลด<div class="en">TOTAL AMOUNT AFTER DISCOUNT</div></td><td class="tp"></td><td class="tv">${money2(afterDiscount)}</td></tr>
@@ -5934,12 +5956,13 @@ function salesTaxSummaryHtml(inv,items){
     </div>
     <div class="cust-r">
       <div class="mrow"><span>${docNoLabel}</span><b>${docNo||'-'}</b></div>
+      ${(!isInv&&String(inv.po_number||'').trim())?`<div class="mrow"><span>เลขที่ PO</span><b>${esc(inv.po_number)}</b></div>`:''}
       <div class="mrow"><span>วันที่</span><b>${dateText}</b></div>
       <div class="mrow"><span>กำหนดชำระเงิน</span><b>${dueText}</b></div>
       <div class="mrow"><span>เงื่อนไขชำระเงิน</span><b>${terms}</b></div>
     </div>
   </section>
-  <table class="tbl"><thead><tr><th class="c-no">ลำดับ</th><th class="c-code">รหัสสินค้า</th><th class="c-desc">รายละเอียด</th><th class="c-qty">จำนวน</th><th class="c-unit">ราคา/หน่วย</th><th class="c-amt">จำนวนเงิน</th></tr></thead><tbody>${rowsHtml}${blankHtml}</tbody></table>
+  <table class="tbl"><thead>${theadHtml}</thead><tbody>${rowsHtml}${blankHtml}</tbody></table>
   <section class="mid">
     <div class="mid-l">
       <div class="words"><span class="wl">ตัวอักษร</span><span class="wv">(${esc(totalText)})</span></div>
@@ -5996,6 +6019,7 @@ body{margin:0;background:#e9edf2;color:#0b1220;font-size:12px;line-height:1.32;}
 .tbl td{border-left:1px solid #b9c4d4;border-right:1px solid #b9c4d4;padding:2px 6px;height:6.4mm;font-size:12px;vertical-align:middle;}
 .tbl tbody tr:last-child td{border-bottom:1px solid var(--theme,#17325c);}
 .tbl .c-no{width:12mm;}.tbl .c-code{width:26mm;}.tbl .c-qty{width:16mm;}.tbl .c-unit{width:20mm;}.tbl .c-amt{width:28mm;}
+.tbl .c-po{width:22mm;}.tbl .c-txno{width:26mm;}.tbl .c-price{width:24mm;}
 .tbl td.c{text-align:center;}.tbl td.r{text-align:right;}
 .tbl tbody{border-left:1px solid var(--theme,#17325c);border-right:1px solid var(--theme,#17325c);}
 .mid{display:grid;grid-template-columns:1fr 62mm;gap:0;margin-top:0;border-left:1px solid var(--theme,#17325c);border-right:1px solid var(--theme,#17325c);border-bottom:1px solid var(--theme,#17325c);}
@@ -6548,6 +6572,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-customer-address').value=saleCustomer.address;
   document.getElementById('sale-customer-taxid').value=saleCustomer.taxId;
   {const el=document.getElementById('sale-customer-branch-no');if(el)el.value=saleCustomer.branchNo||'';}
+  {const el=document.getElementById('sale-po-number');if(el)el.value=inv?.po_number||'';}
   refreshSalesCustomerBranchOptions(inv?.customer_name||''); // ต้องเรียกหลังใส่ค่าเลขสาขาแล้ว dropdown ถึงจะเลือกค้างไว้ถูกตัว
   document.getElementById('sale-customer-phone').value=saleCustomer.phone;
   document.getElementById('sale-company-display').value=saleCompany.displayName;
@@ -6630,12 +6655,12 @@ function removeSalesJob(i){const pr=salesDraftJobs[i];salesDraftJobs.splice(i,1)
 function salesJobIsBilled(id){return (salesInvoices||[]).some(inv=>inv.status!=='cancelled'&&salesInvoiceMatchesJob(inv,id));}
 // ใบกำกับภาษี: เลือกได้เฉพาะงานที่ "ออกใบเสนอราคาแล้ว" (ใบเสนอราคาเลือกได้ทุกงาน)
 function jobHasQuotation(id){return (salesInvoices||[]).some(inv=>inv.status!=='cancelled'&&(inv.doc_type==='quotation')&&salesInvoiceMatchesJob(inv,id));}
-function salesPickerRequiresQuotation(){const t=document.getElementById('sale-doc-type')?.value||'';return t==='tax_invoice'||t==='invoice';}
+function salesPickerRequiresQuotation(){return (document.getElementById('sale-doc-type')?.value||'')==='tax_invoice';}
 function salesGuardJobAddable(pr){
   if(!salesPickerRequiresQuotation())return true;
   if(!accountingLoaded)return true; // ยังโหลดใบเสนอราคาไม่เสร็จ — อนุญาตไว้ก่อน (picker จะกรองเองเมื่อโหลดครบ)
   if(jobHasQuotation(pr))return true;
-  setAccountingStatus('sales',`งาน ${pr} ยังไม่มีใบเสนอราคา — เอกสารนี้ออกได้เฉพาะงานที่ออกใบเสนอราคาแล้ว`,'warn');
+  setAccountingStatus('sales',`งาน ${pr} ยังไม่มีใบเสนอราคา — ใบกำกับภาษีออกได้เฉพาะงานที่ออกใบเสนอราคาแล้ว`,'warn');
   return false;
 }
 function toggleSalesJob(id){
@@ -6651,7 +6676,7 @@ function handleSalesJobKey(e){
     const q=(e.target.value||'').trim().toLowerCase();
     const list=salesJobPickerMatches(q);
     if(list.length){toggleSalesJob(list[0].id);e.target.value='';}
-    else if(salesPickerRequiresQuotation()){const v=(e.target.value||'').trim();if(v)setAccountingStatus('sales',`ไม่พบงาน "${v}" ที่ออกใบเสนอราคาแล้ว — เอกสารนี้เลือกได้เฉพาะงานที่มีใบเสนอราคา`,'warn');}
+    else if(salesPickerRequiresQuotation()){const v=(e.target.value||'').trim();if(v)setAccountingStatus('sales',`ไม่พบงาน "${v}" ที่ออกใบเสนอราคาแล้ว — ใบกำกับภาษีเลือกได้เฉพาะงานที่มีใบเสนอราคา`,'warn');}
     else addSalesJob();
   }else if(e.key==='Escape'){const p=document.getElementById('sale-job-picker');if(p)p.style.display='none';}
 }
@@ -6679,8 +6704,8 @@ function renderSalesJobPicker(q){
   const requireQt=salesPickerRequiresQuotation();
   if(requireQt&&!accountingLoaded){box.innerHTML='<div class="job-picker-empty">กำลังโหลดรายการใบเสนอราคา...</div>';box.style.display='';ensureAccountingLoaded().then(()=>renderSalesJobPicker(document.getElementById('sale-job-input')?.value||'')).catch(()=>{});return;}
   const list=salesJobPickerMatches(String(q||'').trim().toLowerCase());
-  if(!list.length){box.innerHTML=`<div class="job-picker-empty">${requireQt?'ไม่พบงานที่ออกใบเสนอราคาแล้ว — เอกสารนี้เลือกได้เฉพาะงานที่มีใบเสนอราคาก่อน':'ไม่พบงานที่ตรงกับคำค้น — กด Enter เพื่อเพิ่ม PR ที่พิมพ์เอง'}</div>`;box.style.display='';return;}
-  const hint=`<div class="job-picker-hint">${requireQt?'เฉพาะงานที่ออกใบเสนอราคาแล้ว · ':''}คลิกเพื่อเลือก/เอาออก · ✓ = เลือกแล้ว</div>`;
+  if(!list.length){box.innerHTML=`<div class="job-picker-empty">${requireQt?'ไม่พบงานที่ออกใบเสนอราคาแล้ว — ใบกำกับภาษีเลือกได้เฉพาะงานที่มีใบเสนอราคาก่อน':'ไม่พบงานที่ตรงกับคำค้น — กด Enter เพื่อเพิ่ม PR ที่พิมพ์เอง'}</div>`;box.style.display='';return;}
+  const hint=`<div class="job-picker-hint">${requireQt?'ใบกำกับภาษี: เฉพาะงานที่ออกใบเสนอราคาแล้ว · ':''}คลิกเพื่อเลือก/เอาออก · ✓ = เลือกแล้ว</div>`;
   box.innerHTML=hint+list.map(j=>{
     const sel=salesDraftJobs.some(x=>x.toLowerCase()===String(j.id).toLowerCase());
     const billed=salesJobIsBilled(j.id);
@@ -6715,10 +6740,9 @@ function fillSalesFromJob(pr=''){
   }
 }
 // ===== ทำใบกำกับภาษีเอง: เพิ่ม PR/JOB แล้วให้ขึ้นเป็นบรรทัดสรุป (เลข PR + ชื่อสาขา + ยอดก่อน VAT) อัตโนมัติ =====
-// ฟอร์มแบบสรุป (เพิ่ม PR → 1 บรรทัดสรุป ดึงยอดจากใบเสนอราคา) = ใบกำกับภาษี + ใบแจ้งหนี้
-function salesIsSummaryForm(){const t=document.getElementById('sale-doc-type')?.value||'';return t==='tax_invoice'||t==='invoice';}
-function salesOnJobAdded(pr){ if(salesIsSummaryForm())salesAddJobLine(pr); else fillSalesFromJob(pr); }
-function salesOnJobRemoved(pr){ if(salesIsSummaryForm())salesRemoveJobLine(pr); }
+function salesIsTaxInvoiceForm(){return (document.getElementById('sale-doc-type')?.value||'')==='tax_invoice';}
+function salesOnJobAdded(pr){ if(salesIsTaxInvoiceForm())salesAddJobLine(pr); else fillSalesFromJob(pr); }
+function salesOnJobRemoved(pr){ if(salesIsTaxInvoiceForm())salesRemoveJobLine(pr); }
 function latestQuotationForJob(pr){
   return (salesInvoices||[]).filter(inv=>inv.status!=='cancelled'&&(inv.doc_type==='quotation')&&salesInvoiceMatchesJob(inv,pr))
     .sort((a,b)=>String(b.invoice_date||'').localeCompare(String(a.invoice_date||''))||String(b.doc_no||'').localeCompare(String(a.doc_no||'')))[0]||null;
@@ -6743,7 +6767,7 @@ function liveTaxSummaryTotals(inv,items){
 // เมื่อบันทึกใบเสนอราคา → ไล่อัปเดตยอดในใบกำกับแบบสรุปที่อ้างถึงใบเสนอราคานี้ให้ตรงกัน (บันทึกลง DB จริง)
 async function syncSummaryTaxInvoicesForQuotation(quotationId,newSub,qPrs){
   newSub=Number(newSub||0); qPrs=qPrs||[];
-  const taxes=(salesInvoices||[]).filter(x=>x.status!=='cancelled'&&(x.doc_type==='tax_invoice'||x.doc_type==='invoice')&&x.doc_template==='summary');
+  const taxes=(salesInvoices||[]).filter(x=>x.status!=='cancelled'&&x.doc_type==='tax_invoice'&&x.doc_template==='summary');
   let changedAny=false;
   for(const tx of taxes){
     const its=(salesInvoiceItems||[]).filter(it=>it.sales_invoice_id===tx.id&&it.status!=='cancelled');
@@ -7085,6 +7109,7 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     note:document.getElementById('sale-note').value.trim(),
     customer_tax_id:document.getElementById('sale-customer-taxid').value.trim(),
     customer_branch_no:document.getElementById('sale-customer-branch-no')?.value.trim()||'',
+    po_number:document.getElementById('sale-po-number')?.value.trim()||'',
     customer_address:document.getElementById('sale-customer-address').value.trim(),
     customer_phone:document.getElementById('sale-customer-phone').value.trim(),
     company_display_name:document.getElementById('sale-company-display').value.trim(),
@@ -7188,14 +7213,15 @@ function renderSalesMergeBar(){
   const jobs=[...new Set(docs.flatMap(d=>salesInvoiceJobs(d)))];
   const total=docs.reduce((s,d)=>s+(Number(d.total_amount||0)||Number(d.subtotal||0)+Number(d.vat_amount||0)),0);
   const bad=customers.length>1;
+  const hasTax=docs.some(d=>(d.doc_type||'')==='tax_invoice'); // มีใบกำกับภาษีในที่เลือก → รวมเป็นใบแจ้งหนี้ได้
   bar.style.display='';
   bar.innerHTML=`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <b>เลือกไว้ ${docs.length} ใบ</b>
     <span class="tm">${jobs.length} งาน · รวม ฿${money(total)}</span>
     ${bad?`<span style="color:var(--red);">⚠️ ลูกค้าไม่ตรงกัน (${customers.map(esc).join(' / ')}) — รวมไม่ได้</span>`:`<span class="tm">ลูกค้า: ${esc(customers[0]||'-')}</span>`}
     <span style="flex:1;"></span>
-    <button class="btn btn-primary btn-sm" ${bad?'disabled style="opacity:.5;"':''} onclick="mergeSalesDocsToSummaryTax('tax_invoice')" title="แต่ละใบเสนอราคา = 1 บรรทัด (เลข PR + ชื่อสาขา + ยอดก่อน VAT) → ใบกำกับภาษี">🧾 รวมสรุป → ใบกำกับภาษี</button>
-    <button class="btn btn-primary btn-sm" ${bad?'disabled style="opacity:.5;"':''} onclick="mergeSalesDocsToSummaryTax('invoice')" title="แต่ละใบเสนอราคา = 1 บรรทัด (เลข PR + ชื่อสาขา + ยอดก่อน VAT) → ใบแจ้งหนี้/ใบวางบิล">🧾 รวมสรุป → ใบแจ้งหนี้</button>
+    ${hasTax?`<button class="btn btn-primary btn-sm" ${bad?'disabled style="opacity:.5;"':''} onclick="mergeTaxInvoicesToBillingInvoice()" title="รวมใบกำกับภาษีที่เลือก → ใบแจ้งหนี้/ใบวางบิล (1 บรรทัด = 1 ใบกำกับภาษี: PO + เลขที่ใบกำกับ + ยอดรวม)">🧾 รวม → ใบแจ้งหนี้</button>`:''}
+    <button class="btn btn-primary btn-sm" ${bad?'disabled style="opacity:.5;"':''} onclick="mergeSalesDocsToSummaryTax()" title="แต่ละใบเสนอราคา = 1 บรรทัด (เลข PR + ชื่อสาขา + ยอดก่อน VAT)">🧾 รวมแบบสรุป (PR+สาขา)</button>
     <button class="btn btn-ghost btn-sm" ${bad?'disabled style="opacity:.5;"':''} onclick="mergeSalesDocsToTaxInvoice()" title="รวมรายการซ่อมทุกบรรทัดจากทุกใบ">🧾 รวมแจกแจงรายการ</button>
     <button class="btn btn-ghost btn-sm" onclick="clearSalesPick()">ล้างที่เลือก</button>
   </div>`;
@@ -7259,8 +7285,7 @@ async function mergeSalesDocsToTaxInvoice(){
   setAccountingStatus('sales',`รวม ${docs.length} ใบ (${jobIds.length} งาน) เรียบร้อย — ตรวจแล้วกดบันทึก`,'ok');
 }
 // รวมใบเสนอราคาหลายใบ → ใบกำกับภาษี "แบบสรุป": 1 ใบเสนอราคา = 1 บรรทัด (เลข PR + ชื่อสาขา + ยอดก่อน VAT)
-async function mergeSalesDocsToSummaryTax(targetType){
-  targetType=(targetType==='invoice')?'invoice':'tax_invoice'; // รวมแบบสรุปได้ทั้งใบกำกับภาษีและใบแจ้งหนี้
+async function mergeSalesDocsToSummaryTax(){
   if(!guardEdit())return;
   const docs=pickedSalesDocs();
   if(docs.length<1){alert('เลือกเอกสารอย่างน้อย 1 ใบก่อน');return;}
@@ -7269,7 +7294,7 @@ async function mergeSalesDocsToSummaryTax(targetType){
   await ensureAccountingLoaded().catch(()=>{});
   const jobIds=[...new Set(docs.flatMap(d=>salesInvoiceJobs(d)))];
   const base=docs[0];
-  openSalesModal('','', targetType);
+  openSalesModal('','', 'tax_invoice');
   const setv=(id,v)=>{const el=document.getElementById(id); if(el)el.value=v;};
   setv('sale-customer',base.customer_name||base.customer_id||'');
   setv('sale-customer-address',base.customer_address||'');
@@ -7304,6 +7329,55 @@ async function mergeSalesDocsToSummaryTax(targetType){
   renderSalesItemEditor(); updateSalesSummary&&updateSalesSummary();
   salesPicked.clear();
   setAccountingStatus('sales',`รวมแบบสรุป ${docs.length} ใบ (${jobIds.length} งาน) — ตรวจแล้วกดบันทึก แล้วสั่งพิมพ์`,'ok');
+}
+// รวมใบกำกับภาษีที่ติ๊กไว้ → ใบแจ้งหนี้/ใบวางบิล: 1 บรรทัด = 1 ใบกำกับภาษี (รหัส PO + รายละเอียด + เลขที่ใบกำกับภาษี + ยอดรวม)
+async function mergeTaxInvoicesToBillingInvoice(){
+  if(!guardEdit())return;
+  const docs=pickedSalesDocs().filter(d=>(d.doc_type||'')==='tax_invoice');
+  if(docs.length<1){alert('เลือกใบกำกับภาษีอย่างน้อย 1 ใบก่อน (ใบแจ้งหนี้ดึงจากใบกำกับภาษี)');return;}
+  const customers=[...new Set(docs.map(d=>String(d.customer_name||d.customer_id||'').trim()))];
+  if(customers.length>1){alert('รวมได้เฉพาะเอกสารของลูกค้าเดียวกัน');return;}
+  await ensureAccountingLoaded().catch(()=>{});
+  const jobIds=[...new Set(docs.flatMap(d=>salesInvoiceJobs(d)))];
+  const base=docs[0];
+  openSalesModal('','', 'invoice');
+  const setv=(id,v)=>{const el=document.getElementById(id); if(el)el.value=v;};
+  setv('sale-customer',base.customer_name||base.customer_id||'');
+  setv('sale-customer-address',base.customer_address||'');
+  setv('sale-customer-taxid',base.customer_tax_id||'');
+  setv('sale-customer-phone',base.customer_phone||'');
+  setv('sale-company-display',base.company_display_name||quoteCompanyDefaults().displayName);
+  setv('sale-company-name',base.company_name||quoteCompanyDefaults().name);
+  setv('sale-company-branch',base.company_branch||quoteCompanyDefaults().branch);
+  salesDraftJobs=jobIds.slice();renderSalesJobChips();
+  // ยอดแต่ละใบกำกับภาษีรวม VAT แล้ว → ใบวางบิลไม่คิด VAT/Overhead/เดินทาง/SLA ซ้ำ
+  setv('sale-overhead-enabled','no');
+  setv('sale-travel-km',0); setv('sale-travel-rate',0);
+  setSalesSlaStatus('none');
+  salesVatMode='none'; setv('sale-vat-mode','none');
+  setv('sale-summary-flag','1');
+  setv('sale-payment-date', base.due_date||base.payment_date||base.invoice_date||todayISO());
+  setv('sale-payment-terms', base.payment_terms||'โอนเข้าบัญชี');
+  setv('sale-po-number', String(base.po_number||'').trim()); // PO จากใบแรก (แต่ละบรรทัดมี PO ของตัวเองด้วย)
+  refreshSalesDocNo();
+  setv('sale-note','ใบวางบิลรวมจากใบกำกับภาษี: '+docs.map(d=>d.doc_no||d.sales_invoice_no||d.id).join(', '));
+  salesDraftItems=docs.map(d=>{
+    const prs=salesInvoiceJobs(d);
+    const branch=[...new Set(prs.map(p=>jobs.find(j=>sameJob(j.id,p)&&!isDeletedRecord(j))?.branch).filter(Boolean))].join(', ');
+    const client=(()=>{const j=jobs.find(x=>sameJob(x.id,prs[0])&&!isDeletedRecord(x));return j?String(j.client||'').trim():'';})();
+    const amount=Number(d.total_amount||0)||(Number(d.subtotal||0)+Number(d.vat_amount||0));
+    return {...blankSalesItem(), id:newAccountingId('SITEM'),
+      item_code:String(d.po_number||'').trim(),                                   // รหัส PO
+      category:'', description:branch||client||prs.join(', ')||'-',
+      quantity:1, unit:'JOB', unit_price:amount, discount:0,
+      source_type:'manual',
+      source_ref_id:String(d.doc_no||d.sales_invoice_no||'').trim(),              // เลขที่ใบกำกับภาษี (snapshot)
+      source_doc_id:d.id,
+      note:'จากใบกำกับภาษี '+(d.doc_no||d.sales_invoice_no||d.id)};
+  });
+  renderSalesItemEditor(); updateSalesSummary&&updateSalesSummary();
+  salesPicked.clear();
+  setAccountingStatus('sales',`รวมเป็นใบแจ้งหนี้จาก ${docs.length} ใบกำกับภาษี — ตรวจแล้วกดบันทึก แล้วสั่งพิมพ์`,'ok');
 }
 function salesInvoiceJobs(inv){return inv.job_ids?String(inv.job_ids).split(',').map(s=>s.trim()).filter(Boolean):(inv.job_id?[String(inv.job_id)]:[]);}
 // ชื่อสาขาของเอกสาร (จากงานที่ผูกไว้) — ใช้แทนชื่อลูกค้าในตารางรายการ (fallback = ชื่อลูกค้า)
