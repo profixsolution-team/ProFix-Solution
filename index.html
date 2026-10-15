@@ -6038,7 +6038,7 @@ function salesTaxSummaryHtml(inv,items){
     <tr><td class="tl">มูลค่าสินค้าหลังหักส่วนลด<div class="en">TOTAL AMOUNT AFTER DISCOUNT</div></td><td class="tp"></td><td class="tv">${money2(afterDiscount)}</td></tr>
     <tr><td class="tl">ภาษีมูลค่าเพิ่ม<div class="en">VAT</div></td><td class="tp">${vatPct}%</td><td class="tv">${money2(vat)}</td></tr>
     <tr class="grand"><td class="tl"><b>ยอดเงินสุทธิ</b><div class="en">GRAND TOTAL</div></td><td class="tp"></td><td class="tv">${money2(total)}</td></tr>`;
-  const _cc=salesDocTheme(company).copies; // สีตามบริษัทที่ออกบิล (ProFix=เขียว, อื่นๆ=น้ำเงิน/ส้ม/ฟ้า)
+  const _cc=isInv?['#4b5563','#6b7280','#374151']:salesDocTheme(company).copies; // สีตามบริษัทที่ออกบิล (ProFix=เขียว, อื่นๆ=น้ำเงิน/ส้ม/ฟ้า) · ใบแจ้งหนี้/ใบวางบิล = โทนเทา
   const COPIES=[{k:'original',th:'ต้นฉบับ',en:'ORIGINAL',color:_cc[0]},{k:'copy',th:'สำเนา',en:'COPY',color:_cc[1]},{k:'account',th:'สำเนา (บัญชี)',en:'COPY - ACCOUNTING',color:_cc[2]}];
   const sheet=(c,idx)=>`<section class="sheet" data-copy="${c.k}" style="--theme:${c.color};${idx===0?'':'display:none;'}"><div class="fit">
   <header class="head">
