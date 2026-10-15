@@ -2073,6 +2073,9 @@ function guardEdit(){
   // โหมดฉุกเฉิน (โหลดข้อมูลล่าสุดไม่สำเร็จ → ใช้ก้อนสำรองอ่านอย่างเดียว): ห้ามแก้ไข เพราะ saveSplitStateNow จะไม่บันทึกทับ
   // → กันการสร้าง "งานผี" (งานที่มีอยู่แค่ในหน่วยความจำ แต่ไม่เคยขึ้นเซิร์ฟเวอร์ แล้วหายตอนรีโหลด)
   if(legacyBlobFallbackActive){alert('ตอนนี้กำลังแสดงข้อมูลสำรองแบบอ่านอย่างเดียว (โหลดข้อมูลล่าสุดไม่สำเร็จ) — แก้ไข/สร้าง/บันทึกไม่ได้ กรุณารีเฟรชหน้าก่อน แล้วลองใหม่');return false;}
+  // ยังโหลดข้อมูลจาก server ไม่เสร็จ (หน้าจอเป็นข้อมูลแคชในเครื่อง): saveState จะข้ามการบันทึก และพอโหลดเสร็จข้อมูล server จะทับของที่เพิ่งแก้
+  // → เคยทำให้เปิดคิวช่างแล้วงานไม่ขึ้นเซิร์ฟเวอร์ (PR431019) จึงห้ามแก้จนกว่าจะโหลดเสร็จ
+  if(!isHydrated){alert('กำลังโหลดข้อมูลล่าสุดจากเซิร์ฟเวอร์ — รอสักครู่ (ไม่กี่วินาที) แล้วกดบันทึกอีกครั้ง\nข้อมูลที่กรอกในฟอร์มยังอยู่ ไม่ต้องกรอกใหม่');return false;}
   if(canEdit())return true;
   alert('บัญชีนี้เป็นสิทธิ์ "ดูอย่างเดียว" — แก้ไขข้อมูลไม่ได้');
   return false;
@@ -3031,6 +3034,11 @@ async function loadState(opts={}){
   loadUIState();
   try{
     if(await loadSplitState()){
+      if(opts.deferReports){
+        // โหลดแรก: รายงานช่าง+รูป (หลายหมื่นแถว หลายสิบ MB) โหลดเบื้องหลัง ไม่ให้หน้า "ยังโหลดไม่เสร็จ" นาน (ช่วงนั้นแก้ไข/บันทึกไม่ได้)
+        loadTechnicianReportTables(isDocModeLight()).then(()=>{try{refreshAfterDataChange();}catch(e){}}).catch(reportErr=>console.warn('Technician report table load failed',reportErr));
+        return;
+      }
       try{
         await loadTechnicianReportTables(isDocModeLight());
       }catch(reportErr){console.warn('Technician report table load failed',reportErr);}
@@ -9790,7 +9798,8 @@ async function initApp(){
   fillSelects();
   renderLPHist();
   renderCurrentPage();
-  loadState({silent:hadFastCache}).then(()=>{
+  lastRemoteRefreshAt=Date.now(); // กัน focus-refresh ยิงโหลดซ้ำทันทีระหว่างโหลดแรก
+  loadState({silent:hadFastCache,deferReports:true}).then(()=>{
     isHydrated=true;
     if(hasUnsyncedLocalChanges)return;
     ensureMeta();
