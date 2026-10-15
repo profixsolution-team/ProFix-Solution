@@ -6900,8 +6900,45 @@ function fillSalesFromJob(pr=''){
 }
 // ===== ทำใบกำกับภาษีเอง: เพิ่ม PR/JOB แล้วให้ขึ้นเป็นบรรทัดสรุป (เลข PR + ชื่อสาขา + ยอดก่อน VAT) อัตโนมัติ =====
 function salesIsTaxInvoiceForm(){return (document.getElementById('sale-doc-type')?.value||'')==='tax_invoice';}
-function salesOnJobAdded(pr){ if(salesIsTaxInvoiceForm())salesAddJobLine(pr); else fillSalesFromJob(pr); }
-function salesOnJobRemoved(pr){ if(salesIsTaxInvoiceForm())salesRemoveJobLine(pr); }
+function salesIsBillingInvoiceForm(){return (document.getElementById('sale-doc-type')?.value||'')==='invoice';}
+function salesOnJobAdded(pr){ if(salesIsTaxInvoiceForm())salesAddJobLine(pr); else if(salesIsBillingInvoiceForm())salesAddBillingLinesForJob(pr); else fillSalesFromJob(pr); }
+function salesOnJobRemoved(pr){ if(salesIsTaxInvoiceForm())salesRemoveJobLine(pr); else if(salesIsBillingInvoiceForm())salesRemoveBillingLinesForJob(pr); }
+// ใบแจ้งหนี้: เลือก PR เพิ่ม (รวมถึงเพิ่มทีหลังตอนแก้ไข) → ดึงใบกำกับภาษีของ PR นั้นมาเป็นบรรทัดอัตโนมัติ
+function salesAddBillingLinesForJob(pr){
+  pr=String(pr||'').trim();if(!pr)return;
+  if(!accountingLoaded){ensureAccountingLoaded().then(()=>{if(salesDraftJobs.some(x=>sameJob(x,pr)))salesAddBillingLinesForJob(pr);}).catch(()=>{});return;}
+  const curId=document.getElementById('sale-id')?.value||'';
+  const taxes=(salesInvoices||[]).filter(x=>x.status!=='cancelled'&&x.doc_type==='tax_invoice'&&x.id!==curId&&salesInvoiceMatchesJob(x,pr));
+  if(!taxes.length){
+    const j=jobs.find(x=>sameJob(x.id,pr)&&!isDeletedRecord(x));
+    const custEl=document.getElementById('sale-customer');
+    if(custEl&&!custEl.value&&j)applySalesCustomerProfile(j.client||'',j.branch||'');
+    setAccountingStatus('sales',`งาน ${pr} ยังไม่มีใบกำกับภาษี — ใบแจ้งหนี้ดึงยอดจากใบกำกับภาษี (เพิ่มรายการเองได้)`,'warn');
+    return;
+  }
+  const have=new Set((salesDraftItems||[]).map(it=>String(it.source_doc_id||'')).filter(Boolean));
+  const add=taxes.filter(d=>!have.has(String(d.id)));
+  if(!add.length)return; // ใบกำกับนี้อยู่ในรายการแล้ว (เช่นใบเดียวครอบหลาย PR)
+  const custEl=document.getElementById('sale-customer');
+  if(custEl&&!custEl.value){const b=add[0];['customer','customer-address','customer-taxid','customer-phone'].forEach(k=>{const el=document.getElementById('sale-'+k);const v={customer:b.customer_name||b.customer_id,'customer-address':b.customer_address,'customer-taxid':b.customer_tax_id,'customer-phone':b.customer_phone}[k];if(el&&!el.value&&v)el.value=v;});}
+  const isBlank=it=>!String(it.description||'').trim()&&!Number(it.unit_price||0)&&!it.source_doc_id;
+  salesDraftItems=(salesDraftItems||[]).filter(it=>!isBlank(it)).concat(add.map(d=>billingLineFromTaxInvoice(d,salesVatMode)));
+  // ใบกำกับที่ครอบหลาย PR → เพิ่ม PR ที่เหลือเข้า chip ด้วย (ให้ตรงกับรายการ)
+  add.forEach(d=>salesInvoiceJobs(d).forEach(p=>{if(!salesDraftJobs.some(x=>sameJob(x,p)))salesDraftJobs.push(p);}));
+  const sf=document.getElementById('sale-summary-flag');if(sf)sf.value='1';
+  renderSalesItemEditor();updateSalesSummary&&updateSalesSummary();
+  setAccountingStatus('sales',`เพิ่มรายการจากใบกำกับภาษี ${add.map(d=>d.doc_no||d.sales_invoice_no||d.id).join(', ')}`,'ok');
+}
+// เอา PR ออก → ลบบรรทัดของใบกำกับภาษีที่ไม่มี PR ไหนเหลืออยู่ในเอกสารแล้ว
+function salesRemoveBillingLinesForJob(pr){
+  const before=(salesDraftItems||[]).length;
+  salesDraftItems=(salesDraftItems||[]).filter(it=>{
+    const tx=it.source_doc_id?(salesInvoices||[]).find(x=>String(x.id)===String(it.source_doc_id)):null;
+    if(!tx||!salesInvoiceMatchesJob(tx,pr))return true;
+    return salesInvoiceJobs(tx).some(p=>salesDraftJobs.some(x=>sameJob(x,p)));
+  });
+  if(salesDraftItems.length!==before){if(!salesDraftItems.length)salesDraftItems=[blankSalesItem()];renderSalesItemEditor();updateSalesSummary&&updateSalesSummary();}
+}
 function latestQuotationForJob(pr){
   return (salesInvoices||[]).filter(inv=>inv.status!=='cancelled'&&(inv.doc_type==='quotation')&&salesInvoiceMatchesJob(inv,pr))
     .sort((a,b)=>String(b.invoice_date||'').localeCompare(String(a.invoice_date||''))||String(b.doc_no||'').localeCompare(String(a.doc_no||'')))[0]||null;
@@ -7602,11 +7639,17 @@ async function mergeTaxInvoicesToBillingInvoice(){
   setv('sale-payment-terms', base.payment_terms||'โอนเข้าบัญชี');
   refreshSalesDocNo();
   setv('sale-note','ใบวางบิลรวมจากใบกำกับภาษี: '+docs.map(d=>d.doc_no||d.sales_invoice_no||d.id).join(', '));
-  salesDraftItems=docs.map(d=>{
+  salesDraftItems=docs.map(d=>billingLineFromTaxInvoice(d,'add'));
+  renderSalesItemEditor(); updateSalesSummary&&updateSalesSummary();
+  salesPicked.clear();
+  setAccountingStatus('sales',`รวมเป็นใบแจ้งหนี้จาก ${docs.length} ใบกำกับภาษี — ตรวจแล้วกดบันทึก แล้วสั่งพิมพ์`,'ok');
+}
+// 1 บรรทัดใบแจ้งหนี้ = 1 ใบกำกับภาษี (ใช้ทั้งตอนรวมจากรายการบิล และตอนเพิ่ม PR ทีหลังในฟอร์ม)
+function billingLineFromTaxInvoice(d,mode){
     const prs=salesInvoiceJobs(d);
     const branch=[...new Set(prs.map(p=>jobs.find(j=>sameJob(j.id,p)&&!isDeletedRecord(j))?.branch).filter(Boolean))].join(', ');
     const client=(()=>{const j=jobs.find(x=>sameJob(x.id,prs[0])&&!isDeletedRecord(x));return j?String(j.client||'').trim():'';})();
-    const amount=billingLineAmountFor(d,'add'); // ยอดก่อน VAT ของใบกำกับ (ยอดสดเดียวกับที่ใบกำกับภาษีแสดง/พิมพ์ (ใบสรุปคิดสดจากใบเสนอราคาล่าสุด) — เดิมใช้ยอดที่เก็บไว้ ซึ่งค้างได้ถ้าแก้ใบเสนอราคาภายหลัง
+    const amount=billingLineAmountFor(d,mode||'add'); // ยอดก่อน VAT ของใบกำกับ (ยอดสดเดียวกับที่ใบกำกับภาษีแสดง/พิมพ์ (ใบสรุปคิดสดจากใบเสนอราคาล่าสุด) — เดิมใช้ยอดที่เก็บไว้ ซึ่งค้างได้ถ้าแก้ใบเสนอราคาภายหลัง
     return {...blankSalesItem(), id:newAccountingId('SITEM'),
       item_code:prs.join(', '),                                                   // PR (ใช้หาใบกำกับภาษี + สำรอง) — PO/เลขใบกำกับ ดึงสดจากใบกำกับภาษีตอนแสดง
       category:'', description:branch||client||prs.join(', ')||'-',
@@ -7615,10 +7658,6 @@ async function mergeTaxInvoicesToBillingInvoice(){
       source_ref_id:String(d.doc_no||d.sales_invoice_no||'').trim(),              // เลขที่ใบกำกับภาษี (snapshot เผื่อใบกำกับถูกลบ)
       source_doc_id:d.id,
       note:'จากใบกำกับภาษี '+(d.doc_no||d.sales_invoice_no||d.id)};
-  });
-  renderSalesItemEditor(); updateSalesSummary&&updateSalesSummary();
-  salesPicked.clear();
-  setAccountingStatus('sales',`รวมเป็นใบแจ้งหนี้จาก ${docs.length} ใบกำกับภาษี — ตรวจแล้วกดบันทึก แล้วสั่งพิมพ์`,'ok');
 }
 function salesInvoiceJobs(inv){return inv.job_ids?String(inv.job_ids).split(',').map(s=>s.trim()).filter(Boolean):(inv.job_id?[String(inv.job_id)]:[]);}
 // ชื่อสาขาของเอกสาร (จากงานที่ผูกไว้) — ใช้แทนชื่อลูกค้าในตารางรายการ (fallback = ชื่อลูกค้า)
