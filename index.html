@@ -2095,12 +2095,12 @@ async function ensureJobOnServer(job){
 async function verifyJobPersisted(jobId){
   if(!jobId||legacyBlobFallbackActive)return; // โหมดฉุกเฉิน guardEdit บล็อกตั้งแต่ต้นอยู่แล้ว
   let saveErr=null;
-  try{await saveStateNow(false);}catch(e){saveErr=e;}
+  try{await saveStateNow(false);}catch(e){saveErr=e;console.warn('[verifyJobPersisted] save failed',jobId,e);}
   try{
     const r=await fetch(splitUrl('jobs',`?id=eq.${encodeURIComponent(jobId)}&select=id&limit=1`),{headers:sbHeaders()});
     if(r.ok){const rows=await r.json();if(rows&&rows.length)return;} // ยืนยันแล้วว่ามีจริง → เงียบ
   }catch(e){if(!saveErr)return;} // verify ยิงไม่ได้แต่ save ผ่าน → ถือว่าโอเค
-  alert('⚠️ งาน '+jobId+' อาจยังไม่ได้บันทึกขึ้นเซิร์ฟเวอร์\nกรุณารีเฟรชหน้า แล้วตรวจว่ามีงานนี้ในคิวช่างก่อนส่งลิงก์ให้ช่าง (กันงานหาย)');
+  alert('⚠️ งาน '+jobId+' อาจยังไม่ได้บันทึกขึ้นเซิร์ฟเวอร์\nกรุณารีเฟรชหน้า แล้วตรวจว่ามีงานนี้ในคิวช่างก่อนส่งลิงก์ให้ช่าง (กันงานหาย)'+(saveErr?'\n\nสาเหตุ: '+String((saveErr&&saveErr.message)||saveErr).slice(0,400):'\n\n(บันทึกไม่ error แต่ไม่พบแถวงานบนเซิร์ฟเวอร์'+(isHydrated?'':' — หน้ายังโหลดไม่เสร็จ')+')'));
 }
 // ชั้น 5: ตรวจ "งานผี" อัตโนมัติตอนโหลด — เลขงานที่มีลิงก์/รายงานช่าง/เช็คอิน/ตรวจรับ แต่ไม่มี row ในคิวช่าง
 // เตือนเองถ้าเจอ (ไม่มีปุ่ม) ข้าม tombstone (#DEL-) + งานที่ลบแล้ว + โหมดฉุกเฉิน/ออฟไลน์ ; รันครั้งเดียวต่อเซสชัน
@@ -2877,9 +2877,20 @@ async function ensureDocsLoaded(){
 async function upsertSplitRows(table,rows,mapRow){
   if(!rows.length)return;
   for(let i=0;i<rows.length;i+=400){
-    const body=JSON.stringify(rows.slice(i,i+400).map(mapRow));
-    const r=await fetch(splitUrl(table),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body});
-    if(!r.ok)throw new Error(await r.text());
+    const chunk=rows.slice(i,i+400).map(mapRow);
+    const r=await fetch(splitUrl(table),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(chunk)});
+    if(r.ok)continue;
+    const batchErr=await r.text();
+    // ทั้งก้อนล้ม (แถวเดียวเสียทำให้ทุกแถวไม่ขึ้น) → ลองทีละแถว: แถวดีขึ้นเซิร์ฟเวอร์ได้ ส่วนแถวเสียรายงานชื่อ+สาเหตุ
+    if(chunk.length<2)throw new Error(table+' '+(chunk[0]&&chunk[0].id||'')+': '+batchErr);
+    const failed=[];
+    for(const one of chunk){
+      try{
+        const r1=await fetch(splitUrl(table),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify([one])});
+        if(!r1.ok)failed.push(one.id+': '+(await r1.text()));
+      }catch(e){failed.push(one.id+': '+((e&&e.message)||e));}
+    }
+    if(failed.length)throw new Error(table+' บันทึกไม่สำเร็จ '+failed.length+' แถว\n'+failed.slice(0,5).join('\n'));
   }
 }
 async function deleteSplitRows(table,ids){
