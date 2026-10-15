@@ -6024,7 +6024,7 @@ function salesTaxSummaryHtml(inv,items){
     :`<tr><td class="c">${r.no}</td><td class="c">${esc(r.pr)}</td><td class="c">${esc(r.po)}</td><td>${esc(r.desc)}</td><td class="c">${money(r.qty).replace(/\.00$/,'')}</td><td class="r">${money(r.qty?Math.round(r.amount/r.qty*100)/100:r.amount)}</td><td class="r">${money(r.amount)}</td></tr>`
   ).join('');
   const blankCells=7;
-  const blankHtml=Array.from({length:blank}).map(()=>'<tr><td class="c">&nbsp;</td>'+Array.from({length:blankCells-1}).map(()=>'<td></td>').join('')+'</tr>').join('');
+  const blankHtml=Array.from({length:blank}).map(()=>'<tr class="blank"><td class="c">&nbsp;</td>'+Array.from({length:blankCells-1}).map(()=>'<td></td>').join('')+'</tr>').join('');
   const theadHtml=isInv
     ?`<tr><th class="c-no">ลำดับ</th><th class="c-po">รหัส PO</th><th class="c-desc">รายละเอียด</th><th class="c-txno">เลขที่ใบกำกับภาษี</th><th class="c-qty">จำนวน</th><th class="c-price">ราคาต่อหน่วย</th><th class="c-amt">จำนวนเงิน</th></tr>`
     :`<tr><th class="c-no">ลำดับ</th><th class="c-code">รหัสสินค้า</th><th class="c-po">เลข PO</th><th class="c-desc">รายละเอียด</th><th class="c-qty">จำนวน</th><th class="c-price">ราคาต่อหน่วย</th><th class="c-amt">จำนวนเงิน</th></tr>`;
@@ -6041,7 +6041,7 @@ function salesTaxSummaryHtml(inv,items){
     <tr class="grand"><td class="tl"><b>ยอดเงินสุทธิ</b><div class="en">GRAND TOTAL</div></td><td class="tp"></td><td class="tv">${money2(total)}</td></tr>`;
   const _cc=salesDocTheme(company).copies; // สีตามบริษัทที่ออกบิล (ProFix=เขียว, อื่นๆ=น้ำเงิน/ส้ม/ฟ้า)
   const COPIES=[{k:'original',th:'ต้นฉบับ',en:'ORIGINAL',color:_cc[0]},{k:'copy',th:'สำเนา',en:'COPY',color:_cc[1]},{k:'account',th:'สำเนา (บัญชี)',en:'COPY - ACCOUNTING',color:_cc[2]}];
-  const sheet=(c,idx)=>`<section class="sheet" data-copy="${c.k}" style="--theme:${c.color};${idx===0?'':'display:none;'}">
+  const sheet=(c,idx)=>`<section class="sheet" data-copy="${c.k}" style="--theme:${c.color};${idx===0?'':'display:none;'}"><div class="fit">
   <header class="head">
     <div class="co"><div class="co-name">${coName} <span class="co-branch">${coBranch}</span></div><div class="co-addr">${coAddr}</div><div class="co-addr">โทร. ${coPhone}&nbsp;&nbsp;เลขประจำตัวผู้เสียภาษี ${coTax}</div></div>
     <div class="copywrap"><div class="copybox" style="border-color:${c.color};color:${c.color};">${esc(c.th)}</div><div class="copyen" style="color:${c.color};">${esc(c.en)}</div></div>
@@ -6084,7 +6084,7 @@ function salesTaxSummaryHtml(inv,items){
     <div class="sg"><div class="sg-top">&nbsp;</div><div class="sg-sp"></div><div class="sg-lbl">ผู้ส่งสินค้า</div><div class="sg-lbl">วันที่</div></div>
     <div class="sg sg-co"><div class="sg-top">${coName}</div><div class="sg-sp">${sellerSigHtml}</div><div class="sg-lbl">${sellerName?'( '+sellerName+' )':'&nbsp;'}</div><div class="sg-lbl">ผู้มีอำนาจลงนาม</div></div>
   </section>
-  </section>`;
+  </div></section>`;
   const sheets=COPIES.map(sheet).join('');
   const copyChecks=COPIES.map((c,idx)=>`<label class="ck"><input type="checkbox" ${idx===0?'checked':''} onchange="toggleCopy('${c.k}',this.checked)"> ${esc(c.th)}</label>`).join('');
   return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>${docWord} ${docNo}</title>
@@ -6094,7 +6094,8 @@ body{margin:0;background:#e9edf2;color:#0b1220;font-size:12px;line-height:1.32;}
 .toolbar .ck{font-size:12px;margin-right:10px;cursor:pointer;user-select:none;}
 .toolbar .grp{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
 .toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px;}.btn-print{background:#3fb950;color:#fff;}.btn-ghost{background:#374151;color:#fff;margin-right:6px;}
-.sheet{position:relative;width:210mm;min-height:297mm;margin:52px auto 16px;padding:12mm 12mm 8mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);}
+.sheet{position:relative;width:210mm;height:297mm;overflow:hidden;margin:52px auto 16px;padding:12mm 12mm 8mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);}
+.fit{transform-origin:top left;}
 .head{display:flex;justify-content:space-between;align-items:flex-start;gap:10mm;}
 .co-name{font-size:19px;font-weight:800;color:#05070a;}.co-branch{font-size:12px;font-weight:600;}
 .co-addr{font-size:11.5px;margin-top:3px;color:#111820;}
@@ -6144,7 +6145,7 @@ body{margin:0;background:#e9edf2;color:#0b1220;font-size:12px;line-height:1.32;}
 .signs .sig-img{max-width:52mm;max-height:16mm;object-fit:contain;}
 .signs .sg-lbl{font-size:12px;margin-top:3px;}
 .signs .sg-co .sg-top{font-weight:700;text-align:center;}
-@media print{html,body{background:#fff;}.toolbar{display:none;}.sheet{width:210mm;min-height:297mm;margin:0;box-shadow:none;page-break-after:always;}.sheet.lastvis{page-break-after:auto;}.tbl thead{display:table-header-group;}.tbl tr,.mid,.signs,.notes{break-inside:avoid;page-break-inside:avoid;}}
+@media print{html,body{background:#fff;}.toolbar{display:none;}.sheet{width:210mm;height:297mm;overflow:hidden;margin:0;box-shadow:none;page-break-after:always;}.sheet.lastvis{page-break-after:auto;}.tbl thead{display:table-header-group;}.tbl tr,.mid,.signs,.notes{break-inside:avoid;page-break-inside:avoid;}}
 </style></head>
 <body>
 <div class="toolbar">
@@ -6153,8 +6154,32 @@ body{margin:0;background:#e9edf2;color:#0b1220;font-size:12px;line-height:1.32;}
 </div>
 ${sheets}
 <script>
-function toggleCopy(k,on){var el=document.querySelector('.sheet[data-copy="'+k+'"]');if(el)el.style.display=on?'':'none';}
+// ล็อก 1 หน้า A4: แผ่นสูง 297mm ตายตัว — ถ้าเนื้อหาล้น ตัดแถวว่างเติมท้ายตารางก่อน ถ้ายังล้นค่อยย่อทั้งแผ่นให้พอดีหน้า
+function fitSheet(s){
+  if(!s||s.style.display==='none')return;
+  var f=s.querySelector('.fit');if(!f)return;
+  f.style.transform='';f.style.width='';
+  var blanks=[].slice.call(s.querySelectorAll('tr.blank'));
+  blanks.forEach(function(r){r.style.display='';});
+  var cs=getComputedStyle(s);
+  var avail=s.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)-1;
+  while(f.offsetHeight>avail&&blanks.length){blanks.pop().style.display='none';}
+  if(f.offsetHeight<=avail)return;
+  // ย่อ: ยิ่งย่อ แผ่นยิ่งกว้าง ข้อความตัดบรรทัดน้อยลง → ความสูงหลังย่อ (สูง×k) ลดลงตาม k เสมอ
+  // → binary search หา k ที่ "ใหญ่ที่สุด" ที่ยังพอดี 1 หน้า (ไม่ย่อเกินจำเป็น)
+  var setK=function(k){f.style.width=(100/k)+'%';f.style.transform='scale('+k+')';return f.offsetHeight*k<=avail;};
+  var lo=0.2,hi=1;
+  for(var i=0;i<14;i++){var mid=(lo+hi)/2;if(setK(mid))lo=mid;else hi=mid;}
+  setK(lo);
+}
+function fitAll(){[].forEach.call(document.querySelectorAll('.sheet'),fitSheet);}
+function toggleCopy(k,on){var el=document.querySelector('.sheet[data-copy="'+k+'"]');if(el){el.style.display=on?'':'none';fitSheet(el);}}
+window.addEventListener('load',fitAll);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitAll);
+[].forEach.call(document.images,function(im){if(!im.complete)im.addEventListener('load',fitAll);});
+fitAll();
 window.addEventListener('beforeprint',function(){
+  fitAll();
   var all=[].slice.call(document.querySelectorAll('.sheet'));
   all.forEach(function(s){s.classList.remove('lastvis');});
   var vis=all.filter(function(s){return s.style.display!=='none';});
@@ -6721,6 +6746,22 @@ function openSalesModal(id='',prefJobId='',docType=''){
   updateAttachmentPreview('sales',null);
   setAccountingStatus('sales',inv?.file_url?'มีไฟล์แนบเดิมใน URL แล้ว':'','');
   salesDraftItems=inv?salesInvoiceItems.filter(x=>x.sales_invoice_id===inv.id).sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0)).map(x=>({...x})):[blankSalesItem()];
+  // ใบกำกับแบบสรุป: เอกสารแสดง/พิมพ์ยอดสดจากใบเสนอราคาล่าสุด แต่ยอดที่เก็บไว้อาจค้าง (เช่นใบเสนอราคาเดิมถูกลบแล้วออกใบใหม่)
+  // → ตอนเปิดแก้ไข ดึงยอดสดเข้าฟอร์ม + ผูกใบเสนอราคาใหม่ บันทึกแล้วยอดในระบบ/รายงาน/ใบแจ้งหนี้จะตรงกับที่พิมพ์
+  if(inv&&inv.doc_type==='tax_invoice'&&inv.doc_template==='summary'){
+    let fixed=0;
+    salesDraftItems.forEach(it=>{
+      const live=Math.round(liveTaxSummaryLineAmount(it)*100)/100;
+      const qty=Number(it.quantity||1)||1;
+      if(Math.abs(live-Number(it.subtotal||0))<0.005)return;
+      let q=it.source_doc_id?(salesInvoices||[]).find(d=>d.id===it.source_doc_id&&d.status!=='cancelled'&&d.doc_type==='quotation'):null;
+      if(!q&&String(it.item_code||'').trim())q=latestQuotationForJob(String(it.item_code).trim());
+      it.unit_price=Math.round(live/qty*100)/100;it.subtotal=live;
+      if(q)it.source_doc_id=q.id;
+      fixed++;
+    });
+    if(fixed)setTimeout(()=>setAccountingStatus('sales',`อัปเดตยอด ${fixed} รายการให้ตรงกับใบเสนอราคาล่าสุด (ยอดเดิมที่เก็บไว้ค้าง) — กดบันทึกเพื่อแก้ยอดในระบบ`,'warn'),0);
+  }
   const saleLineSum=salesDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
   salesVatMode=inv?inferVatMode(inv,saleLineSum):'add';
   const svm=document.getElementById('sale-vat-mode');if(svm)svm.value=salesVatMode;
@@ -7388,7 +7429,7 @@ function renderSalesMergeBar(){
   if(!docs.length){ bar.style.display='none'; return; }
   const customers=[...new Set(docs.map(d=>String(d.customer_name||d.customer_id||'').trim()))];
   const jobs=[...new Set(docs.flatMap(d=>salesInvoiceJobs(d)))];
-  const total=docs.reduce((s,d)=>s+(Number(d.total_amount||0)||Number(d.subtotal||0)+Number(d.vat_amount||0)),0);
+  const total=docs.reduce((s,d)=>s+((d.doc_type||'')==='tax_invoice'?taxInvoiceLiveTotal(d):(Number(d.total_amount||0)||Number(d.subtotal||0)+Number(d.vat_amount||0))),0);
   const bad=customers.length>1;
   const hasTax=docs.some(d=>(d.doc_type||'')==='tax_invoice'); // มีใบกำกับภาษีในที่เลือก → รวมเป็นใบแจ้งหนี้ได้
   bar.style.display='';
@@ -7541,7 +7582,7 @@ async function mergeTaxInvoicesToBillingInvoice(){
     const prs=salesInvoiceJobs(d);
     const branch=[...new Set(prs.map(p=>jobs.find(j=>sameJob(j.id,p)&&!isDeletedRecord(j))?.branch).filter(Boolean))].join(', ');
     const client=(()=>{const j=jobs.find(x=>sameJob(x.id,prs[0])&&!isDeletedRecord(x));return j?String(j.client||'').trim():'';})();
-    const amount=Number(d.total_amount||0)||(Number(d.subtotal||0)+Number(d.vat_amount||0));
+    const amount=Math.round(taxInvoiceLiveTotal(d)*100)/100; // ยอดเดียวกับที่ใบกำกับภาษีแสดง/พิมพ์ (ใบสรุปคิดสดจากใบเสนอราคาล่าสุด) — เดิมใช้ยอดที่เก็บไว้ ซึ่งค้างได้ถ้าแก้ใบเสนอราคาภายหลัง
     return {...blankSalesItem(), id:newAccountingId('SITEM'),
       item_code:prs.join(', '),                                                   // PR (ใช้หาใบกำกับภาษี + สำรอง) — PO/เลขใบกำกับ ดึงสดจากใบกำกับภาษีตอนแสดง
       category:'', description:branch||client||prs.join(', ')||'-',
