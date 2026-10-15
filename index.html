@@ -1515,7 +1515,7 @@ select option{background:var(--surface2);}
         </div>
         <aside class="accounting-panel accounting-summary">
           <div class="accounting-panel-title">สรุปบิลขาย</div>
-          <div class="form-group" style="margin-bottom:10px;"><label>การคิด VAT</label><select id="sale-vat-mode" onchange="salesVatMode=this.value;updateSalesSummary();"><option value="add">บวก VAT 7% เพิ่มท้ายบิล</option><option value="inclusive">ราคารวม VAT 7% มาแล้ว</option><option value="none">ไม่มี VAT</option></select></div>
+          <div class="form-group" style="margin-bottom:10px;"><label>การคิด VAT</label><select id="sale-vat-mode" onchange="salesVatMode=this.value;salesRefreshBillingLinesForVat();updateSalesSummary();"><option value="add">บวก VAT 7% เพิ่มท้ายบิล</option><option value="inclusive">ราคารวม VAT 7% มาแล้ว</option><option value="none">ไม่มี VAT</option></select></div>
           <div class="form-group" style="margin-bottom:10px;"><label>Overhead</label><select id="sale-overhead-enabled" onchange="updateSalesSummary();"><option value="yes">คิด Overhead อัตโนมัติ</option><option value="no">ไม่มี Overhead</option></select>
             <label style="display:flex;align-items:center;gap:6px;font-weight:normal;margin-top:8px;cursor:pointer;"><input type="checkbox" id="sale-overhead-custom-on" onchange="onOverheadCustomToggle()"> กำหนด % เอง (แทนอัตราอัตโนมัติ)</label>
             <input id="sale-overhead-custom-rate" type="number" min="0" step="0.01" value="" placeholder="% Overhead ที่ต้องการ" oninput="updateSalesSummary()" style="display:none;margin-top:6px;"></div>
@@ -5952,6 +5952,7 @@ function salesTaxSummaryHtml(inv,items){
   const jobList=salesInvoiceJobs(inv);
   // ใบแจ้งหนี้/ใบวางบิล ใช้ฟอร์มสรุปเดียวกับใบกำกับภาษี แต่คอลัมน์ = รหัส PO / เลขที่ใบกำกับภาษี / ราคาต่อหน่วย (ดึงจากใบกำกับภาษี)
   const isInv=(inv.doc_type==='invoice');
+  const invVatMode=isInv?inferVatMode(inv,(items||[]).reduce((s,it)=>s+Number(it.subtotal||0),0)):'';
   const lineRows=(items||[]).map((it,i)=>{
     const unitPrice=Number(it.unit_price||0);
     const qty=Number(it.quantity||1);
@@ -5964,7 +5965,7 @@ function salesTaxSummaryHtml(inv,items){
       if(srcTax){
         po=[...new Set((salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===srcTax.id&&x.status!=='cancelled').map(x=>String(x.po||'').trim()).filter(Boolean))].join(', ');
         taxNo=String(srcTax.doc_no||srcTax.sales_invoice_no||'').trim();
-        if(String(it.source_doc_id||'')===String(srcTax.id))liveAmt=Math.round(taxInvoiceLiveTotal(srcTax)*100)/100; // ยอดสดตามใบกำกับล่าสุด
+        if(String(it.source_doc_id||'')===String(srcTax.id))liveAmt=billingLineAmountFor(srcTax,invVatMode); // ยอดสดตามใบกำกับล่าสุด (ก่อน VAT ถ้าบวก VAT ท้ายบิล)
       }
       if(!taxNo)taxNo=String(it.source_ref_id||'').trim();
     }else{
@@ -5983,10 +5984,8 @@ function salesTaxSummaryHtml(inv,items){
   if(isInv){ // ใบวางบิล: ยอดแต่ละบรรทัดรวม VAT แล้ว ใช้ยอดที่เก็บไว้บนเอกสาร ไม่คิด VAT ซ้ำ
     lineSum=Math.round(lineRows.reduce((s,r)=>s+Number(r.amount||0),0)*100)/100;
     discount=0;
-    subtotal=lineSum; // ยอดสดจากใบกำกับภาษีที่ดึงมา (ตรงกับที่ซิงก์ลง DB)
-    afterDiscount=subtotal;
-    vat=Number(inv.vat_amount||0)>0?Math.round(lineSum*0.07*100)/100:0;
-    total=Math.round((afterDiscount+vat)*100)/100;
+    const _vt=computeVatTotals(lineSum,invVatMode); // ยอดสดจากใบกำกับภาษีที่ดึงมา + VAT ตามที่เลือกท้ายบิล
+    subtotal=_vt.subtotal; afterDiscount=subtotal; vat=_vt.vat; total=_vt.total;
   }else{
     const _lt=liveTaxSummaryTotals(inv,items);
     lineSum=_lt.lineSum; subtotal=_lt.subtotal; discount=_lt.discount; afterDiscount=_lt.afterDiscount; vat=_lt.vat; total=_lt.total;
@@ -6029,7 +6028,7 @@ function salesTaxSummaryHtml(inv,items){
     ?`<tr><th class="c-no">ลำดับ</th><th class="c-po">รหัส PO</th><th class="c-desc">รายละเอียด</th><th class="c-txno">เลขที่ใบกำกับภาษี</th><th class="c-qty">จำนวน</th><th class="c-price">ราคาต่อหน่วย</th><th class="c-amt">จำนวนเงิน</th></tr>`
     :`<tr><th class="c-no">ลำดับ</th><th class="c-code">รหัสสินค้า</th><th class="c-po">เลข PO</th><th class="c-desc">รายละเอียด</th><th class="c-qty">จำนวน</th><th class="c-price">ราคาต่อหน่วย</th><th class="c-amt">จำนวนเงิน</th></tr>`;
   const money2=v=>Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  const totHtml=isInv?`
+  const totHtml=(isInv&&!vat)?`
     <tr><td class="tl"><b>รวมเงิน</b><div class="en">TOTAL AMOUNT</div></td><td class="tp"></td><td class="tv">${money2(subtotal)}</td></tr>
     ${discount?`<tr><td class="tl">ส่วนลด<div class="en">DISCOUNT</div></td><td class="tp">${discPct?money(discPct).replace(/\.00$/,''):'0'}%</td><td class="tv">${money2(discount)}</td></tr>`:''}
     <tr class="grand"><td class="tl"><b>ยอดเงินสุทธิ</b><div class="en">GRAND TOTAL</div></td><td class="tp"></td><td class="tv">${money2(total)}</td></tr>`
@@ -6933,6 +6932,19 @@ function taxInvoiceLiveTotal(tx){
   }
   return Number(tx.total_amount||0)||(Number(tx.subtotal||0)+Number(tx.vat_amount||0));
 }
+// ยอดก่อน VAT ของใบกำกับภาษี (หลังหักส่วนลด) แบบสด
+function taxInvoiceLiveBase(tx){
+  if(!tx)return 0;
+  if(tx.doc_template==='summary'){
+    const its=(salesInvoiceItems||[]).filter(it=>it.sales_invoice_id===tx.id&&it.status!=='cancelled');
+    if(its.length)return liveTaxSummaryTotals(tx,its).afterDiscount;
+  }
+  const total=Number(tx.total_amount||0), vat=Number(tx.vat_amount||0);
+  return total?Math.max(0,total-vat):Number(tx.subtotal||0);
+}
+// ยอดบรรทัดในใบแจ้งหนี้ ตามการคิด VAT ท้ายบิล: 'add' (บวก VAT ท้ายบิล) = ยอดก่อน VAT · 'inclusive'/'none' = ยอดรวม VAT ของใบกำกับ
+// (ใบแจ้งหนี้เก่าที่บันทึกแบบ "ไม่มี VAT" = บรรทัดรวม VAT อยู่แล้ว → ยังแสดงเหมือนเดิม)
+function billingLineAmountFor(tx,mode){return Math.round((mode==='add'?taxInvoiceLiveBase(tx):taxInvoiceLiveTotal(tx))*100)/100;}
 // ใบแจ้งหนี้ (ใบวางบิล) ดึงจากใบกำกับภาษี → เมื่อใบกำกับภาษีเปลี่ยน (ยอด/เลขที่) อัปเดตบรรทัด+ยอดรวมใบแจ้งหนี้ให้ตรงอัตโนมัติ (บันทึกลง DB จริง)
 async function syncBillingInvoicesForTaxInvoices(taxIds){
   const ids=new Set((taxIds||[]).map(String).filter(Boolean));
@@ -6942,13 +6954,14 @@ async function syncBillingInvoicesForTaxInvoices(taxIds){
   for(const bill of bills){
     const its=(salesInvoiceItems||[]).filter(it=>it.sales_invoice_id===bill.id&&it.status!=='cancelled');
     if(!its.some(it=>ids.has(String(it.source_doc_id||''))))continue;
+    const mode=inferVatMode(bill,its.reduce((s,it)=>s+Number(it.subtotal||0),0)); // การคิด VAT ที่บิลนี้ใช้อยู่
     let touched=false;
     for(const it of its){
       if(!ids.has(String(it.source_doc_id||'')))continue;
       const tx=(salesInvoices||[]).find(x=>String(x.id)===String(it.source_doc_id)&&x.doc_type==='tax_invoice'&&x.status!=='cancelled');
       if(!tx)continue; // ใบกำกับถูกลบ → คง snapshot เดิมไว้
       const qty=Number(it.quantity||1)||1;
-      const amount=Math.round(taxInvoiceLiveTotal(tx)*100)/100;
+      const amount=billingLineAmountFor(tx,mode);
       const unit=Math.round(amount/qty*100)/100;
       const taxNo=String(tx.doc_no||tx.sales_invoice_no||'').trim();
       if(Number(it.unit_price||0)===unit&&Number(it.subtotal||0)===amount&&String(it.source_ref_id||'')===taxNo)continue;
@@ -6960,12 +6973,10 @@ async function syncBillingInvoicesForTaxInvoices(taxIds){
     }
     if(touched){
       const lineSum=Math.round(its.reduce((s,it)=>s+Number(it.subtotal||0),0)*100)/100;
-      const hadVat=Number(bill.vat_amount||0)>0; // ใบวางบิลปกติไม่คิด VAT ซ้ำ (ยอดใบกำกับรวม VAT แล้ว)
-      const vat=hadVat?Math.round(lineSum*0.07*100)/100:0;
-      const total=Math.round((lineSum+vat)*100)/100;
-      const r2=await fetch(splitUrl('sales_invoices',`?id=eq.${encodeURIComponent(bill.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({subtotal:lineSum,vat_amount:vat,total_amount:total,updated_by:getActorName()})});
+      const {subtotal:billSub,vat,total}=computeVatTotals(lineSum,mode);
+      const r2=await fetch(splitUrl('sales_invoices',`?id=eq.${encodeURIComponent(bill.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({subtotal:billSub,vat_amount:vat,total_amount:total,updated_by:getActorName()})});
       if(!r2.ok)throw new Error(await r2.text());
-      bill.subtotal=lineSum;bill.vat_amount=vat;bill.total_amount=total;
+      bill.subtotal=billSub;bill.vat_amount=vat;bill.total_amount=total;
       changedAny=true;
     }
   }
@@ -7154,6 +7165,19 @@ function salesDraftTotals(){
   const lineSum=salesDraftItems.reduce((s,it)=>s+salesLineSubtotal(it),0);
   const adj=salesAdjustmentTotals(lineSum);
   return {...computeVatTotals(adj.baseBeforeVat,salesVatMode),lineSubtotal:lineSum,...adj};
+}
+// ใบแจ้งหนี้ที่ดึงจากใบกำกับภาษี: เปลี่ยนการคิด VAT → ราคาบรรทัดสลับระหว่างยอดก่อน VAT ('add') กับยอดรวม VAT ('inclusive'/'none')
+function salesRefreshBillingLinesForVat(){
+  if((document.getElementById('sale-doc-type')?.value||'')!=='invoice')return;
+  let changed=false;
+  (salesDraftItems||[]).forEach(it=>{
+    const tx=it.source_doc_id?(salesInvoices||[]).find(x=>String(x.id)===String(it.source_doc_id)&&x.doc_type==='tax_invoice'&&x.status!=='cancelled'):null;
+    if(!tx)return;
+    const qty=Number(it.quantity||1)||1;
+    const amount=billingLineAmountFor(tx,salesVatMode);
+    it.unit_price=Math.round(amount/qty*100)/100;it.subtotal=amount;changed=true;
+  });
+  if(changed&&typeof renderSalesItemEditor==='function')renderSalesItemEditor();
 }
 function updateSalesSummary(){
   const t=salesDraftTotals();
@@ -7568,11 +7592,11 @@ async function mergeTaxInvoicesToBillingInvoice(){
   setv('sale-company-name',base.company_name||quoteCompanyDefaults().name);
   setv('sale-company-branch',base.company_branch||quoteCompanyDefaults().branch);
   salesDraftJobs=jobIds.slice();renderSalesJobChips();
-  // ยอดแต่ละใบกำกับภาษีรวม VAT แล้ว → ใบวางบิลไม่คิด VAT/Overhead/เดินทาง/SLA ซ้ำ
+  // ใบวางบิล: บรรทัด = ยอดก่อน VAT ของใบกำกับแต่ละใบ แล้วคิด VAT ท้ายบิล (เปลี่ยน "การคิด VAT" ได้ บรรทัดจะปรับตาม) — ไม่คิด Overhead/เดินทาง/SLA ซ้ำ
   setv('sale-overhead-enabled','no');
   setv('sale-travel-km',0); setv('sale-travel-rate',0);
   setSalesSlaStatus('none');
-  salesVatMode='none'; setv('sale-vat-mode','none');
+  salesVatMode='add'; setv('sale-vat-mode','add');
   setv('sale-summary-flag','1');
   setv('sale-payment-date', base.due_date||base.payment_date||base.invoice_date||todayISO());
   setv('sale-payment-terms', base.payment_terms||'โอนเข้าบัญชี');
@@ -7582,7 +7606,7 @@ async function mergeTaxInvoicesToBillingInvoice(){
     const prs=salesInvoiceJobs(d);
     const branch=[...new Set(prs.map(p=>jobs.find(j=>sameJob(j.id,p)&&!isDeletedRecord(j))?.branch).filter(Boolean))].join(', ');
     const client=(()=>{const j=jobs.find(x=>sameJob(x.id,prs[0])&&!isDeletedRecord(x));return j?String(j.client||'').trim():'';})();
-    const amount=Math.round(taxInvoiceLiveTotal(d)*100)/100; // ยอดเดียวกับที่ใบกำกับภาษีแสดง/พิมพ์ (ใบสรุปคิดสดจากใบเสนอราคาล่าสุด) — เดิมใช้ยอดที่เก็บไว้ ซึ่งค้างได้ถ้าแก้ใบเสนอราคาภายหลัง
+    const amount=billingLineAmountFor(d,'add'); // ยอดก่อน VAT ของใบกำกับ (ยอดสดเดียวกับที่ใบกำกับภาษีแสดง/พิมพ์ (ใบสรุปคิดสดจากใบเสนอราคาล่าสุด) — เดิมใช้ยอดที่เก็บไว้ ซึ่งค้างได้ถ้าแก้ใบเสนอราคาภายหลัง
     return {...blankSalesItem(), id:newAccountingId('SITEM'),
       item_code:prs.join(', '),                                                   // PR (ใช้หาใบกำกับภาษี + สำรอง) — PO/เลขใบกำกับ ดึงสดจากใบกำกับภาษีตอนแสดง
       category:'', description:branch||client||prs.join(', ')||'-',
