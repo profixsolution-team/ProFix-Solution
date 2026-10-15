@@ -1980,6 +1980,26 @@ function uiPrompt(opts){
 function uiCopyModal(text,title){
   return uiPrompt({title:title||'คัดลอกข้อความ',label:'เลือกข้อความแล้วคัดลอก (Ctrl/⌘+C)',value:text,multiline:true,readonly:true,okText:'ปิด',hideCancel:true});
 }
+// คัดลอกข้อความที่ต้องรอ async ก่อน (บันทึกงาน/เช็คเซิร์ฟเวอร์/สร้างลิงก์ย่อ)
+// เดิม await หลายขั้นแล้วค่อย clipboard.writeText → เกินช่วง "ผู้ใช้เพิ่งกด" ของเบราว์เซอร์ (~5 วิ, Safari เข้มกว่า) → คัดลอกไม่ติด
+// แก้: เรียก clipboard.write ทันทีตอนกด (ยังอยู่ในจังหวะคลิก) โดยส่ง Promise ของข้อความเข้า ClipboardItem แล้วค่อยเติมข้อความทีหลัง
+// produce() คืน {text,msg} หรือ null = ยกเลิก (แจ้งผู้ใช้เองแล้ว) ; ต้องเรียกฟังก์ชันนี้ก่อน await ใด ๆ ในตัวจัดการคลิก
+async function copyTextDeferred(produce,title){
+  const job=Promise.resolve().then(produce);
+  let copied=false;
+  if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){
+    try{
+      const blob=job.then(r=>{if(!r||!r.text)throw new Error('cancelled');return new Blob([r.text],{type:'text/plain'});});
+      await navigator.clipboard.write([new ClipboardItem({'text/plain':blob})]);
+      copied=true;
+    }catch(e){console.warn('[copy] clipboard.write (deferred) failed',e);}
+  }
+  let r=null;
+  try{r=await job;}catch(e){alert('สร้างลิงก์ไม่สำเร็จ: '+((e&&e.message)||e));return;}
+  if(!r||!r.text)return;
+  if(!copied){try{await navigator.clipboard.writeText(r.text);copied=true;}catch(e){console.warn('[copy] writeText failed',e);}}
+  if(copied)alert(r.msg||'คัดลอกแล้ว');else uiCopyModal(r.text,title);
+}
 function getActorName(){
   // auth บังคับล็อกอินแล้ว → ใช้ชื่อผู้ล็อกอินเป็นชื่อใน audit เสมอ
   if(AUTH && AUTH.display_name) return AUTH.display_name;
@@ -2705,12 +2725,19 @@ async function loadTechnicianReportTables(skipImages=false){
     const current=latestByJob.get(key);
     if(!current || (Date.parse(r.updated_at||'')||0) > (Date.parse(current.updated_at||'')||0))latestByJob.set(key,r);
   });
+  const base=splitRowHashes.jobs||{};
+  let rebased=false;
   jobs=jobs.map(j=>{
     const report=latestByJob.get(normalizePR(j.id));
     if(!report)return j;
     const reportId=report.report_id||report.id;
-    return buildJobFromTechnicianReport(j,report,imageRows.filter(im=>im.report_id===reportId));
+    const merged=buildJobFromTechnicianReport(j,report,imageRows.filter(im=>im.report_id===reportId));
+    // งานที่ไม่มีการแก้ค้างในเครื่อง (ตรงกับที่โหลดจาก server) → ใช้ผล merge เป็นฐานใหม่
+    // เดิมไม่ปรับฐาน → บันทึกครั้งถัดไปอัปโหลดทับงานที่มีรายงานช่างทั้งหมด (287 งาน) = ช้ามาก + เสี่ยงทับที่แอดมินอื่นเพิ่งแก้
+    if(base[j.id]!==undefined&&base[j.id]===stableJson(j)){base[j.id]=stableJson(merged);rebased=true;}
+    return merged;
   });
+  if(rebased)delete splitSaveHashes.jobs;
 }
 async function loadSplitState(){
   if(!SPLIT_TABLES_ENABLED)return false;
@@ -2725,12 +2752,23 @@ async function loadSplitState(){
   splitTablesOnline=true;
   const hasData=jobRows.length||adminRows.length||docLight;
   if(!hasData)return false;
+  // งาน/งานแอดมินที่สร้างในเซสชันนี้แต่ยังไม่ขึ้น server (ไม่อยู่ทั้งใน server และในชุดที่เคยเห็นบน server) → ห้ามโหลดทับหาย เก็บไว้แล้วบันทึกต่อ
+  // ทำเฉพาะเมื่อเคยโหลดจาก server แล้ว (มี baseline) — โหลดแรกจากแคชไม่ทำ กันงานที่ถูกย้ายเลข/ลบฝั่ง server ฟื้นกลับมา
+  const keepUnsaved=(list,knownSet,serverRows)=>{
+    if(!knownSet||!knownSet.size||!Array.isArray(list))return [];
+    const onServer=new Set((serverRows||[]).map(r=>r.id));
+    return list.filter(x=>x&&x.id&&!onServer.has(x.id)&&!knownSet.has(x.id));
+  };
+  const keptJobs=keepUnsaved(jobs,splitKnownIds.jobs,jobRows);
+  const keptTasks=docLight?[]:keepUnsaved(adminTasks,splitKnownIds.adminTasks,adminRows);
   masterMetaTrusted=true; // เชื่อมต่อ server สำเร็จจริง (jobs/admin/system_data โหลดได้) — ปลอดภัยที่จะ sync master collections
   const masterRowsByKey={};
   MASTER_COLLECTIONS.forEach((c,i)=>{masterRowsByKey[c.key]=masterResults[i];});
   const loadedMigratedKeys=metaRows?.[0]?.data?.masterSplitKeys;
   if(Array.isArray(loadedMigratedKeys))masterSplitKeys=new Set(loadedMigratedKeys);
   splitApplyRows({jobRows,adminRows,metaRows,masterRowsByKey});
+  if(keptJobs.length)jobs.unshift(...keptJobs.filter(k=>!jobs.some(x=>x.id===k.id)));
+  if(keptTasks.length)adminTasks.unshift(...keptTasks.filter(k=>!adminTasks.some(x=>x.id===k.id)));
   loadedFromSplitTables=true;
   supabaseOnline=true;
   const snap=splitStateSnapshot();
@@ -2739,6 +2777,14 @@ async function loadSplitState(){
   splitSaveHashes={jobs:stableJson(snap.jobs),adminTasks:stableJson(snap.adminTasks),workOrders:stableJson(snap.workOrders),documents:stableJson(snap.documents),meta:stableJson(snap.meta)};
   splitRowHashes.jobs=rowHashMap(snap.jobs,j=>j.id);
   splitRowHashes.adminTasks=rowHashMap(snap.adminTasks,t=>t.id);
+  if(keptJobs.length||keptTasks.length){
+    keptJobs.forEach(j=>{delete splitRowHashes.jobs[j.id];});
+    keptTasks.forEach(t=>{delete splitRowHashes.adminTasks[t.id];});
+    delete splitSaveHashes.jobs;delete splitSaveHashes.adminTasks;
+    console.warn('[กันงานหาย] เก็บงานที่ยังไม่ขึ้น server ไว้ ไม่ให้โหลดทับ แล้วบันทึกต่อ:',keptJobs.map(j=>j.id),keptTasks.map(t=>t.id));
+    hasUnsyncedLocalChanges=true;
+    setTimeout(()=>{try{saveState();}catch(e){}},0);
+  }
   MASTER_COLLECTIONS.forEach(c=>{
     const rws=masterRowsByKey[c.key];
     if(Array.isArray(rws)&&rws.length){
@@ -2940,13 +2986,15 @@ function mergeNewerRemoteTechReport(local,remote){
   };
 }
 async function preserveNewerRemoteJobReports(rows){
-  for(const row of rows){
-    if(!row?.id)continue;
-    const r=await fetch(splitUrl('jobs',`?id=eq.${encodeURIComponent(row.id)}&select=data`),{headers:sbHeaders()});
+  // ดึงทีละ 40 งาน (เดิมยิงทีละงานเรียงกัน → งานเปลี่ยน 287 งาน = 287 request ≈ 40 วิ ต่อการบันทึก 1 ครั้ง)
+  const list=rows.filter(row=>row&&row.id);
+  for(let i=0;i<list.length;i+=40){
+    const part=list.slice(i,i+40);
+    const inList=part.map(row=>'"'+String(row.id).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"').join(',');
+    const r=await fetch(splitUrl('jobs',`?id=in.(${encodeURIComponent(inList)})&select=id,data`),{headers:sbHeaders()});
     if(!r.ok)continue;
-    const remoteRows=await r.json();
-    const merged=mergeNewerRemoteTechReport(row,remoteRows?.[0]?.data);
-    if(merged!==row)Object.assign(row,merged);
+    const byId=new Map((await r.json()).map(x=>[x.id,x.data]));
+    part.forEach(row=>{const merged=mergeNewerRemoteTechReport(row,byId.get(row.id));if(merged!==row)Object.assign(row,merged);});
   }
 }
 async function syncSplitRows(table,rows,mapRow,knownKey,idOf){
@@ -2964,15 +3012,22 @@ async function syncSplitRowsChanged(table,rows,mapRow,knownKey,idOf,force=false,
   const prev=splitRowHashes[knownKey]||{};
   const current=new Set();
   const changed=[];
+  // จำ hash ณ ตอนเริ่มบันทึก (ไม่ใช่คำนวณจาก array สดตอนจบ) — เดิมคำนวณตอนจบ ทำให้งานที่เปิดใหม่ "ระหว่าง" บันทึกรอบก่อน
+  // ถูกนับว่าบันทึกแล้วทั้งที่ไม่เคยถูกส่ง → รอบถัดไปข้าม → poll โหลดทับ → งานหายจากคิวช่าง (PR431279)
+  const nextHashes={};
   rows.forEach(row=>{
     const id=idOf(row);
     if(!id)return;
     current.add(id);
     const hash=stableJson(row);
+    nextHashes[id]=hash;
     if(force||prev[id]!==hash)changed.push(row);
   });
   if(table==='jobs'&&changed.length)await preserveNewerRemoteJobReports(changed);
-  if(changed.length)await upsertSplitRows(table,changed,mapRow);
+  if(changed.length){
+    changed.forEach(row=>{nextHashes[idOf(row)]=stableJson(row);}); // หลัง preserve อาจถูก merge ข้อมูลช่าง → hash ตามที่ส่งจริง
+    await upsertSplitRows(table,changed,mapRow);
+  }
   if(allowDelete){
     const known=(splitKnownIds[knownKey]||new Set()).size;
     const missing=[...(splitKnownIds[knownKey]||new Set())].filter(id=>!current.has(id));
@@ -2988,13 +3043,21 @@ async function syncSplitRowsChanged(table,rows,mapRow,knownKey,idOf,force=false,
   }else{
     splitKnownIds[knownKey]=new Set([...(splitKnownIds[knownKey]||new Set()),...current]);
   }
-  splitRowHashes[knownKey]=rowHashMap(rows,idOf);
+  splitRowHashes[knownKey]=nextHashes;
 }
 async function upsertSystemData(data){
   const r=await fetch(splitUrl('system_data'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({id:'main',data,updated_at:new Date().toISOString()})});
   if(!r.ok)throw new Error(await r.text());
 }
-async function saveSplitStateNow(force=false){
+// บันทึกทีละรอบเรียงคิว (เดิมรันซ้อนกันได้หลายรอบพร้อมกัน → hash/สถานะ "บันทึกแล้ว" สับสน + poll แทรกโหลดทับกลางคัน)
+let splitSaveChain=Promise.resolve(), splitSaveInFlight=0;
+function saveSplitStateNow(force=false){
+  splitSaveInFlight++;
+  const p=splitSaveChain.then(()=>saveSplitStateNowInner(force));
+  splitSaveChain=p.catch(()=>{});
+  return p.finally(()=>{splitSaveInFlight--;});
+}
+async function saveSplitStateNowInner(force=false){
   // กันเขียนทับด้วยข้อมูลเก่า: ถ้าเซสชันนี้โหลดมาจากก้อนสำรอง app_state (โหมดฉุกเฉิน) ห้ามบันทึกขึ้น server เด็ดขาด
   if(legacyBlobFallbackActive){
     console.warn('[โหมดฉุกเฉิน] ข้ามการบันทึกขึ้น server — ข้อมูลในหน้านี้มาจากก้อนสำรองรุ่นเก่า');
@@ -3003,7 +3066,7 @@ async function saveSplitStateNow(force=false){
   const snap=splitStateSnapshot();
   const now=new Date().toISOString();
   const jobsHash=stableJson(snap.jobs), adminHash=stableJson(snap.adminTasks), partsHash=stableJson(snap.parts), woHash=stableJson(snap.workOrders), docHash=stableJson(snap.documents), metaHash=stableJson(snap.meta);
-  if(force||splitSaveHashes.jobs!==jobsHash){await syncSplitRowsChanged('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}),'jobs',j=>j.id,force,false);splitSaveHashes.jobs=stableJson(snap.jobs);}
+  if(force||splitSaveHashes.jobs!==jobsHash){await syncSplitRowsChanged('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}),'jobs',j=>j.id,force,false);splitSaveHashes.jobs=jobsHash;}
   if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRowsChanged('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id,force,false);splitSaveHashes.adminTasks=adminHash;}
   if(workOrdersLoaded&&(force||splitSaveHashes.workOrders!==woHash)){await syncSplitRowsChanged('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id,force);splitSaveHashes.workOrders=woHash;}
   if(docsLoaded&&(force||splitSaveHashes.documents!==docHash)){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
@@ -4186,13 +4249,15 @@ async function getOrCreateShortLink(job,docType,targetFile){
 async function getOrCreateTechShortLink(job){return getOrCreateShortLink(job,'tech','technician-submit.html');}
 async function copyTechnicianLink(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||jobs.find(x=>x.id===id)||{id,branch:''};
-  if(!await ensureJobOnServer(j))return; // กันส่งลิงก์ให้ช่างทั้งที่งานยังไม่ขึ้นเซิร์ฟเวอร์ (งานผี)
-  let shortUrl=null;
-  try{shortUrl=await getOrCreateTechShortLink(j);}catch(e){console.warn('Short link create failed',e);}
-  const fullUrl=new URL(technicianFormUrl(id),location.href).href;
-  const url=shortUrl||fullUrl;
-  const text=`🔧 งานช่าง ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nกรอกฟอร์มงานช่างที่ลิงก์นี้:\n${url}`;
-  try{await navigator.clipboard.writeText(text);alert('คัดลอกฟอร์มลิงก์ช่างแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){uiCopyModal(text,'คัดลอกฟอร์มลิงก์ช่าง');}
+  return copyTextDeferred(async()=>{
+    if(!await ensureJobOnServer(j))return null; // กันส่งลิงก์ให้ช่างทั้งที่งานยังไม่ขึ้นเซิร์ฟเวอร์ (งานผี)
+    let shortUrl=null;
+    try{shortUrl=await getOrCreateTechShortLink(j);}catch(e){console.warn('Short link create failed',e);}
+    const fullUrl=new URL(technicianFormUrl(id),location.href).href;
+    const url=shortUrl||fullUrl;
+    const text=`🔧 งานช่าง ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nกรอกฟอร์มงานช่างที่ลิงก์นี้:\n${url}`;
+    return {text,msg:'คัดลอกฟอร์มลิงก์ช่างแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)')};
+  },'คัดลอกฟอร์มลิงก์ช่าง');
 }
 // ===== หน้าแจ้งเข้าซ่อม / เซ็นออนไลน์ (checkin.html) — แยกอิสระจากฟอร์มช่าง =====
 let checkinViewRows=[], checkinViewJob=null;
@@ -4331,25 +4396,29 @@ function openCheckinForm(id){
 }
 async function copyCheckinLink(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||jobs.find(x=>x.id===id)||{id,branch:''};
-  if(!await ensureJobOnServer(j))return; // กันส่งลิงก์แจ้งเข้าซ่อมทั้งที่งานยังไม่ขึ้นเซิร์ฟเวอร์ (งานผี)
-  let shortUrl=null;
-  try{shortUrl=await getOrCreateShortLink(j,'checkin','checkin.html');}catch(e){console.warn('Checkin short link create failed',e);}
-  const fullUrl=new URL(checkinFormUrl(id),location.href).href;
-  const url=shortUrl||fullUrl;
-  const text=`📝 แจ้งเข้าซ่อม ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nยืนยันเข้างาน + เซ็นชื่อที่ลิงก์นี้:\n${url}`;
-  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์แจ้งเข้าซ่อมแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){uiCopyModal(text,'คัดลอกลิงก์แจ้งเข้าซ่อม');}
+  return copyTextDeferred(async()=>{
+    if(!await ensureJobOnServer(j))return null; // กันส่งลิงก์แจ้งเข้าซ่อมทั้งที่งานยังไม่ขึ้นเซิร์ฟเวอร์ (งานผี)
+    let shortUrl=null;
+    try{shortUrl=await getOrCreateShortLink(j,'checkin','checkin.html');}catch(e){console.warn('Checkin short link create failed',e);}
+    const fullUrl=new URL(checkinFormUrl(id),location.href).href;
+    const url=shortUrl||fullUrl;
+    const text=`📝 แจ้งเข้าซ่อม ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nยืนยันเข้างาน + เซ็นชื่อที่ลิงก์นี้:\n${url}`;
+    return {text,msg:'คัดลอกลิงก์แจ้งเข้าซ่อมแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)')};
+  },'คัดลอกลิงก์แจ้งเข้าซ่อม');
 }
 // ===== หน้าตรวจรับงาน (acceptance.html) — ลูกค้าเซ็นรับงานหลังซ่อมเสร็จ + ดึงสิ่งที่ช่างแก้มาโชว์ =====
 function acceptanceFormUrl(id){return `acceptance.html?job=${encodeURIComponent(id)}`;}
 function openAcceptanceForm(id){if(legacyBlobFallbackActive){alert('ตอนนี้กำลังแสดงข้อมูลสำรองแบบอ่านอย่างเดียว — ยังเปิดฟอร์มตรวจรับงานไม่ได้ กรุณารีเฟรชหน้าก่อน');return;}window.open(new URL(acceptanceFormUrl(id),location.href).href,'_blank');}
 async function copyAcceptanceLink(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||jobs.find(x=>x.id===id)||{id,branch:''};
-  if(!await ensureJobOnServer(j))return; // กันส่งลิงก์ตรวจรับงานทั้งที่งานยังไม่ขึ้นเซิร์ฟเวอร์ (งานผี)
-  let shortUrl=null;
-  try{shortUrl=await getOrCreateShortLink(j,'acceptance','acceptance.html');}catch(e){console.warn('Acceptance short link create failed',e);}
-  const url=shortUrl||new URL(acceptanceFormUrl(id),location.href).href;
-  const text=`✅ ตรวจรับงาน ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nตรวจรับ + เซ็นรับงานที่ลิงก์นี้:\n${url}`;
-  try{await navigator.clipboard.writeText(text);alert('คัดลอกลิงก์ตรวจรับงานแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)'));}catch(e){uiCopyModal(text,'คัดลอกลิงก์ตรวจรับงาน');}
+  return copyTextDeferred(async()=>{
+    if(!await ensureJobOnServer(j))return null; // กันส่งลิงก์ตรวจรับงานทั้งที่งานยังไม่ขึ้นเซิร์ฟเวอร์ (งานผี)
+    let shortUrl=null;
+    try{shortUrl=await getOrCreateShortLink(j,'acceptance','acceptance.html');}catch(e){console.warn('Acceptance short link create failed',e);}
+    const url=shortUrl||new URL(acceptanceFormUrl(id),location.href).href;
+    const text=`✅ ตรวจรับงาน ${j.id} - ${j.branch||'ไม่ระบุสาขา'}\nตรวจรับ + เซ็นรับงานที่ลิงก์นี้:\n${url}`;
+    return {text,msg:'คัดลอกลิงก์ตรวจรับงานแล้ว'+(shortUrl?' (ลิงก์ย่อ พร้อมส่งได้เลย)':' (ลิงก์เต็ม)')};
+  },'คัดลอกลิงก์ตรวจรับงาน');
 }
 // ===== ประวัติ/เอกสารตรวจรับงาน (job_acceptances) — ดูข้อมูลที่ลูกค้าเซ็นจริง + พิมพ์เป็นเอกสาร =====
 let acceptanceViewRows=[], acceptanceViewJob=null;
@@ -9724,7 +9793,7 @@ const REMOTE_ACCOUNTING_REFRESH_MIN_MS=3*60*1000; // reload บัญชี/เ�
 let lastRemoteRefreshAt=0, lastAccountingRefreshAt=0;
 function canAutoRefreshRemote(){
   // ไม่รีเฟรชตอนเปิด modal (กันรบกวนการแก้ไข), ตอนมีงานค้างบันทึก (กันทับงานที่ยังไม่ขึ้น server), หรือยังไม่ hydrate
-  return REMOTE_AUTO_REFRESH_ENABLED && isHydrated && !hasUnsyncedLocalChanges && !document.querySelector('.modal-overlay.open');
+  return REMOTE_AUTO_REFRESH_ENABLED && isHydrated && !hasUnsyncedLocalChanges && !splitSaveInFlight && !document.querySelector('.modal-overlay.open');
 }
 async function refreshRemoteIfIdle(){
   if(remoteRefreshRunning || !canAutoRefreshRemote())return;
