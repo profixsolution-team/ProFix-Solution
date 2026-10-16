@@ -819,9 +819,10 @@ select option{background:var(--surface2);}
       <div class="fin-card"><div class="fin-label">ค้างจ่าย Supplier</div><div class="fin-value tr" id="pur-unpaid">—</div><div class="fin-meta">บิลที่ยังไม่จ่าย</div></div>
     </div>
     <div class="filter-bar" id="pur-fbar" style="margin-bottom:16px;border-radius:8px;border:1px solid var(--border);"></div>
+    <div id="pur-pick-bar" style="display:none;background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;"></div>
     <div class="table-wrap mobile-list">
       <div class="table-header"><div class="table-title">รายการบิลซื้อ</div><span class="mono tm" id="pur-table-count" style="font-size:11px;"></span></div>
-      <table><thead><tr><th>เลขบิล</th><th>Supplier</th><th>ใบกำกับภาษี</th><th>วันที่</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th>จ่ายเงิน</th><th>แก้ล่าสุด</th><th></th></tr></thead><tbody id="purchase-tbody"></tbody></table>
+      <table><thead><tr><th style="width:34px;"><input type="checkbox" id="pur-check-all" onclick="event.stopPropagation()" onchange="toggleAllPurchaseDocs(this.checked)"></th><th>เลขบิล</th><th>Supplier</th><th>ใบกำกับภาษี</th><th>วันที่</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th>จ่ายเงิน</th><th>แก้ล่าสุด</th><th></th></tr></thead><tbody id="purchase-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -5396,9 +5397,9 @@ function renderPurchaseTax(){
   document.getElementById('pur-total').textContent='฿'+money(total);
   document.getElementById('pur-count').textContent=list.length+' บิล';
   document.getElementById('pur-unpaid').textContent='฿'+money(unpaid);
-  document.getElementById('pur-table-count').textContent=list.length+' รายการ';
-  if(!accountingLoaded){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลซื้อ</div></div></td></tr>';return;}
-  if(!list.length){tb.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">🧾</div><div>${purchaseInvoices.length?'ไม่พบบิลซื้อตามตัวกรอง':'ยังไม่มีบิลซื้อ'}</div></div></td></tr>`;return;}
+  document.getElementById('pur-table-count').textContent=list.length+' รายการ'; renderPurchasePickBar();
+  if(!accountingLoaded){tb.innerHTML='<tr><td colspan="11"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลซื้อ</div></div></td></tr>';return;}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-icon">🧾</div><div>${purchaseInvoices.length?'ไม่พบบิลซื้อตามตัวกรอง':'ยังไม่มีบิลซื้อ'}</div></div></td></tr>`;return;}
   tb.innerHTML=list.map(inv=>{
     const rows=purchaseItems.filter(x=>x.purchase_invoice_id===inv.id&&x.status!=='cancelled');
     const stockRows=rows.filter(x=>x.allocation_type==='stock');
@@ -5407,9 +5408,31 @@ function renderPurchaseTax(){
     const confirmBtn=stockPending?`<button onclick="confirmPurchaseStockIn('${esc(inv.id)}')">✓ ยืนยันรับเข้า Stock</button>`:'';
     const card=docMobileCard({no:inv.purchase_no,type:'บิลซื้อ'+(inv.invoice_no?' · ใบกำกับ '+inv.invoice_no:''),total:inv.total_amount,pay:docPayBadge(inv,'pur'),party:inv.supplier_name||inv.supplier_id||'-',
       sub:`${rows.length} รายการ · ก่อน VAT ฿${money(inv.subtotal)} · VAT ฿${money(inv.vat_amount)}${stockBadge?stockBadge.replace('<br>',' '):''}`,editor:docEditorHtml(inv),date:inv.invoice_date,
-      actions:`<button class="btn btn-ghost btn-sm" onclick="openPurchaseModal('${esc(inv.id)}')">✏️ แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="printPurchaseDoc('${esc(inv.id)}')">🖨️ พิมพ์</button><button class="btn btn-ghost btn-sm" onclick="toggleMenu('pur-${esc(inv.id)}',event)">⋯</button>`});
-    return `<tr style="cursor:pointer;" onclick="openPurchaseDocPreview('${esc(inv.id)}')"><td class="m-card-cell">${card}</td><td><div class="sale-doc-no">${esc(inv.purchase_no)}</div><span class="sale-doc-type">บิลซื้อ</span></td><td>${esc(inv.supplier_name||inv.supplier_id||'-')}<br><span class="tm" style="font-size:10px;">${rows.length} รายการ</span>${stockBadge}</td><td>${esc(inv.invoice_no||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td>${docPayBadge(inv,'pur')}</td><td>${docEditorHtml(inv)}</td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('pur-${esc(inv.id)}',event)">...</button><div class="action-menu" id="pur-${esc(inv.id)}">${confirmBtn}<button onclick="openPurchaseModal('${esc(inv.id)}')">แก้ไข/ดูรายการ</button><button onclick="printPurchaseDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deletePurchaseInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบบิลซื้อ</button></div></td></tr>`;
+      actions:`<button class="btn btn-ghost btn-sm" onclick="openPurchaseModal('${esc(inv.id)}')">✏️ แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="printPurchaseDoc('${esc(inv.id)}')">🖨️ พิมพ์</button><label class="btn btn-ghost btn-sm dc-pick"><input type="checkbox" ${purchasePicked.has(inv.id)?'checked':''} onchange="togglePurchasePick('${esc(inv.id)}',this.checked);renderPurchaseTax();"> เลือก</label><button class="btn btn-ghost btn-sm" onclick="toggleMenu('pur-${esc(inv.id)}',event)">⋯</button>`});
+    return `<tr style="cursor:pointer;" onclick="openPurchaseDocPreview('${esc(inv.id)}')"><td class="m-card-cell">${card}</td><td onclick="event.stopPropagation()"><input type="checkbox" class="pur-pick" value="${esc(inv.id)}" ${purchasePicked.has(inv.id)?'checked':''} onchange="togglePurchasePick('${esc(inv.id)}',this.checked)"></td><td><div class="sale-doc-no">${esc(inv.purchase_no)}</div><span class="sale-doc-type">บิลซื้อ</span></td><td>${esc(inv.supplier_name||inv.supplier_id||'-')}<br><span class="tm" style="font-size:10px;">${rows.length} รายการ</span>${stockBadge}</td><td>${esc(inv.invoice_no||'-')}</td><td class="tm">${esc(inv.invoice_date||'-')}</td><td class="mono tr">฿${money(inv.subtotal)}</td><td class="mono tr">฿${money(inv.vat_amount)}</td><td class="mono tg">฿${money(inv.total_amount)}</td><td>${docPayBadge(inv,'pur')}</td><td>${docEditorHtml(inv)}</td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('pur-${esc(inv.id)}',event)">...</button><div class="action-menu" id="pur-${esc(inv.id)}">${confirmBtn}<button onclick="openPurchaseModal('${esc(inv.id)}')">แก้ไข/ดูรายการ</button><button onclick="printPurchaseDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deletePurchaseInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบบิลซื้อ</button></div></td></tr>`;
   }).join('');
+}
+let purchasePicked=new Set();
+function togglePurchasePick(id,on){on?purchasePicked.add(id):purchasePicked.delete(id);renderPurchasePickBar();}
+function toggleAllPurchaseDocs(on){document.querySelectorAll('#purchase-tbody .pur-pick').forEach(cb=>{cb.checked=on;on?purchasePicked.add(cb.value):purchasePicked.delete(cb.value);});renderPurchasePickBar();}
+function pickAllPurchaseFiltered(){filterAccountingList(purchaseInvoices,'pur').forEach(x=>purchasePicked.add(x.id));renderPurchaseTax();}
+function clearPurchasePick(){purchasePicked.clear();const a=document.getElementById('pur-check-all');if(a)a.checked=false;renderPurchaseTax();}
+function pickedPurchaseDocs(){return (purchaseInvoices||[]).filter(x=>purchasePicked.has(x.id)&&x.status!=='cancelled');}
+function renderPurchasePickBar(){
+  const bar=document.getElementById('pur-pick-bar');if(!bar)return;
+  const docs=pickedPurchaseDocs();
+  if(!docs.length){bar.style.display='none';return;}
+  const total=docs.reduce((s,d)=>s+Number(d.total_amount||0),0), vat=docs.reduce((s,d)=>s+Number(d.vat_amount||0),0);
+  bar.style.display='';
+  bar.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><b>เลือกไว้ ${docs.length} ใบ</b><span class="tm">รวม ฿${money(total)} · VAT ฿${money(vat)}</span><span style="flex:1;"></span>
+    <button class="btn btn-ghost btn-sm" onclick="pickAllPurchaseFiltered()">เลือกทั้งหมดตามตัวกรอง</button>
+    <button class="btn btn-success btn-sm" onclick="bulkExportPurchases('zip')">📦 ZIP แยกไฟล์ (${docs.length})</button>
+    <button class="btn btn-ghost btn-sm" onclick="bulkExportPurchases('pdf')">📄 PDF รวมไฟล์เดียว</button>
+    <button class="btn btn-ghost btn-sm" onclick="clearPurchasePick()">ล้างที่เลือก</button></div>`;
+}
+function bulkExportPurchases(mode){
+  const docs=pickedPurchaseDocs().map(inv=>({title:'บิลซื้อ',no:inv.purchase_no||inv.id,html:purchaseDocHtml(inv,purchaseItems.filter(x=>x.purchase_invoice_id===inv.id&&x.status!=='cancelled'))}));
+  bulkExportDocs('pur',docs,mode);
 }
 function blankPurchaseItem(){
   return {id:newAccountingId('PITEM'),item_name:'',quantity:1,unit:'',unit_price:0,allocation_type:'pending',job_id:'',stock_item_id:'',note:''};
@@ -7560,6 +7583,110 @@ function toggleAllSalesDocs(on){
 function clearSalesPick(){ salesPicked.clear(); const a=document.getElementById('sale-check-all'); if(a)a.checked=false; renderSalesTax(); }
 function pickedSalesDocs(){ return (salesInvoices||[]).filter(x=>salesPicked.has(x.id)&&x.status!=='cancelled'); }
 
+// ===== ดาวน์โหลดเอกสารหลายใบพร้อมกัน (บิลขาย/บิลซื้อ) — ข้ามบริษัท/ลูกค้าได้ =====
+// แปลงแต่ละเอกสาร (เทมเพลตเดียวกับที่พิมพ์) → ภาพหน้า A4 → PDF ; ZIP แยกไฟล์ หรือ PDF รวมไฟล์เดียว
+const BULK_PDF_LIBS=['https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js','https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'];
+const _scriptLoads={};
+function loadScriptOnce(src){
+  if(!_scriptLoads[src])_scriptLoads[src]=new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=()=>{delete _scriptLoads[src];rej(new Error('โหลดไลบรารีไม่สำเร็จ: '+src));};document.head.appendChild(el);});
+  return _scriptLoads[src];
+}
+function bulkDocFileName(title,no,used){
+  let base=(String(title||'เอกสาร')+'_'+String(no||'').trim()).replace(/[\\/:*?"<>|\s]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'')||'เอกสาร';
+  let name=base,i=2;while(used.has(name))name=base+'_'+(i++);used.add(name);return name+'.pdf';
+}
+// เรนเดอร์ HTML เอกสารใน iframe ซ่อน แล้วจับภาพทุกหน้า (.sheet ที่มองเห็น) → [{img,landscape}] ต่อหน้า A4
+async function renderDocPagesForPdf(html){
+  const fr=document.createElement('iframe');
+  fr.style.cssText='position:fixed;left:-10000px;top:0;width:1250px;height:1800px;border:0;opacity:0;pointer-events:none;';
+  document.body.appendChild(fr);
+  try{
+    await new Promise(res=>{fr.onload=res;fr.srcdoc=html;});
+    const d=fr.contentDocument;
+    const st=d.createElement('style');st.textContent='.toolbar{display:none!important}.sheet{box-shadow:none!important;margin:0 0 20px 0!important}body{background:#fff!important}';
+    d.head.appendChild(st);
+    try{if(d.fonts&&d.fonts.ready)await d.fonts.ready;}catch(e){}
+    await Promise.all([...d.images].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r;setTimeout(r,4000);})));
+    await new Promise(r=>setTimeout(r,250));
+    try{fr.contentWindow.fitAll&&fr.contentWindow.fitAll();}catch(e){} // ใบกำกับ/ใบแจ้งหนี้: ล็อก 1 หน้า A4
+    const sheets=[...d.querySelectorAll('.sheet')].filter(el=>fr.contentWindow.getComputedStyle(el).display!=='none');
+    const pages=[];
+    for(const el of (sheets.length?sheets:[d.body])){
+      const canvas=await window.html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+      const landscape=el.offsetWidth>el.offsetHeight*1.15;
+      const ratio=landscape?210/297:297/210; // สูง/กว้าง ของหน้า A4
+      const pageH=Math.round(canvas.width*ratio);
+      // เนื้อหายาวกว่า 1 หน้า → ตัดเป็นหลายหน้า
+      for(let y=0;y<canvas.height-4;y+=pageH){
+        const h=Math.min(pageH,canvas.height-y);
+        const c=document.createElement('canvas');c.width=canvas.width;c.height=pageH;
+        const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(canvas,0,y,canvas.width,h,0,0,canvas.width,h);
+        pages.push({img:c.toDataURL('image/jpeg',0.9),landscape});
+      }
+    }
+    return pages;
+  }finally{fr.remove();}
+}
+function addPagesToPdf(pdf,pages,first){
+  pages.forEach((pg,i)=>{
+    const o=pg.landscape?'landscape':'portrait';
+    if(!(first&&i===0))pdf.addPage('a4',o);
+    const w=pg.landscape?297:210,h=pg.landscape?210:297;
+    pdf.addImage(pg.img,'JPEG',0,0,w,h,undefined,'FAST');
+  });
+}
+function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);}
+// docs = [{title,no,html}] ; mode 'zip' = แยกไฟล์ใน ZIP · 'pdf' = รวมเป็น PDF เดียว
+let bulkExportRunning=false;
+async function bulkExportDocs(kind,docs,mode){
+  if(bulkExportRunning){alert('กำลังสร้างไฟล์อยู่ กรุณารอสักครู่');return;}
+  if(!docs.length)return;
+  const statusKind=kind==='pur'?'purchase':'sales';
+  bulkExportRunning=true;
+  try{
+    setAccountingStatus(statusKind,'กำลังโหลดเครื่องมือสร้าง PDF...','warn');
+    for(const src of BULK_PDF_LIBS)await loadScriptOnce(src);
+    const {jsPDF}=window.jspdf;
+    const used=new Set(), zip=mode==='zip'?new JSZip():null;
+    let combined=null; const fails=[];
+    for(let i=0;i<docs.length;i++){
+      const d=docs[i];
+      setAccountingStatus(statusKind,`กำลังสร้าง PDF ${i+1}/${docs.length} — ${d.no||''}`,'warn');
+      try{
+        const pages=await renderDocPagesForPdf(d.html);
+        if(!pages.length)throw new Error('ไม่มีหน้าเอกสาร');
+        if(mode==='zip'){
+          const pdf=new jsPDF({orientation:pages[0].landscape?'landscape':'portrait',unit:'mm',format:'a4',compress:true});
+          addPagesToPdf(pdf,pages,true);
+          zip.file(bulkDocFileName(d.title,d.no,used),pdf.output('blob'));
+        }else{
+          if(!combined){combined=new jsPDF({orientation:pages[0].landscape?'landscape':'portrait',unit:'mm',format:'a4',compress:true});addPagesToPdf(combined,pages,true);}
+          else addPagesToPdf(combined,pages,false);
+        }
+      }catch(e){console.warn('bulk export failed',d.no,e);fails.push(d.no||d.title);}
+    }
+    const stamp=todayISO();
+    const label=kind==='pur'?'บิลซื้อ':'เอกสารขาย';
+    const ok=docs.length-fails.length;
+    if(!ok)throw new Error('สร้าง PDF ไม่สำเร็จเลย');
+    if(mode==='zip')downloadBlob(await zip.generateAsync({type:'blob'}),`${label}_${ok}ใบ_${stamp}.zip`);
+    else downloadBlob(combined.output('blob'),`${label}_รวม${ok}ใบ_${stamp}.pdf`);
+    setAccountingStatus(statusKind,`ดาวน์โหลดแล้ว ${ok} ใบ`+(fails.length?` · ไม่สำเร็จ ${fails.length}: ${fails.join(', ')}`:''),fails.length?'warn':'ok');
+    if(fails.length)alert('สร้างไม่สำเร็จบางใบ: '+fails.join(', '));
+  }catch(e){
+    setAccountingStatus(statusKind,'ดาวน์โหลดไม่สำเร็จ: '+((e&&e.message)||e),'err');
+    alert('ดาวน์โหลดไม่สำเร็จ: '+((e&&e.message)||e));
+  }finally{bulkExportRunning=false;}
+}
+function bulkExportSales(mode){
+  const docs=pickedSalesDocs().map(inv=>{
+    const items=salesInvoiceItems.filter(x=>x.sales_invoice_id===inv.id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0));
+    return {title:(SALES_DOC_META[inv.doc_type||'tax_invoice']||SALES_DOC_META.tax_invoice).title,no:inv.doc_no||inv.sales_invoice_no||inv.id,html:salesDocHtmlFor(inv,items)};
+  });
+  bulkExportDocs('sale',docs,mode);
+}
+// เลือกทั้งหมดตามตัวกรองปัจจุบัน (เช่นทั้งเดือน) — ใช้ได้ทั้งมือถือ/คอม
+function pickAllSalesFiltered(){filterAccountingList(salesInvoices,'sale').forEach(x=>salesPicked.add(x.id));renderSalesTax();}
 function renderSalesMergeBar(){
   const bar=document.getElementById('sale-merge-bar'); if(!bar)return;
   const docs=pickedSalesDocs();
@@ -7579,6 +7706,12 @@ function renderSalesMergeBar(){
     <button class="btn btn-primary btn-sm" ${bad?'disabled style="opacity:.5;"':''} onclick="mergeSalesDocsToSummaryTax()" title="แต่ละใบเสนอราคา = 1 บรรทัด (เลข PR + ชื่อสาขา + ยอดก่อน VAT)">🧾 รวมแบบสรุป (PR+สาขา)</button>
     <button class="btn btn-ghost btn-sm" ${bad?'disabled style="opacity:.5;"':''} onclick="mergeSalesDocsToTaxInvoice()" title="รวมรายการซ่อมทุกบรรทัดจากทุกใบ">🧾 รวมแจกแจงรายการ</button>
     <button class="btn btn-ghost btn-sm" onclick="clearSalesPick()">ล้างที่เลือก</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--accent);">
+    <b>⬇ ดาวน์โหลด</b><span class="tm">(เลือกต่างบริษัท/ลูกค้าได้)</span><span style="flex:1;"></span>
+    <button class="btn btn-ghost btn-sm" onclick="pickAllSalesFiltered()">เลือกทั้งหมดตามตัวกรอง</button>
+    <button class="btn btn-success btn-sm" onclick="bulkExportSales('zip')">📦 ZIP แยกไฟล์ (${docs.length})</button>
+    <button class="btn btn-ghost btn-sm" onclick="bulkExportSales('pdf')">📄 PDF รวมไฟล์เดียว</button>
   </div>`;
 }
 
