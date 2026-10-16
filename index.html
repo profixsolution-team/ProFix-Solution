@@ -1640,8 +1640,8 @@ let purchaseVatMode='add', salesVatMode='add'; // 'add' บวกเพิ่ม
 let salesDraftJobs=[];
 let financeTeamFilter='ทั้งหมด';
 let financeMonthFilter=new Date().toISOString().slice(0,7); // ค่าเริ่มต้น = เดือนปัจจุบัน
-let purSearch='',purDate='',purRange='',purSort='desc',purSortBy='date';
-let saleSearch='',saleDate='',saleRange='',saleSort='desc',saleDocType='',saleSortBy='date';
+let purSearch='',purDate='',purRange='',purSort='desc',purSortBy='date',purDateTo='',purMonth='';
+let saleSearch='',saleDate='',saleRange='',saleSort='desc',saleDocType='',saleSortBy='date',saleDateTo='',saleMonth='';
 // เรียงตาม: date = วันที่บนเอกสาร (ค่าเริ่มต้น) · updated = แก้ล่าสุด · no = เลขที่เอกสาร
 const ACCOUNTING_SORT_FIELDS={date:'วันที่เอกสาร',updated:'แก้ล่าสุด',no:'เลขที่เอกสาร'};
 let stockItems=[], stockMovements=[], stockLoaded=false, stockLoadingPromise=null;
@@ -5260,7 +5260,7 @@ async function ensureAccountingLoaded(force=false){
   }).finally(()=>{accountingLoadingPromise=null;});
   return accountingLoadingPromise;
 }
-function accountingFilterState(kind){return kind==='pur'?{search:purSearch,date:purDate,range:purRange,sort:purSort,sortBy:purSortBy}:{search:saleSearch,date:saleDate,range:saleRange,sort:saleSort,docType:saleDocType,sortBy:saleSortBy};}
+function accountingFilterState(kind){return kind==='pur'?{search:purSearch,date:purDate,dateTo:purDateTo,month:purMonth,range:purRange,sort:purSort,sortBy:purSortBy}:{search:saleSearch,date:saleDate,dateTo:saleDateTo,month:saleMonth,range:saleRange,sort:saleSort,docType:saleDocType,sortBy:saleSortBy};}
 function filterAccountingList(list,kind){
   const st=accountingFilterState(kind);
   const q=st.search.trim().toLowerCase();
@@ -5268,7 +5268,10 @@ function filterAccountingList(list,kind){
     const d=inv.invoice_date||'';
     if(st.range==='today'&&d!==todayISO())return false;
     if(st.range==='week'&&!isThisWeekDate(d))return false;
-    if(st.date&&d!==st.date)return false;
+    // รายเดือน (YYYY-MM) หรือช่วงวันที่ จาก–ถึง (ใส่ช่องเดียวก็ได้: จากอย่างเดียว = ตั้งแต่วันนั้น, ถึงอย่างเดียว = จนถึงวันนั้น)
+    if(st.month&&d.slice(0,7)!==st.month)return false;
+    if(st.date&&(!d||d<st.date))return false;
+    if(st.dateTo&&(!d||d>st.dateTo))return false;
     if(kind==='sale'&&st.docType&&(inv.doc_type||'tax_invoice')!==st.docType)return false;
     if(!q)return true;
     const fields=kind==='pur'?[inv.purchase_no,inv.supplier_name,inv.supplier_tax_id,inv.invoice_no,inv.note]:[inv.sales_invoice_no,inv.job_id,inv.job_ids,inv.customer_name,inv.note];
@@ -5293,20 +5296,34 @@ function filterAccountingList(list,kind){
   });
   return out;
 }
+// ตัวเลือกเดือน = เดือนที่มีบิลจริง (ตามวันที่เอกสาร) ใหม่→เก่า แสดงแบบ ต.ค. 2569 — ใช้ select แทน input type=month (Safari ไม่รองรับ)
+function accountingMonthOptions(kind,cur){
+  const TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const src=kind==='pur'?(purchaseInvoices||[]):(salesInvoices||[]);
+  const months=new Set(src.map(x=>String(x.invoice_date||'').slice(0,7)).filter(m=>/^\d{4}-\d{2}$/.test(m)));
+  months.add(todayISO().slice(0,7));
+  if(cur)months.add(cur);
+  const label=m=>TH[Number(m.slice(5,7))-1]+' '+(Number(m.slice(0,4))+543);
+  return `<option value="">ทุกเดือน</option>`+[...months].sort().reverse().map(m=>`<option value="${m}"${m===cur?' selected':''}>${label(m)}</option>`).join('');
+}
 function buildAccountingControls(kind){
   const b=document.getElementById(kind+'-fbar');if(!b)return;
   const st=accountingFilterState(kind);
   const ph=kind==='pur'?'เลขบิล / Supplier / เลขภาษี / ใบกำกับ':'เลขบิล / PR / ลูกค้า';
   const docTypeSel=kind==='sale'?`<span class="filter-label">ประเภท:</span><select class="filter-input" onchange="setAccountingDocType(this.value)"><option value=""${st.docType===''?' selected':''}>ทุกประเภท</option>${Object.keys(SALES_DOC_META).map(k=>`<option value="${k}"${st.docType===k?' selected':''}>${esc(SALES_DOC_META[k].title)}</option>`).join('')}</select>`:'';
-  b.innerHTML=`<span class="filter-label">ค้นหา:</span><input class="search-input" id="${kind}-search-input" value="${esc(st.search)}" placeholder="${ph}" onkeydown="if(event.key==='Enter')applyAccountingSearch('${kind}')"><button class="btn btn-ghost btn-sm" onclick="applyAccountingSearch('${kind}')">ค้นหา</button>${docTypeSel}<span class="filter-label">วันที่:</span><input class="filter-input" type="date" value="${esc(st.date)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDate('${kind}',this.value)"><button class="btn btn-ghost btn-sm" onclick="setAccountingDate('${kind}','')">ล้างวันที่</button><button class="btn btn-ghost btn-sm ${st.range==='today'?'active':''}" onclick="setAccountingRange('${kind}','today')">วันนี้</button><button class="btn btn-ghost btn-sm ${st.range==='week'?'active':''}" onclick="setAccountingRange('${kind}','week')">สัปดาห์นี้</button><span class="filter-label">เรียงตาม:</span><select class="filter-input" onchange="setAccountingSortBy('${kind}',this.value)">${Object.keys(ACCOUNTING_SORT_FIELDS).map(k=>`<option value="${k}"${st.sortBy===k?' selected':''}>${esc(ACCOUNTING_SORT_FIELDS[k])}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="toggleAccountingSort('${kind}')">${st.sort==='desc'?'ใหม่→เก่า':'เก่า→ใหม่'}</button><button class="btn btn-ghost btn-sm" onclick="clearAccountingFilter('${kind}')">ล้างตัวกรอง</button>`;
+  b.innerHTML=`<span class="filter-label">ค้นหา:</span><input class="search-input" id="${kind}-search-input" value="${esc(st.search)}" placeholder="${ph}" onkeydown="if(event.key==='Enter')applyAccountingSearch('${kind}')"><button class="btn btn-ghost btn-sm" onclick="applyAccountingSearch('${kind}')">ค้นหา</button>${docTypeSel}<span class="filter-label">เดือน:</span><select class="filter-input" onchange="setAccountingMonth('${kind}',this.value)" title="เลือกทั้งเดือน">${accountingMonthOptions(kind,st.month)}</select><span class="filter-label">หรือวันที่:</span><input class="filter-input" type="date" value="${esc(st.date)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDate('${kind}',this.value)" title="ตั้งแต่วันที่"><span class="filter-label">ถึง</span><input class="filter-input" type="date" value="${esc(st.dateTo||'')}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDateTo('${kind}',this.value)" title="ถึงวันที่"><button class="btn btn-ghost btn-sm" onclick="clearAccountingDates('${kind}')">ล้างวันที่</button><button class="btn btn-ghost btn-sm ${st.range==='today'?'active':''}" onclick="setAccountingRange('${kind}','today')">วันนี้</button><button class="btn btn-ghost btn-sm ${st.range==='week'?'active':''}" onclick="setAccountingRange('${kind}','week')">สัปดาห์นี้</button><span class="filter-label">เรียงตาม:</span><select class="filter-input" onchange="setAccountingSortBy('${kind}',this.value)">${Object.keys(ACCOUNTING_SORT_FIELDS).map(k=>`<option value="${k}"${st.sortBy===k?' selected':''}>${esc(ACCOUNTING_SORT_FIELDS[k])}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="toggleAccountingSort('${kind}')">${st.sort==='desc'?'ใหม่→เก่า':'เก่า→ใหม่'}</button><button class="btn btn-ghost btn-sm" onclick="clearAccountingFilter('${kind}')">ล้างตัวกรอง</button>`;
 }
 function applyAccountingSearch(kind){const el=document.getElementById(kind+'-search-input');const v=el?el.value.trim():'';if(kind==='pur')purSearch=v;else saleSearch=v;kind==='pur'?renderPurchaseTax():renderSalesTax();}
-function setAccountingDate(kind,v){if(kind==='pur'){purDate=v;purRange='';}else{saleDate=v;saleRange='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
-function setAccountingRange(kind,r){if(kind==='pur'){purRange=purRange===r?'':r;purDate='';}else{saleRange=saleRange===r?'':r;saleDate='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
+// ตัวกรองวันที่ใช้ทีละแบบ: เดือน / ช่วงวันที่ (จาก–ถึง) / วันนี้-สัปดาห์นี้ — เลือกแบบหนึ่งจะล้างแบบอื่น
+function setAccountingDate(kind,v){if(kind==='pur'){purDate=v;purRange='';purMonth='';if(v&&purDateTo&&purDateTo<v)purDateTo=v;}else{saleDate=v;saleRange='';saleMonth='';if(v&&saleDateTo&&saleDateTo<v)saleDateTo=v;}kind==='pur'?renderPurchaseTax():renderSalesTax();}
+function setAccountingDateTo(kind,v){if(kind==='pur'){purDateTo=v;purRange='';purMonth='';if(v&&purDate&&purDate>v)purDate=v;}else{saleDateTo=v;saleRange='';saleMonth='';if(v&&saleDate&&saleDate>v)saleDate=v;}kind==='pur'?renderPurchaseTax():renderSalesTax();}
+function setAccountingMonth(kind,v){if(kind==='pur'){purMonth=v;purDate='';purDateTo='';purRange='';}else{saleMonth=v;saleDate='';saleDateTo='';saleRange='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
+function clearAccountingDates(kind){if(kind==='pur'){purDate='';purDateTo='';purMonth='';purRange='';}else{saleDate='';saleDateTo='';saleMonth='';saleRange='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
+function setAccountingRange(kind,r){if(kind==='pur'){purRange=purRange===r?'':r;purDate='';purDateTo='';purMonth='';}else{saleRange=saleRange===r?'':r;saleDate='';saleDateTo='';saleMonth='';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function toggleAccountingSort(kind){if(kind==='pur')purSort=purSort==='desc'?'asc':'desc';else saleSort=saleSort==='desc'?'asc':'desc';kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function setAccountingDocType(v){saleDocType=v||'';renderSalesTax();}
 function setAccountingSortBy(kind,v){const f=ACCOUNTING_SORT_FIELDS[v]?v:'date';if(kind==='pur')purSortBy=f;else saleSortBy=f;kind==='pur'?renderPurchaseTax():renderSalesTax();}
-function clearAccountingFilter(kind){if(kind==='pur'){purSearch='';purDate='';purRange='';purSortBy='date';}else{saleSearch='';saleDate='';saleRange='';saleDocType='';saleSortBy='date';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
+function clearAccountingFilter(kind){if(kind==='pur'){purSearch='';purDate='';purDateTo='';purMonth='';purRange='';purSortBy='date';}else{saleSearch='';saleDate='';saleDateTo='';saleMonth='';saleRange='';saleDocType='';saleSortBy='date';}kind==='pur'?renderPurchaseTax():renderSalesTax();}
 function renderPurchaseTax(){
   const tb=document.getElementById('purchase-tbody');if(!tb)return;
   buildAccountingControls('pur');
