@@ -678,7 +678,7 @@ select option{background:var(--surface2);}
 <div class="page active" id="page-dashboard">
   <div class="page-header">
     <div><div class="page-title">Dashboard</div><div class="page-sub">ภาพรวมระบบ</div></div>
-    <button class="btn btn-primary" onclick="goTo('admin-tracker');openAdminModal()">+ งานใหม่</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><span class="filter-label">บริษัท:</span><select class="filter-select" id="dash-company" onchange="setCompanyFilter('dash',this.value)"></select><button class="btn btn-primary" onclick="goTo('admin-tracker');openAdminModal()">+ งานใหม่</button></div>
   </div>
   <div class="content">
     <div class="stats-row">
@@ -767,6 +767,8 @@ select option{background:var(--surface2);}
   </div>
   <div class="content">
     <div class="calendar-toolbar">
+      <span class="filter-label">บริษัท:</span>
+      <select class="filter-select" id="cal-company" onchange="setCompanyFilter('cal',this.value)"></select>
       <span class="filter-label">ทีม:</span>
       <select class="filter-select" id="cal-team" onchange="calendarTeamFilter=this.value;renderCalendar();saveUIState();"></select>
       <span class="filter-label">เดือน:</span>
@@ -1396,6 +1398,7 @@ select option{background:var(--surface2);}
   <div class="modal">
     <div class="modal-header"><div class="modal-title">เปิดงานใหม่ (คิวช่าง)</div><button class="close-btn" onclick="closeM('m-job')">×</button></div>
     <div class="modal-body">
+      <div class="form-row"><div class="form-group"><label>บริษัทที่รับงาน <span style="color:var(--red);">*</span></label><select id="fj-company"></select><div id="fj-company-hint" class="tm" style="font-size:11px;margin-top:4px;"></div></div><div></div></div>
       <div class="form-row"><div class="form-group"><label>บริษัทลูกค้า</label><div class="select-tools"><select id="fj-client"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('clients')" type="button">จัดการ</button></div></div><div class="form-group"><label>เลขงานลูกค้า</label><input type="text" id="fj-ref" placeholder="WO-XXXX"></div></div>
       <div class="form-row"><div class="form-group"><label>ชื่อสาขา</label><input type="text" id="fj-branch" placeholder="เช่น เซ็นทรัลลาดพร้าว"></div><div class="form-group"><label>ประเภทงาน</label><div class="select-tools"><select id="fj-type"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('jobTypes')" type="button">จัดการ</button></div></div></div>
       <div class="form-row"><div class="form-group"><label>ทีมช่าง</label><div class="select-tools"><select id="fj-team"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('teams')" type="button">จัดการ</button></div></div><div class="form-group"><label>วันนัด</label><input type="date" id="fj-date" onclick="openDatePicker(this)" onfocus="openDatePicker(this)"></div></div>
@@ -1433,7 +1436,7 @@ select option{background:var(--surface2);}
       <div class="form-group"><label>รายละเอียด</label><textarea id="fa-detail" placeholder="รายละเอียดงาน..."></textarea></div>
       <div class="form-row"><div class="form-group"><label>Assign ให้</label><div class="select-tools"><select id="fa-assign"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('adminNames')" type="button">จัดการ</button></div></div><div class="form-group"><label>กำหนดเสร็จ</label><input type="date" id="fa-due" onclick="openDatePicker(this)" onfocus="openDatePicker(this)"></div></div>
       <div class="form-row"><div class="form-group"><label>PR</label><div class="combo-row"><input list="pr-list" id="fa-job" placeholder="เช่น PR-2025-001" oninput="tryAutoSavePendingAdminPdf()"><datalist id="pr-list"></datalist><button class="btn btn-ghost btn-sm" onclick="addPRValue()" type="button">+ PR</button></div></div><div class="form-group"><label>ความสำคัญ</label><div class="select-tools"><select id="fa-pri"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('priorities')" type="button">จัดการ</button></div></div></div>
-      <div class="form-row"><div class="form-group"><label>สถานะ</label><div class="select-tools"><select id="fa-status"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('adminStatuses')" type="button">จัดการ</button></div></div><div></div></div>
+      <div class="form-row"><div class="form-group"><label>สถานะ</label><div class="select-tools"><select id="fa-status"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('adminStatuses')" type="button">จัดการ</button></div></div><div class="form-group"><label>บริษัทที่รับงาน</label><select id="fa-company"></select></div></div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-admin')">ยกเลิก</button><button class="btn btn-ghost" onclick="saveAdminTask(true)">ถัดไป: เปิดคิวช่าง</button><button class="btn btn-primary" onclick="saveAdminTask()">✓ บันทึก</button></div>
   </div>
@@ -1466,6 +1469,7 @@ select option{background:var(--surface2);}
         <div>
           <div class="accounting-panel mb16">
             <div class="accounting-panel-title">ข้อมูลผู้จำหน่ายและเอกสาร</div>
+            <div class="form-group"><label>บริษัทผู้ซื้อ (บริษัทเรา)</label><select id="pur-company"></select></div>
             <div class="form-row"><div class="form-group"><label>เลขที่บิลในระบบ</label><input id="pur-no" placeholder="เช่น PIN-2026-001"></div><div class="form-group"><label>ร้านค้า / Supplier</label><input id="pur-supplier" list="supplier-name-list" placeholder="พิมพ์หรือเลือกจากข้อมูลระบบ" oninput="onPurchaseSupplierChange()" onchange="onPurchaseSupplierChange()"></div></div>
             <div class="form-row"><div class="form-group"><label>Tax ID Supplier</label><input id="pur-taxid"></div><div class="form-group"><label>เลขที่ใบกำกับภาษี</label><input id="pur-invoice-no"></div></div>
             <div class="form-row"><div class="form-group"><label>วันที่ใบกำกับภาษี</label><input id="pur-date" type="date"></div><div class="form-group"><label>ประเภทเอกสารภาษี</label><select id="pur-tax-type"><option value="tax_invoice">ใบกำกับภาษีเต็มรูป</option><option value="receipt">ใบเสร็จ/ไม่มี VAT</option><option value="pending_tax_invoice">รอใบกำกับภาษี</option></select></div></div>
@@ -3353,21 +3357,21 @@ function updateSystemUpdated(){
 }
 function buildAdminControls(counts){
   const b=document.getElementById('admin-fbar');if(!b)return;
-  b.innerHTML=`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="adminFilter=this.value;renderAdmin();saveUIState();">${statusOptionHtml(A_ST,counts,adminFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="admin-search-input" value="${esc(adminSearch)}" placeholder="Task / PR / ชื่องาน" onkeydown="if(event.key==='Enter')applyAdminSearch()"><button class="btn btn-ghost btn-sm" onclick="applyAdminSearch()">ค้นหา</button>`;
+  b.innerHTML=companyFilterHtml('admin')+`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="adminFilter=this.value;renderAdmin();saveUIState();">${statusOptionHtml(A_ST,counts,adminFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="admin-search-input" value="${esc(adminSearch)}" placeholder="Task / PR / ชื่องาน" onkeydown="if(event.key==='Enter')applyAdminSearch()"><button class="btn btn-ghost btn-sm" onclick="applyAdminSearch()">ค้นหา</button>`;
   addDateControls('admin-fbar','admin');
   addQuickControls('admin-fbar','admin');
 }
 function buildJobControls(counts){
   const b=document.getElementById('job-fbar');if(!b)return;
   const teamOpts=['ทั้งหมด',...teams.map(t=>t.name)].map(t=>`<option value="${esc(t)}"${t===jobTeamFilter?' selected':''}>${esc(t)}</option>`).join('');
-  b.innerHTML=`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="jobFilter=this.value;renderJobs();saveUIState();">${statusOptionHtml(J_ST,counts,jobFilter)}</select><span class="filter-label">ทีม:</span><select class="filter-select" onchange="jobTeamFilter=this.value;renderJobs();saveUIState();">${teamOpts}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="job-search-input" value="${esc(jobSearch)}" placeholder="PR / สาขา / ใบงาน" onkeydown="if(event.key==='Enter')applyJobSearch()"><button class="btn btn-ghost btn-sm" onclick="applyJobSearch()">ค้นหา</button>`;
+  b.innerHTML=companyFilterHtml('jobs')+`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="jobFilter=this.value;renderJobs();saveUIState();">${statusOptionHtml(J_ST,counts,jobFilter)}</select><span class="filter-label">ทีม:</span><select class="filter-select" onchange="jobTeamFilter=this.value;renderJobs();saveUIState();">${teamOpts}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="job-search-input" value="${esc(jobSearch)}" placeholder="PR / สาขา / ใบงาน" onkeydown="if(event.key==='Enter')applyJobSearch()"><button class="btn btn-ghost btn-sm" onclick="applyJobSearch()">ค้นหา</button>`;
   addDateControls('job-fbar','jobs');
   addQuickControls('job-fbar','jobs');
 }
 function buildFinanceControls(counts){
   const b=document.getElementById('fin-fbar');if(!b)return;
   const teamOpts=['ทั้งหมด',...teams.map(t=>t.name)].map(t=>`<option value="${esc(t)}"${financeTeamFilter===t?' selected':''}>${esc(t)}</option>`).join('');
-  b.innerHTML=`<span class="filter-label">เดือน:</span><input class="filter-input" type="month" value="${esc(financeMonthFilter)}" onchange="setFinanceMonth(this.value)"><span class="filter-label">ทีม:</span><select class="filter-select" onchange="financeTeamFilter=this.value;renderFin();saveUIState();">${teamOpts}</select><span class="filter-label">สถานะเงิน:</span><select class="filter-select" onchange="finFilter=this.value;renderFin();saveUIState();">${statusOptionHtml(payStatuses,counts,finFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="fin-search-input" value="${esc(financeSearch)}" placeholder="PR / สาขา / ทีม" onkeydown="if(event.key==='Enter')applyFinanceSearch()"><button class="btn btn-ghost btn-sm" onclick="applyFinanceSearch()">ค้นหา</button><button class="btn btn-ghost btn-sm" onclick="setFinanceDate('')" title="ล้างวันที่แบบเจาะจง">ล้างวันที่</button><button class="btn btn-primary btn-sm" onclick="openTeamFinanceSummary()">📊 สรุปทีม</button><button class="btn btn-success btn-sm" onclick="exportFinanceXlsx()">⬇ Export .xlsx</button>`;
+  b.innerHTML=companyFilterHtml('fin')+`<span class="filter-label">เดือน:</span><input class="filter-input" type="month" value="${esc(financeMonthFilter)}" onchange="setFinanceMonth(this.value)"><span class="filter-label">ทีม:</span><select class="filter-select" onchange="financeTeamFilter=this.value;renderFin();saveUIState();">${teamOpts}</select><span class="filter-label">สถานะเงิน:</span><select class="filter-select" onchange="finFilter=this.value;renderFin();saveUIState();">${statusOptionHtml(payStatuses,counts,finFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="fin-search-input" value="${esc(financeSearch)}" placeholder="PR / สาขา / ทีม" onkeydown="if(event.key==='Enter')applyFinanceSearch()"><button class="btn btn-ghost btn-sm" onclick="applyFinanceSearch()">ค้นหา</button><button class="btn btn-ghost btn-sm" onclick="setFinanceDate('')" title="ล้างวันที่แบบเจาะจง">ล้างวันที่</button><button class="btn btn-primary btn-sm" onclick="openTeamFinanceSummary()">📊 สรุปทีม</button><button class="btn btn-success btn-sm" onclick="exportFinanceXlsx()">⬇ Export .xlsx</button>`;
   addFbarManager('fin-fbar','payStatuses');
 }
 function setFinanceMonth(v){financeMonthFilter=v||'';renderFin();saveUIState();}
@@ -3535,7 +3539,9 @@ function renderDashTrends(jRows,owedTotal){
 }
 function renderDash(){
   updateNavBadges();
-  const jRows=liveJobs(), tRows=liveAdminTasks();
+  const dsc=document.getElementById('dash-company');if(dsc)dsc.innerHTML=companyFilterOptionsHtml('dash');
+  companyEnsureSales('dash');
+  const jRows=liveJobs().filter(j=>companyMatch('dash',()=>jobCompanyId(j))), tRows=liveAdminTasks().filter(t=>companyMatch('dash',()=>taskCompanyId(t)));
   const nw=jRows.filter(j=>isTodayItem(j)&&JOB_PENDING_STATUSES.has(j.status)).length;
   const rj=jRows.filter(j=>JOB_PROBLEM_STATUSES.has(j.status)).length;
   const cl=jRows.filter(j=>j.status==='ปิดงาน').length;
@@ -3562,7 +3568,8 @@ function renderDash(){
 
 // ADMIN TRACKER
 function renderAdmin(){
-  const all=liveAdminTasks();
+  companyEnsureSales('admin');
+  const all=liveAdminTasks().filter(t=>companyMatch('admin',()=>taskCompanyId(t)));
   const scoped=all.filter(t=>inDateScope(t,'admin'));
   const cnts={'ทั้งหมด':scoped.length};
   A_ST.forEach(s=>{cnts[s]=scoped.filter(t=>t.status===s).length;});
@@ -3990,11 +3997,12 @@ function openAdminModal(){
   document.getElementById('fa-due').value=new Date().toISOString().split('T')[0];
   document.getElementById('fa-pri').value=priorities[0]||'';
   document.getElementById('fa-status').value=A_ST[0]||'รอดำเนินการ';
+  fillCompanySelect('fa-company','','— ยังไม่ระบุ —');
   clearAdminPdfImport();
   openM('m-admin');
 }
 async function saveAdminTask(openQueueAfter=false){
-  const data={type:document.getElementById('fa-type').value,client:document.getElementById('fa-client').value,phone:document.getElementById('fa-phone').value,detail:document.getElementById('fa-detail').value,assign:document.getElementById('fa-assign').value,due:document.getElementById('fa-due').value,jobId:canonPR(document.getElementById('fa-job').value),pri:document.getElementById('fa-pri').value,status:document.getElementById('fa-status').value};
+  const data={type:document.getElementById('fa-type').value,client:document.getElementById('fa-client').value,phone:document.getElementById('fa-phone').value,detail:document.getElementById('fa-detail').value,assign:document.getElementById('fa-assign').value,due:document.getElementById('fa-due').value,jobId:canonPR(document.getElementById('fa-job').value),pri:document.getElementById('fa-pri').value,status:document.getElementById('fa-status').value,company:document.getElementById('fa-company')?.value||''};
   if(pendingAdminPdfFile&&!data.jobId){alert('อัปโหลดใบงานแล้ว กรุณาใส่ PR ก่อนบันทึก เพื่อให้ระบบเก็บไฟล์เข้าแฟ้ม PR');return;}
   const adminDup=duplicateAdminPRInfo(data.jobId,{excludeTaskId:editAdminId||''});
   if(adminDup){
@@ -4023,6 +4031,8 @@ async function saveAdminTask(openQueueAfter=false){
         if((!lj.note||lj.note===(before?.detail||''))&&lj.note!==(data.detail||''))lj.note=data.detail||'';
         // ลูกค้า -> job.client (กันทับค่าที่แก้แยกไว้ในคิวช่าง)
         if((!lj.client||lj.client===(before?.client||''))&&lj.client!==(data.client||''))lj.client=data.client||lj.client;
+        // บริษัท -> job.company เฉพาะตอนงานยังไม่ได้เลือกบริษัทเอง
+        if(data.company&&!lj.company)lj.company=data.company;
       }
     }
   }else{
@@ -4040,7 +4050,7 @@ async function saveAdminTask(openQueueAfter=false){
   if(openQueueAfter)setTimeout(()=>openJobFromAdmin(taskId),0);
   return taskId;
 }
-function editAdminTask(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;closeM('m-detail');editAdminId=id;captureEditBaseline('admin_tasks',id,t);fillSelects();document.querySelector('#m-admin .modal-title').textContent='แก้ไขงาน Admin';document.getElementById('fa-type').value=t.type;document.getElementById('fa-client').value=t.client;document.getElementById('fa-phone').value=t.phone||'';document.getElementById('fa-detail').value=t.detail;document.getElementById('fa-assign').value=t.assign;document.getElementById('fa-due').value=t.due;document.getElementById('fa-job').value=t.jobId||'';document.getElementById('fa-pri').value=t.pri;document.getElementById('fa-status').value=t.status||A_ST[0]||'';clearAdminPdfImport();openM('m-admin');}
+function editAdminTask(id){const t=adminTasks.find(x=>x.id===id);if(!t)return;closeM('m-detail');editAdminId=id;captureEditBaseline('admin_tasks',id,t);fillSelects();document.querySelector('#m-admin .modal-title').textContent='แก้ไขงาน Admin';document.getElementById('fa-type').value=t.type;document.getElementById('fa-client').value=t.client;document.getElementById('fa-phone').value=t.phone||'';document.getElementById('fa-detail').value=t.detail;document.getElementById('fa-assign').value=t.assign;document.getElementById('fa-due').value=t.due;document.getElementById('fa-job').value=t.jobId||'';document.getElementById('fa-pri').value=t.pri;document.getElementById('fa-status').value=t.status||A_ST[0]||'';fillCompanySelect('fa-company',t.company||'','— ยังไม่ระบุ —');clearAdminPdfImport();openM('m-admin');}
 async function deleteAdminTask(id){
   const t=adminTasks.find(x=>x.id===id&&!isDeletedRecord(x));if(!t)return;
   if(confirm('ลบงาน Admin นี้?')){
@@ -4232,7 +4242,7 @@ function openJobFromAdmin(id){
   const t=adminTasks.find(x=>x.id===id&&!isDeletedRecord(x));if(!t)return;
   pendingJobFromAdminId=id;
   closeM('m-detail');
-  openJobModal({id:t.jobId||'',client:t.client,branch:t.client,ref:t.jobId||'',note:t.detail,type:t.type,date:t.due||t.assignedAt||'',level:parseLevelValue(t.level||t.pri||''),fromAdmin:true});
+  openJobModal({id:t.jobId||'',company:t.company||'',client:t.client,branch:t.client,ref:t.jobId||'',note:t.detail,type:t.type,date:t.due||t.assignedAt||'',level:parseLevelValue(t.level||t.pri||''),fromAdmin:true});
 }
 
 // JOB QUEUE
@@ -4322,7 +4332,8 @@ async function deleteTechnician(id){
   }catch(e){alert('ลบไม่สำเร็จ: '+e.message);}
 }
 function renderJobs(){
-  const allJobs=liveJobs();
+  companyEnsureSales('jobs');
+  const allJobs=liveJobs().filter(j=>companyMatch('jobs',()=>jobCompanyId(j)));
   const scoped=allJobs.filter(j=>inDateScope(j,'jobs'));
   const cnts={'ทั้งหมด':scoped.length};
   J_ST.forEach(s=>{cnts[s]=scoped.filter(j=>j.status===s).length;});
@@ -4775,7 +4786,7 @@ function openDet(id){
   ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
   openM('m-detail');
 }
-function openJobModal(pref={}){if(!pref.fromAdmin)pendingJobFromAdminId=null;editJobId=null;editJobRefOrig=null;editBaseline=null;fillSelects();document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=pref.date||new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';document.getElementById('fj-type').value=jobTypes[0]||'';document.getElementById('fj-status').value=J_ST[0]||'รอเปิดงาน';const fjlv=document.getElementById('fj-level');if(fjlv)fjlv.value=pref.level||'';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
+function openJobModal(pref={}){if(!pref.fromAdmin)pendingJobFromAdminId=null;editJobId=null;editJobRefOrig=null;editBaseline=null;fillSelects();document.querySelector('#m-job .modal-title').textContent='เปิดงานใหม่ (คิวช่าง)';['fj-ref','fj-branch','fj-pc','fj-pt','fj-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('fj-date').value=pref.date||new Date().toISOString().split('T')[0];document.getElementById('fj-client').value=pref.client||document.getElementById('fj-client').options[0]?.value||'';document.getElementById('fj-ref').value=pref.ref||pref.id||'';document.getElementById('fj-branch').value=pref.branch||'';document.getElementById('fj-note').value=pref.note||'';document.getElementById('fj-type').value=jobTypes[0]||'';document.getElementById('fj-status').value=J_ST[0]||'รอเปิดงาน';const fjlv=document.getElementById('fj-level');if(fjlv)fjlv.value=pref.level||'';fillCompanySelect('fj-company',pref.company||'');document.getElementById('fj-company-hint').textContent='';if(pref.type&&[...document.getElementById('fj-type').options].some(o=>o.value===pref.type))document.getElementById('fj-type').value=pref.type;openM('m-job');}
 function calcM(){const c=parseFloat(document.getElementById('fj-pc').value)||0,t=parseFloat(document.getElementById('fj-pt').value)||0;if(c>0||t>0){document.getElementById('m-profit').style.display='flex';document.getElementById('m-profit-v').textContent='฿'+(c-t).toLocaleString();}}
 // ===== กันเลข PR/TASK ออกซ้ำข้ามเครื่อง: จองเลขแบบ atomic ที่ฝั่ง DB =====
 function numFromId(id,prefix){const m=String(id||'').match(new RegExp('^'+prefix+'-?0*(\\d+)$'));return m?parseInt(m[1],10):null;}
@@ -4805,7 +4816,7 @@ async function reserveNumberedRow(table,prefix,row){
 }
 // ===== กันแก้ทับ (#3): เก็บ baseline ตอนเปิดฟอร์มแก้ไข แล้วเช็คก่อนบันทึกว่ามีคนอื่นแก้ไประหว่างนั้นไหม =====
 let editBaseline=null;
-const CONFLICT_FIELDS={jobs:['client','ref','branch','type','team','date','status','level','pc','pt','note'],admin_tasks:['type','client','phone','detail','assign','due','jobId','pri','status']};
+const CONFLICT_FIELDS={jobs:['client','ref','branch','type','team','date','status','level','pc','pt','note','company'],admin_tasks:['type','client','phone','detail','assign','due','jobId','pri','status','company']};
 function pickFields(o,keys){const r={};keys.forEach(k=>{r[k]=o?o[k]:undefined;});return JSON.stringify(r);}
 function captureEditBaseline(table,id,record){editBaseline={table,id,fields:CONFLICT_FIELDS[table]||[],hash:pickFields(record,CONFLICT_FIELDS[table]||[])};}
 async function hasRemoteEditConflict(){
@@ -4822,7 +4833,8 @@ function confirmOverwriteIfConflict(label){
   return confirm(`⚠️ มีแอดมินอีกเครื่องเพิ่งแก้${label}นี้ไประหว่างที่คุณกำลังแก้อยู่\n\nกด "ตกลง" = เขียนทับด้วยข้อมูลของคุณ (ข้อมูลของอีกฝั่งจะหาย)\nกด "ยกเลิก" = หยุดก่อน แล้วปิดฟอร์มเพื่อรีเฟรชดูข้อมูลล่าสุด`);
 }
 async function saveJob(){if(!guardEdit())return;
-  const data={client:document.getElementById('fj-client').value,ref:canonPR(document.getElementById('fj-ref').value)||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,status:document.getElementById('fj-status').value,level:document.getElementById('fj-level')?.value||'',pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value};
+  const data={client:document.getElementById('fj-client').value,ref:canonPR(document.getElementById('fj-ref').value)||'N/A',branch:document.getElementById('fj-branch').value||'ไม่ระบุ',type:document.getElementById('fj-type').value,team:document.getElementById('fj-team').value,date:document.getElementById('fj-date').value,status:document.getElementById('fj-status').value,level:document.getElementById('fj-level')?.value||'',pc:parseFloat(document.getElementById('fj-pc').value)||0,pt:parseFloat(document.getElementById('fj-pt').value)||0,note:document.getElementById('fj-note').value,company:document.getElementById('fj-company')?.value||''};
+  if(!editJobId&&!data.company){alert('กรุณาเลือกบริษัทที่รับงาน');document.getElementById('fj-company').focus();return;}
   let savedJobId=editJobId;
   let before=null, after=null, action='create_job';
   if(editJobId){
@@ -4886,7 +4898,7 @@ async function saveJob(){if(!guardEdit())return;
   if(savedJobId&&action!=='update_job')verifyJobPersisted(savedJobId); // ชั้น 4: ยืนยันงานเปิดใหม่ขึ้นเซิร์ฟเวอร์จริง (ไม่บล็อก UI)
   writeAuditLog(action,'job',savedJobId,before,patchFromDiff(before||{},after||{}),after);
 }
-function editJob(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;closeM('m-detail');fillSelects();editJobId=id;editJobRefOrig=canonPR(j.ref);captureEditBaseline('jobs',id,j);document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';const fjl=document.getElementById('fj-level');if(fjl)fjl.value=jobLevel(j)||'';document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;openM('m-job');}
+function editJob(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;closeM('m-detail');fillSelects();editJobId=id;editJobRefOrig=canonPR(j.ref);captureEditBaseline('jobs',id,j);document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';const fjl=document.getElementById('fj-level');if(fjl)fjl.value=jobLevel(j)||'';document.getElementById('fj-pc').value=j.pc;document.getElementById('fj-pt').value=j.pt;document.getElementById('fj-note').value=j.note;const autoCo=salesCompanyByJob()[normalizePR(j.id)]||'';fillCompanySelect('fj-company',j.company||'',autoCo?'อัตโนมัติจากบิลขาย ('+companyLabel(autoCo)+')':'— ยังไม่ระบุ —');document.getElementById('fj-company-hint').textContent=!j.company&&autoCo?'ไม่ได้เลือกเอง → ระบบนับเป็น '+companyLabel(autoCo)+' ตามบิลขาย':'';openM('m-job');}
 // ===== เปลี่ยนเลขงาน (PR) แล้วย้ายข้อมูลทั้งชุดผ่าน RPC profix_renumber_job (atomic ฝั่ง DB) =====
 async function renumberJob(oldId,presetNew){
   if(!guardEdit())return;
@@ -4937,6 +4949,8 @@ function renderCalendar(){
   const teamSel=document.getElementById('cal-team');
   const monthInp=document.getElementById('cal-month');
   const searchInp=document.getElementById('cal-search');
+  const compSel=document.getElementById('cal-company');if(compSel)compSel.innerHTML=companyFilterOptionsHtml('cal');
+  companyEnsureSales('cal');
   if(teamSel)teamSel.innerHTML=['ทั้งหมด',...teams.map(t=>t.name)].map(t=>`<option value="${esc(t)}"${t===calendarTeamFilter?' selected':''}>${esc(t)}</option>`).join('');
   if(monthInp)monthInp.value=month;
   if(searchInp)searchInp.value=calendarSearch;
@@ -4951,6 +4965,7 @@ function renderCalendar(){
   for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
     const iso=dateLocalISO(d);
     const dayJobs=liveJobs().filter(j=>j.date===iso)
+      .filter(j=>companyMatch('cal',()=>jobCompanyId(j)))
       .filter(j=>calendarTeamFilter==='ทั้งหมด'||j.team===calendarTeamFilter)
       .filter(j=>matchText(j,['id','ref','branch','client','type','team','status','note'],calendarSearch));
     const muted=d.getMonth()!==mm-1;
@@ -4963,7 +4978,8 @@ function renderCalendar(){
 function setFinFilter(f){finFilter=f;renderFin();}
 function renderFin(){
   // การ์ดสรุป + ตาราง scope ตามเดือน/ทีมที่เลือก (ค่าเริ่มต้น = เดือนปัจจุบัน)
-  const jRows=liveJobs().filter(j=>(!financeMonthFilter||String(j.date||j.assignedAt||'').slice(0,7)===financeMonthFilter)&&(financeTeamFilter==='ทั้งหมด'||j.team===financeTeamFilter));
+  companyEnsureSales('fin');
+  const jRows=liveJobs().filter(j=>(!financeMonthFilter||String(j.date||j.assignedAt||'').slice(0,7)===financeMonthFilter)&&(financeTeamFilter==='ทั้งหมด'||j.team===financeTeamFilter)&&companyMatch('fin',()=>jobCompanyId(j)));
   const fixed=fixedExpenses.reduce((s,x)=>s+x.amount,0);
   const inc=jRows.reduce((s,j)=>s+jobIncome(j),0);
   const exp=jRows.reduce((s,j)=>s+Number(j.pt||0)+Number(j.partC||0),0);
@@ -5404,6 +5420,7 @@ function accountingFilterState(kind){return kind==='pur'?{search:purSearch,date:
 function filterAccountingList(list,kind){
   const st=accountingFilterState(kind);
   const q=st.search.trim().toLowerCase();
+  if(companyFilters()[kind])list=list.filter(inv=>companyMatch(kind,()=>kind==='pur'?purchaseCompanyId(inv):saleCompanyId(inv)));
   const out=list.filter(inv=>{
     const d=inv.invoice_date||'';
     if(st.range==='today'&&d!==todayISO())return false;
@@ -5451,7 +5468,7 @@ function buildAccountingControls(kind){
   const st=accountingFilterState(kind);
   const ph=kind==='pur'?'เลขบิล / Supplier / เลขภาษี / ใบกำกับ':'เลขบิล / PR / ลูกค้า';
   const docTypeSel=kind==='sale'?`<span class="filter-label">ประเภท:</span><select class="filter-input" onchange="setAccountingDocType(this.value)"><option value=""${st.docType===''?' selected':''}>ทุกประเภท</option>${Object.keys(SALES_DOC_META).map(k=>`<option value="${k}"${st.docType===k?' selected':''}>${esc(SALES_DOC_META[k].title)}</option>`).join('')}</select>`:'';
-  b.innerHTML=`<span class="filter-label">ค้นหา:</span><input class="search-input" id="${kind}-search-input" value="${esc(st.search)}" placeholder="${ph}" onkeydown="if(event.key==='Enter')applyAccountingSearch('${kind}')"><button class="btn btn-ghost btn-sm" onclick="applyAccountingSearch('${kind}')">ค้นหา</button>${docTypeSel}<span class="filter-label">เดือน:</span><select class="filter-input" onchange="setAccountingMonth('${kind}',this.value)" title="เลือกทั้งเดือน">${accountingMonthOptions(kind,st.month)}</select><span class="filter-label">หรือวันที่:</span><input class="filter-input" type="date" value="${esc(st.date)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDate('${kind}',this.value)" title="ตั้งแต่วันที่"><span class="filter-label">ถึง</span><input class="filter-input" type="date" value="${esc(st.dateTo||'')}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDateTo('${kind}',this.value)" title="ถึงวันที่"><button class="btn btn-ghost btn-sm" onclick="clearAccountingDates('${kind}')">ล้างวันที่</button><button class="btn btn-ghost btn-sm ${st.range==='today'?'active':''}" onclick="setAccountingRange('${kind}','today')">วันนี้</button><button class="btn btn-ghost btn-sm ${st.range==='week'?'active':''}" onclick="setAccountingRange('${kind}','week')">สัปดาห์นี้</button><span class="filter-label">เรียงตาม:</span><select class="filter-input" onchange="setAccountingSortBy('${kind}',this.value)">${Object.keys(ACCOUNTING_SORT_FIELDS).map(k=>`<option value="${k}"${st.sortBy===k?' selected':''}>${esc(ACCOUNTING_SORT_FIELDS[k])}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="toggleAccountingSort('${kind}')">${st.sort==='desc'?'ใหม่→เก่า':'เก่า→ใหม่'}</button><button class="btn btn-ghost btn-sm" onclick="clearAccountingFilter('${kind}')">ล้างตัวกรอง</button>`;
+  b.innerHTML=companyFilterHtml(kind)+`<span class="filter-label">ค้นหา:</span><input class="search-input" id="${kind}-search-input" value="${esc(st.search)}" placeholder="${ph}" onkeydown="if(event.key==='Enter')applyAccountingSearch('${kind}')"><button class="btn btn-ghost btn-sm" onclick="applyAccountingSearch('${kind}')">ค้นหา</button>${docTypeSel}<span class="filter-label">เดือน:</span><select class="filter-input" onchange="setAccountingMonth('${kind}',this.value)" title="เลือกทั้งเดือน">${accountingMonthOptions(kind,st.month)}</select><span class="filter-label">หรือวันที่:</span><input class="filter-input" type="date" value="${esc(st.date)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDate('${kind}',this.value)" title="ตั้งแต่วันที่"><span class="filter-label">ถึง</span><input class="filter-input" type="date" value="${esc(st.dateTo||'')}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDateTo('${kind}',this.value)" title="ถึงวันที่"><button class="btn btn-ghost btn-sm" onclick="clearAccountingDates('${kind}')">ล้างวันที่</button><button class="btn btn-ghost btn-sm ${st.range==='today'?'active':''}" onclick="setAccountingRange('${kind}','today')">วันนี้</button><button class="btn btn-ghost btn-sm ${st.range==='week'?'active':''}" onclick="setAccountingRange('${kind}','week')">สัปดาห์นี้</button><span class="filter-label">เรียงตาม:</span><select class="filter-input" onchange="setAccountingSortBy('${kind}',this.value)">${Object.keys(ACCOUNTING_SORT_FIELDS).map(k=>`<option value="${k}"${st.sortBy===k?' selected':''}>${esc(ACCOUNTING_SORT_FIELDS[k])}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" onclick="toggleAccountingSort('${kind}')">${st.sort==='desc'?'ใหม่→เก่า':'เก่า→ใหม่'}</button><button class="btn btn-ghost btn-sm" onclick="clearAccountingFilter('${kind}')">ล้างตัวกรอง</button>`;
 }
 function applyAccountingSearch(kind){const el=document.getElementById(kind+'-search-input');const v=el?el.value.trim():'';if(kind==='pur')purSearch=v;else saleSearch=v;kind==='pur'?renderPurchaseTax():renderSalesTax();}
 // ตัวกรองวันที่ใช้ทีละแบบ: เดือน / ช่วงวันที่ (จาก–ถึง) / วันนี้-สัปดาห์นี้ — เลือกแบบหนึ่งจะล้างแบบอื่น
@@ -5544,6 +5561,7 @@ function openPurchaseModal(id=''){
   document.getElementById('pur-id').value=inv?.id||'';
   document.getElementById('pur-no').value=inv?.purchase_no||nextNo;
   document.getElementById('pur-supplier').value=inv?.supplier_name||'';
+  (function(){const el=document.getElementById('pur-company');if(!el)return;const cur=String(inv?.company_name||'').trim();const opts=[['','— ไม่ระบุ (ดูจากงาน PR ในรายการ) —'],...companyChoices().map(c=>[c.name,c.label+(c.label!==c.name?' · '+c.name:'')])];if(cur&&!opts.some(o=>o[0]===cur))opts.push([cur,cur]);el.innerHTML=opts.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('');el.value=cur;})();
   document.getElementById('pur-taxid').value=inv?.supplier_tax_id||'';
   document.getElementById('pur-invoice-no').value=inv?.invoice_no||'';
   document.getElementById('pur-date').value=inv?.invoice_date||todayISO();
@@ -5725,8 +5743,8 @@ async function savePurchaseInvoice(){if(!guardEdit())return;
     const {subtotal,vat,total}=computeVatTotals(purLineSum,purchaseVatMode);
     const internal=document.getElementById('pur-internal-note')?.value.trim();
     const note=[document.getElementById('pur-note').value.trim(),internal?`[internal] ${internal}`:''].filter(Boolean).join('\n');
-    const inv={id,purchase_no:document.getElementById('pur-no').value.trim()||id,supplier_name:document.getElementById('pur-supplier').value.trim(),supplier_tax_id:document.getElementById('pur-taxid').value.trim(),invoice_no:document.getElementById('pur-invoice-no').value.trim(),invoice_date:document.getElementById('pur-date').value||todayISO(),tax_invoice_type:document.getElementById('pur-tax-type').value,subtotal,vat_amount:vat,total_amount:total,payment_status:document.getElementById('pur-payment').value,payment_method:document.getElementById('pur-method').value.trim(),file_url:fileUrl,note,status:'active',created_by:(purchaseInvoices.find(x=>x.id===id)?.created_by)||getActorName(),updated_by:getActorName(),updated_at:new Date().toISOString()};
-    await sbUpsertResilient('purchase_invoices','?on_conflict=id',inv,['updated_at']); // ผู้กรอก + เวลาแก้ล่าสุด เหมือนบิลขาย
+    const inv={id,purchase_no:document.getElementById('pur-no').value.trim()||id,supplier_name:document.getElementById('pur-supplier').value.trim(),company_name:document.getElementById('pur-company')?.value||'',supplier_tax_id:document.getElementById('pur-taxid').value.trim(),invoice_no:document.getElementById('pur-invoice-no').value.trim(),invoice_date:document.getElementById('pur-date').value||todayISO(),tax_invoice_type:document.getElementById('pur-tax-type').value,subtotal,vat_amount:vat,total_amount:total,payment_status:document.getElementById('pur-payment').value,payment_method:document.getElementById('pur-method').value.trim(),file_url:fileUrl,note,status:'active',created_by:(purchaseInvoices.find(x=>x.id===id)?.created_by)||getActorName(),updated_by:getActorName(),updated_at:new Date().toISOString()};
+    await sbUpsertResilient('purchase_invoices','?on_conflict=id',inv,['updated_at','company_name']); // company_name = บริษัทผู้ซื้อ (SQL console_company_filter.sql) // ผู้กรอก + เวลาแก้ล่าสุด เหมือนบิลขาย
     const old=purchaseItems.filter(x=>x.purchase_invoice_id===id);
     for(const item of old.filter(x=>!rows.some(r=>r.id===x.id))){
       const del=await fetch(splitUrl('purchase_items',`?id=eq.${encodeURIComponent(item.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
@@ -6430,6 +6448,99 @@ function salesCompanyProfiles(){
   ];
   const saved=(salesCompanyProfileItems||[]).map(p=>({...p,label:p.label||p.displayName||p.name||'บริษัท'}));
   return [...defaults,...saved,{id:'custom',label:'กำหนดเอง / Custom'}];
+}
+// ===== แยกตามบริษัท (ตัวกรอง "บริษัท" ในแต่ละหน้า: ProFix / PP&MP / PT แอคคูลิตี้ / บริษัทที่บันทึกเพิ่ม) =====
+// งาน: job.company (เลือกตอนเปิดงาน) → ถ้าไม่ได้ระบุ ดูจากบิลขายล่าสุดที่ผูก PR นั้นอัตโนมัติ
+// งาน Admin: บริษัทของงาน (PR) ที่ผูกอยู่ → ถ้ายังไม่มีงาน ใช้ task.company
+// บิลขาย: company_name · บิลซื้อ: company_name (บริษัทผู้ซื้อ) → ถ้าว่างดูจากงาน PR ในรายการ
+// ค่าตัวกรองจำแยกต่อหน้า ในเครื่องนี้ (localStorage)
+const LS_COMPANY_FILTER_KEY='profix_company_filter';
+var companyFilterState=null;
+function companyFilters(){
+  if(!companyFilterState){try{companyFilterState=JSON.parse(localStorage.getItem(LS_COMPANY_FILTER_KEY)||'{}')||{};}catch(e){companyFilterState={};}}
+  return companyFilterState;
+}
+const COMPANY_SHORT_LABEL={'profix':'ProFix','pp-mp-supply':'PP&MP','pt-accoolity':'PT แอคคูลิตี้'};
+function companyChoices(){
+  const seen=new Set(),out=[];
+  salesCompanyProfiles().forEach(p=>{
+    if(p.id==='custom')return;
+    const name=String(p.name||'').trim();
+    if(!name||seen.has(name))return;
+    seen.add(name);
+    out.push({id:p.id,name,label:COMPANY_SHORT_LABEL[p.id]||p.label||name});
+  });
+  return out;
+}
+function companyIdFromName(name){
+  const n=String(name||'').trim();if(!n)return '';
+  const hit=companyChoices().find(c=>c.name===n);
+  if(hit)return hit.id;
+  return isProfixCompany(n)?'profix':'name:'+n;
+}
+function companyNameFromId(id){const c=companyChoices().find(x=>x.id===id);return c?c.name:(String(id||'').startsWith('name:')?String(id).slice(5):'');}
+function companyLabel(id){
+  if(!id)return 'ยังไม่ระบุ';
+  if(String(id).startsWith('name:'))return String(id).slice(5);
+  const c=companyChoices().find(x=>x.id===id);return c?c.label:id;
+}
+let salesCompanyMapCache={src:null,len:-1,map:{}};
+function salesCompanyByJob(){
+  const src=salesInvoices||[];
+  if(salesCompanyMapCache.src===src&&salesCompanyMapCache.len===src.length)return salesCompanyMapCache.map;
+  const map={},at={};
+  src.forEach(inv=>{
+    if(inv.status&&inv.status!=='active')return;
+    const cid=companyIdFromName(inv.company_name);if(!cid)return;
+    const t=String(inv.updated_at||inv.created_at||inv.invoice_date||'');
+    salesInvoiceJobs(inv).forEach(pr=>{const k=normalizePR(pr);if(!k)return;if(!(k in at)||t>at[k]){at[k]=t;map[k]=cid;}});
+  });
+  salesCompanyMapCache={src,len:src.length,map};
+  return map;
+}
+function jobCompanyId(j){if(!j)return '';if(j.company)return j.company;return salesCompanyByJob()[normalizePR(j.id)]||'';}
+function prCompanyId(pr){
+  if(!pr)return '';
+  const j=liveJobs().find(x=>sameJob(x.id,pr));
+  return j?jobCompanyId(j):(salesCompanyByJob()[normalizePR(pr)]||'');
+}
+function taskCompanyId(t){if(!t)return '';return (t.jobId&&prCompanyId(t.jobId))||t.company||'';}
+function saleCompanyId(inv){return companyIdFromName(inv&&inv.company_name);}
+function purchaseCompanyId(inv){
+  if(!inv)return '';
+  const own=companyIdFromName(inv.company_name);if(own)return own;
+  for(const it of (purchaseItems||[])){if(it.purchase_invoice_id===inv.id&&it.job_id){const c=prCompanyId(it.job_id);if(c)return c;}}
+  return '';
+}
+// cid = id บริษัท หรือฟังก์ชันที่คืน id (คำนวณเฉพาะตอนมีตัวกรอง)
+function companyMatch(scope,cid){const f=companyFilters()[scope]||'';if(!f)return true;if(typeof cid==='function')cid=cid();if(f==='none')return !cid;return cid===f;}
+const COMPANY_FILTER_RENDER={dash:()=>renderDash(),admin:()=>renderAdmin(),jobs:()=>renderJobs(),cal:()=>renderCalendar(),fin:()=>renderFin(),pur:()=>renderPurchaseTax(),sale:()=>renderSalesTax(),rpt:()=>renderReports()};
+// งานที่ไม่ได้เลือกบริษัทเองต้องดูจากบิลขาย → ถ้ายังไม่ได้โหลดบิลขาย ให้โหลดแล้ววาดหน้านั้นใหม่
+function companyEnsureSales(scope){
+  if(!companyFilters()[scope]||accountingLoaded||accountingLoadingPromise)return;
+  ensureAccountingLoaded().then(()=>{const r=COMPANY_FILTER_RENDER[scope];if(r)r();}).catch(()=>{});
+}
+function setCompanyFilter(scope,v){
+  companyFilters()[scope]=v||'';
+  try{localStorage.setItem(LS_COMPANY_FILTER_KEY,JSON.stringify(companyFilters()));}catch(e){}
+  const r=COMPANY_FILTER_RENDER[scope];if(r)r();
+}
+function companyFilterOptionsHtml(scope){
+  const f=companyFilters()[scope]||'';
+  const opts=[['','ทุกบริษัท'],...companyChoices().map(c=>[c.id,c.label]),['none','ยังไม่ระบุบริษัท']];
+  if(f&&!opts.some(o=>o[0]===f))opts.splice(opts.length-1,0,[f,companyLabel(f)]);
+  return opts.map(([v,l])=>`<option value="${esc(v)}"${v===f?' selected':''}>${esc(l)}</option>`).join('');
+}
+function companyFilterHtml(scope){
+  return `<span class="filter-label">บริษัท:</span><select class="filter-select" onchange="setCompanyFilter('${scope}',this.value)">${companyFilterOptionsHtml(scope)}</select>`;
+}
+// select บริษัทในฟอร์มงาน/งาน Admin (เก็บเป็น id) ; autoId = บริษัทที่ระบบเดาจากบิลขาย (แสดงเป็นตัวเลือกว่าง)
+function fillCompanySelect(selId,value,emptyLabel){
+  const el=document.getElementById(selId);if(!el)return;
+  const opts=[['',emptyLabel||'— เลือกบริษัท —'],...companyChoices().map(c=>[c.id,c.label])];
+  if(value&&!opts.some(o=>o[0]===value))opts.push([value,companyLabel(value)]);
+  el.innerHTML=opts.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('');
+  el.value=value||'';
 }
 function renderSalesCompanyProfileOptions(selected='custom'){
   const sel=document.getElementById('sale-company-profile');if(!sel)return;
@@ -9498,7 +9609,7 @@ function reportReviewBadge(st){
 
 function buildRptControls(counts){
   const b=document.getElementById('rpt-fbar');if(!b)return;
-  b.innerHTML=`<span class="filter-label">สถานะงาน:</span><select class="filter-select" onchange="rptFilter=this.value;renderReports();saveUIState();">${statusOptionHtml(J_ST,counts,rptFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="rpt-search-input" value="${esc(rptSearch)}" placeholder="PR / สาขา / ทีม" onkeydown="if(event.key==='Enter')applyRptSearch()"><button class="btn btn-ghost btn-sm" onclick="applyRptSearch()">ค้นหา</button>`;
+  b.innerHTML=companyFilterHtml('rpt')+`<span class="filter-label">สถานะงาน:</span><select class="filter-select" onchange="rptFilter=this.value;renderReports();saveUIState();">${statusOptionHtml(J_ST,counts,rptFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="rpt-search-input" value="${esc(rptSearch)}" placeholder="PR / สาขา / ทีม" onkeydown="if(event.key==='Enter')applyRptSearch()"><button class="btn btn-ghost btn-sm" onclick="applyRptSearch()">ค้นหา</button>`;
   addDateControls('rpt-fbar','rpt');
   addQuickControls('rpt-fbar','rpt');
 }
@@ -9578,7 +9689,8 @@ function openReportDocumentImage(jobId,index){
   openM('m-image-preview');
 }
 function renderReports(){
-  const scoped=liveJobs().filter(j=>inDateScope(j,'rpt'));
+  companyEnsureSales('rpt');
+  const scoped=liveJobs().filter(j=>inDateScope(j,'rpt')&&companyMatch('rpt',()=>jobCompanyId(j)));
   const cnts={};
   J_ST.forEach(s=>{cnts[s]=scoped.filter(j=>j.status===s).length;});
   buildRptControls(cnts);
