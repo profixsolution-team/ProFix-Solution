@@ -125,6 +125,8 @@ textarea{resize:vertical;min-height:80px;}
 
   <!-- FORM STATE -->
   <div id="state-form" class="hidden">
+    <div id="local-draft-bar" style="display:none;margin:0 0 10px;padding:9px 12px;border-radius:10px;background:#fff6e0;color:#8a5a00;font-size:13px;"></div>
+    <div id="local-draft-hint" style="display:none;margin:0 0 8px;font-size:12px;color:#6b7280;text-align:right;"></div>
 
     <!-- JOB INFO (read-only) -->
     <div class="card job-head">
@@ -923,6 +925,89 @@ function retryLoadJob(){
   loadJob();
 }
 
+// ============================================================
+// ร่างในเครื่อง (auto) — ช่างเผลอปิดหน้า/แอปเด้ง/เน็ตหลุด ข้อมูลไม่หาย
+//  - ข้อความ/อะไหล่/ตัวเลือก → localStorage · รูปที่ยังไม่ได้อัปโหลด → IndexedDB (เก็บไฟล์ที่บีบอัดแล้ว)
+//  - บันทึกเองทุกครั้งที่พิมพ์/เพิ่ม-ลบรูป · เปิดหน้าใหม่ → กู้คืนให้อัตโนมัติ (ถ้าใหม่กว่าข้อมูลบนเซิร์ฟเวอร์)
+//  - ล้างทิ้งเมื่อบันทึกร่างขึ้นเซิร์ฟเวอร์/ส่งงานสำเร็จ · อยู่เฉพาะเครื่องนี้ (คนละมือถือไม่เห็น)
+// ============================================================
+const LOCAL_DRAFT_FIELDS=['f-date-in','f-time-in','f-date-done','f-time-done','f-symptom','f-cause','f-fix','f-note'];
+const LOCAL_DRAFT_CHECKS=['f-need-quote','f-noparts','f-no-during','f-no-after'];
+let localDraftEnabled=false, localDraftTimer=null;
+function localDraftKey(){ return 'profix_tech_draft:'+normJobId((jobData&&jobData.id)||JOB_ID); }
+function draftDb(){
+  return new Promise((res,rej)=>{
+    if(!window.indexedDB) return rej(new Error('no indexedDB'));
+    const rq=indexedDB.open('profix_tech_drafts',1);
+    rq.onupgradeneeded=()=>{ if(!rq.result.objectStoreNames.contains('photos')) rq.result.createObjectStore('photos'); };
+    rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error);
+  });
+}
+async function draftDbDo(mode,fn){ const db=await draftDb(); return new Promise((res,rej)=>{ const tx=db.transaction('photos',mode); const st=tx.objectStore('photos'); const out=fn(st); tx.oncomplete=()=>res(out&&out.result!==undefined?out.result:out); tx.onerror=()=>rej(tx.error); }); }
+function scheduleLocalDraftSave(){ if(!localDraftEnabled) return; clearTimeout(localDraftTimer); localDraftTimer=setTimeout(saveLocalDraftNow,600); }
+async function saveLocalDraftNow(){
+  if(!localDraftEnabled) return;
+  try{
+    const prefix=localDraftKey()+':';
+    const local=[];
+    for(const cat of Object.keys(photos)) for(const p of photos[cat]) if(!p.existing && p.status==='ready' && (p.compressed||p.file)) local.push({cat,p});
+    const draft={ v:1, savedAt:new Date().toISOString(), fields:{}, checks:{}, parts:techPartRows, photoIds:local.map(x=>x.p.id) };
+    LOCAL_DRAFT_FIELDS.forEach(id=>{ const el=document.getElementById(id); if(el) draft.fields[id]=el.value; });
+    LOCAL_DRAFT_CHECKS.forEach(id=>{ const el=document.getElementById(id); if(el) draft.checks[id]=!!el.checked; });
+    localStorage.setItem(localDraftKey(), JSON.stringify(draft));
+    // รูป: เขียนเฉพาะที่ยังไม่มีใน DB + ลบรูปที่ช่างลบออกแล้ว
+    await draftDbDo('readwrite', st=>{
+      const keep=new Set(local.map(x=>prefix+x.p.id));
+      const rq=st.getAllKeys();
+      rq.onsuccess=()=>{ (rq.result||[]).forEach(k=>{ if(String(k).startsWith(prefix)&&!keep.has(k)) st.delete(k); }); };
+      local.forEach(({cat,p})=>{ if(!p._localSaved){ st.put({cat,id:p.id,blob:p.compressed||p.file,width:p.width||0,height:p.height||0,fileKey:p.fileKey||'',name:p.file?.name||''}, prefix+p.id); p._localSaved=true; } });
+    }).catch(e=>console.warn('local draft photos save failed',e));
+    const hint=document.getElementById('local-draft-hint');
+    if(hint){ hint.textContent='💾 บันทึกร่างในเครื่องอัตโนมัติ '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+' น.'; hint.style.display=''; }
+  }catch(e){ console.warn('local draft save failed', e); }
+}
+async function clearLocalDraft(){
+  try{ localStorage.removeItem(localDraftKey()); }catch(e){}
+  try{ const prefix=localDraftKey()+':'; await draftDbDo('readwrite', st=>{ const rq=st.getAllKeys(); rq.onsuccess=()=>(rq.result||[]).forEach(k=>{ if(String(k).startsWith(prefix)) st.delete(k); }); }); }catch(e){}
+}
+async function restoreLocalDraft(){
+  let draft=null;
+  try{ draft=JSON.parse(localStorage.getItem(localDraftKey())||'null'); }catch(e){}
+  if(draft&&draft.v===1){
+    const serverStamp=Math.max(Date.parse(jobData?.technicianReport?.draftSavedAt||'')||0, Date.parse(jobData?.techSubmittedAt||'')||0, Date.parse(jobData?.technicianReport?.returnedForFixAt||'')||0);
+    if((Date.parse(draft.savedAt)||0) <= serverStamp){ await clearLocalDraft(); } // บนเซิร์ฟเวอร์ใหม่กว่า (บันทึกจากเครื่องอื่น/ส่งแล้ว) → ทิ้งร่างในเครื่อง
+    else{
+      Object.entries(draft.fields||{}).forEach(([id,v])=>{ const el=document.getElementById(id); if(el&&v!=null&&v!=='') el.value=v; });
+      Object.entries(draft.checks||{}).forEach(([id,v])=>{ const el=document.getElementById(id); if(el) el.checked=!!v; });
+      if(Array.isArray(draft.parts)&&draft.parts.length) setTechPartRows(draft.parts);
+      try{ toggleNoParts(); }catch(e){}
+      let restored=0;
+      try{
+        const prefix=localDraftKey()+':';
+        const rows=await draftDbDo('readonly', st=>st.getAll());
+        (rows||[]).forEach(r=>{
+          if(!r||!r.blob||!photos[r.cat]||!(draft.photoIds||[]).includes(r.id)) return;
+          if(photos[r.cat].some(p=>p.id===r.id)) return;
+          photos[r.cat].push({ id:r.id, file:null, fileKey:r.fileKey, compressed:r.blob, dataUrl:URL.createObjectURL(r.blob), width:r.width, height:r.height, status:'ready', _localSaved:true });
+          restored++;
+        });
+      }catch(e){ console.warn('local draft photos restore failed', e); }
+      const t=new Date(draft.savedAt).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      const bar=document.getElementById('local-draft-bar');
+      if(bar){ bar.innerHTML=`♻️ กู้คืนข้อมูลที่กรอกค้างไว้ในเครื่องนี้ (${esc(t)} น.${restored?` · รูป ${restored} รูป`:''}) <button type="button" onclick="discardLocalDraft()" style="margin-left:6px;border:1px solid currentColor;background:transparent;color:inherit;border-radius:8px;padding:2px 8px;font:inherit;font-size:12px;">ทิ้งร่างนี้</button>`; bar.style.display=''; }
+    }
+  }
+  localDraftEnabled=true;
+}
+async function discardLocalDraft(){
+  if(!confirm('ทิ้งข้อมูลที่กรอกค้างไว้ในเครื่อง แล้วเริ่มจากข้อมูลบนระบบ?')) return;
+  localDraftEnabled=false; await clearLocalDraft(); location.reload();
+}
+document.addEventListener('input', e=>{ if(e.target&&e.target.closest&&e.target.closest('#state-form')) scheduleLocalDraftSave(); }, true);
+document.addEventListener('change', e=>{ if(e.target&&e.target.closest&&e.target.closest('#state-form')) scheduleLocalDraftSave(); }, true);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveLocalDraftNow(); });
+window.addEventListener('pagehide', ()=>{ saveLocalDraftNow(); });
+
 async function showForm(){
   document.getElementById('state-loading').classList.add('hidden');
   document.getElementById('state-form').classList.remove('hidden');
@@ -965,6 +1050,9 @@ async function showForm(){
   // โหลดรูปเดิมจาก technician_report_images (รูปที่อัปไว้รอบก่อน/ฉบับร่าง) — job data เก็บแค่จำนวน ไม่ได้เก็บรูปจริง
   await loadExistingPhotosIntoForm(jobData.id || JOB_ID);
   await loadCheckinSurveyPhotos(jobData.id || JOB_ID); // ดึงรูปสำรวจจากหน้าแจ้งเข้าซ่อม → รูปก่อนดำเนินการ
+  ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
+  renderThumbs('documents');
+  await restoreLocalDraft(); // ร่างในเครื่อง (ถ้าใหม่กว่าข้อมูลบนระบบ) — ต้องทำก่อน toggle เพื่อให้ช่อง/โหมดตรงกับที่กรอกค้างไว้
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
   renderThumbs('documents');
   toggleQuoteMode();
@@ -1130,6 +1218,7 @@ function compressImage(file, maxW=1100, quality=0.68){
 }
 
 function renderThumbs(cat){
+  scheduleLocalDraftSave();
   const el = document.getElementById('th-'+cat);
   el.innerHTML = photos[cat].map(p=>`
     <div class="thumb">
@@ -1325,6 +1414,7 @@ async function saveDraft(){
     await patchJobAfterTechReport(job.id || JOB_ID, patch, { savedAt, statuses:[draftStatus], adminTaskNote:'ช่างบันทึกฉบับร่าง' });
     jobData = { ...job, ...patch };
     document.getElementById('overlay-upload').classList.remove('show');
+    await clearLocalDraft(); // ขึ้นเซิร์ฟเวอร์แล้ว → ไม่ต้องเก็บร่างในเครื่อง
     alert('บันทึกฉบับร่างแล้ว กลับมาเปิดลิงก์นี้เพื่อกรอกต่อได้');
   }catch(e){
     document.getElementById('overlay-upload').classList.remove('show');
@@ -1447,6 +1537,7 @@ async function submitJob(){
     notifyLine(report, { before:photos.before.length, during:photos.during.length, after:photos.after.length });
 
     // success
+    localDraftEnabled=false; await clearLocalDraft();
     document.getElementById('overlay-upload').classList.remove('show');
     document.getElementById('overlay-success').classList.add('show');
   }catch(e){

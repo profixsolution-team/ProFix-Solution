@@ -41,6 +41,32 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:'Anuphan',syste
 .acc{font-size:12.5px;color:var(--green);margin-top:8px;}
 .card.working{border-left:4px solid var(--green);}
 .btn.warn{background:#f59e0b;color:#fff;}
+.card{cursor:pointer;}
+.more-link{font-size:12px;color:var(--blue);margin-top:8px;font-weight:600;}
+.filters{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:6px;display:grid;gap:8px;}
+.filters select,.filters input{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font:inherit;font-size:15px;background:#fff;min-width:0;}
+.filters .range{display:flex;align-items:center;gap:6px;}
+.filters .range span{font-size:13px;color:var(--text2);flex:0 0 auto;}
+.filters{grid-template-columns:minmax(0,1fr);}
+.filters .range input{flex:1 1 0;width:0;min-width:0;}
+.filters .clear{flex:0 0 auto;border:0;background:var(--gray-dim);border-radius:10px;padding:9px 12px;font:inherit;font-size:13px;}
+#detail{position:fixed;inset:0;z-index:20;background:var(--bg);display:none;flex-direction:column;}
+#detail.open{display:flex;}
+.d-head{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#0b1220;color:#fff;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top));}
+.d-head b{font-size:17px;}
+.d-close{background:#1f2a40;color:#fff;border:0;border-radius:10px;padding:8px 12px;font:inherit;font-size:14px;}
+.d-head span{width:70px;}
+.d-body{flex:1;overflow:auto;padding:16px 14px;}
+.d-title{font-size:19px;font-weight:700;}
+.d-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px;white-space:pre-wrap;word-break:break-word;font-size:14.5px;}
+.d-box.warn{background:var(--yellow-dim);border-color:#f3d48a;}
+.d-grid{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 12px;}
+.d-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;}
+.d-row:last-child{border-bottom:0;}
+.d-row span{color:var(--text2);flex:0 0 auto;}
+.d-row b{text-align:right;font-weight:600;word-break:break-word;}
+.d-row a{color:var(--blue);}
+.d-foot{background:var(--card);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));margin:0;}
 .btns{display:flex;gap:8px;margin-top:11px;}
 .btn{flex:1;border:0;border-radius:11px;padding:11px 8px;font:inherit;font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:5px;text-decoration:none;cursor:pointer;}
 .btn.primary{background:var(--blue);color:#fff;}
@@ -67,6 +93,7 @@ details.more summary::-webkit-details-marker{display:none;}
 <body>
 <div class="top" id="top" style="display:none;"><img id="avatar" alt=""><div class="who"><b id="who-name">-</b><span id="who-team">-</span></div><button onclick="loadJobs(true)">↻ รีเฟรช</button></div>
 <div class="wrap" id="app"><div class="loading"><div class="spin"></div>กำลังเปิด...</div></div>
+<div id="detail"></div>
 <div class="toast" id="toast"></div>
 <script>
 // ===== ตั้งค่า (ใส่หลังสร้าง LIFF app ใน LINE Developers) =====
@@ -139,55 +166,108 @@ function showPending(){
 }
 async function recheck(){try{const d=await api('me');me=d.tech;route();}catch(e){$('pd-msg').textContent=e.message;}}
 
+// ===== ตัวกรอง: เลือกเดือน หรือช่วงวันที่ (ตามวันนัด) — เมื่อกรอง จะดึงงานที่ปิดแล้วในช่วงนั้นมาแสดงด้วย =====
+let filt={month:'',from:'',to:''};
+function filterRange(){
+  if(filt.month){const [y,m]=filt.month.split('-').map(Number);const last=new Date(y,m,0).getDate();return {from:`${filt.month}-01`,to:`${filt.month}-${String(last).padStart(2,'0')}`};}
+  return {from:filt.from||'',to:filt.to||''};
+}
+const filterActive=()=>!!(filt.month||filt.from||filt.to);
+function monthOptions(){
+  const t=new Date(),out=['<option value="">ทุกเดือน (งานที่ยังไม่ปิด)</option>'];
+  for(let i=2;i>=-12;i--){const d=new Date(t.getFullYear(),t.getMonth()+i,1);const v=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;out.push(`<option value="${v}"${filt.month===v?' selected':''}>${TH_MON[d.getMonth()]} ${d.getFullYear()+543}</option>`);}
+  return out.join('');
+}
+function setMonth(v){filt={month:v,from:'',to:''};loadJobs();}
+function setRange(k,v){filt.month='';filt[k]=v;if(filt.from&&filt.to&&filt.from>filt.to){if(k==='from')filt.to=v;else filt.from=v;}loadJobs();}
+function clearFilter(){filt={month:'',from:'',to:''};loadJobs();}
 async function loadJobs(manual){
   if(!jobs.length)$('app').innerHTML='<div class="loading"><div class="spin"></div>กำลังโหลดงาน...</div>';
-  try{const d=await api('jobs');me=d.tech||me;jobs=d.jobs||[];showTop();renderJobs();if(manual)toast('อัปเดตแล้ว');}
+  try{const d=await api('jobs',filterRange());me=d.tech||me;jobs=d.jobs||[];showTop();renderJobs();if(manual)toast('อัปเดตแล้ว');}
   catch(e){if(e.status===403&&e.data&&e.data.tech){me=e.data.tech;return route();}showError(e.message);}
 }
 function renderJobs(){
   const today=todayISO(),week=addDays(today,7);
-  const working=jobs.filter(j=>j.inProgress&&!j.waitingAdmin);
-  const act=jobs.filter(j=>!j.waitingAdmin&&!j.inProgress), wait=jobs.filter(j=>j.waitingAdmin);
   const hasDate=j=>/^\d{4}-\d{2}-\d{2}/.test(j.date||'');
-  const late=act.filter(j=>hasDate(j)&&j.date<today);
-  const tday=act.filter(j=>j.date===today);
-  const soon=act.filter(j=>hasDate(j)&&j.date>today&&j.date<=week);
-  const later=act.filter(j=>!hasDate(j)||j.date>week);
   const byDate=(a,b)=>String(a.date||'9').localeCompare(String(b.date||'9'));
   const sec=(icon,title,list,cls)=>list.length?`<div class="sec">${icon} ${title} <span class="n">${list.length}</span></div>`+list.sort(byDate).map(j=>card(j,cls)).join(''):'';
-  $('app').innerHTML=`<div class="summary"><div><b style="color:var(--green)">${working.length}</b><span>กำลังซ่อม</span></div><div><b style="color:var(--red)">${late.length}</b><span>ค้าง/เลยนัด</span></div><div><b style="color:var(--blue)">${tday.length}</b><span>วันนี้</span></div></div>`
-    +(act.length||working.length?'':'<div class="empty">🎉 ไม่มีงานค้าง</div>')
-    +sec('🔧','กำลังซ่อม',working,'working')+sec('🔴','ค้าง / เลยนัด',late,'late')+sec('📅','วันนี้',tday,'today')+sec('🗓️','7 วันข้างหน้า',soon,'')+sec('📋','ยังไม่ระบุวัน / ถัดไป',later,'')
-    +(wait.length?`<details class="more"><summary>⏳ รอแอดมิน (${wait.length}) ▾</summary>${wait.sort(byDate).map(j=>card(j,'')).join('')}</details>`:'');
+  const fbar=`<div class="filters"><select onchange="setMonth(this.value)">${monthOptions()}</select>
+    <div class="range"><input type="date" value="${esc(filt.from)}" onchange="setRange('from',this.value)" aria-label="ตั้งแต่วันที่"><span>ถึง</span><input type="date" value="${esc(filt.to)}" onchange="setRange('to',this.value)" aria-label="ถึงวันที่">${filterActive()?'<button class="clear" onclick="clearFilter()">ล้าง</button>':''}</div></div>`;
+  let html;
+  if(filterActive()){
+    const r=filterRange();
+    const inR=jobs.filter(j=>hasDate(j)&&(!r.from||j.date>=r.from)&&(!r.to||j.date<=r.to));
+    const working=inR.filter(j=>j.inProgress&&!j.waitingAdmin&&!j.done), todo=inR.filter(j=>!j.inProgress&&!j.waitingAdmin&&!j.done);
+    const sent=inR.filter(j=>j.waitingAdmin&&!j.done), done=inR.filter(j=>j.done);
+    html=`<div class="summary"><div><b>${inR.length}</b><span>งานทั้งหมด</span></div><div><b style="color:var(--green)">${sent.length+done.length}</b><span>ส่ง/ปิดแล้ว</span></div><div><b style="color:var(--red)">${todo.length+working.length}</b><span>ยังไม่เสร็จ</span></div></div>`+fbar
+      +(inR.length?'':'<div class="empty">ไม่มีงานในช่วงนี้</div>')
+      +sec('🔧','กำลังซ่อม',working,'working')+sec('📋','ยังไม่เสร็จ',todo,'')+sec('📤','ส่งงานแล้ว',sent,'')+sec('✅','ปิดงานแล้ว',done,'');
+  }else{
+    const open=jobs.filter(j=>!j.done);
+    const working=open.filter(j=>j.inProgress&&!j.waitingAdmin);
+    const act=open.filter(j=>!j.waitingAdmin&&!j.inProgress), wait=open.filter(j=>j.waitingAdmin);
+    const late=act.filter(j=>hasDate(j)&&j.date<today), tday=act.filter(j=>j.date===today);
+    const soon=act.filter(j=>hasDate(j)&&j.date>today&&j.date<=week), later=act.filter(j=>!hasDate(j)||j.date>week);
+    html=`<div class="summary"><div><b style="color:var(--green)">${working.length}</b><span>กำลังซ่อม</span></div><div><b style="color:var(--red)">${late.length}</b><span>ค้าง/เลยนัด</span></div><div><b style="color:var(--blue)">${tday.length}</b><span>วันนี้</span></div></div>`+fbar
+      +(act.length||working.length?'':'<div class="empty">🎉 ไม่มีงานค้าง</div>')
+      +sec('🔧','กำลังซ่อม',working,'working')+sec('🔴','ค้าง / เลยนัด',late,'late')+sec('📅','วันนี้',tday,'today')+sec('🗓️','7 วันข้างหน้า',soon,'')+sec('📋','ยังไม่ระบุวัน / ถัดไป',later,'')
+      +(wait.length?`<details class="more"><summary>📤 ส่งงานแล้ว (${wait.length}) ▾</summary>${wait.sort(byDate).map(j=>card(j,'')).join('')}</details>`:'');
+  }
+  $('app').innerHTML=html;
 }
 function statusChip(j){
   const s=j.status||'-';
-  const cls=/ส่งงานแล้ว|กำลังเข้าซ่อม/.test(s)?'green':/รออนุมัติ|PO|ขออนุมัติ/.test(s)?'yellow':/ร่าง/.test(s)?'blue':/รอช่าง/.test(s)?'red':'';
+  const cls=j.done?'':/ส่งงานแล้ว|กำลังเข้าซ่อม/.test(s)?'green':/รออนุมัติ|PO|ขออนุมัติ/.test(s)?'yellow':/ร่าง/.test(s)?'blue':/รอช่าง/.test(s)?'red':'';
   return `<span class="chip ${cls}">${esc(s)}</span>`;
+}
+function jobActions(j){
+  // ขั้นตอน: ยังไม่เริ่ม → [▶️ เริ่มงาน] (กดเมื่อถึงสาขา) → [⏳ รอขออนุมัติ] / [🔧 ส่งงาน] · ส่งงานแล้ว → ดู/แก้รายงาน · ปิดงานแล้ว → ไม่มีปุ่ม
+  const tel=j.phone?`<a class="btn ghost small" href="tel:${esc(String(j.phone).replace(/[^\d+]/g,''))}">📞</a>`:'';
+  if(j.done)return tel;
+  if(j.waitingAdmin)return `<button class="btn ghost" onclick="openSubmit('${esc(j.id)}','')">📄 ดู/แก้รายงาน</button>`+tel;
+  if(j.inProgress)return `<button class="btn warn" onclick="openSubmit('${esc(j.id)}','quote')">⏳ รอขออนุมัติ</button><button class="btn primary" onclick="openSubmit('${esc(j.id)}','done')">🔧 ส่งงาน</button>`+tel;
+  return `<button class="btn ok" onclick="startJob('${esc(j.id)}',this)">▶️ เริ่มงาน</button>`+tel;
 }
 function card(j,cls){
   const lvl=j.level?`<span class="chip ${/1/.test(j.level)?'red':''}">${esc(String(j.level).replace(/^Level\s*/i,'L'))}</span> `:'';
   const acc=(j.started&&(j.inProgress||j.waitingAdmin))?`<div class="acc">▶️ เริ่มงานแล้ว · ${esc(j.started.by||'')} ${esc(thTime(j.started.at))}</div>`:'';
-  const tel=j.phone?`<a class="btn ghost small" href="tel:${esc(String(j.phone).replace(/[^\d+]/g,''))}">📞</a>`:'';
-  // ขั้นตอน: ยังไม่เริ่ม → [▶️ เริ่มงาน] (กดเมื่อถึงสาขา) → [⏳ รอขออนุมัติ] / [🔧 ส่งงาน] · งานรอแอดมิน → ดู/แก้รายงาน
-  let actions;
-  if(j.waitingAdmin)actions=`<button class="btn ghost" onclick="openSubmit('${esc(j.id)}','')">📄 ดู/แก้รายงาน</button>`;
-  else if(j.inProgress)actions=`<button class="btn warn" onclick="openSubmit('${esc(j.id)}','quote')">⏳ รอขออนุมัติ</button><button class="btn primary" onclick="openSubmit('${esc(j.id)}','done')">🔧 ส่งงาน</button>`;
-  else actions=`<button class="btn ok" onclick="startJob('${esc(j.id)}',this)">▶️ เริ่มงาน (ถึงสาขาแล้ว)</button>`;
-  return `<div class="card ${cls||''}"><div class="row1"><div class="pr">${esc(j.id)}</div><div>${lvl}${statusChip(j)}</div></div>
+  return `<div class="card ${cls||''}" onclick="openDetail('${esc(j.id)}')"><div class="row1"><div class="pr">${esc(j.id)}</div><div>${lvl}${statusChip(j)}</div></div>
     <div class="branch">${esc(j.branch||'-')}</div><div class="meta">${esc(j.type||'')}${j.type?' · ':''}${esc(thDate(j.date))}${j.client?'<br>'+esc(j.client):''}</div>
-    ${j.detail?`<div class="detail clamp" onclick="this.classList.toggle('clamp')">${esc(j.detail)}</div>`:''}${acc}
-    <div class="btns">${actions}${tel}</div></div>`;
+    ${j.detail?`<div class="detail clamp">${esc(j.detail)}</div>`:''}${acc}
+    <div class="more-link">ดูรายละเอียดเต็ม ›</div>
+    <div class="btns" onclick="event.stopPropagation()">${jobActions(j)}</div></div>`;
 }
+// ===== รายละเอียดงานแบบเต็ม (แตะการ์ด) =====
+function openDetail(id){
+  const j=jobs.find(x=>x.id===id);if(!j)return;
+  const row=(k,v)=>v?`<div class="d-row"><span>${k}</span><b>${v}</b></div>`:'';
+  const tel=j.phone?`<a href="tel:${esc(String(j.phone).replace(/[^\d+]/g,''))}">${esc(j.phone)}</a>`:'';
+  const tIn=j.dateIn?`${esc(thDate(j.dateIn))} ${esc(j.timeIn||'')}`:'';
+  const tDone=j.dateDone?`${esc(thDate(j.dateDone))} ${esc(j.timeDone||'')}`:'';
+  $('detail').innerHTML=`<div class="d-head"><button class="d-close" onclick="closeDetail()" aria-label="ปิด">‹ กลับ</button><b>${esc(j.id)}</b><span></span></div>
+    <div class="d-body"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">${j.level?`<span class="chip ${/1/.test(j.level)?'red':''}">${esc(j.level)}</span>`:''}${statusChip(j)}</div>
+      <div class="d-title">${esc(j.branch||'-')}</div><div class="meta" style="margin-bottom:12px;">${esc(j.client||'')}</div>
+      ${j.reviewNote?`<div class="d-box warn"><b>หมายเหตุจากแอดมิน</b><br>${esc(j.reviewNote)}</div>`:''}
+      <div class="d-box"><b>รายละเอียดงาน / อาการที่แจ้ง</b><br>${esc(j.detail||'-')}${j.jobNote?`<br><br><b>หมายเหตุงาน</b><br>${esc(j.jobNote)}`:''}</div>
+      <div class="d-grid">${row('ประเภทงาน',esc(j.type))}${row('วันนัด',esc(thDate(j.date)))}${row('ทีม',esc(j.team))}${row('เบอร์หน้างาน',tel)}${row('เลขอ้างอิงลูกค้า',esc(j.ref))}${row('วันที่สั่งงาน',esc(j.assignedAt))}
+        ${row('เริ่มงาน',j.started?`${esc(thTime(j.started.at))} · ${esc(j.started.by||'')}`:'')}${row('เข้างานจริง',tIn)}${row('เสร็จงาน',tDone)}${row('ส่งรายงาน',j.techSubmittedAt?esc(thTime(j.techSubmittedAt)):'')}${row('สถานะรายงาน',esc(j.reportStatus))}</div>
+    </div>
+    <div class="d-foot btns">${jobActions(j)}</div>`;
+  const wasOpen=$('detail').classList.contains('open');
+  $('detail').classList.add('open');document.body.style.overflow='hidden';
+  if(wasOpen)history.replaceState({detail:id},'');else history.pushState({detail:id},''); // ปุ่มย้อนกลับของมือถือ = ปิดหน้ารายละเอียด
+}
+function closeDetail(fromPop){$('detail').classList.remove('open');document.body.style.overflow='';if(!fromPop&&history.state&&history.state.detail)history.back();}
+window.addEventListener('popstate',()=>{if($('detail').classList.contains('open'))closeDetail(true);});
 async function startJob(id,btn){
   const j=jobs.find(x=>x.id===id);
-  if(!confirm(`ถึงสาขาแล้ว เริ่มงาน ${id}?\n${j?j.branch:''}\n\nสถานะในระบบจะเปลี่ยนเป็น "ช่างกำลังเข้าซ่อม" และบันทึกเวลาเข้างานให้`))return;
+  if(!confirm(`เริ่มงาน ${id}${j&&j.branch?'\n'+j.branch:''} ?`))return;
   btn.disabled=true;
-  try{const d=await api('start',{jobId:id});if(j){j.status=d.status||'ช่างกำลังเข้าซ่อม';j.inProgress=true;j.started=d.started||{at:new Date().toISOString(),by:me.display_name};}renderJobs();toast('เริ่มงาน '+id+' แล้ว');}
+  try{const d=await api('start',{jobId:id});if(j){j.status=d.status||'ช่างกำลังเข้าซ่อม';j.inProgress=true;j.started=d.started||{at:new Date().toISOString(),by:me.display_name};}
+    if($('detail').classList.contains('open'))openDetail(id);renderJobs();toast('เริ่มงาน '+id+' แล้ว');}
   catch(e){btn.disabled=false;toast(e.message);}
 }
 function openSubmit(id,mode){location.href=SUBMIT_PAGE+'?job='+encodeURIComponent(id)+'&from=tech'+(mode?'&mode='+mode:'');}
-
 // ===== ข้อมูลตัวอย่าง (?demo=1) =====
 function demoApi(action,extra){
   const t=todayISO();
@@ -195,13 +275,16 @@ function demoApi(action,extra){
   if(action==='me')return Promise.resolve({ok:true,line:{name:'Amnuay',picture:''},tech:new URLSearchParams(location.search).get('demo')==='new'?null:tech});
   if(action==='register')return Promise.resolve({ok:true,tech:{...tech,status:'pending',requested_team:extra.team,display_name:extra.displayName}});
   if(action==='start')return Promise.resolve({ok:true,status:'ช่างกำลังเข้าซ่อม',started:{at:new Date().toISOString(),by:'ช่างอำนวย'}});
-  return Promise.resolve({ok:true,tech,jobs:[
+  const dJobs=[
     {id:'PR431019',branch:'Pun Thai บางแวก (พุทธมณฑลสาย3)',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:addDays(t,-2),status:'รอช่างส่งงาน',level:'Level 1',detail:'- ตู้แช่เค้ก//ยี่ห้อ SYSTEMFORM\n- ตู้เค้กมีเสียงดังตลอดเวลา และไม่ทำความเย็น',phone:'061-0313386',waitingAdmin:false,inProgress:false,started:null},
     {id:'PR431279',branch:'Pun Thai บางพระ1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:t,status:'ช่างกำลังเข้าซ่อม',level:'Level 1',detail:'แจ้งซ่อมหลอดไฟไม่ติดในตู้เค้ก และภายในตู้มีกลิ่นสารเคมี',phone:'0659424767',waitingAdmin:false,inProgress:true,started:{at:new Date().toISOString(),by:'ช่างอำนวย'}},
     {id:'PR430557',branch:'Max Mart ตลาดไท1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมแอร์',date:addDays(t,3),status:'รอช่างเข้าซ่อม',level:'3',detail:'แอร์เปิดแล้วสวิทซ์คัทเอาท์ดีด แอร์ตัวที่ 3 (อนุมัติอะไหล่แล้ว)',phone:'064-9342803',waitingAdmin:false,inProgress:false,started:null},
     {id:'PR430492',branch:'Pun Thai พนมสารคาม5',client:'',type:'PM แอร์ และ ตู้แช่',date:'',status:'รอดำเนินการ',level:'3',detail:'PM โครงการ PM แอร์ / ตู้แช่ 2026 รอบที่ 2',phone:'',waitingAdmin:false,inProgress:false,started:null},
-    {id:'PR428711',branch:'Max Mart กบินทร์บุรี8',client:'',type:'ซ่อมแอร์',date:addDays(t,-5),status:'ช่างส่งงานแล้ว',level:'3',detail:'',phone:'',waitingAdmin:true,inProgress:false,started:{at:new Date(Date.now()-5*864e5).toISOString(),by:'ช่างอำนวย'}}
-  ]});
+    {id:'PR428711',branch:'Max Mart กบินทร์บุรี8',client:'',type:'ซ่อมแอร์',date:addDays(t,-5),status:'ช่างส่งงานแล้ว',level:'3',detail:'',phone:'',waitingAdmin:true,inProgress:false,started:{at:new Date(Date.now()-5*864e5).toISOString(),by:'ช่างอำนวย'},techSubmittedAt:new Date(Date.now()-4*864e5).toISOString(),reportStatus:'รอตรวจ',dateIn:addDays(t,-5),timeIn:'10:30',dateDone:addDays(t,-5),timeDone:'15:00'},
+    {id:'PR-429095',branch:'MAGURO สาขา INT-INTERSECT RAMA 3',client:'บริษัท มากุโระ กรุ๊ป จำกัด (มหาชน)',type:'ซ่อมแอร์',date:addDays(t,-9),status:'ปิดงาน',level:'3',detail:'แอร์ไม่เย็น',phone:'',waitingAdmin:false,inProgress:false,done:true,started:null}
+  ];
+  const r=extra||{};
+  return Promise.resolve({ok:true,tech,jobs:dJobs.filter(j=>!j.done||((!r.from||j.date>=r.from)&&(!r.to||j.date<=r.to)&&(r.from||r.to))).map(j=>({...j,team:'ทีม1 - อำนวย',ref:'REF-'+j.id.slice(-4),assignedAt:addDays(t,-12),reviewNote:j.id==='PR431019'?'รบกวนถ่ายรูปป้ายรุ่นตู้ให้ชัดด้วยครับ':''}))});
 }
 boot();
 </script>
