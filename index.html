@@ -667,6 +667,7 @@ select option{background:var(--surface2);}
     <button class="nav-item" data-page="system-safety" onclick="goTo('system-safety',this)"><span class="nav-icon">🛡</span>กู้ข้อมูล / Backup</button>
     <div class="nav-section">บัญชี</div>
     <button class="nav-item" data-page="account" onclick="goTo('account',this)"><span class="nav-icon">⚙️</span>ตั้งค่าบัญชี</button>
+    <button class="nav-item" data-page="technicians" onclick="goTo('technicians',this)"><span class="nav-icon">🧑‍🔧</span>ช่าง (LINE)<span class="nav-badge" id="nb-techs" style="display:none;">0</span></button>
     <button class="nav-item" data-page="users" onclick="goTo('users',this)"><span class="nav-icon">👥</span>จัดการผู้ใช้<span class="nav-badge" id="nb-users" style="display:none;">0</span></button>
   </nav>
 </aside>
@@ -1363,6 +1364,17 @@ select option{background:var(--surface2);}
     </div>
   </div>
 </div>
+<div class="page" id="page-technicians">
+  <div class="page-header">
+    <div><div class="page-title">ช่าง (LINE)</div><div class="page-sub">ช่างลงทะเบียนผ่านหน้า "งานของฉัน" ใน LINE → อนุมัติ + เลือกทีมที่ดูงานได้ · ช่างเห็นเฉพาะงานของทีมตัวเอง ไม่เห็นราคา/ค่าแรง</div></div>
+    <button class="btn btn-ghost" onclick="renderTechnicians(true)">รีเฟรช</button>
+  </div>
+  <div class="content">
+    <div class="table-wrap" style="padding:12px 14px;margin-bottom:14px;"><div style="font-size:12px;color:var(--text2);margin-bottom:6px;">ลิงก์ให้ช่างเปิดใน LINE (ส่งให้ช่าง หรือใส่เป็นเมนูของ LINE OA ช่าง)</div><div style="display:flex;gap:8px;flex-wrap:wrap;"><input id="tech-liff-url" readonly style="flex:1 1 260px;font-family:var(--mono);font-size:12px;"><button class="btn btn-ghost btn-sm" onclick="copyTextDeferred(async()=>({text:document.getElementById('tech-liff-url').value,msg:'คัดลอกลิงก์ช่างแล้ว'}),'ลิงก์ช่าง')">คัดลอก</button></div></div>
+    <div id="tech-list"></div>
+  </div>
+</div>
+
 <div class="page" id="page-users">
   <div class="page-header">
     <div><div class="page-title">จัดการผู้ใช้</div><div class="page-sub">อนุมัติคำขอ · กำหนดสิทธิ์ · ระงับ/ลบบัญชี (เฉพาะแอดมินเต็ม)</div></div>
@@ -1640,7 +1652,7 @@ select option{background:var(--surface2);}
 // DATA
 let J_ST = ['รอเปิดงาน','รอจัดช่าง','จัดช่างแล้ว','ช่างออกงาน','รออะไหล่','เสร็จงาน','รอจ่าย','ปิดงาน','ติดปัญหา','Reject'];
 let A_ST = ['รอดำเนินการ','กำลังทำ','รอลูกค้า','เสร็จแล้ว','ติดปัญหา','Reject'];
-const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','ช่างบันทึกร่าง':'b-working','ช่างส่งงานแล้ว':'b-done','รออนุมัติอะไหล่':'b-parts','รอช่างเข้าซ่อม':'b-open','แอดมินตรวจแล้ว':'b-done','ต้องแก้ไข':'b-reject','ปิดงานสำรวจ':'b-closed','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done','รอส่งขออนุมัติ':'b-urgent','รอขออนุมัติ':'b-urgent','รอช่างส่งงาน':'b-redframe'};
+const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','ช่างกำลังเข้าซ่อม':'b-working','ช่างบันทึกร่าง':'b-working','ช่างส่งงานแล้ว':'b-done','รออนุมัติอะไหล่':'b-parts','รอช่างเข้าซ่อม':'b-open','แอดมินตรวจแล้ว':'b-done','ต้องแก้ไข':'b-reject','ปิดงานสำรวจ':'b-closed','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done','รอส่งขออนุมัติ':'b-urgent','รอขออนุมัติ':'b-urgent','รอช่างส่งงาน':'b-redframe'};
 
 let jobs = [
   {id:'PR-001',client:'บริษัท A',ref:'WO-2001',branch:'เซ็นทรัลลาดพร้าว',type:'ซ่อมแอร์',team:'ทีม A',date:'2025-06-03',status:'เสร็จงาน',pc:3500,pt:2400,partC:300,partR:500,fuel:150,note:'แอร์ไม่เย็น',report:'เติมน้ำยา R22 2 ปอนด์',isNew:false,pay:'unpaid'},
@@ -1789,7 +1801,7 @@ function techUpdateTypeOf(item){
 function isReturnFixUpdate(item){return techUpdateTypeOf(item)==='returned_for_fix';}
 function isDraftUpdate(item){return techUpdateTypeOf(item)==='draft_saved';}
 function techUpdateClass(item){return isReturnFixUpdate(item)?' return-fix':isDraftUpdate(item)?' draft-update':'';}
-function techUpdateLabel(item){return isReturnFixUpdate(item)?'ส่งกลับแก้ไข':isDraftUpdate(item)?'บันทึกร่าง':'ช่างส่งงาน';}
+function techUpdateLabel(item){return isReturnFixUpdate(item)?'ส่งกลับแก้ไข':isDraftUpdate(item)?'บันทึกร่าง':techUpdateTypeOf(item)==='started'?'ช่างเริ่มงาน':'ช่างส่งงาน';}
 function techUpdateMark(item){
   const on=item?.jobId?taskHasTechUpdate(item):hasTechUpdate(item);
   return on?`<span class="tech-update-dot${techUpdateClass(item)}" title="${techUpdateLabel(item)}"></span>`:'';
@@ -3018,6 +3030,8 @@ function mergeNewerRemoteTechReport(local,remote){
     techUpdateUnread: remote.techUpdateUnread,
     techUpdateAt: remote.techUpdateAt,
     techUpdateType: remote.techUpdateType,
+    techStartedAt: remote.techStartedAt,
+    techStartedBy: remote.techStartedBy,
     techUpdateSeenAt: remote.techUpdateSeenAt,
     reportReviewStatus: remote.reportReviewStatus,
     reviewNote: remote.reviewNote,
@@ -3259,6 +3273,7 @@ function goTo(id, el){
     reports:renderReports,
     'system-safety':renderSystemSafety,
     users:renderUsers,
+    technicians:()=>renderTechnicians(true),
     account:renderAccount
   };
   if(m[id]) m[id]();
@@ -4221,6 +4236,91 @@ function openJobFromAdmin(id){
 }
 
 // JOB QUEUE
+// ===== ช่าง (LINE) — Tech Portal เฟส 1 =====
+// ตาราง technicians / tech_job_events (SQL: tech_portal_phase1.sql) · หน้าช่าง = tech.html (LIFF) คุยผ่าน Edge Function tech-portal
+const TECH_LIFF_URL='https://liff.line.me/2012087004-vwA8b0uF'; // ใส่ LIFF ID หลังสร้าง LIFF app
+let technicians=[], techAccepted={}, techEventsLoadedAt=0;
+async function loadTechEvents(force){
+  if(!force&&Date.now()-techEventsLoadedAt<60000)return;
+  const rows=await sbFetchAllOptional('tech_job_events','?select=job_id,action,tech_name,created_at&order=created_at.asc');
+  const m={};
+  rows.forEach(e=>{const k=normalizePR(e.job_id);if(e.action==='start')m[k]={by:e.tech_name,at:e.created_at};});
+  techAccepted=m;techEventsLoadedAt=Date.now();
+}
+// ป้าย "▶️ เริ่มงาน" = ช่างกดเริ่มงาน (ถึงสาขา) ผ่าน LINE — แสดงเฉพาะงานที่ยังกำลังทำ (ช่างกำลังเข้าซ่อม/บันทึกร่าง)
+function techAcceptPill(j){
+  if(!j||!['ช่างกำลังเข้าซ่อม','ช่างบันทึกร่าง'].includes(j.status))return '';
+  const a=j.techStartedAt?{by:j.techStartedBy,at:j.techStartedAt}:techAccepted[normalizePR(j.id)];
+  return a?`<span class="queue-pill" style="background:var(--green-dim);border-color:var(--green);color:var(--green);" title="ช่างกดเริ่มงานผ่าน LINE: ${esc(a.by||'')} · ${esc(editedAtText(a.at))}">▶️ เริ่มงาน ${esc(editedAtText(a.at).replace(/^วันนี้\s*/,''))}</span>`:'';
+}
+async function loadTechnicians(){technicians=await sbFetchAllOptional('technicians','?select=*&order=created_at.desc');updateTechBadge();return technicians;}
+function updateTechBadge(){const n=(technicians||[]).filter(t=>t.status==='pending').length;const b=document.getElementById('nb-techs');if(b){b.textContent=n;b.style.display=n?'':'none';}}
+// ชื่อทีมที่มีในระบบ (คิวช่าง + ทีมช่าง) — ชื่อสะกดต่างกันเล็กน้อยถือเป็นทีมเดียวกัน (เทียบแบบตัดเว้นวรรค/ขีด เหมือนฝั่งเซิร์ฟเวอร์)
+const techTeamKey=v=>String(v||'').toLowerCase().replace(/[\s\-–—_.()]/g,'');
+function techTeamOptions(){
+  const m=new Map();
+  (teams||[]).forEach(t=>{const n=String(t.name||t||'').trim();if(n&&!m.has(techTeamKey(n)))m.set(techTeamKey(n),{name:n,open:0});});
+  liveJobs().forEach(j=>{const n=String(j.team||'').trim();if(!n)return;const k=techTeamKey(n);if(!m.has(k))m.set(k,{name:n,open:0});if(j.status!=='ปิดงาน')m.get(k).open++;});
+  return [...m.values()].sort((a,b)=>a.name.localeCompare(b.name,'th'));
+}
+async function renderTechnicians(reload){
+  const box=document.getElementById('tech-list');if(!box)return;
+  const u=document.getElementById('tech-liff-url');if(u)u.value=TECH_LIFF_URL;
+  if(reload){box.innerHTML='<div class="empty"><div>กำลังโหลด...</div></div>';await loadTechnicians();}
+  if(knownMissingTables.has('technicians')){box.innerHTML='<div class="empty"><div class="empty-icon">🛠️</div><div>ยังไม่ได้สร้างตารางช่าง — รัน SQL <b>tech_portal_phase1.sql</b> ก่อน</div></div>';return;}
+  if(!technicians.length){box.innerHTML='<div class="empty"><div class="empty-icon">🧑‍🔧</div><div>ยังไม่มีช่างลงทะเบียน — ส่งลิงก์ด้านบนให้หัวหน้าทีมเปิดใน LINE</div></div>';return;}
+  const opts=techTeamOptions();
+  const order={pending:0,active:1,disabled:2};
+  const list=[...technicians].sort((a,b)=>(order[a.status]??3)-(order[b.status]??3));
+  box.innerHTML=list.map(t=>{
+    const sel=new Set((t.team_names||[]).map(techTeamKey));
+    const stCls=t.status==='active'?'b-paid':t.status==='pending'?'b-unpaid':'b-closed';
+    const stLbl=t.status==='active'?'ใช้งาน':t.status==='pending'?'รออนุมัติ':'ระงับ';
+    const teamBoxes=opts.map(o=>`<label style="display:inline-flex;align-items:center;gap:5px;margin:3px 10px 3px 0;font-size:12px;white-space:nowrap;"><input type="checkbox" style="width:auto;" class="tt-${esc(t.id)}" value="${esc(o.name)}"${sel.has(techTeamKey(o.name))?' checked':''}>${esc(o.name)}${o.open?` <span class="tm">(${o.open})</span>`:''}</label>`).join('');
+    return `<div class="table-wrap" style="padding:14px;margin-bottom:12px;${t.status==='pending'?'border-color:var(--yellow);':''}">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        ${t.line_picture?`<img src="${esc(t.line_picture)}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">`:'<div style="width:44px;height:44px;border-radius:50%;background:var(--surface3);"></div>'}
+        <div style="flex:1;min-width:180px;"><div style="font-weight:800;">${esc(t.display_name||t.line_name||'-')} <span class="badge ${stCls}">${stLbl}</span>${t.is_leader?' <span class="chip">หัวหน้าทีม</span>':''}</div>
+          <div class="tm" style="font-size:12px;">LINE: ${esc(t.line_name||'-')} · โทร ${esc(t.phone||'-')}${t.requested_team?` · แจ้งทีม: <b>${esc(t.requested_team)}</b>`:''}</div>
+          <div class="tm" style="font-size:11px;">ลงทะเบียน ${esc(editedAtText(t.created_at))}${t.last_seen_at?' · เปิดล่าสุด '+esc(editedAtText(t.last_seen_at)):''}</div></div>
+      </div>
+      <div class="form-row" style="margin-top:10px;"><div class="form-group"><label>ชื่อที่แสดง</label><input id="tn-${esc(t.id)}" value="${esc(t.display_name||'')}"></div><div class="form-group"><label>เบอร์โทร</label><input id="tp-${esc(t.id)}" value="${esc(t.phone||'')}"></div><div class="form-group"><label>สถานะ</label><select id="ts-${esc(t.id)}"><option value="active"${t.status==='active'?' selected':''}>ใช้งาน (อนุมัติ)</option><option value="pending"${t.status==='pending'?' selected':''}>รออนุมัติ</option><option value="disabled"${t.status==='disabled'?' selected':''}>ระงับ</option></select></div></div>
+      <div style="font-size:12px;color:var(--text2);margin:4px 0;">ทีมที่ช่างคนนี้ดูงานได้ <span class="tm">(เลือกได้หลายทีม · ชื่อที่ต่างกันแค่เว้นวรรค/ขีด เช่น "ทีม3 - ทรงกลด" กับ "ทีม3 ทรงกลด" ระบบนับเป็นทีมเดียวกันให้แล้ว · ตัวเลขในวงเล็บ = งานที่ยังไม่ปิด)</span></div>
+      <div style="max-height:150px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:6px 10px;">${teamBoxes||'<span class="tm">ยังไม่มีชื่อทีม</span>'}</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;"><label style="display:inline-flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap;"><input type="checkbox" style="width:auto;" id="tl-${esc(t.id)}"${t.is_leader?' checked':''}> หัวหน้าทีม (รับแจ้งเตือนเฟส 2)</label><span style="flex:1;"></span>
+        ${t.status==='pending'?`<button class="btn btn-success btn-sm" onclick="saveTechnician('${esc(t.id)}','active')">✓ อนุมัติ</button>`:''}
+        <button class="btn btn-primary btn-sm" onclick="saveTechnician('${esc(t.id)}')">บันทึก</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteTechnician('${esc(t.id)}')">ลบ</button></div>
+    </div>`;
+  }).join('');
+}
+async function saveTechnician(id,forceStatus){
+  if(!guardEdit())return;
+  const t=technicians.find(x=>x.id===id);if(!t)return;
+  const v=k=>document.getElementById(k+'-'+id);
+  const teamNames=[...document.querySelectorAll('.tt-'+CSS.escape(id))].filter(c=>c.checked).map(c=>c.value);
+  const status=forceStatus||v('ts').value;
+  if(status==='active'&&!teamNames.length&&!confirm('ยังไม่ได้เลือกทีม — ช่างจะยังไม่เห็นงานใดเลย บันทึกต่อไหม?'))return;
+  const patch={display_name:v('tn').value.trim(),phone:v('tp').value.trim(),status,is_leader:!!v('tl').checked,team_names:teamNames,updated_at:new Date().toISOString()};
+  if(status==='active'&&t.status!=='active'){patch.approved_by=getActorName();patch.approved_at=new Date().toISOString();}
+  try{
+    const r=await fetch(splitUrl('technicians',`?id=eq.${encodeURIComponent(id)}`),{method:'PATCH',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify(patch)});
+    if(!r.ok)throw new Error(await r.text());
+    writeAuditLog('save_technician','technician',id,t,patch,{...t,...patch});
+    await renderTechnicians(true);
+  }catch(e){alert('บันทึกช่างไม่สำเร็จ: '+e.message);}
+}
+async function deleteTechnician(id){
+  if(!guardEdit())return;
+  const t=technicians.find(x=>x.id===id);if(!t)return;
+  if(!confirm(`ลบช่าง "${t.display_name||t.line_name}" ?\nช่างจะต้องลงทะเบียนใหม่ถ้าจะใช้งานอีก (ถ้าแค่หยุดชั่วคราว ให้ตั้งสถานะ "ระงับ" แทน)`))return;
+  try{
+    const r=await fetch(splitUrl('technicians',`?id=eq.${encodeURIComponent(id)}`),{method:'DELETE',headers:sbHeaders()});
+    if(!r.ok)throw new Error(await r.text());
+    writeAuditLog('delete_technician','technician',id,t,null,null);
+    await renderTechnicians(true);
+  }catch(e){alert('ลบไม่สำเร็จ: '+e.message);}
+}
 function renderJobs(){
   const allJobs=liveJobs();
   const scoped=allJobs.filter(j=>inDateScope(j,'jobs'));
@@ -4240,7 +4340,7 @@ function renderJobs(){
   document.getElementById('job-tbl-title').textContent='คิวช่าง - '+jobFilter+(jobTeamFilter!=='ทั้งหมด'?' / '+jobTeamFilter:'')+(jobSearch?' / ค้นหา: '+jobSearch:'');
   const tb=document.getElementById('job-tbody');
   if(!fil.length){tb.innerHTML=trackerEmptyHtml('jobs',allJobs.length,9);return;}
-  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}${techUpdateMark(j)}${esc(j.id)}${techUpdatePill(j)}${level1Badge(j)}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="${SB[j.status]==='b-urgent'?'':'color:'+statusSelectColor(j,j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
+  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}${techUpdateMark(j)}${esc(j.id)}${techUpdatePill(j)}${level1Badge(j)}${techAcceptPill(j)}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="${SB[j.status]==='b-urgent'?'':'color:'+statusSelectColor(j,j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
 async function setJS(id,s){if(!guardEdit())return;
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
@@ -4629,7 +4729,7 @@ function openDet(id){
   currentDetailJobId=id;
   document.getElementById('det-title').textContent=j.id+' - '+j.branch;
   document.getElementById('det-sub').textContent=j.client+' | '+j.ref+' | '+j.type;
-  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div>
+  document.getElementById('det-body').innerHTML=`${isLevel1(j)?`<div style="margin-bottom:12px;">${level1Badge(j)}</div>`:''}${techAcceptPill(j)?`<div style="margin-bottom:12px;">${techAcceptPill(j)} <span class="tm" style="font-size:12px;">${esc(j.techStartedBy||techAccepted[normalizePR(j.id)]?.by||'')}</span></div>`:''}<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">ทีมช่าง</div><div class="detail-val">${esc(j.team)}</div></div><div class="detail-item"><div class="detail-label">วันนัด</div><div class="detail-val">${esc(j.date)}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val">${statusBadge(j,j.status)}</div></div><div class="detail-item"><div class="detail-label">อัปเดทจากช่าง</div><div class="detail-val">${hasTechUpdate(j)?techUpdatePill(j):'—'}</div></div><div class="detail-item"><div class="detail-label">ประเภท</div><div class="detail-val">${esc(j.type)}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(j.client)} - ${esc(j.branch)} (${esc(j.ref)})</div></div><div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(j.note||'-')}</div></div>${j.report?`<div class="form-group"><label>รายงานช่าง</label><div class="text-box">${esc(j.report)}</div></div>`:''}<div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div>
     <div class="det-actions">
       <div class="det-primary">
         <button class="btn btn-success" onclick="openReportModal('${j.id}')">🔍 ตรวจรายงานช่าง</button>
@@ -10023,7 +10123,7 @@ function renderSystemSafety(){
   setBackupStatus(`เว็บเวอร์ชัน ${APP_VERSION} | Auto backup ทำงานวันละครั้งหลังโหลดข้อมูลสำเร็จ`, 'ok');
 }
 function eventTypeLabel(type){
-  return {draft_saved:'บันทึกร่าง',submitted:'ช่างส่งงาน',parts_quote_needed:'ขออนุมัติอะไหล่',returned_for_fix:'ส่งกลับแก้ไข'}[type]||type||'event';
+  return {draft_saved:'บันทึกร่าง',submitted:'ช่างส่งงาน',parts_quote_needed:'ขออนุมัติอะไหล่',returned_for_fix:'ส่งกลับแก้ไข',started:'ช่างเริ่มงาน (LINE)'}[type]||type||'event';
 }
 function eventSummary(row){
   const data=row?.data||{};
@@ -10197,6 +10297,7 @@ async function refreshRemoteIfIdle(){
     lastRemoteRefreshAt=Date.now();
     await loadState({silent:true});
     if(customerRequestLoaded){try{await ensureCustomerRequestsLoaded(true);}catch(e){}}
+    try{await loadTechEvents();}catch(e){}
     ensureMeta();
     // รีเฟรชบัญชี/สต็อกเฉพาะตอนกำลังดูหน้านั้นจริง (ไม่ดึงทุกรอบทุกหน้า เพื่อไม่ให้หน่วง)
     const active=document.querySelector('.page.active')?.id||'';
@@ -10278,6 +10379,8 @@ async function initApp(){
       // preload/refresh อะไหล่เบื้องหลัง → หน้าซัพพลายเออร์พร้อมทันที + cache สด
       (partsLoaded&&parts.length?refreshPartsSilently():ensurePartsLoaded()).then(()=>{if(document.getElementById('page-settings-suppliers')?.classList.contains('active'))renderParts();}).catch(()=>{});
       scanGhostJobsAuto(); // ชั้น 5: ตรวจงานผีอัตโนมัติหลังโหลดเสร็จ (เตือนเองถ้าเจอ ไม่มีปุ่ม)
+      loadTechEvents(true).then(()=>{if(document.getElementById('page-jobs')?.classList.contains('active'))renderJobs();}).catch(()=>{});
+      loadTechnicians().catch(()=>{}); // badge ช่างรออนุมัติ
     }
     startRemoteRefresh();
     maybeAutoOpenSalesFromUrl();

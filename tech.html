@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>งานของฉัน — ProFix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+:root{--bg:#f3f5f9;--card:#fff;--text:#0b1220;--text2:#4b5565;--text3:#8a94a6;--line:#e3e8f0;--blue:#175fff;--blue-dim:#e8efff;--green:#0f9d58;--green-dim:#e3f6ec;--yellow:#b7791f;--yellow-dim:#fff6e0;--red:#d93025;--red-dim:#fdecea;--gray-dim:#eef1f5;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Anuphan',system-ui,sans-serif;font-size:15px;line-height:1.45;padding-bottom:calc(24px + env(safe-area-inset-bottom));}
+.top{position:sticky;top:0;z-index:5;background:#0b1220;color:#fff;padding:14px 16px 12px;display:flex;align-items:center;gap:12px;}
+.top img{width:40px;height:40px;border-radius:50%;object-fit:cover;background:#223;flex:0 0 auto;}
+.top .who{flex:1;min-width:0;}
+.top .who b{display:block;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.top .who span{font-size:12px;color:#aab4c5;}
+.top button{background:#1f2a40;color:#fff;border:0;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;}
+.wrap{padding:14px 14px 0;max-width:640px;margin:0 auto;}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.summary div{background:var(--card);border-radius:12px;padding:10px;text-align:center;border:1px solid var(--line);}
+.summary b{display:block;font-size:22px;}
+.summary span{font-size:11.5px;color:var(--text2);}
+.sec{margin:18px 0 8px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;color:var(--text2);}
+.sec .n{background:var(--gray-dim);border-radius:999px;padding:0 9px;font-size:12px;}
+.card{background:var(--card);border-radius:14px;border:1px solid var(--line);padding:13px 14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
+.card.late{border-left:4px solid var(--red);}
+.card.today{border-left:4px solid var(--blue);}
+.row1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.pr{font-weight:700;font-size:16px;color:var(--blue);letter-spacing:.2px;}
+.chip{display:inline-block;font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 9px;background:var(--gray-dim);color:var(--text2);white-space:nowrap;}
+.chip.red{background:var(--red-dim);color:var(--red);}
+.chip.green{background:var(--green-dim);color:var(--green);}
+.chip.yellow{background:var(--yellow-dim);color:var(--yellow);}
+.chip.blue{background:var(--blue-dim);color:var(--blue);}
+.branch{font-weight:700;margin-top:6px;}
+.meta{font-size:13px;color:var(--text2);margin-top:2px;}
+.detail{font-size:13.5px;margin-top:8px;padding:8px 10px;background:var(--bg);border-radius:10px;white-space:pre-wrap;word-break:break-word;}
+.detail.clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.acc{font-size:12.5px;color:var(--green);margin-top:8px;}
+.card.working{border-left:4px solid var(--green);}
+.btn.warn{background:#f59e0b;color:#fff;}
+.btns{display:flex;gap:8px;margin-top:11px;}
+.btn{flex:1;border:0;border-radius:11px;padding:11px 8px;font:inherit;font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:5px;text-decoration:none;cursor:pointer;}
+.btn.primary{background:var(--blue);color:#fff;}
+.btn.ghost{background:var(--gray-dim);color:var(--text);}
+.btn.ok{background:var(--green);color:#fff;}
+.btn:disabled{opacity:.55;}
+.btn.small{flex:0 0 auto;padding:11px 13px;}
+.empty{text-align:center;color:var(--text3);padding:26px 10px;font-size:14px;}
+.panel{background:var(--card);border-radius:16px;border:1px solid var(--line);padding:20px 18px;margin-top:10px;}
+.panel h2{margin:0 0 6px;font-size:19px;}
+.panel p{margin:0 0 14px;color:var(--text2);font-size:14px;}
+label{display:block;font-size:13px;color:var(--text2);margin:12px 0 5px;}
+input{width:100%;border:1px solid var(--line);border-radius:11px;padding:12px;font:inherit;font-size:16px;background:#fff;}
+.msg{margin-top:12px;font-size:13.5px;color:var(--red);min-height:1em;}
+.loading{text-align:center;padding:60px 20px;color:var(--text2);}
+.spin{width:32px;height:32px;border:3px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:sp 0.8s linear infinite;margin:0 auto 12px;}
+@keyframes sp{to{transform:rotate(360deg)}}
+details.more summary{list-style:none;cursor:pointer;color:var(--text2);font-weight:700;font-size:14px;margin:18px 0 8px;}
+details.more summary::-webkit-details-marker{display:none;}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#0b1220;color:#fff;border-radius:12px;padding:10px 16px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9;max-width:90vw;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+<div class="top" id="top" style="display:none;"><img id="avatar" alt=""><div class="who"><b id="who-name">-</b><span id="who-team">-</span></div><button onclick="loadJobs(true)">↻ รีเฟรช</button></div>
+<div class="wrap" id="app"><div class="loading"><div class="spin"></div>กำลังเปิด...</div></div>
+<div class="toast" id="toast"></div>
+<script>
+// ===== ตั้งค่า (ใส่หลังสร้าง LIFF app ใน LINE Developers) =====
+const LIFF_ID = '2012087004-vwA8b0uF';   // เช่น 2001234567-AbCdEfGh  (LINE Login channel → LIFF → LIFF ID)
+const FUNC_URL = 'https://cfikdkytopyqxvaytiks.supabase.co/functions/v1/tech-portal';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmaWtka3l0b3B5cXh2YXl0aWtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2MjE1NDksImV4cCI6MjA5NjE5NzU0OX0.VptLL8BeQaNLyy25L_rHauVPnzVMCgVauicpgJIIuDQ';
+const SUBMIT_PAGE = 'technician-submit.html';
+const DEMO = new URLSearchParams(location.search).has('demo'); // ?demo=1 = ดูหน้าตาด้วยข้อมูลตัวอย่าง (ไม่ต่อ LINE/DB)
+
+let idToken='', lineProfile={}, me=null, jobs=[];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2200);}
+function todayISO(){const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);}
+function addDays(iso,n){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);}
+const TH_DAYS=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'],TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function thDate(iso){if(!/^\d{4}-\d{2}-\d{2}/.test(iso||''))return 'ยังไม่ระบุวัน';const d=new Date(iso.slice(0,10)+'T00:00:00');return `${TH_DAYS[d.getDay()]} ${d.getDate()} ${TH_MON[d.getMonth()]}`;}
+function thTime(iso){const d=new Date(iso);if(isNaN(d))return '';return d.toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+' น.';}
+
+async function api(action,extra={}){
+  if(DEMO)return demoApi(action,extra);
+  const r=await fetch(FUNC_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+ANON_KEY},body:JSON.stringify({action,idToken,...extra})});
+  const d=await r.json().catch(()=>({error:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'}));
+  if(!r.ok||d.error){const e=new Error(d.error||('HTTP '+r.status));e.data=d;e.status=r.status;throw e;}
+  return d;
+}
+
+async function boot(){
+  try{
+    if(!DEMO){
+      if(LIFF_ID==='YOUR_LIFF_ID')throw new Error('ยังไม่ได้ตั้งค่า LIFF ID ในหน้านี้');
+      await liff.init({liffId:LIFF_ID});
+      if(!liff.isLoggedIn()){liff.login({redirectUri:location.href});return;}
+      idToken=liff.getIDToken()||'';
+      if(!idToken)throw new Error('ไม่ได้รับสิทธิ์ข้อมูลโปรไฟล์ LINE (เปิด scope openid/profile ใน LIFF app)');
+    }
+    const d=await api('me');
+    lineProfile=d.line||{};me=d.tech;
+    route();
+  }catch(e){showError(e.message||String(e));}
+}
+function route(){
+  if(!me)return showRegister();
+  if(me.status==='pending')return showPending();
+  if(me.status==='disabled')return showError('บัญชีนี้ถูกระงับ — ติดต่อแอดมิน');
+  showTop();loadJobs();
+}
+function showTop(){
+  $('top').style.display='';
+  $('avatar').src=lineProfile.picture||'';$('avatar').style.visibility=lineProfile.picture?'':'hidden';
+  $('who-name').textContent=me.display_name||lineProfile.name||'ช่าง';
+  $('who-team').textContent=(me.team_names||[]).join(' · ')||'ยังไม่ได้ผูกทีม';
+}
+function showError(t){$('app').innerHTML=`<div class="panel"><h2>เปิดไม่สำเร็จ</h2><p>${esc(t)}</p><button class="btn ghost" onclick="location.reload()">ลองใหม่</button></div>`;}
+function showRegister(){
+  $('app').innerHTML=`<div class="panel"><h2>ลงทะเบียนช่าง ProFix</h2><p>ลงทะเบียนครั้งเดียว แอดมินจะอนุมัติและผูกทีมให้ จากนั้นจะเห็นงานของทีมคุณที่นี่</p>
+    <label>ชื่อ-ชื่อเล่น</label><input id="rg-name" value="${esc(lineProfile.name||'')}" autocomplete="name">
+    <label>เบอร์โทร</label><input id="rg-phone" inputmode="tel" autocomplete="tel" placeholder="08x-xxx-xxxx">
+    <label>ทีมของคุณ</label><input id="rg-team" placeholder="เช่น ทีม1 อำนวย">
+    <button class="btn primary" style="width:100%;margin-top:16px;" id="rg-btn" onclick="doRegister()">ส่งลงทะเบียน</button><div class="msg" id="rg-msg"></div></div>`;
+}
+async function doRegister(){
+  const b=$('rg-btn');b.disabled=true;$('rg-msg').textContent='';
+  try{const d=await api('register',{displayName:$('rg-name').value,phone:$('rg-phone').value,team:$('rg-team').value});me=d.tech;route();}
+  catch(e){$('rg-msg').textContent=e.message;b.disabled=false;}
+}
+function showPending(){
+  $('app').innerHTML=`<div class="panel"><h2>⏳ รอแอดมินอนุมัติ</h2><p>ส่งลงทะเบียนแล้วในชื่อ <b>${esc(me.display_name||'')}</b>${me.requested_team?` (${esc(me.requested_team)})`:''}<br>แจ้งแอดมินให้อนุมัติ แล้วกดเช็คอีกครั้ง</p>
+    <button class="btn primary" style="width:100%;" onclick="recheck()">เช็คอีกครั้ง</button><div class="msg" id="pd-msg"></div></div>`;
+}
+async function recheck(){try{const d=await api('me');me=d.tech;route();}catch(e){$('pd-msg').textContent=e.message;}}
+
+async function loadJobs(manual){
+  if(!jobs.length)$('app').innerHTML='<div class="loading"><div class="spin"></div>กำลังโหลดงาน...</div>';
+  try{const d=await api('jobs');me=d.tech||me;jobs=d.jobs||[];showTop();renderJobs();if(manual)toast('อัปเดตแล้ว');}
+  catch(e){if(e.status===403&&e.data&&e.data.tech){me=e.data.tech;return route();}showError(e.message);}
+}
+function renderJobs(){
+  const today=todayISO(),week=addDays(today,7);
+  const working=jobs.filter(j=>j.inProgress&&!j.waitingAdmin);
+  const act=jobs.filter(j=>!j.waitingAdmin&&!j.inProgress), wait=jobs.filter(j=>j.waitingAdmin);
+  const hasDate=j=>/^\d{4}-\d{2}-\d{2}/.test(j.date||'');
+  const late=act.filter(j=>hasDate(j)&&j.date<today);
+  const tday=act.filter(j=>j.date===today);
+  const soon=act.filter(j=>hasDate(j)&&j.date>today&&j.date<=week);
+  const later=act.filter(j=>!hasDate(j)||j.date>week);
+  const byDate=(a,b)=>String(a.date||'9').localeCompare(String(b.date||'9'));
+  const sec=(icon,title,list,cls)=>list.length?`<div class="sec">${icon} ${title} <span class="n">${list.length}</span></div>`+list.sort(byDate).map(j=>card(j,cls)).join(''):'';
+  $('app').innerHTML=`<div class="summary"><div><b style="color:var(--green)">${working.length}</b><span>กำลังซ่อม</span></div><div><b style="color:var(--red)">${late.length}</b><span>ค้าง/เลยนัด</span></div><div><b style="color:var(--blue)">${tday.length}</b><span>วันนี้</span></div></div>`
+    +(act.length||working.length?'':'<div class="empty">🎉 ไม่มีงานค้าง</div>')
+    +sec('🔧','กำลังซ่อม',working,'working')+sec('🔴','ค้าง / เลยนัด',late,'late')+sec('📅','วันนี้',tday,'today')+sec('🗓️','7 วันข้างหน้า',soon,'')+sec('📋','ยังไม่ระบุวัน / ถัดไป',later,'')
+    +(wait.length?`<details class="more"><summary>⏳ รอแอดมิน (${wait.length}) ▾</summary>${wait.sort(byDate).map(j=>card(j,'')).join('')}</details>`:'');
+}
+function statusChip(j){
+  const s=j.status||'-';
+  const cls=/ส่งงานแล้ว|กำลังเข้าซ่อม/.test(s)?'green':/รออนุมัติ|PO|ขออนุมัติ/.test(s)?'yellow':/ร่าง/.test(s)?'blue':/รอช่าง/.test(s)?'red':'';
+  return `<span class="chip ${cls}">${esc(s)}</span>`;
+}
+function card(j,cls){
+  const lvl=j.level?`<span class="chip ${/1/.test(j.level)?'red':''}">${esc(String(j.level).replace(/^Level\s*/i,'L'))}</span> `:'';
+  const acc=(j.started&&(j.inProgress||j.waitingAdmin))?`<div class="acc">▶️ เริ่มงานแล้ว · ${esc(j.started.by||'')} ${esc(thTime(j.started.at))}</div>`:'';
+  const tel=j.phone?`<a class="btn ghost small" href="tel:${esc(String(j.phone).replace(/[^\d+]/g,''))}">📞</a>`:'';
+  // ขั้นตอน: ยังไม่เริ่ม → [▶️ เริ่มงาน] (กดเมื่อถึงสาขา) → [⏳ รอขออนุมัติ] / [🔧 ส่งงาน] · งานรอแอดมิน → ดู/แก้รายงาน
+  let actions;
+  if(j.waitingAdmin)actions=`<button class="btn ghost" onclick="openSubmit('${esc(j.id)}','')">📄 ดู/แก้รายงาน</button>`;
+  else if(j.inProgress)actions=`<button class="btn warn" onclick="openSubmit('${esc(j.id)}','quote')">⏳ รอขออนุมัติ</button><button class="btn primary" onclick="openSubmit('${esc(j.id)}','done')">🔧 ส่งงาน</button>`;
+  else actions=`<button class="btn ok" onclick="startJob('${esc(j.id)}',this)">▶️ เริ่มงาน (ถึงสาขาแล้ว)</button>`;
+  return `<div class="card ${cls||''}"><div class="row1"><div class="pr">${esc(j.id)}</div><div>${lvl}${statusChip(j)}</div></div>
+    <div class="branch">${esc(j.branch||'-')}</div><div class="meta">${esc(j.type||'')}${j.type?' · ':''}${esc(thDate(j.date))}${j.client?'<br>'+esc(j.client):''}</div>
+    ${j.detail?`<div class="detail clamp" onclick="this.classList.toggle('clamp')">${esc(j.detail)}</div>`:''}${acc}
+    <div class="btns">${actions}${tel}</div></div>`;
+}
+async function startJob(id,btn){
+  const j=jobs.find(x=>x.id===id);
+  if(!confirm(`ถึงสาขาแล้ว เริ่มงาน ${id}?\n${j?j.branch:''}\n\nสถานะในระบบจะเปลี่ยนเป็น "ช่างกำลังเข้าซ่อม" และบันทึกเวลาเข้างานให้`))return;
+  btn.disabled=true;
+  try{const d=await api('start',{jobId:id});if(j){j.status=d.status||'ช่างกำลังเข้าซ่อม';j.inProgress=true;j.started=d.started||{at:new Date().toISOString(),by:me.display_name};}renderJobs();toast('เริ่มงาน '+id+' แล้ว');}
+  catch(e){btn.disabled=false;toast(e.message);}
+}
+function openSubmit(id,mode){location.href=SUBMIT_PAGE+'?job='+encodeURIComponent(id)+'&from=tech'+(mode?'&mode='+mode:'');}
+
+// ===== ข้อมูลตัวอย่าง (?demo=1) =====
+function demoApi(action,extra){
+  const t=todayISO();
+  const tech={id:'TECH-demo',display_name:'ช่างอำนวย',status:'active',team_names:['ทีม1 - อำนวย'],is_leader:true};
+  if(action==='me')return Promise.resolve({ok:true,line:{name:'Amnuay',picture:''},tech:new URLSearchParams(location.search).get('demo')==='new'?null:tech});
+  if(action==='register')return Promise.resolve({ok:true,tech:{...tech,status:'pending',requested_team:extra.team,display_name:extra.displayName}});
+  if(action==='start')return Promise.resolve({ok:true,status:'ช่างกำลังเข้าซ่อม',started:{at:new Date().toISOString(),by:'ช่างอำนวย'}});
+  return Promise.resolve({ok:true,tech,jobs:[
+    {id:'PR431019',branch:'Pun Thai บางแวก (พุทธมณฑลสาย3)',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:addDays(t,-2),status:'รอช่างส่งงาน',level:'Level 1',detail:'- ตู้แช่เค้ก//ยี่ห้อ SYSTEMFORM\n- ตู้เค้กมีเสียงดังตลอดเวลา และไม่ทำความเย็น',phone:'061-0313386',waitingAdmin:false,inProgress:false,started:null},
+    {id:'PR431279',branch:'Pun Thai บางพระ1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:t,status:'ช่างกำลังเข้าซ่อม',level:'Level 1',detail:'แจ้งซ่อมหลอดไฟไม่ติดในตู้เค้ก และภายในตู้มีกลิ่นสารเคมี',phone:'0659424767',waitingAdmin:false,inProgress:true,started:{at:new Date().toISOString(),by:'ช่างอำนวย'}},
+    {id:'PR430557',branch:'Max Mart ตลาดไท1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมแอร์',date:addDays(t,3),status:'รอช่างเข้าซ่อม',level:'3',detail:'แอร์เปิดแล้วสวิทซ์คัทเอาท์ดีด แอร์ตัวที่ 3 (อนุมัติอะไหล่แล้ว)',phone:'064-9342803',waitingAdmin:false,inProgress:false,started:null},
+    {id:'PR430492',branch:'Pun Thai พนมสารคาม5',client:'',type:'PM แอร์ และ ตู้แช่',date:'',status:'รอดำเนินการ',level:'3',detail:'PM โครงการ PM แอร์ / ตู้แช่ 2026 รอบที่ 2',phone:'',waitingAdmin:false,inProgress:false,started:null},
+    {id:'PR428711',branch:'Max Mart กบินทร์บุรี8',client:'',type:'ซ่อมแอร์',date:addDays(t,-5),status:'ช่างส่งงานแล้ว',level:'3',detail:'',phone:'',waitingAdmin:true,inProgress:false,started:{at:new Date(Date.now()-5*864e5).toISOString(),by:'ช่างอำนวย'}}
+  ]});
+}
+boot();
+</script>
+</body>
+</html>
