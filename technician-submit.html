@@ -947,6 +947,9 @@ async function showForm(){
   setTechPartRows(Array.isArray(existingPartsRows)&&existingPartsRows.length ? existingPartsRows.map(r=>({masterId:r.masterId||r.master_price_item_id||'',name:r.name||r.part_name_text||'',qty:r.qty||r.quantity||1,unit:r.unit||'',supplier:r.supplier||r.supplier_name||'',custom:!!r.custom})) : parsePartsTextToRows(jobData.partsUsed || jobData.technicianReport?.parts || ''));
   document.getElementById('f-note').value = jobData.note2 || jobData.technicianReport?.note || '';
   document.getElementById('f-need-quote').checked = !!jobData.technicianReport?.needQuote || jobData.status === 'รออนุมัติอะไหล่';
+  // เปิดจากหน้า "งานของฉัน" (LINE): ปุ่ม "รอขออนุมัติ" = โหมดสำรวจ/ขออนุมัติอะไหล่ · ปุ่ม "ส่งงาน" = ซ่อมเสร็จ
+  if(params.get('mode')==='quote')document.getElementById('f-need-quote').checked = true;
+  else if(params.get('mode')==='done')document.getElementById('f-need-quote').checked = false;
   noPhoto = { during: !!jobData.technicianReport?.noPhoto?.during, after: !!jobData.technicianReport?.noPhoto?.after };
   document.getElementById('f-no-during').checked = noPhoto.during;
   document.getElementById('f-no-after').checked = noPhoto.after;
