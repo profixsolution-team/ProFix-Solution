@@ -2774,8 +2774,10 @@ function splitApplyRows({jobRows=null,adminRows=null,partRows=null,workOrderRows
 function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
   const data={...(reportRow?.report_data||{})};
   const reportId=reportRow.report_id||reportRow.id;
-  const images=imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>r.data||{}).filter(Boolean);
-  const documentImages=imageRows.filter(r=>(r.data||{}).documentOnly||r.category==='documents').map(r=>r.data||{}).filter(Boolean);
+  // imageRows === null = ยังไม่ได้โหลดรูปของงานนี้ → คงรายการรูปเดิมของงานไว้ (ห้ามล้างเป็นว่าง)
+  const prevTr=job.technicianReport||{};
+  const images=imageRows===null?(Array.isArray(prevTr.images)?prevTr.images:(Array.isArray(data.images)?data.images:[])):imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>r.data||{}).filter(Boolean);
+  const documentImages=imageRows===null?(Array.isArray(prevTr.documentImages)?prevTr.documentImages:(Array.isArray(data.documentImages)?data.documentImages:[])):imageRows.filter(r=>(r.data||{}).documentOnly||r.category==='documents').map(r=>r.data||{}).filter(Boolean);
   const tr={...(job.technicianReport||{}),...data,images,documentImages,reviewStatus:reportRow.review_status||data.reviewStatus||job.technicianReport?.reviewStatus,isDraft:!!reportRow.is_draft,submittedAt:reportRow.submitted_at||data.submittedAt||job.technicianReport?.submittedAt,draftSavedAt:reportRow.draft_saved_at||data.draftSavedAt||job.technicianReport?.draftSavedAt,reportId};
   return {
     ...job,
@@ -2798,10 +2800,13 @@ function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
 function isDocModeLight(){try{return new URLSearchParams(location.search).has('sales');}catch(e){return false;}}
 async function loadTechnicianReportTables(skipImages=false){
   const reportRows=await syncedFetchAll('technician_reports','id,report_id,job_id,round_id,status,review_status,is_draft,report_data,submitted_at,draft_saved_at,updated_at','desc');
-  // รูปรายงานช่างหนักสุด — ข้ามในโหมดเอกสาร (ฟอร์มบิลขายไม่ใช้รูป ใช้แค่สาเหตุ/การแก้ไขซึ่งอยู่ใน report_data)
+  // รูปรายงานช่าง: ไม่ดึงทั้งตารางแล้ว (2026-10-20: มีรูปเก่าเก็บเป็น base64 ในแถว 50 แถว ≈ 6 MB → ทั้งตารางหลายร้อย MB โหลดไม่จบ)
+  // → ดึงเฉพาะงานที่เปิดดู (ensureJobImages) แล้วจำไว้ใน jobImagesCache ; งานที่ยังไม่เปิด คงรายการรูปเดิมใน jobs.data
+  skipImages=true;
+  // (เดิม) รูปรายงานช่างหนักสุด — ข้ามในโหมดเอกสาร (ฟอร์มบิลขายไม่ใช้รูป ใช้แค่สาเหตุ/การแก้ไขซึ่งอยู่ใน report_data)
   const imageRows=skipImages?[]:await syncedFetchAll('technician_report_images','id,report_id,job_id,category,url,data,uploaded_at,updated_at','asc');
   if(!reportRows.length)return;
-  const latestByJob=new Map();
+  const latestByJob=techReportLatestByJob=new Map();
   reportRows.forEach(r=>{
     const key=normalizePR(r.job_id);
     if(!key)return;
@@ -2814,13 +2819,73 @@ async function loadTechnicianReportTables(skipImages=false){
     const report=latestByJob.get(normalizePR(j.id));
     if(!report)return j;
     const reportId=report.report_id||report.id;
-    const merged=buildJobFromTechnicianReport(j,report,imageRows.filter(im=>im.report_id===reportId));
+    const cachedImgs=jobImagesCache.get(String(reportId));
+    const merged=buildJobFromTechnicianReport(j,report,skipImages?(cachedImgs?cachedImgs.rows:null):imageRows.filter(im=>im.report_id===reportId));
     // งานที่ไม่มีการแก้ค้างในเครื่อง (ตรงกับที่โหลดจาก server) → ใช้ผล merge เป็นฐานใหม่
     // เดิมไม่ปรับฐาน → บันทึกครั้งถัดไปอัปโหลดทับงานที่มีรายงานช่างทั้งหมด (287 งาน) = ช้ามาก + เสี่ยงทับที่แอดมินอื่นเพิ่งแก้
     if(base[j.id]!==undefined&&base[j.id]===stableJson(j)){base[j.id]=stableJson(merged);rebased=true;}
     return merged;
   });
   if(rebased)delete splitSaveHashes.jobs;
+}
+// ===== รูปรายงานช่าง: โหลดเฉพาะงานที่เปิดดู (2026-10-20) =====
+let techReportLatestByJob=new Map();
+const jobImagesCache=new Map(); // reportId -> {rows, at}
+const jobImagesLoading=new Map();
+async function fetchReportRowForJob(id){
+  const rep=techReportLatestByJob.get(normalizePR(id));
+  if(rep)return rep;
+  // รายงานช่างยังโหลดไม่เสร็จ → ถามเฉพาะงานนี้
+  const rows=await sbFetchJson('technician_reports',`?select=id,report_id,job_id,round_id,status,review_status,is_draft,report_data,submitted_at,draft_saved_at,updated_at&job_id=eq.${encodeURIComponent(id)}&order=updated_at.desc&limit=1`).catch(()=>[]);
+  return rows&&rows[0]||null;
+}
+// โหลดรูปของงานนี้จาก technician_report_images แล้วรวมเข้างานในหน่วยความจำ (ไม่ทำให้ระบบคิดว่ามีการแก้งาน)
+async function ensureJobImages(id,maxAgeMs=60*1000){
+  const j=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x));if(!j)return false;
+  const report=await fetchReportRowForJob(j.id);
+  if(!report)return false;
+  const rid=String(report.report_id||report.id);
+  const c=jobImagesCache.get(rid);
+  if(c&&Date.now()-c.at<maxAgeMs)return applyJobImages(j,report,c.rows);
+  if(!jobImagesLoading.has(rid)){
+    jobImagesLoading.set(rid,(async()=>{
+      // ทีละ 25 แถว (รูปเก่าบางแถวเป็น base64 ~100 KB) — ก้อนเล็ก หลุดก็ลองใหม่เฉพาะก้อนนั้น
+      const out=[];let last=null;
+      for(let guard=0;guard<400;guard++){
+        const q=`?select=id,report_id,job_id,category,data,uploaded_at,updated_at&report_id=eq.${encodeURIComponent(rid)}${last!=null?'&id=gt.'+encodeURIComponent(last):''}&order=id.asc&limit=25`;
+        const rows=await sbFetchJson('technician_report_images',q);
+        out.push(...rows);
+        if(rows.length<25)break;
+        last=rows[rows.length-1].id;
+      }
+      // เรียงเหมือนเดิม (updated_at น้อย→มาก = ลำดับที่ฟอร์มช่างบันทึก) แล้วค่อยเวลาอัปโหลด
+      const t=v=>Date.parse(v||'')||0;
+      out.sort((a,b)=>t(a.updated_at)-t(b.updated_at)||t(a.uploaded_at)-t(b.uploaded_at)||(String(a.id)<String(b.id)?-1:1));
+      jobImagesCache.set(rid,{rows:out,at:Date.now()});
+      return out;
+    })().finally(()=>jobImagesLoading.delete(rid)));
+  }
+  const rows=await jobImagesLoading.get(rid);
+  const cur=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x))||j;
+  return applyJobImages(cur,report,rows);
+}
+function applyJobImages(j,report,rows){
+  const base=splitRowHashes.jobs||{};
+  const wasBase=base[j.id]!==undefined&&base[j.id]===stableJson(j);
+  const merged=buildJobFromTechnicianReport(j,report,rows);
+  j.technicianReport=merged.technicianReport;
+  if(wasBase){base[j.id]=stableJson(j);delete splitSaveHashes.jobs;}
+  return true;
+}
+// เปิดเอกสารที่ต้องใช้รูป: เปิดแท็บไว้ก่อนทันที (กัน popup ถูกบล็อก) แล้วค่อยใส่เนื้อหาเมื่อรูปโหลดเสร็จ
+async function openJobDocWithImages(id,builders){
+  const j0=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x));
+  if(!j0){alert('ไม่พบงาน '+id);return;}
+  const wins=builders.map(()=>{const w=window.open('','_blank');if(w){try{w.document.write('<p style="font-family:sans-serif;padding:24px">กำลังโหลดรูปจากรายงานช่าง...</p>');}catch(e){}}return w;});
+  if(wins.some(w=>!w)){wins.forEach(w=>{try{w&&w.close();}catch(e){}});alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+  try{await ensureJobImages(id,0);}catch(e){console.warn('โหลดรูปรายงานช่างไม่สำเร็จ',e);}
+  const j=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x))||j0;
+  builders.forEach((b,i)=>{try{const w=wins[i];w.document.open();w.document.write(b(j));w.document.close();}catch(e){console.warn(e);}});
 }
 // ===== ระยะ A: ดึงเฉพาะข้อมูลที่เปลี่ยน (incremental sync) — 2026-10-20 =====
 // เดิม: ทุกแท็บดึงงาน+งานแอดมิน+รายงานช่าง+รูป ทั้งหมด (~45 MB) ทุก 2.5 นาที → ฐานข้อมูลขนาด Micro รับไม่ไหว ทุกหน้าช้า
@@ -2979,7 +3044,7 @@ const incrIdbP={};
 let incrOldIdbCleaned=false;
 function incrIdb(table){
   if(incrIdbP[table])return incrIdbP[table];
-  if(!incrOldIdbCleaned){incrOldIdbCleaned=true;try{indexedDB.deleteDatabase(INCR_IDB_NAME);}catch(e){}} // ลบที่เก็บรุ่นแรก (รวมทุกตาราง) ทิ้ง
+  if(!incrOldIdbCleaned){incrOldIdbCleaned=true;try{indexedDB.deleteDatabase(INCR_IDB_NAME);indexedDB.deleteDatabase(INCR_IDB_NAME+'_technician_report_images');}catch(e){}} // ลบที่เก็บรุ่นแรก + แคชรูปทั้งตาราง (เลิกใช้แล้ว) ทิ้ง
   incrIdbP[table]=new Promise(res=>{
     try{
       if(!window.indexedDB)return res(null);
@@ -8905,13 +8970,14 @@ function deleteWorkOrderDoc(id){ensureDocsShape();if(!confirm('ลบไฟล�
 function printAllForPR(pr){
   const b=workOrderBundle(pr),j=b.job;
   if(b.workDocs[0])openStoredWorkOrderDoc(b.workDocs[0].id);
-  if(j){generateDocWindow(acceptanceReportHtml(j));generateDocWindow(serviceReportHtml(j));generateDocWindow(photoBillingReportHtml(j));}
+  if(j){openJobDocWithImages(j.id,[acceptanceReportHtml,serviceReportHtml,photoBillingReportHtml]);}
   b.quotes.forEach(q=>printQuoteDoc(q.no));
   if(!b.workDocs.length&&!j&&!b.quotes.length)alert('ยังไม่มีเอกสารสำหรับ PR นี้');
 }
 // ===== ชุดเอกสาร: เลือกเอกสารของงาน แล้วรวมเป็นไฟล์เดียว (พิมพ์/Save PDF) =====
 async function collectPrDocs(pr){
   try{await ensureAccountingLoaded();}catch(e){}
+  try{await ensureJobImages(pr,0);}catch(e){console.warn('โหลดรูปรายงานช่างไม่สำเร็จ',e);}
   const b=workOrderBundle(pr),j=b.job;
   const out=[];
   if(j){
@@ -9049,12 +9115,12 @@ function renderWorkOrders(){
     <div class="detail-item"><div class="detail-label">เบอร์ติดต่อ</div><div class="detail-val">${esc(d.phone)}</div></div>
   </div>
   <div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(d.detail)}</div></div>
-  <div class="flex g8 mb16" style="flex-wrap:wrap;"><button class="btn btn-primary" onclick="printAllForPR('${esc(workOrderPrFilter)}')">พิมพ์เอกสารทั้งหมด</button><button class="btn btn-primary" onclick="openDocBundle('${esc(workOrderPrFilter)}')">📑 รวมเอกสารเป็นไฟล์เดียว</button><button class="btn btn-ghost" onclick="document.getElementById('workorder-pdf-upload').click()">+ อัปโหลดเอกสารเพิ่ม</button>${reportReady?`<button class="btn btn-ghost" onclick="generateDocWindow(acceptanceReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">ใบตรวจรับ</button><button class="btn btn-ghost" onclick="generateDocWindow(serviceReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">รายงานช่าง</button><button class="btn btn-ghost" onclick="generateDocWindow(photoBillingReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">ใบงานรูปภาพ</button>`:'<span class="tm" style="font-size:12px;">ยังไม่มีคิวช่าง/รายงานสำหรับสร้างเอกสารงานช่าง</span>'}</div>
+  <div class="flex g8 mb16" style="flex-wrap:wrap;"><button class="btn btn-primary" onclick="printAllForPR('${esc(workOrderPrFilter)}')">พิมพ์เอกสารทั้งหมด</button><button class="btn btn-primary" onclick="openDocBundle('${esc(workOrderPrFilter)}')">📑 รวมเอกสารเป็นไฟล์เดียว</button><button class="btn btn-ghost" onclick="document.getElementById('workorder-pdf-upload').click()">+ อัปโหลดเอกสารเพิ่ม</button>${reportReady?`<button class="btn btn-ghost" onclick="openJobDocWithImages('${esc(workOrderPrFilter)}',[acceptanceReportHtml])">ใบตรวจรับ</button><button class="btn btn-ghost" onclick="openJobDocWithImages('${esc(workOrderPrFilter)}',[serviceReportHtml])">รายงานช่าง</button><button class="btn btn-ghost" onclick="openJobDocWithImages('${esc(workOrderPrFilter)}',[photoBillingReportHtml])">ใบงานรูปภาพ</button>`:'<span class="tm" style="font-size:12px;">ยังไม่มีคิวช่าง/รายงานสำหรับสร้างเอกสารงานช่าง</span>'}</div>
   <div class="workorder-doc-list">
     ${b.workDocs.map(x=>`<div class="workorder-doc"><div><div class="workorder-doc-title">ใบงานต้นฉบับ PDF</div><div class="workorder-doc-sub">${esc(x.fileName||'workorder.pdf')} · ${x.uploadedAt?new Date(x.uploadedAt).toLocaleString('th-TH'):'—'}</div></div><div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="openStoredWorkOrderDoc('${esc(x.id)}')">เปิด/พิมพ์</button><button class="btn btn-danger btn-sm" onclick="deleteWorkOrderDoc('${esc(x.id)}')">ลบ</button></div></div>`).join('')}
     ${b.quotes.map(x=>`<div class="workorder-doc"><div><div class="workorder-doc-title">ใบเสนอราคา ${esc(x.no)}</div><div class="workorder-doc-sub">ยอด ฿${(x.amt||0).toLocaleString()} · ${esc(x.date||'—')} · ${esc(x.st||'')}</div></div><div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="openQuoteModal('${esc(x.no)}')">แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="printQuoteDoc('${esc(x.no)}')">พิมพ์</button><button class="btn btn-danger btn-sm" onclick="deleteDoc('qt','${esc(x.no)}');renderWorkOrders()">ลบ</button></div></div>`).join('')}
     ${b.invoices.map(x=>`<div class="workorder-doc"><div><div class="workorder-doc-title">ใบแจ้งหนี้ ${esc(x.no)}</div><div class="workorder-doc-sub">ยอด ฿${(x.amt||0).toLocaleString()} · ครบกำหนด ${esc(x.due||'—')} · ${esc(x.st||'')}</div></div><div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="markIV('${esc(x.no)}');renderWorkOrders()">รับเงิน</button><button class="btn btn-danger btn-sm" onclick="deleteDoc('iv','${esc(x.no)}');renderWorkOrders()">ลบ</button></div></div>`).join('')}
-    ${reportReady?`<div class="workorder-doc"><div><div class="workorder-doc-title">ใบตรวจรับงานซ่อมแซมและปรับปรุง</div><div class="workorder-doc-sub">สร้างจากข้อมูลรายงานช่างของ ${esc(workOrderPrFilter)}</div></div><button class="btn btn-ghost btn-sm" onclick="generateDocWindow(acceptanceReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">พิมพ์</button></div><div class="workorder-doc"><div><div class="workorder-doc-title">รายงานช่าง</div><div class="workorder-doc-sub">ข้อมูลสาเหตุ การแก้ไข อะไหล่ และรูปงาน</div></div><button class="btn btn-ghost btn-sm" onclick="generateDocWindow(serviceReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">พิมพ์</button></div><div class="workorder-doc"><div><div class="workorder-doc-title">ใบงานรูปภาพสำหรับวางบิล</div><div class="workorder-doc-sub">รูปก่อน ระหว่าง หลังดำเนินการ</div></div><button class="btn btn-ghost btn-sm" onclick="generateDocWindow(photoBillingReportHtml(jobs.find(j=>sameJob(j.id,'${esc(workOrderPrFilter)}'))))">พิมพ์</button></div>`:''}
+    ${reportReady?`<div class="workorder-doc"><div><div class="workorder-doc-title">ใบตรวจรับงานซ่อมแซมและปรับปรุง</div><div class="workorder-doc-sub">สร้างจากข้อมูลรายงานช่างของ ${esc(workOrderPrFilter)}</div></div><button class="btn btn-ghost btn-sm" onclick="openJobDocWithImages('${esc(workOrderPrFilter)}',[acceptanceReportHtml])">พิมพ์</button></div><div class="workorder-doc"><div><div class="workorder-doc-title">รายงานช่าง</div><div class="workorder-doc-sub">ข้อมูลสาเหตุ การแก้ไข อะไหล่ และรูปงาน</div></div><button class="btn btn-ghost btn-sm" onclick="openJobDocWithImages('${esc(workOrderPrFilter)}',[serviceReportHtml])">พิมพ์</button></div><div class="workorder-doc"><div><div class="workorder-doc-title">ใบงานรูปภาพสำหรับวางบิล</div><div class="workorder-doc-sub">รูปก่อน ระหว่าง หลังดำเนินการ</div></div><button class="btn btn-ghost btn-sm" onclick="openJobDocWithImages('${esc(workOrderPrFilter)}',[photoBillingReportHtml])">พิมพ์</button></div>`:''}
     ${docCount?'':'<div class="empty"><div class="empty-icon">📄</div><div>ยังไม่มีเอกสารใน PR นี้</div></div>'}
   </div>`;
 }
@@ -10078,7 +10144,12 @@ function openReportModal(id){
   document.getElementById('mrpt-recommendation').value=j.recommendation||tr.recommendation||'';
   document.getElementById('mrpt-note2').value=j.note2||tr.note||'';
   document.getElementById('mrpt-review-note').value=j.reviewNote||tr.reviewNote||'';
-  document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+renderReportImages(j);
+  document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+(reportImages(j).length||reportDocumentImages(j).length?renderReportImages(j):'<div class="text-box">กำลังโหลดรูปจากรายงานช่าง...</div>');
+  ensureJobImages(id,0).then(()=>{
+    if(document.getElementById('mrpt-jobid')?.value!==id)return;
+    const jj=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||j;
+    document.getElementById('mrpt-images').innerHTML=renderReportRounds(jj)+renderReportImages(jj);
+  }).catch(e=>{console.warn('โหลดรูปรายงานช่างไม่สำเร็จ',e);if(document.getElementById('mrpt-jobid')?.value===id)document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+'<div class="text-box">โหลดรูปไม่สำเร็จ — ปิดแล้วเปิดใหม่อีกครั้ง</div>';});
   const picSel=document.getElementById('mrpt-pic');
   picSel.innerHTML=['— ไม่ระบุ —',...(adminNames||[])].map(a=>`<option${a===j.pic?' selected':''}>${a}</option>`).join('');
   openM('m-report');
@@ -10296,14 +10367,14 @@ function generateAcceptanceReport(){
   const now=new Date().toISOString();
   j.generatedReports=[...(j.generatedReports||[]),{type:'acceptance-report',generatedAt:now,imageCount:reportImages(j).length}];
   saveState();
-  generateDocWindow(acceptanceReportHtml(j));
+  openJobDocWithImages(j.id,[acceptanceReportHtml]);
 }
 function generatePhotoBillingReport(){
   const j=syncReportFormToJob();if(!j)return;
   const now=new Date().toISOString();
   j.generatedReports=[...(j.generatedReports||[]),{type:'photo-billing-report',generatedAt:now,imageCount:reportImages(j).length}];
   saveState();
-  generateDocWindow(photoBillingReportHtml(j));
+  openJobDocWithImages(j.id,[photoBillingReportHtml]);
 }
 function quoteCompanyDefaults(){
   return {
