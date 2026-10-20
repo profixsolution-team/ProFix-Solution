@@ -107,7 +107,7 @@ let idToken='', lineProfile={}, me=null, jobs=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2200);}
-function todayISO(){const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);}
+function todayISO(x){const d=x instanceof Date?x:new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);}
 function addDays(iso,n){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);}
 const TH_DAYS=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'],TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 function thDate(iso){if(!/^\d{4}-\d{2}-\d{2}/.test(iso||''))return 'ยังไม่ระบุวัน';const d=new Date(iso.slice(0,10)+'T00:00:00');return `${TH_DAYS[d.getDay()]} ${d.getDate()} ${TH_MON[d.getMonth()]}`;}
@@ -204,13 +204,20 @@ function renderJobs(){
       +sec('🔧','กำลังซ่อม',working,'working')+sec('📋','ยังไม่เสร็จ',todo,'')+sec('📤','ส่งงานแล้ว',sent,'')+sec('✅','ปิดงานแล้ว',done,'');
   }else{
     const open=jobs.filter(j=>!j.done);
-    const working=open.filter(j=>j.inProgress&&!j.waitingAdmin);
-    const act=open.filter(j=>!j.waitingAdmin&&!j.inProgress), wait=open.filter(j=>j.waitingAdmin);
-    const late=act.filter(j=>hasDate(j)&&j.date<today), tday=act.filter(j=>j.date===today);
-    const soon=act.filter(j=>hasDate(j)&&j.date>today&&j.date<=week), later=act.filter(j=>!hasDate(j)||j.date>week);
-    html=`<div class="summary"><div><b style="color:var(--green)">${working.length}</b><span>กำลังซ่อม</span></div><div><b style="color:var(--red)">${late.length}</b><span>ค้าง/เลยนัด</span></div><div><b style="color:var(--blue)">${tday.length}</b><span>วันนี้</span></div></div>`+fbar
-      +(act.length||working.length?'':'<div class="empty">🎉 ไม่มีงานค้าง</div>')
-      +sec('🔧','กำลังซ่อม',working,'working')+sec('🔴','ค้าง / เลยนัด',late,'late')+sec('📅','วันนี้',tday,'today')+sec('🗓️','7 วันข้างหน้า',soon,'')+sec('📋','ยังไม่ระบุวัน / ถัดไป',later,'')
+    // กดเริ่มงานแล้ว → "รอส่งงาน" ทันที ; "ค้าง / เลยกำหนด" เมื่อวันนี้เลยวันนัด (งานที่เริ่มแล้ว นับจากวันที่ช้ากว่าระหว่างวันนัดกับวันที่กดเริ่ม)
+    const startDay=j=>j.started&&j.started.at?todayISO(new Date(j.started.at)):'';
+    const dueDay=j=>{const d=hasDate(j)?j.date.slice(0,10):'';if(!j.inProgress)return d;const s=startDay(j);return d&&s?(d>s?d:s):(d||s);};
+    const wait=open.filter(j=>j.waitingAdmin);
+    const act=open.filter(j=>!j.waitingAdmin);
+    const late=act.filter(j=>{const d=dueDay(j);return d&&d<today;});
+    const lateSet=new Set(late);
+    const pending=act.filter(j=>j.inProgress&&!lateSet.has(j));
+    const notStarted=act.filter(j=>!j.inProgress&&!lateSet.has(j));
+    const tday=notStarted.filter(j=>j.date===today);
+    const soon=notStarted.filter(j=>hasDate(j)&&j.date>today&&j.date<=week), later=notStarted.filter(j=>!hasDate(j)||j.date>week);
+    html=`<div class="summary"><div><b style="color:#175FFF">${pending.length}</b><span>รอส่งงาน</span></div><div><b style="color:var(--red)">${late.length}</b><span>ค้าง/เลยกำหนด</span></div><div><b style="color:var(--green)">${tday.length}</b><span>วันนี้</span></div></div>`+fbar
+      +(act.length?'':'<div class="empty">🎉 ไม่มีงานค้าง</div>')
+      +sec('🔴','ค้าง / เลยกำหนด',late,'late')+sec('📝','รอส่งงาน',pending,'working')+sec('📅','วันนี้',tday,'today')+sec('🗓️','7 วันข้างหน้า',soon,'')+sec('📋','ยังไม่ระบุวัน / ถัดไป',later,'')
       +(wait.length?`<details class="more"><summary>📤 ส่งงานแล้ว (${wait.length}) ▾</summary>${wait.sort(byDate).map(j=>card(j,'')).join('')}</details>`:'');
   }
   $('app').innerHTML=html;
@@ -278,6 +285,7 @@ function demoApi(action,extra){
   const dJobs=[
     {id:'PR431019',branch:'Pun Thai บางแวก (พุทธมณฑลสาย3)',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:addDays(t,-2),status:'รอช่างส่งงาน',level:'Level 1',detail:'- ตู้แช่เค้ก//ยี่ห้อ SYSTEMFORM\n- ตู้เค้กมีเสียงดังตลอดเวลา และไม่ทำความเย็น',phone:'061-0313386',waitingAdmin:false,inProgress:false,started:null},
     {id:'PR431279',branch:'Pun Thai บางพระ1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:t,status:'ช่างกำลังเข้าซ่อม',level:'Level 1',detail:'แจ้งซ่อมหลอดไฟไม่ติดในตู้เค้ก และภายในตู้มีกลิ่นสารเคมี',phone:'0659424767',waitingAdmin:false,inProgress:true,started:{at:new Date().toISOString(),by:'ช่างอำนวย'}},
+    {id:'PR430498',branch:'Lotus บางนา',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมแอร์',date:addDays(t,-2),status:'ช่างกำลังเข้าซ่อม',level:'2',detail:'แอร์ห้องเย็นน้ำแข็งเกาะคอยล์',phone:'',waitingAdmin:false,inProgress:true,started:{at:new Date(Date.now()-2*86400000).toISOString(),by:'ช่างอำนวย'}},
     {id:'PR430557',branch:'Max Mart ตลาดไท1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมแอร์',date:addDays(t,3),status:'รอช่างเข้าซ่อม',level:'3',detail:'แอร์เปิดแล้วสวิทซ์คัทเอาท์ดีด แอร์ตัวที่ 3 (อนุมัติอะไหล่แล้ว)',phone:'064-9342803',waitingAdmin:false,inProgress:false,started:null},
     {id:'PR430492',branch:'Pun Thai พนมสารคาม5',client:'',type:'PM แอร์ และ ตู้แช่',date:'',status:'รอดำเนินการ',level:'3',detail:'PM โครงการ PM แอร์ / ตู้แช่ 2026 รอบที่ 2',phone:'',waitingAdmin:false,inProgress:false,started:null},
     {id:'PR428711',branch:'Max Mart กบินทร์บุรี8',client:'',type:'ซ่อมแอร์',date:addDays(t,-5),status:'ช่างส่งงานแล้ว',level:'3',detail:'',phone:'',waitingAdmin:true,inProgress:false,started:{at:new Date(Date.now()-5*864e5).toISOString(),by:'ช่างอำนวย'},techSubmittedAt:new Date(Date.now()-4*864e5).toISOString(),reportStatus:'รอตรวจ',dateIn:addDays(t,-5),timeIn:'10:30',dateDone:addDays(t,-5),timeDone:'15:00'},
