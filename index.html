@@ -2864,11 +2864,27 @@ async function sbCountRows(table){
   if(!m)throw new Error('no content-range for '+table);
   return Number(m[1]);
 }
+// ดึงทีละหน้าแบบ keyset (เรียงตาม id แล้วขอ "id มากกว่าตัวสุดท้าย") — หน้าเล็ก ไม่ข้าม/ไม่ซ้ำแถวแม้มีคนเพิ่ม/แก้ระหว่างดึง
+// เจอจริง 2026-10-20: เครื่องเน็ตช้า (~200 KB/วิ) โหลดรายงานช่างก้อนเดียว ~13 MB ถูกตัดกลางทางซ้ำ ๆ → ไม่เคยโหลดเสร็จ
+const INCR_PAGE_SIZE={jobs:100,admin_tasks:500,technician_reports:40,technician_report_images:2000};
+async function sbFetchKeyset(table,select,filter=''){
+  const size=INCR_PAGE_SIZE[table]||500;
+  const out=[];let last=null;
+  for(let guard=0;guard<10000;guard++){
+    const q=`?select=${select.split(',').includes('id')?select:'id,'+select}${filter?'&'+filter:''}${last!=null?'&id=gt.'+encodeURIComponent(last):''}&order=id.asc&limit=${size}`;
+    const rows=await sbFetchJson(table,q);
+    out.push(...rows);
+    if(rows.length<size)break;
+    last=rows[rows.length-1].id;
+  }
+  return out;
+}
 function incrLog(entry){
   try{const k='profix_sync_verify_log';const a=JSON.parse(localStorage.getItem(k)||'[]');a.unshift({at:new Date().toISOString(),...entry});localStorage.setItem(k,JSON.stringify(a.slice(0,30)));}catch(e){}
 }
 async function incrFullFetch(table,select,order){
-  const rows=await sbFetchAll(table,`?select=${select}&order=updated_at.${order}`);
+  const rows=await sbFetchKeyset(table,select);
+  { const dir=order==='asc'?1:-1; rows.sort((a,b)=>{const d=incrTime(a)-incrTime(b);if(d)return d*dir;return String(a.id)<String(b.id)?-1:String(a.id)>String(b.id)?1:0;}); }
   const map=new Map();let cursor=0;
   rows.forEach(r=>{const e=incrEntry(r);map.set(String(r.id),e);if(e.u>cursor)cursor=e.u;});
   incrCache[table]={select,order,rows:map,cursor,verifiedAt:Date.now()};
@@ -2878,14 +2894,14 @@ async function incrFullFetch(table,select,order){
 }
 async function incrDeltaFetch(table,c){
   const since=new Date(Math.max(0,c.cursor-INCR_OVERLAP_MS)).toISOString();
-  const delta=await sbFetchAll(table,`?select=${c.select}&updated_at=gte.${since}&order=updated_at.asc`);
+  const delta=await sbFetchKeyset(table,c.select,`updated_at=gte.${since}`);
   const next=new Map(c.rows);
   let cursor=c.cursor;
   delta.forEach(r=>{const e=incrEntry(r);next.set(String(r.id),e);if(e.u>cursor)cursor=e.u;});
   const serverCount=await sbCountRows(table);
   let pruned=0;
   if(serverCount!==next.size){
-    const ids=await sbFetchAll(table,'?select=id&order=id.asc');
+    const ids=await sbFetchKeyset(table,'id');
     const live=new Set(ids.map(r=>String(r.id)));
     for(const id of [...next.keys()])if(!live.has(id)){next.delete(id);pruned++;}
     if(live.size!==next.size)return null; // มีแถวบน server ที่ delta ไม่เจอ → ให้โหลดเต็ม
@@ -2917,17 +2933,30 @@ async function syncedFetchAllInner(table,select,order){
   catch(e){console.warn('[sync] ดึงเฉพาะส่วนที่เปลี่ยนไม่สำเร็จ → โหลดเต็ม',table,e);return incrFullFetch(table,select,order);}
   if(!d){incrLog({table,kind:c.restored?'restore-count-mismatch':'count-mismatch'});return incrFullFetch(table,select,order);}
   if(Date.now()-c.verifiedAt>=INCR_VERIFY_EVERY_MS){
-    // ตรวจเทียบกับโหลดเต็ม: นับเฉพาะแถวที่ไม่ได้ถูกแก้ระหว่างตรวจ (updated_at เก่ากว่าเวลาเริ่ม 30 วิ)
-    const full=await incrFullFetch(table,select,order);
-    const fullMap=incrCache[table].rows;
-    const stableBefore=startedAt-30*1000;
-    const diffs=[];
-    fullMap.forEach((e,id)=>{if(e.u>=stableBefore)return;const mine=d.next.get(id);if(!mine||mine.s!==e.s)diffs.push(id);});
-    d.next.forEach((e,id)=>{if(!fullMap.has(id)&&e.u<stableBefore)diffs.push(id);});
-    incrStats[table]={mode:'verify',rows:full.length,diffs:diffs.length,at:new Date().toISOString()};
-    if(diffs.length){console.warn('[sync verify] ข้อมูลแบบดึงเฉพาะส่วนต่างจากโหลดเต็ม → ใช้ชุดโหลดเต็มแทน',table,diffs.slice(0,20));incrLog({table,kind:'verify-mismatch',count:diffs.length,ids:diffs.slice(0,20)});}
-    else incrLog({table,kind:'verify-ok',rows:full.length});
-    return full;
+    // ตรวจเทียบแบบเบา: ดึงแค่ id + updated_at ของทุกแถว (เล็กมาก) เทียบกับชุดในเครื่อง
+    // updated_at ถูกประทับโดย server ทุกครั้งที่แถวเปลี่ยน → ถ้าเวลาไม่ตรง/ไม่มี = ชุดในเครื่องพลาด → ดึงแถวนั้นมาใหม่ทั้งแถว
+    // (เดิมโหลดเต็มทั้งตาราง ~15–25 MB ทุก 30 นาที/แท็บ = ภาระหนักกับเครื่อง server ขนาด Micro)
+    try{
+      const stamps=await sbFetchKeyset(table,'id,updated_at');
+      const live=new Map(stamps.map(r=>[String(r.id),incrTime(r)]));
+      const stableBefore=startedAt-30*1000;
+      const fix=[];let pruned=0;
+      live.forEach((u,id)=>{const mine=d.next.get(id);if(!mine||mine.u!==u)fix.push(id);});
+      for(const id of [...d.next.keys()])if(!live.has(id)){d.next.delete(id);pruned++;}
+      for(let i=0;i<fix.length;i+=50){
+        const list=fix.slice(i,i+50).map(x=>`"${x.replace(/"/g,'\\"')}"`).join(',');
+        const rows=await sbFetchJson(table,`?select=${c.select}&id=in.(${encodeURIComponent(list)})`);
+        rows.forEach(r=>{const e=incrEntry(r);d.next.set(String(r.id),e);if(e.u>d.cursor)d.cursor=e.u;});
+      }
+      const missed=fix.filter(id=>{const u=live.get(id);return u&&u<stableBefore;}); // แก้มานานแล้วแต่ delta ไม่เจอ = ควรเป็น 0
+      c.verifiedAt=Date.now();
+      incrStats[table]={mode:'verify-light',rows:d.next.size,fixed:fix.length,missed:missed.length,pruned,at:new Date().toISOString()};
+      if(missed.length||pruned){console.warn('[sync verify] ชุดในเครื่องไม่ตรง server — แก้ให้แล้ว',table,{missed:missed.slice(0,20),pruned});incrLog({table,kind:'verify-fixed',missed:missed.length,pruned,ids:missed.slice(0,20)});}
+      else incrLog({table,kind:'verify-ok',rows:d.next.size});
+    }catch(e){
+      console.warn('[sync verify] ตรวจเทียบไม่สำเร็จ → โหลดเต็ม',table,e);
+      return incrFullFetch(table,select,order);
+    }
   }
   c.rows=d.next;c.cursor=d.cursor;
   const wasRestored=!!c.restored;c.restored=false;
