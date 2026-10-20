@@ -2142,6 +2142,7 @@ async function doLoginSubmit(ev){
 async function logout(){
   if(!confirm('ออกจากระบบ?'))return;
   try{await sbClient.auth.signOut();}catch(e){}
+  try{await incrIdbClear();}catch(e){} // ล้างข้อมูลที่เก็บไว้ในเบราว์เซอร์ (ระยะ B)
   ACCESS_TOKEN=null;AUTH=null;location.reload();
 }
 function canEdit(){return !AUTH || AUTH.role!=='viewer';}  // viewer = ดูอย่างเดียว
@@ -2871,13 +2872,24 @@ async function incrDeltaFetch(table,c){
 }
 // คืนรายการแถวครบชุดของตาราง (เหมือน sbFetchAll แบบเต็ม — object ใหม่ทุกครั้ง) แต่ดึงจาก server เฉพาะส่วนที่เปลี่ยน
 async function syncedFetchAll(table,select,order='desc'){
-  const c=incrCache[table];
-  if(!c||c.select!==select||c.order!==order||!(await incrSyncReady()))return incrFullFetch(table,select,order);
+  const rows=await syncedFetchAllInner(table,select,order);
+  incrPersistSoon(table);
+  return rows;
+}
+async function syncedFetchAllInner(table,select,order){
+  let c=incrCache[table];
+  if(c&&(c.select!==select||c.order!==order))c=null;
+  if(!(await incrSyncReady()))return incrFullFetch(table,select,order);
+  if(!c){
+    c=await incrRestore(table,select,order).catch(()=>null);
+    if(!c)return incrFullFetch(table,select,order);
+    incrCache[table]=c;
+  }
   const startedAt=Date.now();
   let d=null;
   try{d=await incrDeltaFetch(table,c);}
   catch(e){console.warn('[sync] ดึงเฉพาะส่วนที่เปลี่ยนไม่สำเร็จ → โหลดเต็ม',table,e);return incrFullFetch(table,select,order);}
-  if(!d){incrLog({table,kind:'count-mismatch'});return incrFullFetch(table,select,order);}
+  if(!d){incrLog({table,kind:c.restored?'restore-count-mismatch':'count-mismatch'});return incrFullFetch(table,select,order);}
   if(Date.now()-c.verifiedAt>=INCR_VERIFY_EVERY_MS){
     // ตรวจเทียบกับโหลดเต็ม: นับเฉพาะแถวที่ไม่ได้ถูกแก้ระหว่างตรวจ (updated_at เก่ากว่าเวลาเริ่ม 30 วิ)
     const full=await incrFullFetch(table,select,order);
@@ -2892,9 +2904,60 @@ async function syncedFetchAll(table,select,order='desc'){
     return full;
   }
   c.rows=d.next;c.cursor=d.cursor;
-  incrStats[table]={mode:'delta',rows:d.next.size,delta:d.deltaCount,pruned:d.pruned,at:new Date().toISOString()};
+  const wasRestored=!!c.restored;c.restored=false;
+  incrStats[table]={mode:wasRestored?'restore+delta':'delta',rows:d.next.size,delta:d.deltaCount,pruned:d.pruned,at:new Date().toISOString()};
   return incrRowsOut(d.next,order);
 }
+// ===== ระยะ B: เก็บชุดข้อมูลที่ sync แล้วไว้ในเบราว์เซอร์ (IndexedDB) — 2026-10-20 =====
+// เปิดหน้า/แท็บใหม่: เอาชุดที่เก็บไว้ + ดึงเฉพาะส่วนที่เปลี่ยนตั้งแต่ครั้งก่อน (ตรวจจำนวนแถว/ตัดแถวที่ถูกลบเหมือนระยะ A)
+// → โหลดเสร็จ (บันทึกได้) ในไม่กี่วินาที แทนการรอดาวน์โหลดทั้งระบบ
+// ปลอดภัย: ใช้เฉพาะเมื่อโหมด incremental พร้อม (SQL ระยะ A) · แยกตามผู้ใช้/โปรเจกต์ · อายุเกิน 7 วันทิ้ง
+//          ผิดพลาดอะไร → โหลดเต็มแบบเดิม · ตรวจเทียบกับโหลดเต็มอีกครั้งภายใน ~5 นาทีหลังเปิด (เบื้องหลัง ไม่บล็อก)
+//          ออกจากระบบ = ล้างที่เก็บนี้
+const INCR_IDB_NAME='profix_sync_cache_v1', INCR_IDB_STORE='tables', INCR_IDB_MAX_AGE=7*24*3600*1000;
+let incrIdbP=null;
+function incrIdb(){
+  if(incrIdbP)return incrIdbP;
+  incrIdbP=new Promise(res=>{
+    try{
+      if(!window.indexedDB)return res(null);
+      const rq=indexedDB.open(INCR_IDB_NAME,1);
+      rq.onupgradeneeded=()=>{try{rq.result.createObjectStore(INCR_IDB_STORE);}catch(e){}};
+      rq.onsuccess=()=>res(rq.result);
+      rq.onerror=()=>res(null);
+      rq.onblocked=()=>res(null);
+    }catch(e){res(null);}
+  });
+  return incrIdbP;
+}
+function incrIdbOp(mode,fn){
+  return incrIdb().then(db=>db?new Promise(res=>{
+    try{const tx=db.transaction(INCR_IDB_STORE,mode);const rq=fn(tx.objectStore(INCR_IDB_STORE));tx.oncomplete=()=>res(rq?rq.result:true);tx.onerror=()=>res(null);tx.onabort=()=>res(null);}
+    catch(e){res(null);}
+  }):null).catch(()=>null);
+}
+function incrIdbKey(table){return [SUPABASE_URL,(AUTH&&AUTH.email)||'',table].join('|');}
+async function incrRestore(table,select,order){
+  if(!AUTH||!AUTH.email)return null;
+  const v=await incrIdbOp('readonly',st=>st.get(incrIdbKey(table)));
+  if(!v||v.v!==1||v.select!==select||v.order!==order||!Array.isArray(v.rows)||!v.cursor)return null;
+  if(Date.now()-(v.savedAt||0)>INCR_IDB_MAX_AGE)return null;
+  const map=new Map();
+  for(const e of v.rows){if(!Array.isArray(e)||e.length<3)return null;map.set(String(e[0]),{u:Number(e[1])||0,s:String(e[2])});}
+  // ให้ตรวจเทียบกับโหลดเต็มภายใน ~5 นาที (รอบ poll ถัดไปหลังจากนั้น)
+  return {select,order,rows:map,cursor:Number(v.cursor)||0,verifiedAt:Date.now()-INCR_VERIFY_EVERY_MS+5*60*1000,restored:true};
+}
+const incrPersistTimers={};
+function incrPersistSoon(table){
+  if(!AUTH||!AUTH.email)return;
+  clearTimeout(incrPersistTimers[table]);
+  incrPersistTimers[table]=setTimeout(()=>{
+    const c=incrCache[table];if(!c)return;
+    const val={v:1,select:c.select,order:c.order,cursor:c.cursor,savedAt:Date.now(),rows:[...c.rows].map(([id,e])=>[id,e.u,e.s])};
+    incrIdbOp('readwrite',st=>st.put(val,incrIdbKey(table)));
+  },3000);
+}
+function incrIdbClear(){return incrIdbOp('readwrite',st=>st.clear());}
 window.profixSyncStats=()=>({ready:incrReadyState,stats:incrStats,log:(()=>{try{return JSON.parse(localStorage.getItem('profix_sync_verify_log')||'[]');}catch(e){return [];}})()});
 async function loadSplitState(){
   if(!SPLIT_TABLES_ENABLED)return false;
