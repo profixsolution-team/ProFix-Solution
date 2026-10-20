@@ -2672,16 +2672,32 @@ async function sbUpsertResilient(table,query,payload,optionalKeys=PHASE3_OPTIONA
   }
   throw new Error(`[${table}] upsert ยังไม่สำเร็จหลังตัดคอลัมน์ optional (${stripped.join(', ')})`);
 }
+// ===== บันทึกเวลาโหลด (ไว้ดูว่าเครื่องไหนช้าตรงไหน) — พิมพ์ profixLoadTimes() ใน Console =====
+const PLOG={t0:Date.now(),marks:[],net:{}};
+function plogMark(name){try{PLOG.marks.push([name,Date.now()-PLOG.t0]);}catch(e){}}
+function plogNet(table,ms,bytes){try{const n=PLOG.net[table]||(PLOG.net[table]={calls:0,ms:0,kb:0,maxMs:0});n.calls++;n.ms+=ms;n.kb+=bytes/1024;if(ms>n.maxMs)n.maxMs=ms;}catch(e){}}
+window.profixLoadTimes=function(){
+  const c=navigator.connection||{};
+  const lines=[`page=${location.search||'/'} uptime=${Math.round((Date.now()-PLOG.t0)/1000)}s net=${c.effectiveType||'?'} ${c.downlink!=null?c.downlink+'Mbps':''} hydrated=${typeof isHydrated!=='undefined'&&isHydrated}`];
+  PLOG.marks.forEach(([n,ms])=>lines.push(`mark ${n}: ${(ms/1000).toFixed(1)}s`));
+  Object.entries(PLOG.net).sort((a,b)=>b[1].ms-a[1].ms).forEach(([t,n])=>lines.push(`net ${t}: ${n.calls} req, ${(n.ms/1000).toFixed(1)}s total (max ${(n.maxMs/1000).toFixed(1)}s), ${Math.round(n.kb)} KB`));
+  try{Object.entries(incrStats).forEach(([t,x])=>lines.push(`sync ${t}: ${x.mode} rows=${x.rows}${x.delta!=null?' delta='+x.delta:''}`));}catch(e){}
+  const text=lines.join('\n');
+  try{copy(text);}catch(e){}
+  return text;
+};
 async function sbFetchJson(table,query=''){
   // ลองซ้ำเมื่อเน็ต/เซิร์ฟเวอร์ตัดกลางทาง (เจอจริง 2026-10-20: ข้อมูลก้อนใหญ่โหลดช้ามากแล้วถูกตัด → "Unterminated string in JSON" → หน้าบิลขายว่าง)
   // ไม่ลองซ้ำกรณีเซิร์ฟเวอร์ตอบ error จริง (4xx/5xx) — โยน error ตามเดิม
   let lastErr=null;
   for(let attempt=0;attempt<3;attempt++){
     let r;
-    try{r=await fetch(splitUrl(table,query),{headers:sbHeaders()});}
+    const tReq=Date.now();
+    try{r=await fetch(splitUrl(table,query),{headers:sbHeaders()});r.__t=Date.now()-tReq;}
     catch(e){lastErr=e;await new Promise(res=>setTimeout(res,1500*(attempt+1)));continue;}
     if(!r.ok)throw new Error(await r.text());
-    try{return await r.json();}
+    const t0=Date.now();
+    try{const txt=await r.text();const out=JSON.parse(txt);plogNet(table,Date.now()-t0+(r.__t||0),txt.length);return out;}
     catch(e){lastErr=e;console.warn(`[retry] ${table} อ่านข้อมูลไม่ครบ (ครั้งที่ ${attempt+1})`,e);await new Promise(res=>setTimeout(res,1500*(attempt+1)));}
   }
   throw lastErr||new Error('fetch failed: '+table);
@@ -5613,6 +5629,7 @@ async function ensureAccountingLoaded(force=false){
     masterPriceItems=mpRows||[];
     accountingLoaded=true;
     accountingLoadError='';
+    plogMark('accounting loaded');
   })().catch(e=>{
     console.warn('Accounting load failed',e);
     accountingLoadError=(e&&e.message)||String(e);
@@ -6043,6 +6060,7 @@ async function maybeAutoOpenSalesFromUrl(){
   const sid=sp.get('sales')||'new', dtype=sp.get('doctype')||'quotation', pr=sp.get('pr')||'';
   try{await Promise.all([ensureAccountingLoaded().catch(()=>{}),ensurePartsLoaded().catch(()=>{})]);}catch(e){}
   goTo('sales-tax');
+  plogMark('doc form opening');
   if(sid==='new'){openSalesModal('',pr,dtype);loadDeferredDocModeReports();return;}
   // แก้ไขเอกสารเดิม: ถ้ายังหาไม่เจอ (โหลดแรกอาจยังไม่เสร็จ) ลองโหลดซ้ำอีกครั้งก่อนเปิดฟอร์ม
   if(!(salesInvoices||[]).some(x=>x.id===sid)){try{await ensureAccountingLoaded(true);}catch(e){}}
@@ -10691,7 +10709,7 @@ async function initApp(){
   renderCurrentPage();
   lastRemoteRefreshAt=Date.now(); // กัน focus-refresh ยิงโหลดซ้ำทันทีระหว่างโหลดแรก
   loadState({silent:hadFastCache,deferReports:true}).then(()=>{
-    isHydrated=true;
+    isHydrated=true;plogMark('hydrated (บันทึกได้)');
     if(hasUnsyncedLocalChanges)return;
     ensureMeta();
     cacheFastState();
