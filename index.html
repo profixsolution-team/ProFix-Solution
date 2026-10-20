@@ -5398,6 +5398,35 @@ function applyAccountingParsedData(kind,data){
     }else updateSalesSummary();
   }
 }
+// ===== โหลดบิลขายแบบเบา =====
+// โลโก้/ลายเซ็นในบิลขายเก็บเป็นรูป data: URL ~20 KB ซ้ำกันทุกใบ (300+ ใบ = หลาย MB ทุกครั้งที่โหลด)
+// → ดึงรายการโดยไม่เอา 3 คอลัมน์นี้ แล้วดึงรูปที่ไม่ซ้ำผ่าน RPC profix_sales_doc_images (SQL: console_sales_slim_load.sql) มาเติมกลับในหน่วยความจำ
+// ข้อมูลในฐานไม่ถูกแก้ ; ยังไม่ได้รัน SQL / ผิดพลาด → โหลดแบบเดิม (select=*)
+const SALES_HEAVY_COLS=['company_logo_url','seller_signature_url','customer_signature_url'];
+let salesSlimUnsupported=false;
+async function fetchSalesInvoicesSlim(){
+  const full=()=>sbFetchAll('sales_invoices','?select=*&status=eq.active&order=invoice_date.desc');
+  if(salesSlimUnsupported)return full();
+  try{
+    const probe=await sbFetchJson('sales_invoices','?select=*&status=eq.active&limit=1');
+    if(!probe.length)return full();
+    const cols=Object.keys(probe[0]).filter(k=>!SALES_HEAVY_COLS.includes(k));
+    const [rows,imgRes]=await Promise.all([
+      sbFetchAll('sales_invoices',`?select=${cols.join(',')}&status=eq.active&order=invoice_date.desc`),
+      sbClient.rpc('profix_sales_doc_images'),
+    ]);
+    if(imgRes.error)throw imgRes.error;
+    const byId=new Map(rows.map(r=>[String(r.id),r]));
+    rows.forEach(r=>SALES_HEAVY_COLS.forEach(c=>{r[c]='';}));
+    (imgRes.data||[]).forEach(g=>{if(!SALES_HEAVY_COLS.includes(g.col))return;(g.ids||[]).forEach(id=>{const r=byId.get(String(id));if(r)r[g.col]=g.img||'';});});
+    return rows;
+  }catch(e){
+    const msg=(e&&(e.message||e.code))||String(e);
+    if(/profix_sales_doc_images|PGRST202|Could not find the function/i.test(msg))salesSlimUnsupported=true;
+    console.warn('[sales slim load] ใช้แบบเดิมแทน:',msg);
+    return full();
+  }
+}
 // โหลดบัญชีไม่สำเร็จ (เน็ตช้า/ถูกตัด) → แสดงปุ่มลองใหม่ แทนที่จะขึ้นว่า "ยังไม่มีบิล"
 function accountingLoadErrorHtml(cols,renderFn){
   return `<tr><td colspan="${cols}"><div class="empty"><div class="empty-icon">⚠️</div><div>โหลดข้อมูลบิลไม่สำเร็จ (เน็ตหรือเซิร์ฟเวอร์ช้า)</div><div style="margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="this.disabled=true;this.textContent='กำลังโหลด...';ensureAccountingLoaded(true).finally(()=>${renderFn}())">🔄 ลองโหลดใหม่</button></div></div></td></tr>`;
@@ -5411,7 +5440,7 @@ async function ensureAccountingLoaded(force=false){
       sbFetchAll('purchase_items','?select=*&status=eq.active&order=created_at.desc'),
       sbFetchAll('technician_used_parts','?select=*&order=created_at.desc'),
       sbFetchAll('job_cost_items','?select=*&status=eq.active&order=created_at.desc'),
-      sbFetchAll('sales_invoices','?select=*&status=eq.active&order=invoice_date.desc'),
+      fetchSalesInvoicesSlim(),
       sbFetchAll('sales_invoice_items','?select=*&status=eq.active&order=created_at.desc').catch(e=>{console.warn('Sales item table not ready',e);return [];}),
       sbFetchAllOptional('master_price_items','?select=*&is_active=eq.true&order=category.asc,item_name.asc')
     ]);
