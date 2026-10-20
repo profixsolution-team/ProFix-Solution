@@ -5933,7 +5933,9 @@ function blankPurchaseItem(){
 }
 function openPurchaseModal(id=''){
   const inv=id?purchaseInvoices.find(x=>x.id===id):null;
-  const nextNo='PIN-'+new Date().getFullYear()+'-'+String(purchaseInvoices.length+1).padStart(3,'0');
+  const nextNo=localNextPurchaseNo();
+  // เลขที่แนะนำ: เช็คกับ server อีกรอบ (รวมบิลที่ถูกลบ/ยกเลิก เพราะเลขยังถูกจองอยู่) — ถ้าผู้ใช้ยังไม่ได้แก้ช่องนี้ ค่อยเปลี่ยนให้
+  if(!inv){serverNextPurchaseNo().then(n=>{const el=document.getElementById('pur-no');if(n&&el&&el.value===nextNo&&!document.getElementById('pur-id').value)el.value=n;}).catch(()=>{});}
   document.getElementById('purchase-modal-title').textContent=inv?'แก้ไขบิลซื้อ / ภาษีซื้อ':'เพิ่มบิลซื้อ / ภาษีซื้อ';
   document.getElementById('pur-id').value=inv?.id||'';
   document.getElementById('pur-no').value=inv?.purchase_no||nextNo;
@@ -6101,6 +6103,18 @@ function renderPurchaseItemEditor(){
   }).join('')}</tbody></table></div>`;
   updatePurchaseSummary();
 }
+// เลขบิลซื้อ PIN-ปี-ลำดับ — เดิมใช้ "จำนวนบิลที่ active + 1" → ชนกับบิลที่ถูกลบ (ยกเลิก) ซึ่งยังถือเลขนั้นอยู่ → duplicate purchase_no
+function purchaseNoParts(no){const m=/^PIN-(\d{4})-(\d+)$/.exec(String(no||'').trim());return m?{y:+m[1],n:+m[2]}:null;}
+function localNextPurchaseNo(year=new Date().getFullYear()){
+  let mx=0;(purchaseInvoices||[]).forEach(x=>{const p=purchaseNoParts(x.purchase_no);if(p&&p.y===year&&p.n>mx)mx=p.n;});
+  return 'PIN-'+year+'-'+String(mx+1).padStart(3,'0');
+}
+async function serverNextPurchaseNo(year=new Date().getFullYear()){
+  const rows=await sbFetchAll('purchase_invoices',`?select=purchase_no&purchase_no=like.${encodeURIComponent('PIN-'+year+'-*')}`); // ทุกสถานะ (รวมที่ยกเลิก)
+  let mx=0;(rows||[]).forEach(x=>{const p=purchaseNoParts(x.purchase_no);if(p&&p.y===year&&p.n>mx)mx=p.n;});
+  (purchaseInvoices||[]).forEach(x=>{const p=purchaseNoParts(x.purchase_no);if(p&&p.y===year&&p.n>mx)mx=p.n;});
+  return 'PIN-'+year+'-'+String(mx+1).padStart(3,'0');
+}
 async function savePurchaseInvoice(){if(!guardEdit())return;
   setAccountingStatus('purchase','กำลังบันทึกบิลซื้อ...','warn');
   try{
@@ -6121,7 +6135,20 @@ async function savePurchaseInvoice(){if(!guardEdit())return;
     const internal=document.getElementById('pur-internal-note')?.value.trim();
     const note=[document.getElementById('pur-note').value.trim(),internal?`[internal] ${internal}`:''].filter(Boolean).join('\n');
     const inv={id,purchase_no:document.getElementById('pur-no').value.trim()||id,supplier_name:document.getElementById('pur-supplier').value.trim(),company_name:document.getElementById('pur-company')?.value||'',supplier_tax_id:document.getElementById('pur-taxid').value.trim(),invoice_no:document.getElementById('pur-invoice-no').value.trim(),invoice_date:document.getElementById('pur-date').value||todayISO(),tax_invoice_type:document.getElementById('pur-tax-type').value,subtotal,vat_amount:vat,total_amount:total,payment_status:document.getElementById('pur-payment').value,payment_method:document.getElementById('pur-method').value.trim(),file_url:fileUrl,note,status:'active',created_by:(purchaseInvoices.find(x=>x.id===id)?.created_by)||getActorName(),updated_by:getActorName(),updated_at:new Date().toISOString()};
-    await sbUpsertResilient('purchase_invoices','?on_conflict=id',inv,['updated_at','company_name']); // company_name = บริษัทผู้ซื้อ (SQL console_company_filter.sql) // ผู้กรอก + เวลาแก้ล่าสุด เหมือนบิลขาย
+    const isNewPurchase=!document.getElementById('pur-id').value;
+    for(let attempt=0;;attempt++){
+      try{await sbUpsertResilient('purchase_invoices','?on_conflict=id',inv,['updated_at','company_name']);break;}
+      catch(e){
+        const m=String(e&&e.message||e);
+        if(!/purchase_no/.test(m)||!/(23505|duplicate)/.test(m))throw e;
+        if(!isNewPurchase||attempt>=5)throw new Error('เลขที่บิลในระบบ "'+inv.purchase_no+'" ซ้ำกับบิลอื่น (รวมบิลที่ลบไปแล้ว) — เปลี่ยนเลขที่บิลแล้วบันทึกใหม่');
+        // บิลใหม่: เลขชน → ขอเลขถัดไปจาก server แล้วลองใหม่
+        const next=await serverNextPurchaseNo(purchaseNoParts(inv.purchase_no)?.y||new Date().getFullYear());
+        inv.purchase_no=next===inv.purchase_no?next.replace(/(\d+)$/,d=>String(+d+1).padStart(d.length,'0')):next;
+        const el=document.getElementById('pur-no');if(el)el.value=inv.purchase_no;
+        setAccountingStatus('purchase','เลขที่บิลซ้ำ → เปลี่ยนเป็น '+inv.purchase_no+' แล้วบันทึกใหม่...','warn');
+      }
+    } // company_name = บริษัทผู้ซื้อ (SQL console_company_filter.sql) // ผู้กรอก + เวลาแก้ล่าสุด เหมือนบิลขาย
     const old=purchaseItems.filter(x=>x.purchase_invoice_id===id);
     for(const item of old.filter(x=>!rows.some(r=>r.id===x.id))){
       const del=await fetch(splitUrl('purchase_items',`?id=eq.${encodeURIComponent(item.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
@@ -6160,7 +6187,7 @@ function renderSalesTax(){
   if(accountingLoadError&&!salesInvoices.length){tb.innerHTML=accountingLoadErrorHtml(8,'renderSalesTax');return;}
   if(!list.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">🧾</div><div>${salesInvoices.length?'ไม่พบบิลขายตามตัวกรอง':'ยังไม่มีบิลขาย'}</div></div></td></tr>`;return;}
   tb.innerHTML=list.map(inv=>{
-    const prBtns=salesInvoiceJobs(inv).map(p=>`<span class="pr-chip" onclick="event.stopPropagation();openDet('${esc(p)}')">${esc(p)}</span>`).join('')||'<span class="tm">-</span>';
+    const prBtns=salesInvoiceJobs(inv).map(p=>`<span style="display:inline-flex;align-items:center;flex-wrap:wrap;gap:2px;margin:1px 0;"><span class="pr-chip" onclick="event.stopPropagation();openDet('${esc(p)}')">${esc(p)}</span>${salesJobStatusBadge(p)}</span>`).join('')||'<span class="tm">-</span>';
     const dt=inv.doc_type||'tax_invoice';const dmeta=SALES_DOC_META[dt]||SALES_DOC_META.tax_invoice;
     const nextType=SALES_DOC_NEXT[dt];const nextMeta=nextType&&nextType!==dt?SALES_DOC_META[nextType]:null;
     const card=docMobileCard({no:inv.doc_no||inv.sales_invoice_no,type:dmeta.title,total:inv.total_amount,pay:docPayBadge(inv,'sale'),party:salesInvoiceBranchText(inv)||inv.customer_name||'-',
@@ -8146,18 +8173,18 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     if(docType==='quotation'&&isNewDoc){try{await markJobsQuoted(jobList);}catch(e){console.warn('อัปเดตสถานะออกใบเสนอราคาไม่สำเร็จ',e);}}
     if(docType==='quotation'){try{await syncSummaryTaxInvoicesForQuotation(id,subtotal,jobList);}catch(e){console.warn('ซิงก์ใบกำกับจากใบเสนอราคาไม่สำเร็จ',e);}}
     let jobTouched=false;
-    jobList.forEach(pr=>{
+    for(const pr of jobList){
       const j=jobs.find(x=>sameJob(x.id,pr)&&!isDeletedRecord(x));
-      if(!j)return;
+      if(!j)continue;
       const before=clonePlain(j);
-      j.accountingStatus=inv.payment_status==='paid'?'payment_received':'sales_invoice_issued';
-      j.salesInvoiceNo=inv.sales_invoice_no;
-      j.salesInvoiceTotal=inv.total_amount;
-      if(inv.payment_status==='paid')j.pay='เก็บแล้ว';
+      const fields={accountingStatus:inv.payment_status==='paid'?'payment_received':'sales_invoice_issued',salesInvoiceNo:inv.sales_invoice_no,salesInvoiceTotal:inv.total_amount};
+      if(inv.payment_status==='paid')fields.pay='เก็บแล้ว';
+      // บันทึกตรงไป server ทันที (แท็บเอกสารปิดตัวเองเร็ว) — เฉพาะช่องเหล่านี้ ไม่ทับช่องอื่นของงาน
+      try{await patchJobFieldsOnServer(j.id,fields);}catch(e){console.warn('บันทึกข้อมูลบิลลงงานไม่สำเร็จ',j.id,e);Object.assign(j,fields);}
       jobTouched=true;
       writeAuditLog('update_job_sales_invoice','job',pr,before,patchFromDiff(before,j),clonePlain(j));
-    });
-    if(jobTouched){renderFin();renderDash();saveState();}
+    }
+    if(jobTouched){renderFin();renderDash();saveState();broadcastDataChanged('jobs');}
     closeM('m-sales');
     accountingLoaded=false;
     await ensureAccountingLoaded(true);
@@ -8171,6 +8198,74 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     setAccountingStatus('sales','บันทึกบิลขายไม่สำเร็จ: '+e.message,'err');
     alert('บันทึกบิลขายไม่สำเร็จ: '+e.message);
   }
+}
+// ===== แก้บางช่องของงาน/งาน Admin บน server ทันที (อ่านแถวล่าสุด → รวมเฉพาะช่องที่แก้ → บันทึก) =====
+// ใช้จากหน้าบิลขาย/แท็บเอกสาร: แท็บเอกสารปิดตัวเองหลังบันทึก (60 ms) เร็วกว่า saveState (หน่วง 250 ms) → เดิมสถานะ/ช่องบัญชีของงานไม่เคยถูกบันทึก
+// และไม่อัปโหลดทั้งแถวจากข้อมูลในแท็บ (ที่อาจเก่ากว่า) — แตะเฉพาะช่องที่ระบุ
+async function patchRowFieldsOnServer(table,id,fields){
+  const rows=await sbFetchJson(table,`?select=id,data&id=eq.${encodeURIComponent(id)}&limit=1`);
+  const row=rows&&rows[0];if(!row)throw new Error('ไม่พบ '+id+' บน server');
+  const merged={...(row.data||{}),...fields};
+  const r=await fetch(splitUrl(table,`?id=eq.${encodeURIComponent(id)}`),{method:'PATCH',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify({data:merged,updated_at:new Date().toISOString()})});
+  if(!r.ok)throw new Error(await r.text());
+  return merged;
+}
+// ใส่ค่าที่บันทึกแล้วลงหน่วยความจำ + ปรับฐาน hash (ถ้าแถวนั้นไม่มีการแก้ค้าง) → saveState จะไม่อัปโหลดทั้งแถวซ้ำ
+function applyServerFieldsLocally(list,hashKey,id,fields){
+  const x=(list||[]).find(r=>r.id===id);if(!x)return;
+  const base=splitRowHashes[hashKey]||{};
+  const wasBase=base[id]!==undefined&&base[id]===stableJson(x);
+  Object.assign(x,fields);
+  if(wasBase)base[id]=stableJson(x);
+}
+async function patchJobFieldsOnServer(jobId,fields){
+  await patchRowFieldsOnServer('jobs',jobId,fields);
+  applyServerFieldsLocally(jobs,'jobs',jobId,fields);
+}
+async function patchTaskFieldsOnServer(taskId,fields){
+  await patchRowFieldsOnServer('admin_tasks',taskId,fields);
+  applyServerFieldsLocally(adminTasks,'adminTasks',taskId,fields);
+}
+// เปลี่ยนสถานะงานจากหน้าบิลขาย → คิวช่าง/รายงานช่าง + งาน Admin ที่ผูกกับ PR นี้ เปลี่ยนตาม
+async function setJobStatusEverywhere(jobId,status){
+  if(!guardEdit())return false;
+  ensureJobStatus(status);ensureAdminStatus(status);
+  const j=jobs.find(x=>sameJob(x.id,jobId)&&!isDeletedRecord(x));
+  const id=j?j.id:canonPR(jobId);
+  const before=j?clonePlain(j):null;
+  await patchJobFieldsOnServer(id,{status});
+  let rows=[];
+  try{rows=await sbFetchJson('admin_tasks',`?select=id,data&data->>jobId=eq.${encodeURIComponent(id)}`);}catch(e){}
+  for(const t of rows||[]){const d=t.data||{};if(d.deletedAt||d.deleted_at||d.status===status)continue;try{await patchTaskFieldsOnServer(t.id,{status});}catch(e){console.warn('อัปเดตงาน Admin ไม่สำเร็จ',t.id,e);}}
+  writeAuditLog('job_status_from_sales','job',id,before,{status},j?clonePlain(j):null);
+  try{renderJobs();renderAdmin();renderReports();renderDash();renderSalesTax();}catch(e){}
+  broadcastDataChanged('jobs');
+  return true;
+}
+// badge สถานะงานในหน้าบิลขาย (กดแล้วเลือกสถานะใหม่ได้)
+function salesJobStatusBadge(pr){
+  const j=jobs.find(x=>sameJob(x.id,pr)&&!isDeletedRecord(x));
+  if(!j)return '';
+  const st=j.status||'-';
+  const cls=SB[st]||'b-wait';
+  return `<span class="badge ${cls}" style="cursor:pointer;margin-left:4px;" title="กดเพื่อเปลี่ยนสถานะงาน" onclick="event.stopPropagation();openSalesJobStatusPicker('${esc(j.id)}',this)">${esc(st)} ▾</span>`;
+}
+function openSalesJobStatusPicker(jobId,el){
+  const j=jobs.find(x=>sameJob(x.id,jobId)&&!isDeletedRecord(x));if(!j||!el)return;
+  const sel=document.createElement('select');
+  sel.className='filter-select';sel.style.cssText='font-size:12px;padding:2px 6px;margin-left:4px;';
+  const opts=[...new Set([j.status,...J_ST].filter(Boolean))];
+  sel.innerHTML=opts.map(s=>`<option value="${esc(s)}"${s===j.status?' selected':''}>${esc(s)}</option>`).join('');
+  sel.onclick=e=>e.stopPropagation();
+  let done=false;
+  sel.onchange=async()=>{
+    done=true;sel.disabled=true;
+    const v=sel.value;
+    if(v===j.status){renderSalesTax();return;}
+    try{await setJobStatusEverywhere(j.id,v);}catch(e){alert('เปลี่ยนสถานะไม่สำเร็จ: '+(e.message||e));renderSalesTax();}
+  };
+  sel.onblur=()=>{if(!done)setTimeout(()=>renderSalesTax(),150);};
+  el.replaceWith(sel);sel.focus();
 }
 // ===== สถานะงานตามเอกสารขาย (2026-10-20) =====
 // งานขออนุมัติ: (รอขออนุมัติ/รอส่งขออนุมัติ) + ออกใบเสนอราคา/BOQ → "รออนุมัติอะไหล่" → แอดมินกดอนุมัติ → รอช่างเข้าซ่อม (ช่างเห็นงานเดิมใน LINE)
@@ -8200,9 +8295,10 @@ async function markJobsQuoted(jobList,decide=statusAfterQuotation){
     const next=decide(j);
     if(!next)continue;
     const before=clonePlain(j);
-    j.status=next;
-    if(next==='รออนุมัติอะไหล่')j.reportReviewStatus='รออนุมัติอะไหล่';
-    writeAuditLog('job_status_after_sales_doc','job',j.id,before,{status:next},clonePlain(j));
+    const fields={status:next};
+    if(next==='รออนุมัติอะไหล่')fields.reportReviewStatus='รออนุมัติอะไหล่';
+    try{await patchJobFieldsOnServer(j.id,fields);}catch(e){console.warn('บันทึกสถานะงานไม่สำเร็จ',j.id,e);continue;}
+    writeAuditLog('job_status_after_sales_doc','job',j.id,before,fields,clonePlain(j));
     // งาน Admin ที่ผูกกับ PR นี้ — อ่านจาก server (แท็บเอกสารไม่ได้โหลดงาน Admin) แล้วแก้เฉพาะสถานะ
     let rows=[];
     try{rows=await sbFetchJson('admin_tasks',`?select=id,data&data->>jobId=eq.${encodeURIComponent(j.id)}`);}catch(e){console.warn('อ่านงาน Admin ไม่สำเร็จ',e);}
@@ -8210,14 +8306,11 @@ async function markJobsQuoted(jobList,decide=statusAfterQuotation){
       const d=t.data||{};
       if(d.deletedAt||d.deleted_at||QUOTE_TASK_KEEP.has(d.status)||d.status===next)continue;
       if((TASK_BILLING_RANK[d.status]||0)>(TASK_BILLING_RANK[next]||0))continue;
-      const local=(adminTasks||[]).find(x=>x.id===t.id);
-      if(local){local.status=next;continue;} // มีในเครื่อง → บันทึกพร้อม saveState ตามปกติ
-      const r=await fetch(splitUrl('admin_tasks',`?id=eq.${encodeURIComponent(t.id)}`),{method:'PATCH',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify({data:{...d,status:next},updated_at:new Date().toISOString()})});
-      if(!r.ok)console.warn('อัปเดตสถานะงาน Admin ไม่สำเร็จ',t.id,await r.text());
+      try{await patchTaskFieldsOnServer(t.id,{status:next});}catch(e){console.warn('อัปเดตสถานะงาน Admin ไม่สำเร็จ',t.id,e);}
     }
   }
   try{renderJobs();renderAdmin();renderReports();renderDash();}catch(e){}
-  saveState();
+  broadcastDataChanged('jobs');
 }
 // ===== รวมหลายใบเสนอราคา -> ใบกำกับภาษีใบเดียว =====
 let salesPicked=new Set();
@@ -10881,6 +10974,11 @@ function broadcastDataChanged(kind){
   try{ localStorage.setItem('profix_sync_ping',JSON.stringify({kind,ts:Date.now(),r:Math.random()})); }catch(e){}
 }
 function onProfixSync(kind){
+  if(kind==='jobs'){
+    // แท็บอื่นแก้สถานะ/ข้อมูลงานบน server → ดึงเฉพาะส่วนที่เปลี่ยนทันที (ระยะ A)
+    setTimeout(()=>{lastRemoteRefreshAt=0;refreshRemoteIfIdle();},800);
+    return;
+  }
   if(kind!=='accounting')return;
   // กำลังแก้ไขบิลอยู่ในแท็บนี้ หรือมีงานค้างบันทึก → ยังไม่ทับ (poll ปกติจะซิงก์ให้ทีหลัง)
   if(document.getElementById('m-sales')?.classList.contains('open')||document.getElementById('m-purchase')?.classList.contains('open')||hasUnsyncedLocalChanges)return;
