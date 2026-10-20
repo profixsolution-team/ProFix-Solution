@@ -2779,9 +2779,9 @@ function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
 // โหมดเอกสารเต็มหน้า (เปิดจาก ?sales=) — โหลดข้อมูลเฉพาะที่ฟอร์มเอกสารต้องใช้ ให้เร็วขึ้น
 function isDocModeLight(){try{return new URLSearchParams(location.search).has('sales');}catch(e){return false;}}
 async function loadTechnicianReportTables(skipImages=false){
-  const reportRows=await sbFetchAll('technician_reports','?select=id,report_id,job_id,round_id,status,review_status,is_draft,report_data,submitted_at,draft_saved_at,updated_at&order=updated_at.desc');
+  const reportRows=await syncedFetchAll('technician_reports','id,report_id,job_id,round_id,status,review_status,is_draft,report_data,submitted_at,draft_saved_at,updated_at','desc');
   // รูปรายงานช่างหนักสุด — ข้ามในโหมดเอกสาร (ฟอร์มบิลขายไม่ใช้รูป ใช้แค่สาเหตุ/การแก้ไขซึ่งอยู่ใน report_data)
-  const imageRows=skipImages?[]:await sbFetchAll('technician_report_images','?select=id,report_id,job_id,category,url,data,uploaded_at,updated_at&order=updated_at.asc');
+  const imageRows=skipImages?[]:await syncedFetchAll('technician_report_images','id,report_id,job_id,category,url,data,uploaded_at,updated_at','asc');
   if(!reportRows.length)return;
   const latestByJob=new Map();
   reportRows.forEach(r=>{
@@ -2804,13 +2804,105 @@ async function loadTechnicianReportTables(skipImages=false){
   });
   if(rebased)delete splitSaveHashes.jobs;
 }
+// ===== ระยะ A: ดึงเฉพาะข้อมูลที่เปลี่ยน (incremental sync) — 2026-10-20 =====
+// เดิม: ทุกแท็บดึงงาน+งานแอดมิน+รายงานช่าง+รูป ทั้งหมด (~45 MB) ทุก 2.5 นาที → ฐานข้อมูลขนาด Micro รับไม่ไหว ทุกหน้าช้า
+// ใหม่: โหลดแรกเต็มเหมือนเดิม ; รอบถัดไปดึงเฉพาะแถวที่ updated_at ใหม่กว่ารอบก่อน (เผื่อย้อน 5 นาที) แล้วรวมกับชุดเดิมในหน่วยความจำ
+//  - ผลลัพธ์ = รายการแถวครบชุด "หน้าตาเดียวกับโหลดเต็ม" → โค้ดเดิมที่ใช้ผล (กันงานหาย/hash/merge รายงาน) ทำงานเหมือนเดิมทุกอย่าง
+//  - แถวที่ถูกลบ: เช็คจำนวนแถวบน server (count) ถ้าไม่ตรง → ดึงรายการ id มาตัดแถวที่หายออก ; ยังไม่ตรงอีก → โหลดเต็ม
+//  - ทุก 30 นาทีตรวจเทียบกับการโหลดเต็ม (ถ้าต่างกัน: จดลง log แล้วใช้ชุดโหลดเต็มแทนทันที)
+//  - ใช้ได้เฉพาะเมื่อรัน console_incremental_sync.sql แล้ว (trigger บังคับ updated_at = เวลา server ทุกครั้งที่แก้แถว) ไม่งั้นโหลดเต็มแบบเดิม
+//  - ไม่มีการเขียน/แก้ข้อมูลใด ๆ ในส่วนนี้ (อ่านอย่างเดียว)
+const INCR_SYNC_ENABLED=true; // false = กลับไปโหลดเต็มทุกครั้งแบบเดิม
+const INCR_OVERLAP_MS=5*60*1000;
+const INCR_VERIFY_EVERY_MS=30*60*1000;
+const incrCache={}; // table -> {select,order,rows:Map(id->{u,s}),cursor,verifiedAt} — เก็บเป็นข้อความ JSON (s) ไม่ใช่ object
+// สำคัญ: ห้ามเก็บ object ที่ส่งให้แอปใช้ — แอปแก้ object งานโดยตรง (เช่น r.data) ถ้าแคชถือ object เดียวกัน
+// รอบหน้าจะเห็นข้อมูลที่ยังไม่บันทึกเหมือน "อยู่บน server แล้ว" → ไม่อัปโหลด = ข้อมูลหาย ; จึงเก็บเป็นข้อความแล้ว parse ใหม่ทุกครั้ง
+const incrStats={};
+let incrReadyState=null, incrReadyCheckedAt=0;
+async function incrSyncReady(){
+  if(!INCR_SYNC_ENABLED)return false;
+  if(incrReadyState===true)return true;
+  if(incrReadyState===false&&Date.now()-incrReadyCheckedAt<10*60*1000)return false;
+  incrReadyCheckedAt=Date.now();
+  try{const {data,error}=await sbClient.rpc('profix_incremental_sync_ready');incrReadyState=!error&&data===true;}
+  catch(e){incrReadyState=false;}
+  return incrReadyState;
+}
+function incrTime(r){return Date.parse(r&&r.updated_at||'')||0;}
+function incrEntry(r){return {u:incrTime(r),s:JSON.stringify(r)};}
+function incrRowsOut(map,order){
+  const dir=order==='asc'?1:-1;
+  return [...map.entries()].sort((a,b)=>{const d=a[1].u-b[1].u;if(d)return d*dir;return a[0]<b[0]?-1:a[0]>b[0]?1:0;}).map(e=>JSON.parse(e[1].s));
+}
+async function sbCountRows(table){
+  const r=await fetch(splitUrl(table,'?select=id&limit=1'),{headers:sbHeaders({'Prefer':'count=exact'})});
+  if(!r.ok)throw new Error(await r.text());
+  const m=/\/(\d+)\s*$/.exec(r.headers.get('content-range')||'');
+  if(!m)throw new Error('no content-range for '+table);
+  return Number(m[1]);
+}
+function incrLog(entry){
+  try{const k='profix_sync_verify_log';const a=JSON.parse(localStorage.getItem(k)||'[]');a.unshift({at:new Date().toISOString(),...entry});localStorage.setItem(k,JSON.stringify(a.slice(0,30)));}catch(e){}
+}
+async function incrFullFetch(table,select,order){
+  const rows=await sbFetchAll(table,`?select=${select}&order=updated_at.${order}`);
+  const map=new Map();let cursor=0;
+  rows.forEach(r=>{const e=incrEntry(r);map.set(String(r.id),e);if(e.u>cursor)cursor=e.u;});
+  incrCache[table]={select,order,rows:map,cursor,verifiedAt:Date.now()};
+  incrStats[table]={mode:'full',rows:rows.length,at:new Date().toISOString()};
+  return rows;
+}
+async function incrDeltaFetch(table,c){
+  const since=new Date(Math.max(0,c.cursor-INCR_OVERLAP_MS)).toISOString();
+  const delta=await sbFetchAll(table,`?select=${c.select}&updated_at=gte.${since}&order=updated_at.asc`);
+  const next=new Map(c.rows);
+  let cursor=c.cursor;
+  delta.forEach(r=>{const e=incrEntry(r);next.set(String(r.id),e);if(e.u>cursor)cursor=e.u;});
+  const serverCount=await sbCountRows(table);
+  let pruned=0;
+  if(serverCount!==next.size){
+    const ids=await sbFetchAll(table,'?select=id&order=id.asc');
+    const live=new Set(ids.map(r=>String(r.id)));
+    for(const id of [...next.keys()])if(!live.has(id)){next.delete(id);pruned++;}
+    if(live.size!==next.size)return null; // มีแถวบน server ที่ delta ไม่เจอ → ให้โหลดเต็ม
+  }
+  return {next,deltaCount:delta.length,pruned,cursor};
+}
+// คืนรายการแถวครบชุดของตาราง (เหมือน sbFetchAll แบบเต็ม — object ใหม่ทุกครั้ง) แต่ดึงจาก server เฉพาะส่วนที่เปลี่ยน
+async function syncedFetchAll(table,select,order='desc'){
+  const c=incrCache[table];
+  if(!c||c.select!==select||c.order!==order||!(await incrSyncReady()))return incrFullFetch(table,select,order);
+  const startedAt=Date.now();
+  let d=null;
+  try{d=await incrDeltaFetch(table,c);}
+  catch(e){console.warn('[sync] ดึงเฉพาะส่วนที่เปลี่ยนไม่สำเร็จ → โหลดเต็ม',table,e);return incrFullFetch(table,select,order);}
+  if(!d){incrLog({table,kind:'count-mismatch'});return incrFullFetch(table,select,order);}
+  if(Date.now()-c.verifiedAt>=INCR_VERIFY_EVERY_MS){
+    // ตรวจเทียบกับโหลดเต็ม: นับเฉพาะแถวที่ไม่ได้ถูกแก้ระหว่างตรวจ (updated_at เก่ากว่าเวลาเริ่ม 30 วิ)
+    const full=await incrFullFetch(table,select,order);
+    const fullMap=incrCache[table].rows;
+    const stableBefore=startedAt-30*1000;
+    const diffs=[];
+    fullMap.forEach((e,id)=>{if(e.u>=stableBefore)return;const mine=d.next.get(id);if(!mine||mine.s!==e.s)diffs.push(id);});
+    d.next.forEach((e,id)=>{if(!fullMap.has(id)&&e.u<stableBefore)diffs.push(id);});
+    incrStats[table]={mode:'verify',rows:full.length,diffs:diffs.length,at:new Date().toISOString()};
+    if(diffs.length){console.warn('[sync verify] ข้อมูลแบบดึงเฉพาะส่วนต่างจากโหลดเต็ม → ใช้ชุดโหลดเต็มแทน',table,diffs.slice(0,20));incrLog({table,kind:'verify-mismatch',count:diffs.length,ids:diffs.slice(0,20)});}
+    else incrLog({table,kind:'verify-ok',rows:full.length});
+    return full;
+  }
+  c.rows=d.next;c.cursor=d.cursor;
+  incrStats[table]={mode:'delta',rows:d.next.size,delta:d.deltaCount,pruned:d.pruned,at:new Date().toISOString()};
+  return incrRowsOut(d.next,order);
+}
+window.profixSyncStats=()=>({ready:incrReadyState,stats:incrStats,log:(()=>{try{return JSON.parse(localStorage.getItem('profix_sync_verify_log')||'[]');}catch(e){return [];}})()});
 async function loadSplitState(){
   if(!SPLIT_TABLES_ENABLED)return false;
   const masterFetch=c=>knownMissingTables.has(c.table)?Promise.resolve(null):sbFetchAll(c.table,'?select=id,data,updated_at').catch(e=>{const m=e?.message||'';if(/find the table|does not exist|42P01|PGRST205|schema cache|relation/i.test(m)){knownMissingTables.add(c.table);console.warn(`[skip] ตาราง ${c.table} ยังไม่ถูกสร้าง — รัน migration phase 4 แล้วรีโหลด`);}return null;});
   const docLight=isDocModeLight();
   const [jobRows,adminRows,metaRows,...masterResults]=await Promise.all([
-    sbFetchAll('jobs','?select=id,data,updated_at&order=updated_at.desc'),
-    docLight?Promise.resolve([]):sbFetchAll('admin_tasks','?select=id,data,updated_at&order=updated_at.desc'), // โหมดเอกสารไม่ใช้ tracker
+    syncedFetchAll('jobs','id,data,updated_at','desc'),
+    docLight?Promise.resolve([]):syncedFetchAll('admin_tasks','id,data,updated_at','desc'), // โหมดเอกสารไม่ใช้ tracker
     sbFetchJson('system_data','?id=eq.main&select=id,data,updated_at'),
     ...MASTER_COLLECTIONS.map(masterFetch)
   ]);
@@ -3164,6 +3256,11 @@ async function loadState(opts={}){
   loadUIState();
   try{
     if(await loadSplitState()){
+      if(opts.deferReports&&isDocModeLight()&&!salesUrlOpened){
+        // แท็บเอกสาร: เลื่อนโหลดรายงานช่าง (~15 MB) ไปหลังเปิดฟอร์มเอกสารแล้ว — ไม่ให้แย่งเน็ตกับบิลขาย/อะไหล่ที่ฟอร์มต้องใช้ก่อน
+        docModeReportsPending=true;
+        return;
+      }
       if(opts.deferReports){
         // โหลดแรก: รายงานช่าง+รูป (หลายหมื่นแถว หลายสิบ MB) โหลดเบื้องหลัง ไม่ให้หน้า "ยังโหลดไม่เสร็จ" นาน (ช่วงนั้นแก้ไข/บันทึกไม่ได้)
         loadTechnicianReportTables(isDocModeLight()).then(()=>{try{refreshAfterDataChange();}catch(e){}}).catch(reportErr=>console.warn('Technician report table load failed',reportErr));
@@ -5868,7 +5965,12 @@ async function deletePurchaseInvoice(id){
   }catch(e){alert('ลบบิลซื้อไม่สำเร็จ: '+e.message);}
 }
 // แท็บใหม่: อ่าน ?sales=... แล้วเปิดฟอร์มเอกสารขายอัตโนมัติ (เรียกครั้งเดียวหลังโหลดข้อมูลเสร็จ)
-let salesUrlOpened=false;
+let salesUrlOpened=false, docModeReportsPending=false;
+function loadDeferredDocModeReports(){
+  if(!docModeReportsPending)return;
+  docModeReportsPending=false;
+  loadTechnicianReportTables(true).then(()=>{try{refreshAfterDataChange();}catch(e){}}).catch(e=>console.warn('Technician report table load failed',e));
+}
 async function maybeAutoOpenSalesFromUrl(){
   if(salesUrlOpened)return;
   const sp=new URLSearchParams(location.search);
@@ -5878,10 +5980,11 @@ async function maybeAutoOpenSalesFromUrl(){
   const sid=sp.get('sales')||'new', dtype=sp.get('doctype')||'quotation', pr=sp.get('pr')||'';
   try{await Promise.all([ensureAccountingLoaded().catch(()=>{}),ensurePartsLoaded().catch(()=>{})]);}catch(e){}
   goTo('sales-tax');
-  if(sid==='new'){openSalesModal('',pr,dtype);return;}
+  if(sid==='new'){openSalesModal('',pr,dtype);loadDeferredDocModeReports();return;}
   // แก้ไขเอกสารเดิม: ถ้ายังหาไม่เจอ (โหลดแรกอาจยังไม่เสร็จ) ลองโหลดซ้ำอีกครั้งก่อนเปิดฟอร์ม
   if(!(salesInvoices||[]).some(x=>x.id===sid)){try{await ensureAccountingLoaded(true);}catch(e){}}
   openSalesModal(sid);
+  loadDeferredDocModeReports();
 }
 // เปิดฟอร์มทำ/แก้เอกสารขายในแท็บใหม่ (โหลดแอปในแท็บใหม่พร้อมพารามิเตอร์ให้เด้งฟอร์มเอง)
 function openSalesInNewTab(id='',prefJobId='',docType=''){
