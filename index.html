@@ -1657,7 +1657,7 @@ select option{background:var(--surface2);}
 // DATA
 let J_ST = ['รอเปิดงาน','รอจัดช่าง','จัดช่างแล้ว','ช่างออกงาน','รออะไหล่','เสร็จงาน','รอจ่าย','ปิดงาน','ติดปัญหา','Reject'];
 let A_ST = ['รอดำเนินการ','กำลังทำ','รอลูกค้า','เสร็จแล้ว','ติดปัญหา','Reject'];
-const SB = {'รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','ช่างกำลังเข้าซ่อม':'b-working','ช่างบันทึกร่าง':'b-working','ช่างส่งงานแล้ว':'b-done','รออนุมัติอะไหล่':'b-parts','รอช่างเข้าซ่อม':'b-open','แอดมินตรวจแล้ว':'b-done','ต้องแก้ไข':'b-reject','ปิดงานสำรวจ':'b-closed','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done','รอส่งขออนุมัติ':'b-urgent','รอขออนุมัติ':'b-urgent','รอช่างส่งงาน':'b-redframe'};
+const SB = {'รอออกใบกำกับภาษี':'b-hold','รอวางบิล':'b-unpaid','ออกใบเสนอราคาแล้ว':'b-parts','รอเปิดงาน':'b-wait','รอจัดช่าง':'b-open','จัดช่างแล้ว':'b-assigned','ช่างออกงาน':'b-working','ช่างกำลังเข้าซ่อม':'b-working','ช่างบันทึกร่าง':'b-working','ช่างส่งงานแล้ว':'b-done','รออนุมัติอะไหล่':'b-parts','รอช่างเข้าซ่อม':'b-open','แอดมินตรวจแล้ว':'b-done','ต้องแก้ไข':'b-reject','ปิดงานสำรวจ':'b-closed','รออะไหล่':'b-parts','เสร็จงาน':'b-done','รอจ่าย':'b-unpaid','ปิดงาน':'b-closed','ติดปัญหา':'b-hold','Reject':'b-reject','รอดำเนินการ':'b-open','กำลังทำ':'b-working','รอลูกค้า':'b-parts','เสร็จแล้ว':'b-done','รอส่งขออนุมัติ':'b-urgent','รอขออนุมัติ':'b-urgent','รอช่างส่งงาน':'b-redframe'};
 
 let jobs = [
   {id:'PR-001',client:'บริษัท A',ref:'WO-2001',branch:'เซ็นทรัลลาดพร้าว',type:'ซ่อมแอร์',team:'ทีม A',date:'2025-06-03',status:'เสร็จงาน',pc:3500,pt:2400,partC:300,partR:500,fuel:150,note:'แอร์ไม่เย็น',report:'เติมน้ำยา R22 2 ปอนด์',isNew:false,pay:'unpaid'},
@@ -2552,8 +2552,8 @@ function repairDuplicateJobs(){
   return fixed;
 }
 function ensureMeta(){
-  ['ช่างบันทึกร่าง','ช่างส่งงานแล้ว','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ','แอดมินตรวจแล้ว','ต้องแก้ไข'].forEach(s=>{if(Array.isArray(J_ST)&&!J_ST.includes(s))J_ST.push(s);});
-  ['ช่างบันทึกร่าง','ช่างส่งงานแล้ว','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','ปิดงานสำรวจ'].forEach(s=>{if(Array.isArray(A_ST)&&!A_ST.includes(s))A_ST.push(s);});
+  ['ช่างบันทึกร่าง','ช่างส่งงานแล้ว','รอขออนุมัติ','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','รอออกใบกำกับภาษี','รอวางบิล','ปิดงานสำรวจ','แอดมินตรวจแล้ว','ต้องแก้ไข'].forEach(s=>{if(Array.isArray(J_ST)&&!J_ST.includes(s))J_ST.push(s);});
+  ['ช่างบันทึกร่าง','ช่างส่งงานแล้ว','รอขออนุมัติ','รออนุมัติอะไหล่','รอช่างเข้าซ่อม','รอออกใบกำกับภาษี','รอวางบิล','ปิดงานสำรวจ'].forEach(s=>{if(Array.isArray(A_ST)&&!A_ST.includes(s))A_ST.push(s);});
   repairDuplicateJobs();
   cleanLoadedCollections();
   jobs.forEach((j,i)=>{if(!j.createdAt)j.createdAt=Date.now()-(jobs.length-i)*86400000;if(!j.assignedAt)j.assignedAt=j.date||todayISO();if(j.pay==='unpaid')j.pay='รอเก็บเงิน';if(j.pay==='paid')j.pay='เก็บแล้ว';if(j.pay==='overdue')j.pay='เกินกำหนด';if(!j.reportReviewStatus)j.reportReviewStatus=reportReviewStatus(j);if(j.technicianReport&&!j.technicianReport.reviewStatus)j.technicianReport.reviewStatus=j.reportReviewStatus;});
@@ -8141,6 +8141,9 @@ async function saveSalesInvoice(){if(!guardEdit())return;
       salesInvoiceItems=(salesInvoiceItems||[]).filter(x=>x.sales_invoice_id!==id).concat(rows.map(r=>({...r,status:'active'})));
       try{await syncBillingInvoicesForTaxInvoices([id]);}catch(e){console.warn('ซิงก์ใบแจ้งหนี้จากใบกำกับภาษีไม่สำเร็จ',e);alert('บันทึกใบกำกับภาษีแล้ว แต่อัปเดตใบแจ้งหนี้ที่อ้างถึงไม่สำเร็จ: '+((e&&e.message)||e));}
     }
+    // ออกใบเสนอราคา/BOQ ใหม่ → สถานะงาน (คิวช่าง/รายงาน) + งาน Admin = "ออกใบเสนอราคาแล้ว"
+    if(docType==='tax_invoice'&&isNewDoc){try{await markJobsQuoted(jobList,statusAfterTaxInvoice);}catch(e){console.warn('อัปเดตสถานะรอวางบิลไม่สำเร็จ',e);}}
+    if(docType==='quotation'&&isNewDoc){try{await markJobsQuoted(jobList);}catch(e){console.warn('อัปเดตสถานะออกใบเสนอราคาไม่สำเร็จ',e);}}
     if(docType==='quotation'){try{await syncSummaryTaxInvoicesForQuotation(id,subtotal,jobList);}catch(e){console.warn('ซิงก์ใบกำกับจากใบเสนอราคาไม่สำเร็จ',e);}}
     let jobTouched=false;
     jobList.forEach(pr=>{
@@ -8168,6 +8171,53 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     setAccountingStatus('sales','บันทึกบิลขายไม่สำเร็จ: '+e.message,'err');
     alert('บันทึกบิลขายไม่สำเร็จ: '+e.message);
   }
+}
+// ===== สถานะงานตามเอกสารขาย (2026-10-20) =====
+// งานขออนุมัติ: (รอขออนุมัติ/รอส่งขออนุมัติ) + ออกใบเสนอราคา/BOQ → "รออนุมัติอะไหล่" → แอดมินกดอนุมัติ → รอช่างเข้าซ่อม (ช่างเห็นงานเดิมใน LINE)
+// งานปกติที่ช่างทำเสร็จแล้ว: ออกใบเสนอราคา/BOQ → "รอออกใบกำกับภาษี" → ออกใบกำกับภาษี → "รอวางบิล"
+// งานที่ยังไม่ได้ทำ / ช่างกำลังทำ / ปิดแล้ว → ไม่เปลี่ยน ; แก้เอกสารเดิมไม่เปลี่ยนสถานะ (ทำเฉพาะเอกสารใหม่)
+const QUOTE_APPROVAL_FROM=new Set(['รอขออนุมัติ','รอส่งขออนุมัติ']);
+const QUOTE_BILLING_FROM=new Set(['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','ดำเนินการแล้ว','เสร็จงาน','ออกใบเสนอราคาแล้ว']);
+const TAXINV_FROM=new Set([...QUOTE_BILLING_FROM,'รอออกใบกำกับภาษี']);
+const QUOTE_TASK_KEEP=new Set(['ปิดงาน','ปิดงานสำรวจ','ยกเลิก','Job Done','วางบิลแล้วรอยอดเข้า']);
+function statusAfterQuotation(j){
+  const st=String(j&&j.status||'');
+  if(QUOTE_APPROVAL_FROM.has(st))return 'รออนุมัติอะไหล่';
+  if(QUOTE_BILLING_FROM.has(st))return 'รอออกใบกำกับภาษี';
+  return '';                                          // รออนุมัติอะไหล่อยู่แล้ว / ยังไม่ได้ทำ / กำลังทำ / ขั้นบิลแล้ว / ปิดแล้ว → ไม่แตะ
+}
+function statusAfterTaxInvoice(j){
+  const st=String(j&&j.status||'');
+  return TAXINV_FROM.has(st)?'รอวางบิล':'';
+}
+// ลำดับขั้นของงาน Admin — ไม่ถอยหลัง (เช่น งาน Admin ที่ "รอวางบิล" แล้ว จะไม่ถูกเปลี่ยนกลับเป็น "รอออกใบกำกับภาษี")
+const TASK_BILLING_RANK={'รอออกใบกำกับภาษี':1,'รอวางบิล':2};
+async function markJobsQuoted(jobList,decide=statusAfterQuotation){
+  ['รออนุมัติอะไหล่','รอออกใบกำกับภาษี','รอวางบิล'].forEach(s=>{ensureJobStatus(s);ensureAdminStatus(s);});
+  for(const pr of (jobList||[])){
+    const j=jobs.find(x=>sameJob(x.id,pr)&&!isDeletedRecord(x));
+    if(!j)continue;
+    const next=decide(j);
+    if(!next)continue;
+    const before=clonePlain(j);
+    j.status=next;
+    if(next==='รออนุมัติอะไหล่')j.reportReviewStatus='รออนุมัติอะไหล่';
+    writeAuditLog('job_status_after_sales_doc','job',j.id,before,{status:next},clonePlain(j));
+    // งาน Admin ที่ผูกกับ PR นี้ — อ่านจาก server (แท็บเอกสารไม่ได้โหลดงาน Admin) แล้วแก้เฉพาะสถานะ
+    let rows=[];
+    try{rows=await sbFetchJson('admin_tasks',`?select=id,data&data->>jobId=eq.${encodeURIComponent(j.id)}`);}catch(e){console.warn('อ่านงาน Admin ไม่สำเร็จ',e);}
+    for(const t of rows||[]){
+      const d=t.data||{};
+      if(d.deletedAt||d.deleted_at||QUOTE_TASK_KEEP.has(d.status)||d.status===next)continue;
+      if((TASK_BILLING_RANK[d.status]||0)>(TASK_BILLING_RANK[next]||0))continue;
+      const local=(adminTasks||[]).find(x=>x.id===t.id);
+      if(local){local.status=next;continue;} // มีในเครื่อง → บันทึกพร้อม saveState ตามปกติ
+      const r=await fetch(splitUrl('admin_tasks',`?id=eq.${encodeURIComponent(t.id)}`),{method:'PATCH',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify({data:{...d,status:next},updated_at:new Date().toISOString()})});
+      if(!r.ok)console.warn('อัปเดตสถานะงาน Admin ไม่สำเร็จ',t.id,await r.text());
+    }
+  }
+  try{renderJobs();renderAdmin();renderReports();renderDash();}catch(e){}
+  saveState();
 }
 // ===== รวมหลายใบเสนอราคา -> ใบกำกับภาษีใบเดียว =====
 let salesPicked=new Set();
@@ -9976,7 +10026,7 @@ const REPORT_REVIEW_STATUSES=['ยังไม่ส่ง','รอตรวจ'
 function reportReviewStatus(j){
   if(j.reportReviewStatus)return j.reportReviewStatus;
   if(j.technicianReport?.reviewStatus)return j.technicianReport.reviewStatus;
-  if(j.status==='รออนุมัติอะไหล่'||j.technicianReport?.needQuote)return 'รออนุมัติอะไหล่';
+  if(j.status==='รออนุมัติอะไหล่'||j.status==='รอขออนุมัติ'||j.technicianReport?.needQuote)return 'รออนุมัติอะไหล่';
   if(j.technicianReport?.submittedAt||j.techSubmittedAt||j.status==='ช่างส่งงานแล้ว')return 'รอตรวจ';
   if(j.status==='แอดมินตรวจแล้ว'||j.status==='พร้อมวางบิล'||j.status==='ปิดงานสมบูรณ์')return 'ตรวจแล้ว';
   return 'ยังไม่ส่ง';
