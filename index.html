@@ -8221,10 +8221,12 @@ function applyServerFieldsLocally(list,hashKey,id,fields){
 async function patchJobFieldsOnServer(jobId,fields){
   await patchRowFieldsOnServer('jobs',jobId,fields);
   applyServerFieldsLocally(jobs,'jobs',jobId,fields);
+  broadcastDataChanged('fields',{table:'jobs',id:jobId,fields}); // แท็บอื่นในเครื่องนี้อัปเดตทันที
 }
 async function patchTaskFieldsOnServer(taskId,fields){
   await patchRowFieldsOnServer('admin_tasks',taskId,fields);
   applyServerFieldsLocally(adminTasks,'adminTasks',taskId,fields);
+  broadcastDataChanged('fields',{table:'admin_tasks',id:taskId,fields});
 }
 // เปลี่ยนสถานะงานจากหน้าบิลขาย → คิวช่าง/รายงานช่าง + งาน Admin ที่ผูกกับ PR นี้ เปลี่ยนตาม
 async function setJobStatusEverywhere(jobId,status){
@@ -10965,15 +10967,32 @@ async function refreshRemoteIfIdle(){
 let profixSyncChannel=null, crossTabSyncReady=false;
 function setupCrossTabSync(){
   if(crossTabSyncReady)return; crossTabSyncReady=true;
-  try{ if('BroadcastChannel' in window){ profixSyncChannel=new BroadcastChannel('profix_sync_v1'); profixSyncChannel.onmessage=(e)=>{ if(e&&e.data&&e.data.kind)onProfixSync(e.data.kind); }; } }catch(e){ profixSyncChannel=null; }
+  try{ if('BroadcastChannel' in window){ profixSyncChannel=new BroadcastChannel('profix_sync_v1'); profixSyncChannel.onmessage=(e)=>{ if(e&&e.data&&e.data.kind)onProfixSync(e.data.kind,e.data); }; } }catch(e){ profixSyncChannel=null; }
   // สำรอง: localStorage (storage event ยิงเฉพาะแท็บอื่น) เผื่อ BroadcastChannel ใช้ไม่ได้
-  window.addEventListener('storage',e=>{ if(e.key==='profix_sync_ping'&&e.newValue){ try{onProfixSync(JSON.parse(e.newValue).kind);}catch(_){}}});
+  window.addEventListener('storage',e=>{ if(e.key==='profix_sync_ping'&&e.newValue){ try{const m=JSON.parse(e.newValue);onProfixSync(m.kind,m);}catch(_){}}});
 }
-function broadcastDataChanged(kind){
-  try{ profixSyncChannel&&profixSyncChannel.postMessage({kind,ts:Date.now()}); }catch(e){}
-  try{ localStorage.setItem('profix_sync_ping',JSON.stringify({kind,ts:Date.now(),r:Math.random()})); }catch(e){}
+function broadcastDataChanged(kind,extra={}){
+  try{ profixSyncChannel&&profixSyncChannel.postMessage({...extra,kind,ts:Date.now()}); }catch(e){}
+  try{ localStorage.setItem('profix_sync_ping',JSON.stringify({...extra,kind,ts:Date.now(),r:Math.random()})); }catch(e){}
 }
-function onProfixSync(kind){
+// รับค่าที่แท็บอื่นเพิ่งบันทึกลง server (เช่น สถานะงานหลังออกใบเสนอราคา) แล้วใส่ในหน้านี้ทันที
+// ไม่ต้องรอรอบ poll และไม่ต้องรีเฟรช — ใช้ได้แม้กำลังเปิดหน้าต่างรายละเอียดงานอยู่ (ไม่โหลดข้อมูลใหม่ทั้งชุด)
+let fieldSyncRenderTimer=null;
+function applyBroadcastFields(msg){
+  if(!msg||!msg.id||!msg.fields||typeof msg.fields!=='object')return;
+  if(msg.table==='jobs')applyServerFieldsLocally(jobs,'jobs',msg.id,msg.fields);
+  else if(msg.table==='admin_tasks')applyServerFieldsLocally(adminTasks,'adminTasks',msg.id,msg.fields);
+  else return;
+  if(msg.fields.status){ensureJobStatus(msg.fields.status);ensureAdminStatus(msg.fields.status);}
+  clearTimeout(fieldSyncRenderTimer);
+  fieldSyncRenderTimer=setTimeout(()=>{
+    try{renderJobs();renderAdmin();renderReports();renderDash();renderCalendar();}catch(e){}
+    try{if(document.getElementById('page-sales-tax')?.classList.contains('active'))renderSalesTax();}catch(e){}
+    try{cacheFastState();}catch(e){}
+  },200);
+}
+function onProfixSync(kind,msg){
+  if(kind==='fields'){applyBroadcastFields(msg);return;}
   if(kind==='jobs'){
     // แท็บอื่นแก้สถานะ/ข้อมูลงานบน server → ดึงเฉพาะส่วนที่เปลี่ยนทันที (ระยะ A)
     setTimeout(()=>{lastRemoteRefreshAt=0;refreshRemoteIfIdle();},800);
