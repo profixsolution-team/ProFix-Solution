@@ -1702,7 +1702,7 @@ let saleSearch='',saleDate='',saleRange='',saleSort='desc',saleDocType='',saleSo
 const ACCOUNTING_SORT_FIELDS={date:'วันที่เอกสาร',updated:'แก้ล่าสุด',no:'เลขที่เอกสาร'};
 let stockItems=[], stockMovements=[], stockLoaded=false, stockLoadingPromise=null;
 let stockSearch='', stockShowInactive=false, currentDetailJobId='';
-let accountingLoaded=false, accountingLoadingPromise=null;
+let accountingLoaded=false, accountingLoadingPromise=null, accountingLoadError='';
 let accountingAttachments={purchase:null,sales:null};
 let adminNames=['แอดมิน 1','แอดมิน 2','ทั้งคู่'];
 let adminTypes=['เปิดงานใหม่จากลูกค้า','ทำใบเสนอราคา','ทำใบกำกับภาษี','จัดซื้ออะไหล่','ติดต่อลูกค้า','อื่นๆ'];
@@ -2672,9 +2672,18 @@ async function sbUpsertResilient(table,query,payload,optionalKeys=PHASE3_OPTIONA
   throw new Error(`[${table}] upsert ยังไม่สำเร็จหลังตัดคอลัมน์ optional (${stripped.join(', ')})`);
 }
 async function sbFetchJson(table,query=''){
-  const r=await fetch(splitUrl(table,query),{headers:sbHeaders()});
-  if(!r.ok)throw new Error(await r.text());
-  return r.json();
+  // ลองซ้ำเมื่อเน็ต/เซิร์ฟเวอร์ตัดกลางทาง (เจอจริง 2026-10-20: ข้อมูลก้อนใหญ่โหลดช้ามากแล้วถูกตัด → "Unterminated string in JSON" → หน้าบิลขายว่าง)
+  // ไม่ลองซ้ำกรณีเซิร์ฟเวอร์ตอบ error จริง (4xx/5xx) — โยน error ตามเดิม
+  let lastErr=null;
+  for(let attempt=0;attempt<3;attempt++){
+    let r;
+    try{r=await fetch(splitUrl(table,query),{headers:sbHeaders()});}
+    catch(e){lastErr=e;await new Promise(res=>setTimeout(res,1500*(attempt+1)));continue;}
+    if(!r.ok)throw new Error(await r.text());
+    try{return await r.json();}
+    catch(e){lastErr=e;console.warn(`[retry] ${table} อ่านข้อมูลไม่ครบ (ครั้งที่ ${attempt+1})`,e);await new Promise(res=>setTimeout(res,1500*(attempt+1)));}
+  }
+  throw lastErr||new Error('fetch failed: '+table);
 }
 async function sbFetchAll(table,queryBase){
   const all=[];
@@ -5389,6 +5398,10 @@ function applyAccountingParsedData(kind,data){
     }else updateSalesSummary();
   }
 }
+// โหลดบัญชีไม่สำเร็จ (เน็ตช้า/ถูกตัด) → แสดงปุ่มลองใหม่ แทนที่จะขึ้นว่า "ยังไม่มีบิล"
+function accountingLoadErrorHtml(cols,renderFn){
+  return `<tr><td colspan="${cols}"><div class="empty"><div class="empty-icon">⚠️</div><div>โหลดข้อมูลบิลไม่สำเร็จ (เน็ตหรือเซิร์ฟเวอร์ช้า)</div><div style="margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="this.disabled=true;this.textContent='กำลังโหลด...';ensureAccountingLoaded(true).finally(()=>${renderFn}())">🔄 ลองโหลดใหม่</button></div></div></td></tr>`;
+}
 async function ensureAccountingLoaded(force=false){
   if(accountingLoaded&&!force)return;
   if(accountingLoadingPromise&&!force)return accountingLoadingPromise;
@@ -5410,8 +5423,10 @@ async function ensureAccountingLoaded(force=false){
     salesInvoiceItems=saleItemRows||[];
     masterPriceItems=mpRows||[];
     accountingLoaded=true;
+    accountingLoadError='';
   })().catch(e=>{
     console.warn('Accounting load failed',e);
+    accountingLoadError=(e&&e.message)||String(e);
     accountingLoaded=true;
   }).finally(()=>{accountingLoadingPromise=null;});
   return accountingLoadingPromise;
@@ -5516,6 +5531,7 @@ function renderPurchaseTax(){
   document.getElementById('pur-unpaid').textContent='฿'+money(unpaid);
   document.getElementById('pur-table-count').textContent=list.length+' รายการ'; renderPurchasePickBar();
   if(!accountingLoaded){tb.innerHTML='<tr><td colspan="11"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลซื้อ</div></div></td></tr>';return;}
+  if(accountingLoadError&&!purchaseInvoices.length){tb.innerHTML=accountingLoadErrorHtml(11,'renderPurchaseTax');return;}
   if(!list.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-icon">🧾</div><div>${purchaseInvoices.length?'ไม่พบบิลซื้อตามตัวกรอง':'ยังไม่มีบิลซื้อ'}</div></div></td></tr>`;return;}
   tb.innerHTML=list.map(inv=>{
     const rows=purchaseItems.filter(x=>x.purchase_invoice_id===inv.id&&x.status!=='cancelled');
@@ -5780,6 +5796,7 @@ function renderSalesTax(){
   document.getElementById('sale-unpaid').textContent='฿'+money(unpaid);
   document.getElementById('sale-table-count').textContent=list.length+' รายการ'; renderSalesMergeBar();
   if(!accountingLoaded){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลขาย</div></div></td></tr>';return;}
+  if(accountingLoadError&&!salesInvoices.length){tb.innerHTML=accountingLoadErrorHtml(8,'renderSalesTax');return;}
   if(!list.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">🧾</div><div>${salesInvoices.length?'ไม่พบบิลขายตามตัวกรอง':'ยังไม่มีบิลขาย'}</div></div></td></tr>`;return;}
   tb.innerHTML=list.map(inv=>{
     const prBtns=salesInvoiceJobs(inv).map(p=>`<span class="pr-chip" onclick="event.stopPropagation();openDet('${esc(p)}')">${esc(p)}</span>`).join('')||'<span class="tm">-</span>';
@@ -10457,6 +10474,9 @@ function onProfixSync(kind){
 function startRemoteRefresh(){
   setupCrossTabSync();
   if(!REMOTE_AUTO_REFRESH_ENABLED)return;
+  // แท็บทำเอกสาร (?sales=) ไม่ต้อง poll ทั้งระบบทุก 2.5 นาที (งาน+รายงานช่าง+รูป หลายสิบ MB ต่อรอบ ต่อแท็บ)
+  // ยังรับสัญญาณข้ามแท็บ (BroadcastChannel) ตามปกติ
+  if(isDocModeLight())return;
   if(remoteRefreshTimer)return;
   remoteRefreshTimer=setInterval(refreshRemoteIfIdle,REMOTE_REFRESH_INTERVAL_MS);
   window.addEventListener('focus',()=>setTimeout(refreshRemoteIfIdle,400));
