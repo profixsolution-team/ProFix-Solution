@@ -1031,7 +1031,7 @@ async function showForm(){
   const existingPartsRows = jobData.technicianReport?.partsStructured || jobData.technicianReport?.parts_detail || [];
   setTechPartRows(Array.isArray(existingPartsRows)&&existingPartsRows.length ? existingPartsRows.map(r=>({masterId:r.masterId||r.master_price_item_id||'',name:r.name||r.part_name_text||'',qty:r.qty||r.quantity||1,unit:r.unit||'',supplier:r.supplier||r.supplier_name||'',custom:!!r.custom})) : parsePartsTextToRows(jobData.partsUsed || jobData.technicianReport?.parts || ''));
   document.getElementById('f-note').value = jobData.note2 || jobData.technicianReport?.note || '';
-  document.getElementById('f-need-quote').checked = !!jobData.technicianReport?.needQuote || jobData.status === 'รออนุมัติอะไหล่';
+  document.getElementById('f-need-quote').checked = !!jobData.technicianReport?.needQuote || (jobData.status === 'รออนุมัติอะไหล่' || jobData.status === 'รอขออนุมัติ');
   // เปิดจากหน้า "งานของฉัน" (LINE): ปุ่ม "รอขออนุมัติ" = โหมดสำรวจ/ขออนุมัติอะไหล่ · ปุ่ม "ส่งงาน" = ซ่อมเสร็จ
   if(params.get('mode')==='quote')document.getElementById('f-need-quote').checked = true;
   else if(params.get('mode')==='done')document.getElementById('f-need-quote').checked = false;
@@ -1467,7 +1467,8 @@ async function submitJob(){
     const job = await loadJobRecord(JOB_ID);
     if(!job) throw new Error('ไม่พบงานนี้ในระบบหลัก');
     const submittedAt = new Date().toISOString();
-    const nextStatus = report.needQuote ? 'รออนุมัติอะไหล่' : 'ช่างส่งงานแล้ว';
+    // ขออนุมัติ: ช่างส่งผลสำรวจ → "รอขออนุมัติ" (แอดมินต้องทำใบเสนอราคา) → ออกใบเสนอราคาแล้วคอนโซลเปลี่ยนเป็น "รออนุมัติอะไหล่" เอง
+    const nextStatus = report.needQuote ? 'รอขออนุมัติ' : 'ช่างส่งงานแล้ว';
     const nextReview = report.needQuote ? 'รออนุมัติอะไหล่' : 'รอตรวจ';
     const nextRound = {
       id: `${report.needQuote ? 'survey' : 'repair'}-${Date.now()}`,
