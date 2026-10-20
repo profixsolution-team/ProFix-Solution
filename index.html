@@ -2867,6 +2867,7 @@ async function incrFullFetch(table,select,order){
   const map=new Map();let cursor=0;
   rows.forEach(r=>{const e=incrEntry(r);map.set(String(r.id),e);if(e.u>cursor)cursor=e.u;});
   incrCache[table]={select,order,rows:map,cursor,verifiedAt:Date.now()};
+  if(typeof incrPersistedCursor!=='undefined')incrPersistedCursor[table]=null; // โหลดเต็ม (รวมกรณีตรวจเทียบแล้วแก้) → ต้องเขียนลงเบราว์เซอร์ใหม่เสมอ
   incrStats[table]={mode:'full',rows:rows.length,at:new Date().toISOString()};
   return rows;
 }
@@ -2895,9 +2896,12 @@ async function syncedFetchAll(table,select,order='desc'){
 async function syncedFetchAllInner(table,select,order){
   let c=incrCache[table];
   if(c&&(c.select!==select||c.order!==order))c=null;
+  const tReady=Date.now();
   if(!(await incrSyncReady()))return incrFullFetch(table,select,order);
   if(!c){
+    const tR=Date.now();
     c=await incrRestore(table,select,order).catch(()=>null);
+    plogMark(`sync ${table}: ready-check ${tR-tReady}ms, restore from browser ${Date.now()-tR}ms${c?'':' (none)'}`);
     if(!c)return incrFullFetch(table,select,order);
     incrCache[table]=c;
   }
@@ -2922,7 +2926,10 @@ async function syncedFetchAllInner(table,select,order){
   c.rows=d.next;c.cursor=d.cursor;
   const wasRestored=!!c.restored;c.restored=false;
   incrStats[table]={mode:wasRestored?'restore+delta':'delta',rows:d.next.size,delta:d.deltaCount,pruned:d.pruned,at:new Date().toISOString()};
-  return incrRowsOut(d.next,order);
+  const tOut=Date.now();
+  const out=incrRowsOut(d.next,order);
+  if(wasRestored)plogMark(`sync ${table}: delta ${tOut-startedAt}ms, parse ${Date.now()-tOut}ms`);
+  return out;
 }
 // ===== ระยะ B: เก็บชุดข้อมูลที่ sync แล้วไว้ในเบราว์เซอร์ (IndexedDB) — 2026-10-20 =====
 // เปิดหน้า/แท็บใหม่: เอาชุดที่เก็บไว้ + ดึงเฉพาะส่วนที่เปลี่ยนตั้งแต่ครั้งก่อน (ตรวจจำนวนแถว/ตัดแถวที่ถูกลบเหมือนระยะ A)
@@ -2961,17 +2968,25 @@ async function incrRestore(table,select,order){
   const map=new Map();
   for(const e of v.rows){if(!Array.isArray(e)||e.length<3)return null;map.set(String(e[0]),{u:Number(e[1])||0,s:String(e[2])});}
   // ให้ตรวจเทียบกับโหลดเต็มภายใน ~5 นาที (รอบ poll ถัดไปหลังจากนั้น)
+  incrPersistedCursor[table]=(Number(v.cursor)||0)+':'+map.size;incrPersistedAt[table]=Date.now();
   return {select,order,rows:map,cursor:Number(v.cursor)||0,verifiedAt:Date.now()-INCR_VERIFY_EVERY_MS+5*60*1000,restored:true};
 }
-const incrPersistTimers={};
+// เขียนลงเบราว์เซอร์เฉพาะเมื่อข้อมูลเปลี่ยน และไม่บ่อยกว่า 2 นาที/ตาราง (เขียนก้อนใหญ่บ่อย ๆ ทำให้เครื่องช้า/แท็บอื่นอ่านช้า)
+const incrPersistTimers={}, incrPersistedAt={}, incrPersistedCursor={};
 function incrPersistSoon(table){
   if(!AUTH||!AUTH.email)return;
-  clearTimeout(incrPersistTimers[table]);
+  const c0=incrCache[table];if(!c0)return;
+  const sig=c0.cursor+':'+c0.rows.size;
+  if(incrPersistedCursor[table]===sig)return; // ไม่มีอะไรเปลี่ยนตั้งแต่เขียนครั้งก่อน
+  if(incrPersistTimers[table])return; // มีรอบรอเขียนอยู่แล้ว
+  const wait=Math.max(3000,(incrPersistedAt[table]||0)+2*60*1000-Date.now());
   incrPersistTimers[table]=setTimeout(()=>{
+    incrPersistTimers[table]=null;
     const c=incrCache[table];if(!c)return;
+    incrPersistedAt[table]=Date.now();incrPersistedCursor[table]=c.cursor+':'+c.rows.size;
     const val={v:1,select:c.select,order:c.order,cursor:c.cursor,savedAt:Date.now(),rows:[...c.rows].map(([id,e])=>[id,e.u,e.s])};
     incrIdbOp('readwrite',st=>st.put(val,incrIdbKey(table)));
-  },3000);
+  },wait);
 }
 function incrIdbClear(){return incrIdbOp('readwrite',st=>st.clear());}
 window.profixSyncStats=()=>({ready:incrReadyState,stats:incrStats,log:(()=>{try{return JSON.parse(localStorage.getItem('profix_sync_verify_log')||'[]');}catch(e){return [];}})()});
@@ -2985,6 +3000,7 @@ async function loadSplitState(){
     sbFetchJson('system_data','?id=eq.main&select=id,data,updated_at'),
     ...MASTER_COLLECTIONS.map(masterFetch)
   ]);
+  plogMark('split data fetched');
   splitTablesOnline=true;
   const hasData=jobRows.length||adminRows.length||docLight;
   if(!hasData)return false;
@@ -3021,6 +3037,7 @@ async function loadSplitState(){
     hasUnsyncedLocalChanges=true;
     setTimeout(()=>{try{saveState();}catch(e){}},0);
   }
+  plogMark('split data applied');
   MASTER_COLLECTIONS.forEach(c=>{
     const rws=masterRowsByKey[c.key];
     if(Array.isArray(rws)&&rws.length){
@@ -10696,6 +10713,7 @@ function startRemoteRefresh(){
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(refreshRemoteIfIdle,400);});
 }
 async function initApp(){
+  plogMark('initApp');
   initAppVersion();
   initAuditIdentity();
   applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
@@ -10707,6 +10725,7 @@ async function initApp(){
   fillSelects();
   renderLPHist();
   renderCurrentPage();
+  plogMark('first render (fast cache)');
   lastRemoteRefreshAt=Date.now(); // กัน focus-refresh ยิงโหลดซ้ำทันทีระหว่างโหลดแรก
   loadState({silent:hadFastCache,deferReports:true}).then(()=>{
     isHydrated=true;plogMark('hydrated (บันทึกได้)');
@@ -10762,10 +10781,13 @@ function startApp(){ initApp(); }
     return;
   }
   try{
+    plogMark('bootstrap start');
     const {data:{session}}=await sbClient.auth.getSession();
+    plogMark('auth session');
     ACCESS_TOKEN=(session&&session.access_token)||null;
     if(session){
       const me=await fetchMyProfile();
+      plogMark('profile ok');
       if(me&&me.status==='approved'&&me.active){
         AUTH={email:me.email,display_name:me.display_name||me.email,role:me.role,status:me.status};
         applyRolePermissions();
