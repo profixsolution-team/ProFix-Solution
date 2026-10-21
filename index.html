@@ -1485,6 +1485,9 @@ select option{background:var(--surface2);}
         <aside class="accounting-panel accounting-summary">
           <div class="accounting-panel-title">สรุปบิลซื้อ</div>
           <div class="form-group" style="margin-bottom:10px;"><label>การคิด VAT</label><select id="pur-vat-mode" onchange="purchaseVatMode=this.value;updatePurchaseSummary();"><option value="add">บวก VAT 7% เพิ่มท้ายบิล</option><option value="inclusive">ราคารวม VAT 7% มาแล้ว</option><option value="none">ไม่มี VAT</option></select></div>
+          <div class="form-group" style="margin:8px 0 4px;"><label>ส่วนลดท้ายบิล</label><div style="display:flex;gap:6px;"><input id="pur-bill-disc" type="number" min="0" step="0.01" placeholder="0" oninput="updatePurchaseSummary()" style="flex:1;min-width:0;"><select id="pur-bill-disc-mode" onchange="updatePurchaseSummary()" style="width:auto;"><option value="baht">บาท</option><option value="pct">%</option></select></div></div>
+          <div class="accounting-total-row"><span>รวมรายการ</span><strong id="pur-ui-linesum">0.00</strong></div>
+          <div class="accounting-total-row"><span>หักส่วนลดท้ายบิล</span><strong id="pur-ui-bill-disc">0.00</strong></div>
           <div class="accounting-total-row"><span>รวมเป็นเงิน (ก่อน VAT)</span><strong id="pur-ui-subtotal">0.00</strong></div>
           <div class="accounting-total-row"><span>ภาษีมูลค่าเพิ่ม 7%</span><strong id="pur-ui-vat">0.00</strong></div>
           <div class="accounting-total-row grand"><span>จำนวนเงินรวมทั้งสิ้น</span><strong id="pur-ui-total">0.00</strong></div>
@@ -1582,6 +1585,8 @@ select option{background:var(--surface2);}
           <div class="accounting-total-row"><span id="sale-ui-overhead-label">Overhead</span><strong id="sale-ui-overhead">0.00</strong></div>
           <div class="accounting-total-row"><span>ค่าเดินทาง</span><strong id="sale-ui-travel">0.00</strong></div>
           <div class="accounting-total-row"><span id="sale-ui-sla-label">ค่าดำเนินการเร่งด่วน</span><strong id="sale-ui-sla">1,000.00</strong></div>
+          <div class="form-group" style="margin:8px 0 4px;"><label>ส่วนลดท้ายบิล</label><div style="display:flex;gap:6px;"><input id="sale-bill-disc" type="number" min="0" step="0.01" placeholder="0" oninput="updateSalesSummary()" style="flex:1;min-width:0;"><select id="sale-bill-disc-mode" onchange="updateSalesSummary()" style="width:auto;"><option value="baht">บาท</option><option value="pct">%</option></select></div></div>
+          <div class="accounting-total-row"><span>หักส่วนลดท้ายบิล</span><strong id="sale-ui-bill-disc">0.00</strong></div>
           <div class="accounting-total-row"><span>รวมเป็นเงิน (ก่อน VAT)</span><strong id="sale-ui-subtotal">0.00</strong></div>
           <div class="accounting-total-row"><span>ภาษีมูลค่าเพิ่ม 7%</span><strong id="sale-ui-vat">0.00</strong></div>
           <div class="accounting-total-row grand"><span>จำนวนเงินรวมทั้งสิ้น</span><strong id="sale-ui-total">0.00</strong></div>
@@ -2652,7 +2657,7 @@ function rowHashMap(rows,idOf){
 }
 function splitUrl(table,query=''){return `${SUPABASE_URL}/rest/v1/${table}${query}`;}
 // คอลัมน์ที่เพิ่มใน migration phase 3 — ถ้ายังไม่ได้รัน migration จะถูกตัดออกอัตโนมัติเพื่อไม่ให้บันทึกพัง
-const PHASE3_OPTIONAL_KEYS=['doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template','branch_province','customer_province','labor_price','parts_price','labor_cost','parts_cost','due_date','payment_terms','customer_branch_no','po'];
+const PHASE3_OPTIONAL_KEYS=['bill_discount','bill_discount_rate','doc_type','doc_no','source_doc_id','discount_total','doc_status','item_code','category','discount','source_type','source_ref_id','line_no','seller_name','customer_signer_name','overhead_rate','overhead_amount','travel_km','travel_rate','travel_amount','sla_status','sla_fee_label','sla_fee_amount','overhead_enabled','doc_template','branch_province','customer_province','labor_price','parts_price','labor_cost','parts_cost','due_date','payment_terms','customer_branch_no','po'];
 function stripKeys(payload,keys){const drop=o=>{const c={...o};keys.forEach(k=>delete c[k]);return c;};return Array.isArray(payload)?payload.map(drop):drop(payload);}
 // POST แบบทนทาน: ถ้า PostgREST แจ้งว่าไม่มีคอลัมน์ (ยังไม่ได้รัน migration) จะลองใหม่โดยตัด "เฉพาะ" คอลัมน์ที่ error ระบุชื่อ
 // (เดิมตัดทั้ง PHASE3_OPTIONAL_KEYS ยกชุด → คอลัมน์ที่ DB มีอยู่จริง เช่น หมวด/รหัส/ลำดับ ถูกตัดทิ้งตามไปด้วย → หายตอนแก้ไขเอกสาร)
@@ -5942,6 +5947,7 @@ function openPurchaseModal(id=''){
   document.getElementById('pur-supplier').value=inv?.supplier_name||'';
   (function(){const el=document.getElementById('pur-company');if(!el)return;const cur=String(inv?.company_name||'').trim();const opts=[['','— ไม่ระบุ (ดูจากงาน PR ในรายการ) —'],...companyChoices().map(c=>[c.name,c.label+(c.label!==c.name?' · '+c.name:'')])];if(cur&&!opts.some(o=>o[0]===cur))opts.push([cur,cur]);el.innerHTML=opts.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('');el.value=cur;})();
   document.getElementById('pur-taxid').value=inv?.supplier_tax_id||'';
+  setBillDiscountForm('pur',inv||null);
   document.getElementById('pur-invoice-no').value=inv?.invoice_no||'';
   document.getElementById('pur-date').value=inv?.invoice_date||todayISO();
   document.getElementById('pur-tax-type').value=inv?.tax_invoice_type||'tax_invoice';
@@ -6032,6 +6038,28 @@ function salesSlaMeta(status){
   if(status==='none')return {status:'none',label:'ไม่มีค่าดำเนินการ',amount:0};
   return {status:'ontime',label:'ค่าดำเนินการเร่งด่วน',amount:1000};
 }
+// ===== ส่วนลดท้ายบิล (บิลขาย/บิลซื้อ) — 2026-10-21 =====
+// bill_discount = จำนวนเงินที่หัก · bill_discount_rate = % (เมื่อกรอกเป็น %) — หักจากยอดรวมก่อนคิด VAT ; เอกสารเก่าไม่มีค่า = 0
+function billDiscountFrom(rate,amount,base){
+  base=Math.max(0,Number(base||0));
+  const r=Number(rate||0);
+  if(r>0)return Math.min(base,Math.round(base*r)/100);
+  return Math.min(base,Math.max(0,Math.round(Number(amount||0)*100)/100));
+}
+function invBillDiscount(inv,base){return billDiscountFrom(inv&&inv.bill_discount_rate,inv&&inv.bill_discount,base);}
+function readBillDiscountForm(prefix,base){
+  const mode=document.getElementById(prefix+'-bill-disc-mode')?.value||'baht';
+  const v=Number(document.getElementById(prefix+'-bill-disc')?.value||0);
+  const rate=mode==='pct'&&v>0?v:null;
+  return {rate,amount:billDiscountFrom(rate,mode==='pct'?0:v,base)};
+}
+function setBillDiscountForm(prefix,inv){
+  const r=Number(inv&&inv.bill_discount_rate||0),a=Number(inv&&inv.bill_discount||0);
+  const m=document.getElementById(prefix+'-bill-disc-mode'),v=document.getElementById(prefix+'-bill-disc');
+  if(m)m.value=r>0?'pct':'baht';
+  if(v)v.value=r>0?r:(a||'');
+}
+function billDiscountLabel(inv){const r=Number(inv&&inv.bill_discount_rate||0);return 'ส่วนลดท้ายบิล'+(r>0?' '+String(r).replace(/\.0+$/,'')+'%':'');}
 function salesAdjustmentTotals(lineSubtotal){
   // ติ๊ก "กำหนด % เอง" → override อัตราอัตโนมัติด้วย % ที่กรอก (ไม่แตะ logic อัตโนมัติเดิม ใช้เฉพาะตอนติ๊ก)
   const overheadCustomOn=!!document.getElementById('sale-overhead-custom-on')?.checked;
@@ -6048,7 +6076,9 @@ function salesAdjustmentTotals(lineSubtotal){
   const travelRate=Number(document.getElementById('sale-travel-rate')?.value||0);
   const travelAmount=Math.round(travelKm*travelRate*100)/100;
   const sla=salesSlaMeta(document.getElementById('sale-sla-status')?.value||'ontime');
-  return {overheadEnabled,overheadRate,overheadAmount,travelKm,travelRate,travelAmount,slaStatus:sla.status,slaLabel:sla.label,slaAmount:sla.amount,baseBeforeVat:lineSubtotal+overheadAmount+travelAmount+sla.amount};
+  const preDiscount=lineSubtotal+overheadAmount+travelAmount+sla.amount;
+  const bd=readBillDiscountForm('sale',preDiscount);
+  return {overheadEnabled,overheadRate,overheadAmount,travelKm,travelRate,travelAmount,slaStatus:sla.status,slaLabel:sla.label,slaAmount:sla.amount,billDiscount:bd.amount,billDiscountRate:bd.rate,baseBeforeVat:preDiscount-bd.amount};
 }
 // ติ๊ก/ยกเลิก "กำหนด % เอง" → โชว์/ซ่อนช่อง % + ปิด dropdown อัตโนมัติชั่วคราวตอนติ๊ก (custom override)
 function onOverheadCustomToggle(){
@@ -6086,7 +6116,8 @@ function inferVatMode(inv,lineSum){
 }
 function purchaseDraftTotals(){
   const lineSum=purchaseDraftItems.reduce((s,it)=>s+Number(it.quantity||0)*Number(it.unit_price||0),0);
-  return computeVatTotals(lineSum,purchaseVatMode);
+  const bd=readBillDiscountForm('pur',lineSum);
+  return {...computeVatTotals(lineSum-bd.amount,purchaseVatMode),lineSum,billDiscount:bd.amount,billDiscountRate:bd.rate};
 }
 function updatePurchaseSummary(){
   const t=purchaseDraftTotals();
@@ -6094,6 +6125,8 @@ function updatePurchaseSummary(){
   if(sub)sub.textContent=money(t.subtotal);
   if(vat)vat.textContent=money(t.vat);
   if(total)total.textContent=money(t.total);
+  const ls=document.getElementById('pur-ui-linesum'),bd=document.getElementById('pur-ui-bill-disc');
+  if(ls)ls.textContent=money(t.lineSum||0);if(bd)bd.textContent=(t.billDiscount?'-':'')+money(t.billDiscount||0);
 }
 function renderPurchaseItemEditor(){
   const el=document.getElementById('purchase-items-editor');if(!el)return;
@@ -6131,13 +6164,14 @@ async function savePurchaseInvoice(){if(!guardEdit())return;
       document.getElementById('pur-file').value=fileUrl;
     }
     const purLineSum=rows.reduce((s,x)=>s+x.subtotal,0);
-    const {subtotal,vat,total}=computeVatTotals(purLineSum,purchaseVatMode);
+    const purBd=readBillDiscountForm('pur',purLineSum);
+    const {subtotal,vat,total}=computeVatTotals(purLineSum-purBd.amount,purchaseVatMode);
     const internal=document.getElementById('pur-internal-note')?.value.trim();
     const note=[document.getElementById('pur-note').value.trim(),internal?`[internal] ${internal}`:''].filter(Boolean).join('\n');
-    const inv={id,purchase_no:document.getElementById('pur-no').value.trim()||id,supplier_name:document.getElementById('pur-supplier').value.trim(),company_name:document.getElementById('pur-company')?.value||'',supplier_tax_id:document.getElementById('pur-taxid').value.trim(),invoice_no:document.getElementById('pur-invoice-no').value.trim(),invoice_date:document.getElementById('pur-date').value||todayISO(),tax_invoice_type:document.getElementById('pur-tax-type').value,subtotal,vat_amount:vat,total_amount:total,payment_status:document.getElementById('pur-payment').value,payment_method:document.getElementById('pur-method').value.trim(),file_url:fileUrl,note,status:'active',created_by:(purchaseInvoices.find(x=>x.id===id)?.created_by)||getActorName(),updated_by:getActorName(),updated_at:new Date().toISOString()};
+    const inv={id,purchase_no:document.getElementById('pur-no').value.trim()||id,supplier_name:document.getElementById('pur-supplier').value.trim(),company_name:document.getElementById('pur-company')?.value||'',bill_discount:purBd.amount,bill_discount_rate:purBd.rate,supplier_tax_id:document.getElementById('pur-taxid').value.trim(),invoice_no:document.getElementById('pur-invoice-no').value.trim(),invoice_date:document.getElementById('pur-date').value||todayISO(),tax_invoice_type:document.getElementById('pur-tax-type').value,subtotal,vat_amount:vat,total_amount:total,payment_status:document.getElementById('pur-payment').value,payment_method:document.getElementById('pur-method').value.trim(),file_url:fileUrl,note,status:'active',created_by:(purchaseInvoices.find(x=>x.id===id)?.created_by)||getActorName(),updated_by:getActorName(),updated_at:new Date().toISOString()};
     const isNewPurchase=!document.getElementById('pur-id').value;
     for(let attempt=0;;attempt++){
-      try{await sbUpsertResilient('purchase_invoices','?on_conflict=id',inv,['updated_at','company_name']);break;}
+      try{await sbUpsertResilient('purchase_invoices','?on_conflict=id',inv,['updated_at','company_name','bill_discount','bill_discount_rate']);break;}
       catch(e){
         const m=String(e&&e.message||e);
         if(!/purchase_no/.test(m)||!/(23505|duplicate)/.test(m))throw e;
@@ -6282,6 +6316,7 @@ function convertSalesDoc(id,toType){
   applyOverheadFormFromInv(inv);
   document.getElementById('sale-travel-km').value=inv.travel_km??'';
   document.getElementById('sale-travel-rate').value=inv.travel_rate??'';
+  setBillDiscountForm('sale',inv);
   setSalesSlaStatus(inv.sla_status||'ontime');
   document.getElementById('sale-seller-signature').value=inv.seller_signature_url||'';
   document.getElementById('sale-customer-signature').value=inv.customer_signature_url||'';
@@ -6368,7 +6403,7 @@ table.items{width:100%;border-collapse:collapse;margin-top:8px;}
 <div class="htitle">บิลซื้อ / ใบรับสินค้า</div>
 <div class="meta"><div><b>ผู้ขาย:</b> ${esc(inv.supplier_name||'-')}</div><div><b>เลขที่บิลซื้อ:</b> ${esc(inv.purchase_no||'-')}</div><div><b>Tax ID:</b> ${esc(inv.supplier_tax_id||'-')}</div><div><b>เลขที่ใบกำกับ:</b> ${esc(inv.invoice_no||'-')}</div><div><b>วันที่:</b> ${esc(inv.invoice_date||'-')}</div><div><b>สถานะจ่าย:</b> ${esc(inv.payment_status||'-')}</div></div>
 <table class="items"><thead><tr><th style="width:10mm;">ลำดับ</th><th>รายการ</th><th style="width:26mm;">PR</th><th style="width:18mm;">จำนวน</th><th style="width:16mm;">หน่วย</th><th style="width:26mm;">ราคา/หน่วย</th><th style="width:30mm;">รวม</th></tr></thead><tbody>${rows||''}${blankRows}</tbody></table>
-<table class="tot"><tr><td>ยอดก่อน VAT</td><td class="r">${money(inv.subtotal||0)}</td></tr><tr><td>VAT</td><td class="r">${money(inv.vat_amount||0)}</td></tr><tr class="g"><td>รวมทั้งสิ้น</td><td class="r">${money(inv.total_amount||0)}</td></tr></table>
+<table class="tot">${Number(inv.bill_discount||0)?`<tr><td>${esc(billDiscountLabel(inv))}</td><td class="r">-${money(inv.bill_discount)}</td></tr>`:''}<tr><td>ยอดก่อน VAT</td><td class="r">${money(inv.subtotal||0)}</td></tr><tr><td>VAT</td><td class="r">${money(inv.vat_amount||0)}</td></tr><tr class="g"><td>รวมทั้งสิ้น</td><td class="r">${money(inv.total_amount||0)}</td></tr></table>
 ${inv.note?`<div style="margin-top:12px;"><b>หมายเหตุ:</b> ${esc(inv.note)}</div>`:''}
 </div></body></html>`;
 }
@@ -6498,6 +6533,10 @@ body{margin:0;background:#e9edf2;color:#000;font-size:11px;}
     <td class="k" colspan="2">ค่าเดินทาง :</td><td class="tl" colspan="4"><span>${travelRoute||'-'}</span><span style="float:right;font-variant-numeric:tabular-nums;">${money(travelKm)}</span></td>
     <td class="tk" colspan="2">ค่าเดินทาง</td><td class="tv">${money(travelAmount)}</td>
   </tr>
+  ${(()=>{const _bd=invBillDiscount(inv,afterOverhead+travelAmount+slaAmount);return _bd?`<tr>
+    <td class="tl" colspan="6"></td>
+    <td class="tk" colspan="2">${esc(billDiscountLabel(inv))}</td><td class="tv">-${money(_bd)}</td>
+  </tr>`:'';})()}
   <tr>
     <td class="tl" colspan="6"></td>
     <td class="tk" colspan="2">รวมทั้งหมด</td><td class="tv">${money(grandBeforeVat)}</td>
@@ -6551,6 +6590,7 @@ function salesDocHtml(inv,items){
   if(overheadEnabled)totalRows+='<tr><td>Overhead '+money(overheadRate)+'%</td><td class="right">'+money(overheadAmount)+'</td></tr>';
   if(travelAmount||travelKm||travelRate)totalRows+='<tr><td>'+esc(travelLabel)+'</td><td class="right">'+money(travelAmount)+'</td></tr>';
   totalRows+='<tr><td>'+esc(slaLabel)+'</td><td class="right">'+money(slaAmount)+'</td></tr>';
+  {const _bd=invBillDiscount(inv,lineSubtotal+(overheadEnabled?overheadAmount:0)+travelAmount+slaAmount);if(_bd)totalRows+='<tr><td>'+esc(billDiscountLabel(inv))+'</td><td class="right">-'+money(_bd)+'</td></tr>';}
   totalRows+='<tr><td class="label">รวมเป็นเงิน (ก่อน VAT)</td><td class="right">'+money(inv.subtotal||0)+'</td></tr>';
   if(showVat)totalRows+='<tr><td>ภาษีมูลค่าเพิ่ม<br>7%(VAT)</td><td class="right">'+money(inv.vat_amount||0)+'</td></tr>';
   if(discount)totalRows+='<tr><td>หักส่วนลด</td><td class="right">'+money(discount)+'</td></tr>';
@@ -6612,9 +6652,9 @@ function salesTaxSummaryHtml(inv,items){
   let lineSum,subtotal,discount,afterDiscount,vat,total;
   if(isInv){ // ใบวางบิล: ยอดแต่ละบรรทัดรวม VAT แล้ว ใช้ยอดที่เก็บไว้บนเอกสาร ไม่คิด VAT ซ้ำ
     lineSum=Math.round(lineRows.reduce((s,r)=>s+Number(r.amount||0),0)*100)/100;
-    discount=0;
-    const _vt=computeVatTotals(lineSum,invVatMode); // ยอดสดจากใบกำกับภาษีที่ดึงมา + VAT ตามที่เลือกท้ายบิล
-    subtotal=_vt.subtotal; afterDiscount=subtotal; vat=_vt.vat; total=_vt.total;
+    discount=invBillDiscount(inv,lineSum);
+    const _vt=computeVatTotals(lineSum-discount,invVatMode); // ยอดสดจากใบกำกับภาษีที่ดึงมา (หักส่วนลดท้ายบิล) + VAT ตามที่เลือกท้ายบิล
+    subtotal=_vt.subtotal+discount; afterDiscount=_vt.subtotal; vat=_vt.vat; total=_vt.total;
   }else{
     const _lt=liveTaxSummaryTotals(inv,items);
     lineSum=_lt.lineSum; subtotal=_lt.subtotal; discount=_lt.discount; afterDiscount=_lt.afterDiscount; vat=_lt.vat; total=_lt.total;
@@ -7451,6 +7491,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   document.getElementById('sale-bank-account').value=saleCompany.bankAccount;
   applyOverheadFormFromInv(inv);
   document.getElementById('sale-travel-km').value=inv?.travel_km??'';
+  setBillDiscountForm('sale',inv||null);
   document.getElementById('sale-travel-rate').value=inv?.travel_rate??'';
   const slaStatus=inv?.sla_status||'ontime';
   const slaEl=document.getElementById('sale-sla-status');if(slaEl)slaEl.value=slaStatus;
@@ -7675,7 +7716,8 @@ function liveTaxSummaryLineAmount(it){
 }
 function liveTaxSummaryTotals(inv,items){
   const lineSum=(items||[]).reduce((s,it)=>s+liveTaxSummaryLineAmount(it),0);
-  const discount=Number(inv.discount_total||0);
+  const lineDisc=Number(inv.discount_total||0);
+  const discount=lineDisc+invBillDiscount(inv,Math.max(0,lineSum-lineDisc));
   const afterDiscount=Math.max(0,lineSum-discount);
   const hadVat=Number(inv.vat_amount||0)>0||(inv.doc_type==='tax_invoice');
   const vat=hadVat?Math.round(afterDiscount*0.07*100)/100:0;
@@ -7732,7 +7774,7 @@ async function syncBillingInvoicesForTaxInvoices(taxIds){
     }
     if(touched){
       const lineSum=Math.round(its.reduce((s,it)=>s+Number(it.subtotal||0),0)*100)/100;
-      const {subtotal:billSub,vat,total}=computeVatTotals(lineSum,mode);
+      const {subtotal:billSub,vat,total}=computeVatTotals(Math.max(0,lineSum-invBillDiscount(bill,lineSum)),mode);
       const r2=await fetch(splitUrl('sales_invoices',`?id=eq.${encodeURIComponent(bill.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({subtotal:billSub,vat_amount:vat,total_amount:total,updated_by:getActorName()})});
       if(!r2.ok)throw new Error(await r2.text());
       bill.subtotal=billSub;bill.vat_amount=vat;bill.total_amount=total;
@@ -7761,7 +7803,8 @@ async function syncSummaryTaxInvoicesForQuotation(quotationId,newSub,qPrs){
     }
     if(touched){
       const lineSum=its.reduce((s,it)=>s+Number(it.subtotal||0),0);
-      const discount=Number(tx.discount_total||0);
+      const discount0=Number(tx.discount_total||0);
+      const discount=discount0+invBillDiscount(tx,Math.max(0,lineSum-discount0));
       const afterDisc=Math.max(0,lineSum-discount);
       const hadVat=Number(tx.vat_amount||0)>0;
       const vat=hadVat?Math.round(afterDisc*0.07*100)/100:0;
@@ -7947,6 +7990,7 @@ function updateSalesSummary(){
   const sub=document.getElementById('sale-ui-subtotal'),vat=document.getElementById('sale-ui-vat'),total=document.getElementById('sale-ui-total');
   if(line)line.textContent=money(t.lineSubtotal);if(over)over.textContent=money(t.overheadAmount);if(overLbl)overLbl.textContent=t.overheadEnabled?`Overhead ${t.overheadRate}%`:'Overhead (ไม่คิด)';if(travel)travel.textContent=money(t.travelAmount);if(sla)sla.textContent=money(t.slaAmount);if(slaLbl)slaLbl.textContent=t.slaLabel;
   if(sub)sub.textContent=money(t.subtotal);if(vat)vat.textContent=money(t.vat);if(total)total.textContent=money(t.total);
+  const bdEl=document.getElementById('sale-ui-bill-disc');if(bdEl)bdEl.textContent=(t.billDiscount?'-':'')+money(t.billDiscount||0);
 }
 function salesSourceBadge(src){
   if(src==='master_price')return '<span class="jp-tag" style="background:var(--accent-dim);color:var(--accent);">ราคากลาง</span>';
@@ -8088,6 +8132,8 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     payment_terms:document.getElementById('sale-payment-terms')?.value.trim()||'',
     subtotal,
     discount_total:discountTotal,
+    bill_discount:adj.billDiscount,
+    bill_discount_rate:adj.billDiscountRate,
     overhead_enabled:adj.overheadEnabled,
     overhead_rate:adj.overheadRate,
     overhead_amount:adj.overheadAmount,
@@ -8489,6 +8535,7 @@ async function mergeSalesDocsToTaxInvoice(){
   salesDraftJobs=jobIds.slice();renderSalesJobChips(); // ลิงก์เลข PR ที่ติ๊กเลือกเข้าฟอร์มอัตโนมัติ (เป็น chips จริง ไม่ใช่ช่องซ่อน)
   setv('sale-travel-km', base.travel_km||0);
   setv('sale-travel-rate', base.travel_rate||0);
+  setBillDiscountForm('sale',base); // ส่วนลดท้ายบิลจากใบเสนอราคา ตามไปใบกำกับ
   if(travel&&!Number(base.travel_km||0)){ setv('sale-travel-km',1); setv('sale-travel-rate',travel); }
   setv('sale-payment-date', base.due_date||base.payment_date||base.invoice_date||todayISO());
   setv('sale-payment-terms', base.payment_terms||'โอนเข้าบัญชี');
