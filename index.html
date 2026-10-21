@@ -573,6 +573,33 @@ select option{background:var(--surface2);}
   .accounting-line-table input,.accounting-line-table select{width:100%;min-width:0;}
   .accounting-line-table td.mono.tg{align-self:end;font-size:14px;}
 }
+
+/* ประวัติการแก้ไขราคากลาง */
+.ph-cell{background:none;border:0;padding:0;cursor:pointer;text-align:left;color:inherit}
+.ph-cell:hover .sale-editor-name{color:var(--accent);text-decoration:underline}
+.ph-cell .sale-editor{white-space:nowrap;min-width:130px}
+.ph-time{font-size:12px;color:var(--text2);white-space:nowrap;border-radius:6px;padding:2px 6px}
+.ph-time:hover{background:var(--accent-dim);color:var(--accent)}
+.ph-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.ph-summary>div{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ph-summary span{font-size:11px;color:var(--text3)} .ph-summary b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .ph-summary small{font-size:11px;color:var(--text3)}
+.ph-list{list-style:none;margin:0;padding:0 0 0 14px;border-left:2px solid var(--border);display:flex;flex-direction:column;gap:12px}
+.ph-item{position:relative}
+.ph-dot{position:absolute;left:-21px;top:14px;width:12px;height:12px;border-radius:50%;border:2px solid var(--surface);background:var(--accent)}
+.ph-dot.ph-a-create{background:var(--green)} .ph-dot.ph-a-import{background:var(--purple)}
+.ph-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.ph-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ph-badge{font-size:11px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--accent-dim);color:var(--accent);white-space:nowrap}
+.ph-badge.ph-a-create{background:var(--green-dim);color:var(--green)} .ph-badge.ph-a-import{background:var(--purple-dim);color:var(--purple)}
+.ph-when{font-size:11px;color:var(--text3)}
+.ph-row{display:flex;justify-content:space-between;gap:10px;font-size:13px;border-top:1px dashed var(--border);padding-top:6px}
+.ph-field{color:var(--text2);white-space:nowrap}
+.ph-vals{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:6px;text-align:right;min-width:0}
+.ph-old{color:var(--text3);text-decoration:line-through} .ph-arrow{color:var(--text3)} .ph-new{font-weight:700}
+.ph-empty{color:var(--text3);font-style:italic}
+.ph-trend{font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px}
+.ph-trend.up{background:var(--red-dim);color:var(--red)} .ph-trend.down{background:var(--green-dim);color:var(--green)}
+@media (max-width:560px){.ph-summary{grid-template-columns:1fr}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1074,7 +1101,7 @@ select option{background:var(--surface2);}
           <button class="btn btn-ghost btn-sm" onclick="openPartModal()">+ เพิ่มอะไหล่</button>
         </div>
       </div>
-      <table><thead><tr><th style="width:36px;"><input type="checkbox" id="part-check-all" onchange="toggleAllVisibleParts(this.checked)"></th><th>ลำดับ</th><th>หมวดหมู่</th><th>ชื่ออะไหล่</th><th>รายละเอียด/สเปค</th><th>หน่วย</th><th class="role-cost">ค่าของ<br><span style="font-size:9px;opacity:.6;">ขาย</span></th><th class="role-cost">ค่าแรง<br><span style="font-size:9px;opacity:.6;">ขาย</span></th><th>ราคาขาย</th><th class="role-cost" style="color:var(--yellow);">ค่าของ<br><span style="font-size:9px;opacity:.6;">ต้นทุน</span></th><th class="role-cost" style="color:var(--yellow);">ค่าแรง<br><span style="font-size:9px;opacity:.6;">ต้นทุน</span></th><th class="role-cost">กำไร</th><th></th></tr></thead>
+      <table><thead><tr><th style="width:36px;"><input type="checkbox" id="part-check-all" onchange="toggleAllVisibleParts(this.checked)"></th><th>ลำดับ</th><th>หมวดหมู่</th><th>ชื่ออะไหล่</th><th>รายละเอียด/สเปค</th><th>หน่วย</th><th class="role-cost">ค่าของ<br><span style="font-size:9px;opacity:.6;">ขาย</span></th><th class="role-cost">ค่าแรง<br><span style="font-size:9px;opacity:.6;">ขาย</span></th><th>ราคาขาย</th><th class="role-cost" style="color:var(--yellow);">ค่าของ<br><span style="font-size:9px;opacity:.6;">ต้นทุน</span></th><th class="role-cost" style="color:var(--yellow);">ค่าแรง<br><span style="font-size:9px;opacity:.6;">ต้นทุน</span></th><th class="role-cost">กำไร</th><th>แก้ล่าสุด</th><th></th></tr></thead>
       <tbody id="part-tbody"></tbody></table>
     </div>
       </div>
@@ -3215,40 +3242,102 @@ function mergeFullStateWithSplit(fullState,splitState){
   merged.adminTasks=[...taskMap.values()];
   return merged;
 }
+// ===== ราคากลาง (parts) — โหลด/บันทึกแบบปลอดภัย (2026-10-21) =====
+// ปัญหาเดิม: บันทึกทีไรส่ง "อะไหล่ทั้งหมด" จากหน่วยความจำของแท็บนั้นขึ้นไปทับ → เครื่อง/แท็บที่ถือข้อมูลเก่า (รวมถึงแคชในเครื่อง)
+// เขียนทับราคาที่คนอื่นเพิ่งแก้ → ราคากลับเป็นค่าเก่า ; และฟอร์มแก้ไขอ้างตามลำดับแถว ถ้ารายการถูกรีเฟรชระหว่างเปิดฟอร์ม อาจบันทึกผิดตัว
+// ใหม่: (1) แก้/เพิ่ม/ลบ = เขียนทีละรายการทันที ตาม part_key  (2) บันทึกรวมส่งเฉพาะแถวที่เปลี่ยนจริง และเฉพาะเมื่อข้อมูลในเครื่องมาจาก server
+// (3) แคชในเครื่องใช้แสดงผลอย่างเดียว ไม่ใช้เป็นฐานบันทึก  (4) ก่อนบันทึกเช็คว่ามีคนอื่นแก้รายการนี้ไปก่อนไหม  (5) เก็บประวัติ ใคร/เมื่อไร/แก้อะไร
+let partsFresh=false, partsFetchedAt=0;
+const PARTS_MAX_AGE_MS=3*60*1000;
+const PART_HISTORY_FIELDS=[['code','รหัส'],['cat','หมวดหมู่'],['name','ชื่อ'],['brand','รายละเอียด/สเปค'],['unit','หน่วย'],['sup','ซัพพลายเออร์'],['cost','ค่าของ (ขาย)'],['labor','ค่าแรง (ขาย)'],['buy_cost','ค่าของ (ต้นทุน)'],['buy_labor','ค่าแรง (ต้นทุน)'],['note','หมายเหตุ']];
+const PART_MONEY_FIELDS=new Set(['cost','labor','buy_cost','buy_labor']);
+function partRowFromServer(r){return {...(r.data||{}),part_key:r.part_key||r.data?.part_key||String(r.id||'')};}
+function partKeyOf(p){return p&&(p.part_key||p._id)||'';}
+function applyServerParts(rows){
+  parts=(rows||[]).map(partRowFromServer).filter(Boolean);
+  ensurePersistentIds();
+  partsLoaded=true;partsFresh=true;partsFetchedAt=Date.now();
+  splitKnownIds.parts=new Set(parts.map(partKeyOf).filter(Boolean));
+  splitRowHashes.parts=rowHashMap(parts,partKeyOf);
+}
+async function fetchPartsFromServer(){
+  const rows=await sbFetchAll('parts','?select=id,part_key,data,updated_at&order=updated_at.desc');
+  applyServerParts(rows);
+  return parts;
+}
 async function ensurePartsLoaded(){
-  if(partsLoaded&&parts&&parts.length)return parts; // มีข้อมูลแล้วค่อยข้าม — ถ้า flag=true แต่ว่าง ให้โหลดใหม่ (กันค้างว่าง)
+  if(partsLoaded&&partsFresh&&parts&&parts.length&&Date.now()-partsFetchedAt<PARTS_MAX_AGE_MS)return parts;
   if(partsLoadingPromise)return partsLoadingPromise;
   if(!splitTablesOnline&&!loadedFromSplitTables){return parts;} // ยังไม่ online — อย่าเพิ่งล็อก flag (รอ online แล้วค่อยโหลด)
-  partsLoadingPromise=(async()=>{
-    const rows=await sbFetchAll('parts','?select=id,part_key,data,updated_at&order=updated_at.desc');
-    parts=rows.map(r=>({...r.data,part_key:r.part_key||r.data?.part_key||String(r.id||'')})).filter(Boolean);
-    ensurePersistentIds();
-    partsLoaded=true;
-    const snap=splitStateSnapshot();
-    splitKnownIds.parts=new Set(snap.parts.map(p=>p.part_key||p._id).filter(Boolean));
-    splitSaveHashes.parts=stableJson(snap.parts);
-    splitRowHashes.parts=rowHashMap(snap.parts,p=>p.part_key||p._id);
-    return parts;
-  })().catch(e=>{
-    console.warn('Parts lazy load failed',e);
+  partsLoadingPromise=fetchPartsFromServer().catch(e=>{
+    console.warn('Parts load failed',e);
     return parts;
   }).finally(()=>{partsLoadingPromise=null;});
   return partsLoadingPromise;
 }
-// รีเฟรชอะไหล่เงียบๆ (ไม่โชว์ loading) — ใช้เบื้องหลังหลังโหลดจาก cache เพื่อให้ข้อมูลสด
+// รีเฟรชอะไหล่เงียบๆ (ไม่โชว์ loading) — ใช้เบื้องหลัง ; ถ้ามีรายการที่แก้ในเครื่องแต่ยังไม่ได้บันทึก จะส่งขึ้นก่อนแล้วค่อยโหลดใหม่
 async function refreshPartsSilently(){
   if(!splitTablesOnline&&!loadedFromSplitTables)return parts;
   try{
-    const rows=await sbFetchAll('parts','?select=id,part_key,data,updated_at&order=updated_at.desc');
-    parts=rows.map(r=>({...r.data,part_key:r.part_key||r.data?.part_key||String(r.id||'')})).filter(Boolean);
-    ensurePersistentIds();partsLoaded=true;
-    const snap=splitStateSnapshot();
-    splitKnownIds.parts=new Set(snap.parts.map(p=>p.part_key||p._id).filter(Boolean));
-    splitSaveHashes.parts=stableJson(snap.parts);
-    splitRowHashes.parts=rowHashMap(snap.parts,p=>p.part_key||p._id);
+    if(partsFresh)await syncPartsChangedRows();
+    if(partsLoadingPromise)return await partsLoadingPromise;
+    partsLoadingPromise=fetchPartsFromServer().finally(()=>{partsLoadingPromise=null;});
+    await partsLoadingPromise;
     cacheFastState();
   }catch(e){console.warn('refreshPartsSilently failed',e);}
   return parts;
+}
+// ราคากลางเก่ากว่า 3 นาที → โหลดใหม่เบื้องหลัง (ใช้ก่อนดึงราคาเข้าเอกสาร)
+function refreshPartsIfStale(){
+  if(!partsFresh||Date.now()-partsFetchedAt>=PARTS_MAX_AGE_MS)return refreshPartsSilently();
+  return Promise.resolve(parts);
+}
+// เขียนแถวอะไหล่ขึ้น server (เฉพาะแถวที่ส่งมา) แล้วปรับฐานเฉพาะแถวนั้น
+async function upsertPartRows(list){
+  const now=new Date().toISOString();
+  const mapped=(list||[]).filter(p=>p&&p.part_key&&p.name).map(p=>({part_key:p.part_key,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now}));
+  for(let i=0;i<mapped.length;i+=200){
+    const r=await fetch(splitUrl('parts','?on_conflict=part_key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(mapped.slice(i,i+200))});
+    if(!r.ok)throw new Error(await r.text());
+  }
+  const base=splitRowHashes.parts||(splitRowHashes.parts={});
+  const known=splitKnownIds.parts||(splitKnownIds.parts=new Set());
+  (list||[]).forEach(p=>{if(p&&p.part_key){base[p.part_key]=stableJson(p);known.add(p.part_key);}});
+}
+// ส่งขึ้นเฉพาะแถวที่เปลี่ยนจากฐาน (ข้อมูลที่โหลดจาก server ล่าสุด) — ไม่เคยส่งทั้งแค็ตตาล็อก
+async function syncPartsChangedRows(){
+  if(!partsFresh)return 0;
+  ensurePersistentIds();
+  const base=splitRowHashes.parts||{};
+  const seen=new Set();
+  const changed=[];
+  (parts||[]).forEach((p,i)=>{
+    if(!p||!p.name)return;
+    if(!p.part_key)p.part_key=partStableKey(p,i);
+    if(seen.has(p.part_key))p.part_key=p.part_key+'-'+i;
+    seen.add(p.part_key);
+    if(base[p.part_key]!==stableJson(p))changed.push(p);
+  });
+  if(changed.length)await upsertPartRows(changed);
+  return changed.length;
+}
+function partHistoryChanges(before,after){
+  const out={};
+  PART_HISTORY_FIELDS.forEach(([k])=>{
+    const a=before?before[k]:undefined,b=after[k];
+    const norm=v=>PART_MONEY_FIELDS.has(k)?Number(v||0):String(v??'').trim();
+    if(norm(a)!==norm(b))out[k]=[before?norm(a):null,norm(b)];
+  });
+  return out;
+}
+function stampPartEdit(next,before,action){
+  const now=new Date().toISOString(),by=getActorName();
+  const changes=partHistoryChanges(before,next);
+  if(before&&!Object.keys(changes).length&&action==='edit')return next; // ไม่มีอะไรเปลี่ยน
+  const hist=Array.isArray(before&&before.history)?before.history:[];
+  const isNew=!before;
+  return {...next,updatedAt:now,updatedBy:by,createdAt:(before&&before.createdAt)||next.createdAt||(isNew?now:''),createdBy:(before&&before.createdBy)||next.createdBy||(isNew?by:''),
+    history:[{at:now,by,action,changes},...hist].slice(0,30)};
 }
 async function ensureWorkOrdersLoaded(){
   if(workOrdersLoaded||!splitTablesOnline&&!loadedFromSplitTables)return docs.workOrders||[];
@@ -3439,7 +3528,7 @@ async function saveSplitStateNowInner(force=false){
   if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRowsChanged('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id,force,false);splitSaveHashes.adminTasks=adminHash;}
   if(workOrdersLoaded&&(force||splitSaveHashes.workOrders!==woHash)){await syncSplitRowsChanged('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id,force);splitSaveHashes.workOrders=woHash;}
   if(docsLoaded&&(force||splitSaveHashes.documents!==docHash)){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
-  if(partsLoaded&&(force||splitSaveHashes.parts!==partsHash)){await upsertPartsCatalogRows(snap.parts);splitSaveHashes.parts=partsHash;}
+  if(partsLoaded&&partsFresh&&splitSaveHashes.parts!==partsHash){await syncPartsChangedRows();splitSaveHashes.parts=partsHash;} // เฉพาะแถวที่เปลี่ยน (ไม่ส่งทั้งแค็ตตาล็อก)
   // Master collections แยกราย row (phase 4) — บันทึกเฉพาะตารางที่เปลี่ยน, ทนทานต่อตารางที่ยังไม่ถูกสร้าง
   // ห้าม sync ถ้ายังไม่เคยโหลดข้อมูลจาก server สำเร็จในเซสชันนี้ (กันเขียนทับด้วยค่า default/ค่าที่ยังไม่ได้โหลดจริง)
   if(masterMetaTrusted){
@@ -7529,7 +7618,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   const svm=document.getElementById('sale-vat-mode');if(svm)svm.value=salesVatMode;
   refreshAccountingDatalists();
   if(!inv&&prefJobId){
-    if(!partsLoaded)ensurePartsLoaded().then(()=>{fillSalesFromJob(prefJobId);renderSalesItemEditor();}).catch(e=>console.warn('Parts load before sales fill failed',e));
+    if(!partsFresh||Date.now()-partsFetchedAt>=PARTS_MAX_AGE_MS)ensurePartsLoaded().then(()=>{fillSalesFromJob(prefJobId);renderSalesItemEditor();}).catch(e=>console.warn('Parts load before sales fill failed',e)); // ราคากลางต้องล่าสุดก่อนดึงเข้าเอกสาร
     else fillSalesFromJob(prefJobId);
   }
   if(inv&&!salesDraftItems.length)salesDraftItems=[blankSalesItem('ยอดตามบิลเดิม',1,'งาน',Number(inv.subtotal||0))];
@@ -7538,7 +7627,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   // ให้แน่ใจว่าราคากลาง + แคตตาล็อกอะไหล่โหลดครบก่อน — ไม่งั้น datalist ว่าง ราคา/หมวดไม่ลิงค์
   Promise.all([
     accountingLoaded?Promise.resolve():ensureAccountingLoaded(),
-    partsLoaded?Promise.resolve():ensurePartsLoaded()
+    ensurePartsLoaded() // โหลดใหม่ถ้าเก่ากว่า 3 นาที / มาจากแคชในเครื่อง
   ]).then(()=>{refreshAccountingDatalists();renderSalesItemEditor();}).catch(e=>console.warn('Sales master data preload failed',e));
 }
 // บิลขายของ PR นี้ที่มีอยู่แล้ว (ไม่นับบิลที่กำลังแก้ไข) — ใช้เตือน JOB ซ้ำ
@@ -9891,7 +9980,17 @@ function fillPartDatalists(){
   const set=(id,vals)=>{const el=document.getElementById(id);if(el)el.innerHTML=vals.map(v=>`<option value="${esc(v)}"></option>`).join('');};
   set('fpa-cat-list',cats);set('fpa-unit-list',units);set('fpa-name-list',names);set('fpa-code-list',codes);
 }
-async function openPartModal(i=''){await ensurePartsLoaded();editPartIndex=i;renderSuppliers();fillPartDatalists();if(i===''){['fpa-code','fpa-cat','fpa-name','fpa-brand','fpa-unit','fpa-sup','fpa-cost','fpa-labor','fpa-buycost','fpa-buylabor','fpa-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('fpa-code').value=nextPartSeq();calcPartMargin();}else{const x=parts[i];document.getElementById('fpa-code').value=x.code||'';document.getElementById('fpa-cat').value=x.cat||x.category||'';document.getElementById('fpa-name').value=x.name||'';document.getElementById('fpa-brand').value=x.brand||x.spec||'';document.getElementById('fpa-unit').value=x.unit||'';document.getElementById('fpa-sup').value=x.sup||'';document.getElementById('fpa-cost').value=x.cost||0;document.getElementById('fpa-labor').value=x.labor||0;document.getElementById('fpa-buycost').value=x.buy_cost||0;document.getElementById('fpa-buylabor').value=x.buy_labor||0;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
+let editPartKey='', editPartOpenedAt='';
+async function openPartModal(i=''){
+  const key0=i===''?'':partKeyOf(parts[+i]);
+  await ensurePartsLoaded();
+  if(key0){ // อ่านรายการนี้จาก server ล่าสุดก่อนเปิดฟอร์ม
+    try{const rows=await sbFetchJson('parts',`?select=id,part_key,data,updated_at&part_key=eq.${encodeURIComponent(key0)}&limit=1`);if(rows&&rows[0]){const fresh=partRowFromServer(rows[0]);const k=parts.findIndex(p=>partKeyOf(p)===key0);if(k>=0){parts[k]=fresh;(splitRowHashes.parts||(splitRowHashes.parts={}))[key0]=stableJson(fresh);}}}catch(e){console.warn('อ่านราคากลางล่าสุดไม่สำเร็จ',e);}
+    i=parts.findIndex(p=>partKeyOf(p)===key0);
+    if(i<0){alert('ไม่พบรายการนี้แล้ว (อาจถูกลบโดยผู้ใช้อื่น)');renderParts();return;}
+  }
+  editPartKey=key0;editPartOpenedAt=key0?(parts[i].updatedAt||''):'';
+  editPartIndex=i;renderSuppliers();fillPartDatalists();if(i===''){['fpa-code','fpa-cat','fpa-name','fpa-brand','fpa-unit','fpa-sup','fpa-cost','fpa-labor','fpa-buycost','fpa-buylabor','fpa-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('fpa-code').value=nextPartSeq();calcPartMargin();}else{const x=parts[i];document.getElementById('fpa-code').value=x.code||'';document.getElementById('fpa-cat').value=x.cat||x.category||'';document.getElementById('fpa-name').value=x.name||'';document.getElementById('fpa-brand').value=x.brand||x.spec||'';document.getElementById('fpa-unit').value=x.unit||'';document.getElementById('fpa-sup').value=x.sup||'';document.getElementById('fpa-cost').value=x.cost||0;document.getElementById('fpa-labor').value=x.labor||0;document.getElementById('fpa-buycost').value=x.buy_cost||0;document.getElementById('fpa-buylabor').value=x.buy_labor||0;document.getElementById('fpa-note').value=x.note||'';calcPartMargin();}openM('m-part');}
 
 // แถบเตือนสัญญา Vendor ใกล้หมดอายุ/หมดแล้ว — วางไว้บนหน้ารายชื่อ ให้เห็นรวมโดยไม่ต้องเปิดทีละราย
 function renderVendorAlertBar(){
@@ -10009,11 +10108,48 @@ function renderParts(){
   const tb=document.getElementById('part-tbody');if(!tb)return;
   if((!partsLoaded||!parts.length)&&(splitTablesOnline||loadedFromSplitTables)&&!partsLoadingPromise){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดข้อมูลอะไหล่</div></div></td></tr>';ensurePartsLoaded().then(renderParts);return;}
   if(partsLoadingPromise&&!parts.length){tb.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดข้อมูลอะไหล่</div></div></td></tr>';partsLoadingPromise.then(renderParts);return;}
-  const idxs=filteredPartIndexes();tb.innerHTML=idxs.map(i=>{const x=parts[i];return `<tr><td><input type="checkbox" ${selectedParts.has(i)?'checked':''} onchange="togglePartSelect(${i},this.checked)"></td><td class="mono ta" style="font-size:11px;">${esc(x.code||'-')}</td><td><span class="chip">${esc(x.cat||x.category||'-')}</span></td><td style="font-weight:600;">${esc(x.name||'-')}</td><td class="tm" style="font-size:12px;">${esc(x.brand||x.spec||'-')}</td><td>${esc(x.unit||'-')}</td><td class="mono tr role-cost">฿${Number(x.cost||0).toLocaleString()}</td><td class="mono tr role-cost">฿${Number(x.labor||0).toLocaleString()}</td><td class="mono tg">฿${partSellPrice(x).toLocaleString()}</td><td class="mono tr role-cost" style="color:var(--yellow);">${Number(x.buy_cost||0)?'฿'+Number(x.buy_cost).toLocaleString():'<span style="opacity:.35;">—</span>'}</td><td class="mono tr role-cost" style="color:var(--yellow);">${Number(x.buy_labor||0)?'฿'+Number(x.buy_labor).toLocaleString():'<span style="opacity:.35;">—</span>'}</td><td class="mono role-cost">${partUnitProfitCell(x)}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(i=>selectedParts.has(i));all.indeterminate=idxs.some(i=>selectedParts.has(i))&&!all.checked;}}
+  const idxs=filteredPartIndexes();tb.innerHTML=idxs.map(i=>{const x=parts[i];return `<tr><td><input type="checkbox" ${selectedParts.has(i)?'checked':''} onchange="togglePartSelect(${i},this.checked)"></td><td class="mono ta" style="font-size:11px;">${esc(x.code||'-')}</td><td><span class="chip">${esc(x.cat||x.category||'-')}</span></td><td style="font-weight:600;">${esc(x.name||'-')}</td><td class="tm" style="font-size:12px;">${esc(x.brand||x.spec||'-')}</td><td>${esc(x.unit||'-')}</td><td class="mono tr role-cost">฿${Number(x.cost||0).toLocaleString()}</td><td class="mono tr role-cost">฿${Number(x.labor||0).toLocaleString()}</td><td class="mono tg">฿${partSellPrice(x).toLocaleString()}</td><td class="mono tr role-cost" style="color:var(--yellow);">${Number(x.buy_cost||0)?'฿'+Number(x.buy_cost).toLocaleString():'<span style="opacity:.35;">—</span>'}</td><td class="mono tr role-cost" style="color:var(--yellow);">${Number(x.buy_labor||0)?'฿'+Number(x.buy_labor).toLocaleString():'<span style="opacity:.35;">—</span>'}</td><td class="mono role-cost">${partUnitProfitCell(x)}</td><td>${partEditedCell(x)}</td>${actionCell('ptm',i,`<button onclick="alert(detailText(parts[${i}]))">ดูดีเทล</button><button onclick="openPartModal(${i})">แก้ไข</button><button onclick="openPartHistory('${esc(partKeyOf(x))}')">ประวัติการแก้ไข</button><button onclick="delPart(${i})">ลบ</button>`)}</tr>`;}).join('');const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(i=>selectedParts.has(i));all.indeterminate=idxs.some(i=>selectedParts.has(i))&&!all.checked;}}
+// ===== ประวัติการแก้ไขราคากลาง =====
+function partEditedCell(x){
+  if(!x||!x.updatedAt)return '<span class="tm" style="font-size:11px;">ยังไม่มีประวัติ</span>';
+  // หน้ารายการโชว์แค่เวลาแก้ล่าสุด — ชื่อคนแก้ดูได้ในหน้าประวัติ
+  return `<button type="button" class="ph-cell ph-time" onclick="event.stopPropagation();openPartHistory('${esc(partKeyOf(x))}')" title="ดูประวัติการแก้ไข">🕘 ${esc(editedAtText(x.updatedAt))}</button>`;
+}
+function partHistValue(k,v){
+  if(v===null||v===undefined||v==='')return '<span class="ph-empty">ว่าง</span>';
+  if(PART_MONEY_FIELDS.has(k))return '฿'+Number(v||0).toLocaleString('th-TH',{maximumFractionDigits:2});
+  return esc(String(v));
+}
+function openPartHistory(key){
+  const x=(parts||[]).find(p=>partKeyOf(p)===key);if(!x)return;
+  let ov=document.getElementById('m-part-history');
+  if(!ov){ov=document.createElement('div');ov.className='modal-overlay';ov.id='m-part-history';document.body.appendChild(ov);ov.addEventListener('mousedown',e=>{if(e.target===ov)closeM('m-part-history');});}
+  const hist=Array.isArray(x.history)?x.history:[];
+  const label=Object.fromEntries(PART_HISTORY_FIELDS);
+  const ACT={create:['สร้างรายการ','ph-a-create'],edit:['แก้ไข','ph-a-edit'],import:['นำเข้า Excel','ph-a-import']};
+  const items=hist.map(h=>{
+    const [an,ac]=ACT[h.action]||['แก้ไข','ph-a-edit'];
+    const ch=Object.entries(h.changes||{});
+    const rows=ch.map(([k,[a,b]])=>{
+      let trend='';
+      if(PART_MONEY_FIELDS.has(k)&&a!==null){const d=Number(b||0)-Number(a||0);if(d)trend=`<span class="ph-trend ${d>0?'up':'down'}">${d>0?'▲':'▼'} ${Math.abs(d).toLocaleString('th-TH',{maximumFractionDigits:2})}</span>`;}
+      return `<div class="ph-row"><span class="ph-field">${esc(label[k]||k)}</span><span class="ph-vals">${a===null?'':`<span class="ph-old">${partHistValue(k,a)}</span><span class="ph-arrow">→</span>`}<span class="ph-new">${partHistValue(k,b)}</span>${trend}</span></div>`;
+    }).join('');
+    const when=new Date(h.at);const whenTxt=isNaN(when)?'-':when.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'});
+    return `<li class="ph-item"><span class="ph-dot ${ac}"></span><div class="ph-card"><div class="ph-head">${docEditorHtml({updated_by:h.by,updated_at:h.at})}<span class="ph-badge ${ac}">${an}</span></div><div class="ph-when">${esc(whenTxt)}</div>${rows||'<div class="ph-row tm">ไม่มีการเปลี่ยนค่า</div>'}</div></li>`;
+  }).join('');
+  ov.innerHTML=`<div class="modal" style="max-width:560px;"><div class="modal-header"><div><div class="modal-title">ประวัติการแก้ไข</div><div class="tm" style="font-size:12px;margin-top:2px;">${esc(x.code||'-')} · ${esc(x.name||'-')}</div></div><button class="close-btn" onclick="closeM('m-part-history')">×</button></div>
+  <div class="modal-body">
+    <div class="ph-summary"><div><span>ราคาขายปัจจุบัน</span><b>฿${partSellPrice(x).toLocaleString()}</b></div><div><span>แก้ล่าสุด</span><b>${esc(x.updatedBy||'-')}</b><small>${esc(x.updatedAt?editedAtText(x.updatedAt):'-')}</small></div><div><span>สร้างโดย</span><b>${esc(x.createdBy||'ไม่ทราบ (รายการเก่า)')}</b><small>${esc(x.createdAt?editedAtText(x.createdAt):'-')}</small></div></div>
+    ${hist.length?`<ol class="ph-list">${items}</ol>`:'<div class="empty"><div class="empty-icon">🕘</div><div>ยังไม่มีประวัติ — ประวัติจะเริ่มเก็บตั้งแต่การแก้ไขครั้งถัดไป</div></div>'}
+    <div class="tm" style="font-size:11px;margin-top:10px;">เก็บ 30 ครั้งล่าสุด</div>
+  </div></div>`;
+  openM('m-part-history');
+}
 function togglePartSelect(i,checked){if(checked)selectedParts.add(i);else selectedParts.delete(i);const idxs=filteredPartIndexes();const all=document.getElementById('part-check-all');if(all){all.checked=idxs.length>0&&idxs.every(x=>selectedParts.has(x));all.indeterminate=idxs.some(x=>selectedParts.has(x))&&!all.checked;}}
 function toggleAllVisibleParts(checked){filteredPartIndexes().forEach(i=>checked?selectedParts.add(i):selectedParts.delete(i));renderParts();}
 function selectAllVisibleParts(){toggleAllVisibleParts(true);}
-async function deleteSelectedParts(){const ids=[...selectedParts].filter(i=>parts[i]).sort((a,b)=>b-a);if(!ids.length){alert('ยังไม่ได้เลือกรายการอะไหล่');return;}if(!confirm(`ลบอะไหล่ที่เลือก ${ids.length.toLocaleString()} รายการ?`))return;try{await ensurePartsLoaded();const removedKeys=ids.map(i=>parts[i]?.part_key).filter(Boolean);ids.forEach(i=>parts.splice(i,1));selectedParts.clear();renderParts();await persistPartsCatalogNow(true);if(removedKeys.length)await deletePartsCatalogKeys(removedKeys);}catch(e){console.warn('deleteSelectedParts failed',e);alert('ลบอะไหล่ไม่สำเร็จ: '+(e.message||e));}}
+async function deleteSelectedParts(){const ids=[...selectedParts].filter(i=>parts[i]).sort((a,b)=>b-a);if(!ids.length){alert('ยังไม่ได้เลือกรายการอะไหล่');return;}if(!confirm(`ลบอะไหล่ที่เลือก ${ids.length.toLocaleString()} รายการ?`))return;try{const removedKeys=ids.map(i=>partKeyOf(parts[i])).filter(Boolean);if(removedKeys.length)await deletePartsCatalogKeys(removedKeys);const rm=new Set(removedKeys);parts=parts.filter(p=>!rm.has(partKeyOf(p)));removedKeys.forEach(k=>{if(splitRowHashes.parts)delete splitRowHashes.parts[k];});selectedParts.clear();renderParts();cacheFastState();}catch(e){console.warn('deleteSelectedParts failed',e);alert('ลบอะไหล่ไม่สำเร็จ: '+(e.message||e));}}
 function calcPartMargin(){
  const c=parseFloat(document.getElementById('fpa-cost').value)||0;
  const l=parseFloat(document.getElementById('fpa-labor').value)||0;
@@ -10035,24 +10171,40 @@ async function savePart(){if(!guardEdit())return;
  const data={code:document.getElementById('fpa-code').value,cat:document.getElementById('fpa-cat').value,name:document.getElementById('fpa-name').value.trim(),brand:document.getElementById('fpa-brand').value,unit:document.getElementById('fpa-unit').value,sup:document.getElementById('fpa-sup').value,cost,labor,sell,buy_cost,buy_labor,note:document.getElementById('fpa-note').value};
   if(!data.name){alert('กรุณากรอกชื่ออะไหล่ก่อน');return;}
   try{
-    await ensurePartsLoaded(); // ให้ parts เต็มก่อน กัน list บางส่วน
-    if(editPartIndex===''){
-      // อะไหล่ใหม่: ให้ part_key เฉพาะตัว กันชน/merge ทับรายการเดิม
+    if(!partsFresh)await ensurePartsLoaded();
+    if(!editPartKey){
+      // อะไหล่ใหม่: part_key เฉพาะตัว
       data.part_key='part-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6);
       data._id='PART-'+data.part_key;
-      parts.push(data);
+      const row=stampPartEdit(data,null,'create');
+      await upsertPartRows([row]);
+      parts.unshift(row);
     }else{
-      parts[+editPartIndex]={...(parts[+editPartIndex]||{}),...data};
+      // อ่านค่าล่าสุดจาก server → เช็คว่ามีคนแก้ไปก่อนไหม → เขียนเฉพาะรายการนี้
+      const rows=await sbFetchJson('parts',`?select=id,part_key,data,updated_at&part_key=eq.${encodeURIComponent(editPartKey)}&limit=1`);
+      const server=rows&&rows[0]?partRowFromServer(rows[0]):null;
+      const local=parts.find(p=>partKeyOf(p)===editPartKey)||null;
+      const before=server||local;
+      if(server&&(server.updatedAt||'')!==(editPartOpenedAt||'')){
+        const who=server.updatedBy?`${server.updatedBy} (${fmtUpdated(server.updatedAt)})`:'ผู้ใช้อื่น';
+        if(!confirm(`⚠️ รายการนี้ถูกแก้ไปแล้วโดย ${who} ระหว่างที่คุณเปิดฟอร์มอยู่\n\nกด "ตกลง" = บันทึกทับด้วยค่าของคุณ\nกด "ยกเลิก" = ไม่บันทึก แล้วโหลดค่าล่าสุดมาให้ดู`)){
+          const k=parts.findIndex(p=>partKeyOf(p)===editPartKey);if(k>=0&&server){parts[k]=server;(splitRowHashes.parts||{})[editPartKey]=stableJson(server);}
+          renderParts();closeM('m-part');return;
+        }
+      }
+      const row=stampPartEdit({...(before||{}),...data,part_key:editPartKey,_id:(before&&before._id)||('PART-'+editPartKey)},before,'edit');
+      await upsertPartRows([row]);
+      const k=parts.findIndex(p=>partKeyOf(p)===editPartKey);
+      if(k>=0)parts[k]=row;else parts.unshift(row);
     }
-    renderParts();
-    await persistPartsCatalogNow(true); // await จริง — บันทึกเสร็จก่อนปิด
+    renderParts();cacheFastState();
     closeM('m-part');
   }catch(e){
     console.warn('savePart failed',e);
     alert('บันทึกอะไหล่ไม่สำเร็จ: '+(e.message||e)+'\nกรุณาลองใหม่');
   }
 }
-async function delPart(i){if(!confirm('ลบอะไหล่นี้?'))return;try{await ensurePartsLoaded();const key=parts[i]?.part_key;parts.splice(i,1);selectedParts.clear();renderParts();await persistPartsCatalogNow(true);if(key)await deletePartsCatalogKeys([key]);}catch(e){console.warn('delPart failed',e);alert('ลบอะไหล่ไม่สำเร็จ: '+(e.message||e));}}
+async function delPart(i){if(!confirm('ลบอะไหล่นี้?'))return;try{const key=partKeyOf(parts[i]);if(!key)return;await deletePartsCatalogKeys([key]);const k=parts.findIndex(p=>partKeyOf(p)===key);if(k>=0)parts.splice(k,1);if(splitRowHashes.parts)delete splitRowHashes.parts[key];selectedParts.clear();renderParts();cacheFastState();}catch(e){console.warn('delPart failed',e);alert('ลบอะไหล่ไม่สำเร็จ: '+(e.message||e));}}
 function triggerPartImport(){document.getElementById('part-import-file').click();}
 function normalizePartNumber(v){if(v===null||v===undefined||v==='')return 0;if(typeof v==='number')return Number.isFinite(v)?v:0;const cleaned=String(v).replace(/,/g,'').replace(/[^\d.-]/g,'').trim();if(!cleaned)return 0;const n=Number(cleaned);return Number.isFinite(n)?n:0;}
 function cleanHeader(v){return String(v??'').replace(/\s+/g,'').trim();}
@@ -10084,35 +10236,13 @@ function mergeImportedParts(imported){
   imported.forEach(p=>{
     if(!p.name)return;
     const key=`${p.code||''}|${p.name||''}|${p.brand||''}|${p.unit||''}`;
-    if(existing.has(key)){parts[existing.get(key)]={...parts[existing.get(key)],...p};updated++;}
-    else{parts.push(p);added++;}
+    if(existing.has(key)){const before=parts[existing.get(key)];const next={...before,...p};if(Object.keys(partHistoryChanges(before,next)).length){parts[existing.get(key)]=stampPartEdit(next,before,'import');updated++;}}
+    else{parts.push(stampPartEdit(p,null,'import'));added++;}
   });
   return {added,updated};
 }
-async function upsertPartsCatalogRows(rows){
-  ensurePersistentIds();
-  const now=new Date().toISOString();
-  const seenKeys=new Set();
-  const mappedRaw=(rows||[]).map((p,i)=>{
-    const composite=cleanId([p.code,p.name,p.brand||p.spec,p.unit].map(v=>String(v||'').trim()).filter(Boolean).join('-')||i,'part');
-    let key=p.part_key||partStableKey(p,i);
-    if(seenKeys.has(key))key=composite;
-    if(seenKeys.has(key))key=cleanId(`${composite}-${i}`,'part');
-    seenKeys.add(key);
-    p.part_key=key;
-    if(!p._id||seenKeys.has(String(p._id).replace(/^PART-/,'')))p._id='PART-'+key;
-    return {part_key:key,data:p,code:p.code||'',name:p.name||'',category:p.cat||p.category||'',updated_at:now};
-  }).filter(r=>r.part_key&&r.name);
-  const byKey=new Map();
-  mappedRaw.forEach(row=>byKey.set(row.part_key,row));
-  const mapped=[...byKey.values()];
-  for(let i=0;i<mapped.length;i+=400){
-    const r=await fetch(splitUrl('parts','?on_conflict=part_key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify(mapped.slice(i,i+400))});
-    if(!r.ok)throw new Error(await r.text());
-  }
-  splitKnownIds.parts=new Set(mapped.map(r=>r.part_key));
-  splitRowHashes.parts=rowHashMap(rows,p=>p.part_key||p._id);
-  splitSaveHashes.parts=stableJson(rows);
+async function upsertPartsCatalogRows(rows){ // เดิมส่งทั้งแค็ตตาล็อก — ตอนนี้ส่งเฉพาะแถวที่เปลี่ยน
+  return syncPartsChangedRows();
 }
 async function deletePartsCatalogKeys(keys=[]){
   const safeKeys=[...new Set(keys.filter(Boolean))];
@@ -10122,10 +10252,8 @@ async function deletePartsCatalogKeys(keys=[]){
   }
 }
 async function persistPartsCatalogNow(force=false){
-  ensurePersistentIds();
-  partsLoaded=true;
-  await upsertPartsCatalogRows(parts);
-  await saveStateNow(false);
+  if(!partsFresh)await ensurePartsLoaded();
+  await syncPartsChangedRows();
 }
 function ensureXlsxLib(){
   if(window.XLSX)return Promise.resolve();
@@ -10146,6 +10274,7 @@ async function importPartsFile(input){
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=rowsFromSheet(ws);
     const imported=rows.map(normalizeImportedPart).filter(p=>p.name);
+    await refreshPartsSilently(); // ฐานล่าสุดจาก server ก่อนรวม → ส่งขึ้นเฉพาะแถวที่เพิ่ม/เปลี่ยนจริง
     const zeroCost=imported.filter(p=>!p.cost&&!p.labor).length;
     const result=mergeImportedParts(imported);
     if(!suppliers.some(s=>s.name==='ราคากลาง PCB'))suppliers.push({name:'ราคากลาง PCB',type:'ราคากลาง',contact:'',phone:'',terms:'',lead:'',note:'นำเข้าจากไฟล์ Excel'});
