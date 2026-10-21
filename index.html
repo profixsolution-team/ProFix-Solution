@@ -574,6 +574,15 @@ select option{background:var(--surface2);}
   .accounting-line-table td.mono.tg{align-self:end;font-size:14px;}
 }
 
+/* ค้นหารายการจากราคากลาง (ฟอร์มเอกสารขาย) */
+.ss-box{position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border2);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.28);max-height:340px;overflow-y:auto;padding:4px}
+.ss-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer}
+.ss-item.active{background:var(--accent-dim)}
+.ss-main{flex:1;min-width:0}
+.ss-name{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ss-sub{font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ss-price{font-size:13px;font-weight:700;color:var(--green);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ss-empty{padding:10px 12px;font-size:12px;color:var(--text3)}
 /* ประวัติการแก้ไขราคากลาง */
 .ph-cell{background:none;border:0;padding:0;cursor:pointer;text-align:left;color:inherit}
 .ph-cell:hover .sale-editor-name{color:var(--accent);text-decoration:underline}
@@ -8006,40 +8015,65 @@ function addSalesItemRow(){salesDraftItems.push(blankSalesItem());renderSalesIte
 function removeSalesItemRow(i){salesDraftItems.splice(i,1);if(!salesDraftItems.length)salesDraftItems.push(blankSalesItem());renderSalesItemEditor();}
 // จับคู่รายการ → ราคากลาง/แคตตาล็อกอะไหล่/สต็อก
 // เก็บทุก candidate แล้วเลือก: exact match ก่อน, ราคา>0 ก่อน (กันเคสราคากลางราคา 0 มาบังราคาค่าแรงจากแคตตาล็อก)
+// หาราคาจากราคากลาง (parts = แหล่งหลัก) / สต็อก / master_price เดิม
+// ปรับ 2026-10-22: (1) เปลี่ยนชื่อรายการ → หาตาม "ชื่อใหม่" เท่านั้น (เดิมส่งรหัสของรายการเก่าไปด้วย → เจอรายการเก่าซ้ำ ราคาไม่เปลี่ยน)
+// (2) จัดอันดับ: ชื่อตรงเป๊ะ > รหัสตรง > ชื่อใกล้เคียง (ความยาวต่างน้อยสุด) ; แหล่ง: ราคากลาง > สต็อก > master_price เดิม
 function accountingItemByName(name,code=''){
   const key=normalizePartKey(name), codeKey=normalizePartKey(code);
   if(!key&&!codeKey)return null;
   const masterRes=m=>({code:m.item_code||'',name:m.item_name||'',category:m.category||'',unit:m.default_unit||'งาน',price:Number(m.standard_price||m.unit_price||m.sale_price||0),src:'master_price',ref:m.id||m.item_code||m.item_name});
   const catRes=p=>({code:p.code||'',name:p.name||'',category:p.cat||p.category||'อะไหล่',unit:p.unit||'',price:partSellPrice(p),src:'manual',ref:p.part_key||p._id||p.code||p.name});
-  const stkRes=s=>{const sell=Number(s.suggested_sell||s.sell_price||0)||Math.round(Number(s.average_cost||0)*1.3);return {code:s.sku||'',name:s.item_name||'',category:'อะไหล่',unit:s.unit||'ชิ้น',price:sell,src:'stock',ref:s.id||s.sku};};
+  const stkRes=s=>{const sell=Number(s.suggested_sell||s.sell_price||0)||Math.round(Number(s.average_cost||0)*1.3);return {code:s.sku||'',name:s.item_name||'',category:'อะไหล่',unit:s.unit||'ชิ้น',price:sell,src:'stock',ref:s.id||s.sku||s.item_name};};
   const cands=[];
-  (masterPriceItems||[]).forEach(m=>{const nk=normalizePartKey(m.item_name),ck=normalizePartKey(m.item_code);const ex=(codeKey&&ck===codeKey)||(key&&nk===key);const fz=key&&nk&&(nk.includes(key)||key.includes(nk));if(ex||fz)cands.push({...masterRes(m),_exact:ex});});
-  (parts||[]).forEach(p=>{const nk=normalizePartKey(p.name),ck=normalizePartKey(p.code);const ex=(codeKey&&ck===codeKey)||(key&&nk===key);const fz=key&&nk&&(nk.includes(key)||key.includes(nk));if(ex||fz)cands.push({...catRes(p),_exact:ex});});
-  (stockItems||[]).forEach(s=>{const nk=normalizePartKey(s.item_name),ck=normalizePartKey(s.sku);const ex=(codeKey&&ck===codeKey)||(key&&nk===key);const fz=key&&nk&&(nk.includes(key)||key.includes(nk));if(ex||fz)cands.push({...stkRes(s),_exact:ex});});
+  const score=(nm,cd)=>{
+    const nk=normalizePartKey(nm),ck=normalizePartKey(cd);
+    if(key&&nk===key)return 1000;
+    if(codeKey&&ck&&ck===codeKey)return 900;
+    if(key&&nk&&key.length>=3&&(nk.includes(key)||key.includes(nk)))return 500-Math.min(400,Math.abs(nk.length-key.length));
+    return 0;
+  };
+  const add=(res,sc,srcRank)=>{if(sc>0)cands.push({...res,_score:sc,_src:srcRank});};
+  (parts||[]).forEach(p=>add(catRes(p),score(p.name,p.code),3));
+  (stockItems||[]).forEach(x=>add(stkRes(x),score(x.item_name,x.sku),2));
+  (masterPriceItems||[]).forEach(m=>add(masterRes(m),score(m.item_name,m.item_code),1));
   if(!cands.length)return null;
-  cands.sort((a,b)=>((b._exact?1:0)-(a._exact?1:0))||(((b.price>0)?1:0)-((a.price>0)?1:0)));
+  cands.sort((a,b)=>(b._score-a._score)||(b._src-a._src)||(((b.price>0)?1:0)-((a.price>0)?1:0)));
   return cands[0];
+}
+// ชื่อรายการ → เติมราคาเฉพาะเมื่อ "ชื่อตรงกับรายการในราคากลาง" เท่านั้น (ไม่เดา ไม่ใช้ชื่อใกล้เคียง ไม่เตือน)
+// ชื่อที่ไม่มีในราคากลาง = ไม่เติมราคา ; ถ้าบรรทัดนี้เคยเป็นรายการจากราคากลาง → ล้างราคา/รหัสเดิมออก (กันราคาเก่าค้าง)
+function salesNameKey(v){return String(v||'').toLowerCase().replace(/\s+/g,' ').trim();}
+function catalogPartByExactName(name){
+  const k=salesNameKey(name);if(!k)return null;
+  return (parts||[]).find(p=>salesNameKey(p.name)===k)||null;
+}
+function applySalesCatalogPart(i,p){
+  const it=salesDraftItems[i];if(!it||!p)return;
+  it.description=p.name||'';
+  it.item_code=p.code||'';
+  it.category=p.cat||p.category||it.category||'';
+  it.unit=p.unit||it.unit||'';
+  it.unit_price=partSellPrice(p);
+  it.source_type='manual';
+  it.source_ref_id=p.part_key||p._id||p.code||p.name;
 }
 function applySalesItemDetails(i,name){
   const it=salesDraftItems[i];if(!it)return;
-  it.description=String(name||''); // เก็บชื่อที่พิมพ์/เลือกเสมอ (ไม่ค้างชื่อเดิม ไม่ทับด้วย fuzzy)
-  const row=accountingItemByName(name,it.item_code);
-  if(!row)return; // ไม่เจอในระบบ → เก็บชื่อไว้ ราคาคงเดิม (พิมพ์เอง)
-  // เจอรายการในระบบ → อัปเดตให้ครบทั้งหมวด/หน่วย/รหัส/ราคา (ตามรายการใหม่)
-  it.item_code=row.code||it.item_code||'';
-  it.category=row.category||it.category||'';
-  it.unit=row.unit||it.unit||'';
-  it.unit_price=Number(row.price||0);
-  it.source_type=row.src||'manual';
-  it.source_ref_id=row.ref||'';
+  it.description=String(name||'');
+  const p=catalogPartByExactName(name);
+  if(p){applySalesCatalogPart(i,p);return;}
+  if(!partsFresh||!partsLoaded){ // ราคากลางยังโหลดไม่เสร็จ → โหลดแล้วเช็คชื่ออีกครั้ง
+    ensurePartsLoaded().then(()=>{const cur=salesDraftItems[i];if(cur&&cur.description===String(name||'')&&catalogPartByExactName(name)){applySalesCatalogPart(i,catalogPartByExactName(name));renderSalesItemEditor();}}).catch(()=>{});
+  }
+  if(it.source_ref_id){it.item_code='';it.source_ref_id='';it.unit_price=0;it.source_type='manual_text';}
 }
 // ปุ่ม "฿" ต่อแถว: ดึงราคาจากราคากลาง/แคตตาล็อก/สต็อก มาทับ (บังคับ) เพื่อแก้เคสราคาไม่เด้ง
 function pullSalesItemPrice(i){
   const it=salesDraftItems[i];if(!it)return;
   const name=String(it.description||'').trim();
   if(!name&&!String(it.item_code||'').trim()){setAccountingStatus('sales','กรอกชื่อรายการก่อนดึงราคา','warn');return;}
-  if(!accountingLoaded){ensureAccountingLoaded().then(()=>pullSalesItemPrice(i)).catch(()=>{});setAccountingStatus('sales','กำลังโหลดราคากลาง...','warn');return;}
-  const row=accountingItemByName(name,it.item_code);
+  if(!accountingLoaded||!partsFresh){Promise.all([ensureAccountingLoaded(),ensurePartsLoaded()]).then(()=>pullSalesItemPrice(i)).catch(()=>{});setAccountingStatus('sales','กำลังโหลดราคากลาง...','warn');return;}
+  const row=accountingItemByName(name,'')||(name?null:accountingItemByName('',it.item_code)); // ชื่อก่อน ; ไม่มีชื่อค่อยใช้รหัส
   if(!row){setAccountingStatus('sales',`ไม่พบราคาของ "${name}" ในราคากลาง/สต็อก — กรอกเอง`,'warn');return;}
   it.item_code=row.code||it.item_code||'';
   it.category=row.category||it.category||'';
@@ -8050,7 +8084,77 @@ function pullSalesItemPrice(i){
   renderSalesItemEditor();
   setAccountingStatus('sales',`ดึงราคา "${row.name}" = ฿${money(row.price)} แล้ว`,'ok');
 }
-function updateSalesDraft(i,field,value){salesDraftItems[i][field]=value;if(field==='description')applySalesItemDetails(i,value);renderSalesItemEditor();}
+function updateSalesDraft(i,field,value){if(!salesDraftItems[i])return;if(field==='description'&&String(salesDraftItems[i].description||'')===String(value||''))return;salesDraftItems[i][field]=value;if(field==='description')applySalesItemDetails(i,value);renderSalesItemEditor();}
+// ===== ช่องค้นหารายการจากราคากลาง (dropdown) — 2026-10-22 =====
+// แสดงเฉพาะรายการในราคากลาง · ค้นได้ทั้งชื่อ/รหัส/หมวด/สเปค แบบคำบางส่วน (พิมพ์หลายคำได้) · เลือกแล้วเติมราคา/หน่วย/รหัสให้
+let salesSuggestState={i:-1,el:null,list:[],active:0};
+function salesSearchKey(v){return String(v||'').toLowerCase().replace(/[\s\-_.,/()]+/g,'');}
+function salesCatalogSearch(q){
+  const toks=String(q||'').toLowerCase().split(/\s+/).map(salesSearchKey).filter(Boolean);
+  if(!toks.length)return [];
+  const out=[];
+  (parts||[]).forEach(p=>{
+    if(!p||!p.name)return;
+    const nk=salesSearchKey(p.name),hay=nk+'|'+salesSearchKey(p.code)+'|'+salesSearchKey(p.cat||p.category)+'|'+salesSearchKey(p.brand||p.spec);
+    if(!toks.every(t=>hay.includes(t)))return;
+    const t0=toks[0];
+    const rank=(nk===toks.join('')?0:nk.startsWith(t0)?1:nk.includes(t0)?2:3);
+    out.push({p,rank,len:nk.length});
+  });
+  out.sort((a,b)=>a.rank-b.rank||a.len-b.len||String(a.p.name).localeCompare(String(b.p.name),'th'));
+  return out.slice(0,12).map(x=>x.p);
+}
+function salesSuggestBox(){
+  let box=document.getElementById('sales-suggest');
+  if(!box){box=document.createElement('div');box.id='sales-suggest';box.className='ss-box';box.addEventListener('mousedown',e=>e.preventDefault());document.body.appendChild(box);
+    window.addEventListener('resize',salesSuggestClose);document.addEventListener('scroll',e=>{if(!box.contains(e.target))salesSuggestPlace();},true);}
+  return box;
+}
+function salesSuggestPlace(){
+  const box=document.getElementById('sales-suggest'),el=salesSuggestState.el;
+  if(!box||!el||box.hidden)return;
+  if(!document.body.contains(el)){salesSuggestClose();return;}
+  const r=el.getBoundingClientRect();
+  const w=Math.max(r.width,Math.min(420,window.innerWidth-16));
+  box.style.width=w+'px';
+  box.style.left=Math.max(8,Math.min(r.left,window.innerWidth-w-8))+'px';
+  const below=window.innerHeight-r.bottom;
+  if(below<260&&r.top>below){box.style.top='';box.style.bottom=(window.innerHeight-r.top+4)+'px';}
+  else{box.style.bottom='';box.style.top=(r.bottom+4)+'px';}
+}
+function salesSuggestOpen(i,el){
+  salesSuggestState.i=i;salesSuggestState.el=el;
+  const q=el.value;
+  const box=salesSuggestBox();
+  if(!partsFresh&&!partsLoadingPromise)ensurePartsLoaded().then(()=>{if(salesSuggestState.el===el&&document.activeElement===el)salesSuggestOpen(i,el);}).catch(()=>{});
+  if(!String(q||'').trim()){box.hidden=true;return;}
+  const list=salesCatalogSearch(q);
+  salesSuggestState.list=list;salesSuggestState.active=0;
+  if(!list.length){
+    box.innerHTML=`<div class="ss-empty">${(!partsLoaded||partsLoadingPromise)?'กำลังโหลดราคากลาง...':'ไม่พบในราคากลาง'}</div>`;
+  }else{
+    box.innerHTML=list.map((p,k)=>`<div class="ss-item${k===0?' active':''}" data-k="${k}" onmousedown="event.preventDefault();salesSuggestPick(${k})" onmouseenter="salesSuggestHover(${k})"><div class="ss-main"><div class="ss-name">${esc(p.name)}</div><div class="ss-sub">${[p.code,p.cat||p.category,p.brand||p.spec,p.unit].filter(Boolean).map(esc).join(' · ')}</div></div><div class="ss-price">฿${money(partSellPrice(p))}</div></div>`).join('');
+  }
+  box.hidden=false;salesSuggestPlace();
+}
+function salesSuggestHover(k){salesSuggestState.active=k;document.querySelectorAll('#sales-suggest .ss-item').forEach((n,x)=>n.classList.toggle('active',x===k));}
+function salesSuggestPick(k){
+  const p=salesSuggestState.list[k],i=salesSuggestState.i;
+  if(!p||!salesDraftItems[i])return;
+  applySalesCatalogPart(i,p);
+  salesSuggestClose();
+  renderSalesItemEditor();
+}
+function salesSuggestKey(e,i,el){
+  const box=document.getElementById('sales-suggest');
+  const open=box&&!box.hidden&&salesSuggestState.list.length;
+  if(e.key==='ArrowDown'&&open){e.preventDefault();salesSuggestHover(Math.min(salesSuggestState.list.length-1,salesSuggestState.active+1));}
+  else if(e.key==='ArrowUp'&&open){e.preventDefault();salesSuggestHover(Math.max(0,salesSuggestState.active-1));}
+  else if(e.key==='Enter'&&open){e.preventDefault();salesSuggestPick(salesSuggestState.active);}
+  else if(e.key==='Escape'){salesSuggestClose();}
+}
+function salesSuggestBlur(){setTimeout(salesSuggestClose,150);}
+function salesSuggestClose(){const box=document.getElementById('sales-suggest');if(box)box.hidden=true;salesSuggestState.list=[];}
 function salesLineSubtotal(it){return Math.max(0,Number(it.quantity||0)*Number(it.unit_price||0)-Number(it.discount||0));}
 function salesDraftTotals(){
   const lineSum=salesDraftItems.reduce((s,it)=>s+salesLineSubtotal(it),0);
@@ -8097,8 +8201,8 @@ function renderSalesItemEditor(){
       +`<td class="mono ta li-no"><div style="display:flex;align-items:center;gap:3px;"><span class="sales-drag-handle" title="ลากเพื่อสลับลำดับ" draggable="true" ondragstart="salesDragStart(event,${i})" ondragend="salesDragEnd(event)" style="cursor:grab;color:var(--text3);">⠿</span><b>${i+1}</b><span style="display:inline-flex;flex-direction:column;">`
       +`<button class="icon-btn" type="button" title="เลื่อนขึ้น" style="padding:0 3px;line-height:1;font-size:10px;${i===0?'opacity:.25;pointer-events:none;':''}" onclick="moveSalesItem(${i},-1)">▲</button>`
       +`<button class="icon-btn" type="button" title="เลื่อนลง" style="padding:0 3px;line-height:1;font-size:10px;${i===n-1?'opacity:.25;pointer-events:none;':''}" onclick="moveSalesItem(${i},1)">▼</button></span></div><div style="margin-top:2px;">${salesSourceBadge(it.source_type)}</div></td>`
-      +`<td data-label="รหัส"><input value="${esc(it.item_code||'')}" onchange="updateSalesDraft(${i},'item_code',this.value)" placeholder="-"></td>${showPo?`<td data-label="เลข PO"><input value="${esc(it.po||'')}" onchange="updateSalesDraft(${i},'po',this.value)" placeholder="เลข PO"></td>`:''}<td class="li-wide" data-label="รายละเอียด"><input list="accounting-item-list" value="${esc(it.description||'')}" onchange="updateSalesDraft(${i},'description',this.value)" placeholder="พิมพ์/เลือกรายละเอียดสินค้า/บริการ"></td><td data-label="หมวด"><select onchange="updateSalesDraft(${i},'category',this.value)">${catOpts(it)}</select></td><td data-label="จำนวน"><input type="number" min="0" step="any" value="${esc(it.quantity||1)}" onchange="updateSalesDraft(${i},'quantity',this.value)"></td><td data-label="หน่วย"><input value="${esc(it.unit||'')}" onchange="updateSalesDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td data-label="ราคา/หน่วย"><input type="number" min="0" step="any" value="${esc(it.unit_price||0)}" onchange="updateSalesDraft(${i},'unit_price',this.value)"></td><td data-label="ส่วนลด"><input type="number" min="0" step="any" value="${esc(it.discount||0)}" onchange="updateSalesDraft(${i},'discount',this.value)"></td><td class="mono tg" data-label="ยอดก่อน VAT">฿${money(subtotal)}</td>`
-      +`<td class="li-act" style="white-space:nowrap;"><button class="icon-btn" type="button" title="ดึงราคาจากราคากลาง/สต็อก" onclick="pullSalesItemPrice(${i})">฿</button><button class="icon-btn" type="button" title="ลบรายการ" onclick="removeSalesItemRow(${i})">×</button></td></tr>`;
+      +`<td data-label="รหัส"><input value="${esc(it.item_code||'')}" onchange="updateSalesDraft(${i},'item_code',this.value)" placeholder="-"></td>${showPo?`<td data-label="เลข PO"><input value="${esc(it.po||'')}" onchange="updateSalesDraft(${i},'po',this.value)" placeholder="เลข PO"></td>`:''}<td class="li-wide" data-label="รายละเอียด"><input value="${esc(it.description||'')}" autocomplete="off" oninput="salesSuggestOpen(${i},this)" onfocus="salesSuggestOpen(${i},this)" onkeydown="salesSuggestKey(event,${i},this)" onblur="salesSuggestBlur()" onchange="updateSalesDraft(${i},'description',this.value)" placeholder="🔍 ค้นหาจากราคากลาง (ชื่อ / รหัส / หมวด)"></td><td data-label="หมวด"><select onchange="updateSalesDraft(${i},'category',this.value)">${catOpts(it)}</select></td><td data-label="จำนวน"><input type="number" min="0" step="any" value="${esc(it.quantity||1)}" onchange="updateSalesDraft(${i},'quantity',this.value)"></td><td data-label="หน่วย"><input value="${esc(it.unit||'')}" onchange="updateSalesDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td data-label="ราคา/หน่วย"><input type="number" min="0" step="any" value="${esc(it.unit_price||0)}" onchange="updateSalesDraft(${i},'unit_price',this.value)"></td><td data-label="ส่วนลด"><input type="number" min="0" step="any" value="${esc(it.discount||0)}" onchange="updateSalesDraft(${i},'discount',this.value)"></td><td class="mono tg" data-label="ยอดก่อน VAT">฿${money(subtotal)}</td>`
+      +`<td class="li-act" style="white-space:nowrap;"><button class="icon-btn" type="button" title="ลบรายการ" onclick="removeSalesItemRow(${i})">×</button></td></tr>`;
   }).join('')}</tbody></table></div>`;
   updateSalesSummary();
 }
