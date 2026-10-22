@@ -609,6 +609,38 @@ select option{background:var(--surface2);}
 .ph-trend{font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px}
 .ph-trend.up{background:var(--red-dim);color:var(--red)} .ph-trend.down{background:var(--green-dim);color:var(--green)}
 @media (max-width:560px){.ph-summary{grid-template-columns:1fr}}
+
+/* ===== จ่ายช่าง (งวดครึ่งเดือน) ===== */
+#page-tech-pay .tp-top{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+#page-tech-pay .tp-field{display:flex;flex-direction:column;gap:4px}#page-tech-pay .tp-field label{font-size:11px;color:var(--text3);font-weight:600}
+#page-tech-pay .tp-field select{min-width:280px}
+.tp-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.tp-kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.tp-kpi .l{font-size:12px;color:var(--text3)}.tp-kpi .v{font-size:22px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}.tp-kpi .d{font-size:12px;color:var(--text2);margin-top:2px}
+.tp-kpi.dark{background:#0b1220;border-color:#0b1220;color:#fff}.tp-kpi.dark .l,.tp-kpi.dark .d{color:#a9b4c7}
+.tp-grid{display:grid;grid-template-columns:290px minmax(0,1fr);gap:14px;align-items:start}
+.tp-teams{display:flex;flex-direction:column;gap:10px}
+.tp-team{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer}
+.tp-team:hover{border-color:var(--border2)}.tp-team.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.tp-team .nm{font-weight:700}.tp-team .net{font-weight:800;font-size:17px;text-align:right;font-variant-numeric:tabular-nums}
+.tp-pill{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;background:var(--surface2);color:var(--text2)}
+.tp-pill.warn{background:var(--yellow-dim);color:var(--yellow)}.tp-pill.ok{background:var(--green-dim);color:var(--green)}
+.tp-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.tp-card-h{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}.tp-card-t{font-weight:800;font-size:15px}
+.tp-card tr.tp-off td{opacity:.45}
+.tp-foot{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:16px;padding:16px;border-top:1px solid var(--border)}
+.tp-sub{font-size:12px;font-weight:700;color:var(--text3)}
+.tp-docs{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.tp-doc{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:10px}.tp-doc>span{font-size:18px}.tp-doc>div{flex:1;min-width:0}.tp-doc .tm{font-size:12px}
+.tp-sum{background:#0b1220;color:#fff;border-radius:12px;padding:14px 16px}
+.tp-sum .ln{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;color:#c9d2e3}
+.tp-sum .ln.big{color:#fff;font-size:19px;font-weight:800;border-top:1px solid #2a3550;margin-top:8px;padding-top:10px}
+.tp-adj{width:110px;text-align:right;background:#18233a;border:1px solid #2a3550;color:#fff;border-radius:6px;padding:4px 8px}
+.tp-adj-note{width:100%;margin-top:4px;background:#18233a;border:1px solid #2a3550;color:#fff;border-radius:6px;padding:5px 8px;font-family:inherit;font-size:12px}
+.tp-paid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:12px 16px;border-top:1px solid var(--border)}
+.tp-paid>div:last-child{grid-column:1/-1}.tp-paid-net{font-weight:800;font-size:16px;color:var(--green)}
+.tp-note{background:var(--accent-dim);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.7;margin-bottom:12px}.tp-note.warn{background:var(--yellow-dim)}
+@media (max-width:980px){.tp-kpis{grid-template-columns:repeat(2,1fr)}.tp-grid,.tp-foot{grid-template-columns:1fr}#page-tech-pay .tp-field select{min-width:0;width:100%}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -982,7 +1014,7 @@ select option{background:var(--surface2);}
 
 <!-- TECH PAY -->
 <div class="page" id="page-tech-pay">
-  <div class="page-header"><div><div class="page-title">จ่ายเงินช่าง Outsource</div><div class="page-sub">ราคาล็อคต่องาน — ช่างไม่เห็นราคากลาง</div></div></div>
+  <div class="page-header"><div><div class="page-title">จ่ายช่าง</div><div class="page-sub">งวดครึ่งเดือน · หัก ณ ที่จ่าย · ใบสำคัญรับเงิน / 50 ทวิ</div></div></div>
   <div class="content"><div id="techpay-list"></div></div>
 </div>
 <!-- LINE PARSER -->
@@ -1653,6 +1685,41 @@ select option{background:var(--surface2);}
 </div>
 
 <!-- TEAM FINANCE SUMMARY MODAL -->
+<div class="modal-overlay" id="m-tp-payee">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header"><div><div class="modal-title">ข้อมูลผู้รับเงิน</div><div class="tm" style="font-size:11px;margin-top:2px;" id="tpp-team-label"></div></div><button class="close-btn" onclick="closeM('m-tp-payee')">×</button></div>
+    <div class="modal-body"><input type="hidden" id="tpp-team">
+      <div class="form-group"><label>ชื่อผู้รับเงิน (ตามบัตรประชาชน / ชื่อบริษัท)</label><input id="tpp-name" placeholder="เช่น นายสมชาย ใจดี"></div>
+      <div class="form-group"><label>เลขประจำตัวผู้เสียภาษี (13 หลัก)</label><input id="tpp-tax" inputmode="numeric" maxlength="17" placeholder="x-xxxx-xxxxx-xx-x"></div>
+      <div class="form-group"><label>ที่อยู่ (ใช้ใน 50 ทวิ)</label><textarea id="tpp-address" rows="2"></textarea></div>
+      <div class="form-group"><label>บัญชีรับเงิน</label><input id="tpp-bank" placeholder="เช่น กสิกร 123-4-56789-0 ชื่อบัญชี ..."></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-tp-payee')">ยกเลิก</button><button class="btn btn-primary" onclick="tpSavePayee()">บันทึก</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="m-tp-settings">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header"><div class="modal-title">ตั้งค่าจ่ายช่าง</div><button class="close-btn" onclick="closeM('m-tp-settings')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>เริ่มใช้ระบบงวดจ่ายตั้งแต่วันที่</label><input id="tps-start" type="date"><div class="tm" style="font-size:11px;margin-top:4px;">งานที่เสร็จก่อนวันนี้ถือว่าจ่ายนอกระบบไปแล้ว จะไม่ขึ้นเป็นยอดค้าง</div></div>
+      <div class="form-group"><label>อัตราหัก ณ ที่จ่าย (%)</label><input id="tps-rate" type="number" step="0.01" min="0"></div>
+      <div class="form-group"><label>บริษัทผู้จ่าย (ใช้ในใบสำคัญรับเงิน / 50 ทวิ)</label><select id="tps-payer"></select></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-tp-settings')">ยกเลิก</button><button class="btn btn-primary" onclick="tpSaveSettings()">บันทึก</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="m-tp-pay">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header"><div class="modal-title">ยืนยันโอนเงินช่าง</div><button class="close-btn" onclick="closeM('m-tp-pay')">×</button></div>
+    <div class="modal-body"><input type="hidden" id="tpm-team">
+      <div class="tp-note" id="tpm-summary"></div>
+      <div class="form-row"><div class="form-group"><label>วันที่โอน</label><input id="tpm-date" type="date"></div><div class="form-group"><label>เลขอ้างอิงการโอน</label><input id="tpm-ref" placeholder="เช่น เลขท้ายสลิป"></div></div>
+      <div class="form-group"><label>แนบสลิป (ไม่บังคับ)</label><input id="tpm-slip" type="file" accept="image/*,application/pdf"></div>
+      <div class="form-group"><label>หมายเหตุ</label><input id="tpm-note"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-tp-pay')">ยกเลิก</button><button class="btn btn-primary" id="tpm-save" onclick="tpConfirmPay()">บันทึกจ่าย</button></div>
+  </div>
+</div>
 <div class="modal-overlay" id="m-team-finance">
   <div class="modal" style="max-width:920px;">
     <div class="modal-header"><div><div class="modal-title">สรุปการเงินรายทีม</div><div class="tm" style="font-size:11px;margin-top:2px;" id="team-fin-sub"></div></div><button class="close-btn" onclick="closeM('m-team-finance')">×</button></div>
@@ -3970,7 +4037,7 @@ function renderDash(){
   const pd=jRows.filter(j=>payLabel(j.pay)==='เก็บแล้ว');
   const ua=unp.reduce((s,j)=>s+jobIncome(j),0);
   const pa=pd.reduce((s,j)=>s+jobIncome(j),0);
-  const ow=jRows.filter(j=>!JOB_PROBLEM_STATUSES.has(j.status)).reduce((s,j)=>s+Number(j.pt||0),0);
+  const ow=(typeof techPay!=='undefined'&&techPay&&techPay.loaded)?tpUnpaidJobs(tpPeriodOf(todayISO())).reduce((s,j)=>s+Number(j.pt||0),0):jRows.filter(j=>!JOB_PROBLEM_STATUSES.has(j.status)).reduce((s,j)=>s+Number(j.pt||0),0);
   document.getElementById('ds-unpaid').textContent='฿'+ua.toLocaleString();
   document.getElementById('ds-unpaid-c').textContent=unp.length+' รายการ';
   document.getElementById('ds-paid').textContent='฿'+pa.toLocaleString();
@@ -9302,12 +9369,387 @@ function saveFixedExpense(){const i=document.getElementById('fx-index').value;co
 function deleteFixedExpense(i){if(confirm('ลบรายจ่าย Fixed นี้?')){fixedExpenses.splice(i,1);renderFin();saveState();}}
 
 // TECH PAY
-function renderTP(){
-  const ts=teams.map(t=>t.name);
-  const c=document.getElementById('techpay-list');
-  const h=ts.map(t=>{const tj=sortByTechUpdateThenDate(liveJobs().filter(j=>j.team===t&&!JOB_PROBLEM_STATUSES.has(j.status)),'desc');const tot=tj.reduce((s,j)=>s+Number(j.pt||0),0);if(!tot)return'';return`<div class="table-wrap mb16"><div class="table-header"><div class="table-title">${t}</div><div class="flex g8"><span class="mono fw7 tg">฿${tot.toLocaleString()}</span><button class="btn btn-success btn-sm" onclick="alert('ยืนยันจ่าย ${t}')">✓ จ่ายแล้ว</button></div></div><table><thead><tr><th>PR</th><th>สาขา</th><th>วันที่</th><th>ประเภท</th><th>ค่าแรงช่าง</th><th>สถานะ</th></tr></thead><tbody>${tj.map(j=>`<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${techUpdateMark(j)}${j.id}${techUpdatePill(j)}</td><td style="font-size:12px;">${j.branch}</td><td class="tm" style="font-size:11px;">${j.date}</td><td><span class="chip">${j.type}</span></td><td class="mono fw7 tg">฿${Number(j.pt||0).toLocaleString()}</td><td>${statusBadge(j,j.status)}</td></tr>`).join('')}</tbody></table></div>`;}).join('');
-  c.innerHTML=h||'<div class="empty"><div class="empty-icon">✅</div><div>ไม่มียอดค้างจ่าย</div></div>';
+// ===== จ่ายช่าง: งวดครึ่งเดือน + หัก ณ ที่จ่าย (ตาราง tech_payouts / tech_payout_items / tech_payees / tech_pay_settings) =====
+// ไม่แตะข้อมูลงาน (jobs) เลย — สถานะ "จ่ายแล้ว" ดูจากรายการในงวดจ่ายที่ยังไม่ยกเลิก
+var techPay={loaded:false,loading:null,missing:false,error:'',payouts:[],items:[],payees:{},settings:{start_date:'2026-10-16',wht_rate:3,payer_company:'profix'}};
+var tpState={period:'',team:'',excluded:new Set(),adjust:{},adjustNote:{}};
+// สถานะที่ถือว่าช่างทำงานเสร็จแล้ว (จ่ายค่าแรงได้) — งานที่ยังรออนุมัติอะไหล่/รอ PO/ยังไม่ส่งงาน ยังไม่เข้างวด
+const TP_DONE_STATUSES=new Set(['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รอออกใบกำกับภาษี','รอวางบิล','ปิดงาน','ดำเนินการแล้ว','ปิดงานสำรวจ']);
+const TP_TH_MONTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const tpKey=v=>String(v||'').trim().toUpperCase();
+const tpRound=n=>Math.round((Number(n)||0)*100)/100;
+function tpDoneDate(j){return String(j.dateDone||String(j.techSubmittedAt||'').slice(0,10)||j.dateIn||j.date||'').slice(0,10);}
+function tpThaiDate(iso){if(!iso)return '-';const d=new Date(iso+'T00:00:00');if(isNaN(d))return iso;return d.getDate()+' '+TP_TH_MONTH[d.getMonth()]+' '+(d.getFullYear()+543);}
+function tpPeriodOf(iso){const d=String(iso||todayISO()).slice(0,10);return d.slice(0,7)+'-'+(Number(d.slice(8,10))<=15?'1':'2');}
+function tpPeriodRange(key){
+  const [y,m,h]=String(key).split('-').map(Number);
+  const last=new Date(y,m,0).getDate(),mm=String(m).padStart(2,'0');
+  const start=`${y}-${mm}-${h===1?'01':'16'}`,end=`${y}-${mm}-${h===1?'15':String(last).padStart(2,'0')}`;
+  return {key,start,end,label:`งวด ${h===1?'1–15':'16–'+last} ${TP_TH_MONTH[m-1]} ${y+543}`};
 }
+function tpShiftPeriod(key,n){const [y,m,h]=String(key).split('-').map(Number);let idx=(y*12+(m-1))*2+(h-1)+n;const yy=Math.floor(idx/24),rest=idx%24;return `${yy}-${String(Math.floor(rest/2)+1).padStart(2,'0')}-${rest%2+1}`;}
+function tpPeriodList(){
+  const cur=tpPeriodOf(todayISO()),first=tpPeriodOf(techPay.settings.start_date||todayISO());
+  const keys=new Set([cur]);
+  for(let k=cur,i=0;i<48&&k>=first;i++){keys.add(k);k=tpShiftPeriod(k,-1);}
+  (techPay.payouts||[]).forEach(p=>keys.add(p.period_key));
+  return [...keys].sort().reverse();
+}
+async function ensureTechPayLoaded(force=false){
+  if(techPay.loaded&&!force)return;
+  if(techPay.loading)return techPay.loading;
+  techPay.loading=(async()=>{
+    try{
+      const [payouts,items,payees,settings]=await Promise.all([
+        sbFetchAll('tech_payouts','?select=*&order=created_at.desc'),
+        sbFetchAll('tech_payout_items','?select=*'),
+        sbFetchAll('tech_payees','?select=*'),
+        sbFetchAll('tech_pay_settings','?select=*&id=eq.main')
+      ]);
+      techPay.payouts=payouts||[];techPay.items=items||[];
+      techPay.payees={};(payees||[]).forEach(p=>{techPay.payees[p.team]=p;});
+      if(settings&&settings[0])techPay.settings={...techPay.settings,...settings[0]};
+      techPay.missing=false;techPay.error='';techPay.loaded=true;
+    }catch(e){
+      const msg=e?.message||String(e);
+      techPay.missing=/find the table|does not exist|42P01|PGRST205|schema cache|relation/i.test(msg);
+      techPay.error=msg;techPay.loaded=false;
+    }finally{techPay.loading=null;}
+  })();
+  return techPay.loading;
+}
+function tpPaidJobKeys(){
+  const live=new Set((techPay.payouts||[]).filter(p=>p.status!=='cancelled').map(p=>p.id));
+  return new Set((techPay.items||[]).filter(it=>it.status!=='cancelled'&&live.has(it.payout_id)).map(it=>tpKey(it.job_id)));
+}
+// งานที่จ่ายได้แต่ยังไม่จ่าย (เสร็จตั้งแต่วันเริ่มใช้ระบบ ถึงวันสุดท้ายของงวด)
+function tpUnpaidJobs(periodKey){
+  const r=tpPeriodRange(periodKey),paid=tpPaidJobKeys(),start=String(techPay.settings.start_date||'').slice(0,10);
+  return liveJobs().filter(j=>{
+    if(!j.team||j.team==='ระบุทีมช่าง'||Number(j.pt||0)<=0)return false;
+    if(!TP_DONE_STATUSES.has(j.status))return false;
+    const d=tpDoneDate(j);if(!d||d>r.end||(start&&d<start))return false;
+    return !paid.has(tpKey(j.id));
+  });
+}
+function tpPayoutsIn(periodKey){return (techPay.payouts||[]).filter(p=>p.period_key===periodKey&&p.status!=='cancelled');}
+function tpItemsOf(payoutId){return (techPay.items||[]).filter(it=>it.payout_id===payoutId&&it.status!=='cancelled');}
+function tpWht(gross){const rate=Number(techPay.settings.wht_rate??3);return tpRound(gross*rate/100);}
+function tpTeamDraft(team,periodKey){
+  const jobs=tpUnpaidJobs(periodKey).filter(j=>j.team===team).sort((a,b)=>tpDoneDate(a).localeCompare(tpDoneDate(b)));
+  const picked=jobs.filter(j=>!tpState.excluded.has(tpKey(j.id)));
+  const gross=tpRound(picked.reduce((s,j)=>s+Number(j.pt||0),0));
+  const adj=tpRound(tpState.adjust[team]||0),wht=tpWht(gross);
+  return {team,jobs,picked,gross,wht,adjust:adj,adjustNote:tpState.adjustNote[team]||'',net:tpRound(gross-wht+adj)};
+}
+function tpPayee(team){return techPay.payees[team]||{team};}
+function tpPayerProfile(id){const list=salesCompanyProfiles();return list.find(p=>p.id===(id||techPay.settings.payer_company||'profix'))||list[0];}
+
+function renderTP(){
+  const c=document.getElementById('techpay-list');if(!c)return;
+  if(!techPay.loaded){
+    c.innerHTML='<div class="empty"><div class="empty-icon">⏳</div><div>กำลังโหลดงวดจ่าย...</div></div>';
+    ensureTechPayLoaded().then(()=>{
+      if(!techPay.loaded){c.innerHTML=techPay.missing
+        ?'<div class="tp-note warn"><b>ยังไม่ได้สร้างตารางงวดจ่าย</b><br>รันไฟล์ <code>console_tech_pay.sql</code> ใน Supabase → SQL Editor ก่อน แล้วรีเฟรชหน้านี้</div>'
+        :`<div class="tp-note warn">โหลดข้อมูลงวดจ่ายไม่สำเร็จ: ${esc(techPay.error)} <button class="btn btn-ghost btn-sm" onclick="techPay.loaded=false;renderTP()">ลองใหม่</button></div>`;return;}
+      renderTP();
+    });
+    return;
+  }
+  const periods=tpPeriodList();
+  if(!tpState.period||!periods.includes(tpState.period))tpState.period=tpPeriodOf(todayISO());
+  const r=tpPeriodRange(tpState.period),pk=tpState.period;
+  const unpaid=tpUnpaidJobs(pk),payouts=tpPayoutsIn(pk);
+  const teams=[...new Set([...unpaid.map(j=>j.team),...payouts.map(p=>p.team)])].sort((a,b)=>a.localeCompare(b,'th'));
+  if(!teams.includes(tpState.team))tpState.team=teams[0]||'';
+  const drafts=Object.fromEntries(teams.map(t=>[t,tpTeamDraft(t,pk)]));
+  const paidItems=payouts.flatMap(p=>tpItemsOf(p.id));
+  const sumPaid=k=>tpRound(payouts.reduce((s,p)=>s+Number(p[k]||0),0));
+  const sumDraft=k=>tpRound(Object.values(drafts).reduce((s,d)=>s+Number(d[k]||0),0));
+  const jobsN=paidItems.length+Object.values(drafts).reduce((s,d)=>s+d.picked.length,0);
+  const teamsPaid=teams.filter(t=>payouts.some(p=>p.team===t)&&!drafts[t].jobs.length).length;
+  const due=new Date(r.end+'T00:00:00');due.setMonth(due.getMonth()+1,7);
+  c.innerHTML=`
+  <div class="tp-top">
+    <div class="tp-field"><label>งวดจ่าย (ครึ่งเดือน)</label><select class="filter-input" onchange="tpState.period=this.value;tpState.team='';renderTP()">${periods.map(k=>{const pr=tpPeriodRange(k),n=tpPayoutsIn(k).length;return `<option value="${k}" ${k===pk?'selected':''}>${pr.label}${k===tpPeriodOf(todayISO())?' · งวดปัจจุบัน':''}${n?` · จ่ายแล้ว ${n} ทีม`:''}</option>`;}).join('')}</select></div>
+    <span style="flex:1"></span>
+    <button class="btn btn-ghost btn-sm" onclick="tpExportPeriodXlsx()">⬇ Excel ทั้งงวด</button>
+    <button class="btn btn-ghost btn-sm" onclick="tpPrintPeriodSummary()">🖨 สรุปงวด (PDF)</button>
+    <button class="btn btn-ghost btn-sm" onclick="tpOpenSettings()" title="ตั้งค่า">⚙</button>
+  </div>
+  <div class="tp-kpis">
+    <div class="tp-kpi"><div class="l">งานในงวดนี้</div><div class="v">${jobsN} งาน</div><div class="d">${teams.length} ทีม · ${tpThaiDate(r.start)} – ${tpThaiDate(r.end)}</div></div>
+    <div class="tp-kpi"><div class="l">ค่าแรงรวม</div><div class="v">฿${money(sumPaid('gross')+sumDraft('gross'))}</div><div class="d">ก่อนหักภาษี</div></div>
+    <div class="tp-kpi"><div class="l">หัก ณ ที่จ่าย ${Number(techPay.settings.wht_rate??3)}%</div><div class="v tr">−฿${money(sumPaid('wht_amount')+sumDraft('wht'))}</div><div class="d">นำส่งภายใน ${tpThaiDate(due.toISOString().slice(0,10))}</div></div>
+    <div class="tp-kpi dark"><div class="l">ยอดโอนสุทธิ</div><div class="v">฿${money(sumPaid('net')+sumDraft('net'))}</div><div class="d">จ่ายแล้ว ${teamsPaid} / ${teams.length} ทีม · ค้างโอน ฿${money(sumDraft('net'))}</div></div>
+  </div>
+  ${teams.length?`<div class="tp-grid"><div class="tp-teams">${teams.map(t=>{const d=drafts[t],ps=payouts.filter(p=>p.team===t);const paidNet=tpRound(ps.reduce((s,p)=>s+Number(p.net||0),0));
+      const badge=d.jobs.length?`<span class="tp-pill warn">รอโอน ${d.picked.length} งาน</span>`:`<span class="tp-pill ok">โอนแล้ว ${tpThaiDate(ps[0]?.paid_at)}</span>`;
+      return `<div class="tp-team ${t===tpState.team?'on':''}" onclick="tpState.team='${esc(t).replace(/'/g,'&#39;')}';renderTP()"><div class="nm">${esc(t)}</div><div class="net">฿${money(d.jobs.length?d.net:paidNet)}</div><div class="tm" style="font-size:12px;">${d.jobs.length?`${d.jobs.length} งาน · ค่าแรง ฿${money(d.gross)}`:`${ps.reduce((s,p)=>s+tpItemsOf(p.id).length,0)} งาน`}</div><div style="text-align:right">${badge}</div></div>`;}).join('')}</div>
+    <div>${tpTeamDetailHtml(tpState.team,drafts[tpState.team],payouts.filter(p=>p.team===tpState.team),r)}</div></div>`
+  :`<div class="empty"><div class="empty-icon">✅</div><div>ไม่มีงานที่ต้องจ่ายในงวดนี้</div><div class="tm" style="font-size:12px;margin-top:6px;">นับเฉพาะงานที่ช่างส่งงานแล้ว/ปิดงาน มีค่าแรงช่าง และเสร็จตั้งแต่ ${tpThaiDate(techPay.settings.start_date)}</div></div>`}`;
+}
+function tpTeamDetailHtml(team,d,payouts,r){
+  if(!team)return '';
+  const pe=tpPayee(team),T=esc(team).replace(/'/g,'&#39;');
+  const payeeLine=pe.payee_name||pe.tax_id?`${esc(pe.payee_name||team)} · เลขผู้เสียภาษี ${esc(pe.tax_id||'—')}${pe.bank?' · '+esc(pe.bank):''}`:'<span class="tr">ยังไม่มีข้อมูลผู้รับเงิน (ต้องใช้ออก 50 ทวิ)</span>';
+  let html=`<div class="tp-card"><div class="tp-card-h"><div><div class="tp-card-t">${esc(team)}</div><div class="tm" style="font-size:12px;">${payeeLine} <button class="btn btn-ghost btn-xs" onclick="tpOpenPayee('${T}')">แก้ไขผู้รับเงิน</button></div></div></div>`;
+  if(d&&d.jobs.length){
+    const allOn=d.picked.length===d.jobs.length;
+    html+=`<div class="table-scroll"><table><thead><tr><th style="width:32px"><input type="checkbox" ${allOn?'checked':''} onchange="tpToggleAll('${T}',this.checked)"></th><th>PR</th><th>สาขา</th><th>ประเภท</th><th>เสร็จงาน</th><th>สถานะงาน</th><th style="text-align:right">ค่าแรง</th></tr></thead><tbody>${d.jobs.map(j=>{const k=tpKey(j.id),on=!tpState.excluded.has(k),dd=tpDoneDate(j),carry=dd<r.start;
+      return `<tr class="${on?'':'tp-off'}"><td><input type="checkbox" ${on?'checked':''} onchange="tpToggleJob('${esc(j.id).replace(/'/g,'&#39;')}',this.checked)"></td><td class="mono ta" style="cursor:pointer" onclick="openDet('${esc(j.id).replace(/'/g,'&#39;')}')">${esc(j.id)}</td><td>${esc(j.branch||'-')}</td><td>${esc(j.type||'-')}</td><td>${tpThaiDate(dd)}${carry?' <span class="tp-pill">ค้างจากงวดก่อน</span>':''}</td><td>${statusBadge(j,j.status)}</td><td class="mono" style="text-align:right">${money(j.pt)}</td></tr>`;}).join('')}</tbody></table></div>
+    <div class="tp-foot">
+      <div><div class="tp-sub">เอกสารของงวดนี้ (ร่าง — ยังไม่ได้บันทึกจ่าย)</div>
+        <div class="tp-docs">
+          <div class="tp-doc"><span>🧾</span><div><b>ใบสำคัญรับเงิน</b><div class="tm">ช่างเซ็นรับเงิน · ใช้แทนใบเสร็จ</div></div><button class="btn btn-ghost btn-sm" onclick="tpPrintVoucher(null,'${T}')">พิมพ์</button></div>
+          <div class="tp-doc"><span>📄</span><div><b>หนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ)</b><div class="tm">${Number(techPay.settings.wht_rate??3)}% ของ ฿${money(d.gross)} = ฿${money(d.wht)}</div></div><button class="btn btn-ghost btn-sm" onclick="tpPrint50Tawi(null,'${T}')">พิมพ์</button></div>
+          <div class="tp-doc"><span>📊</span><div><b>รายการงานของทีม (Excel)</b><div class="tm">ส่งให้ช่างตรวจ / ส่งบัญชี</div></div><button class="btn btn-ghost btn-sm" onclick="tpExportTeamXlsx(null,'${T}')">⬇</button></div>
+        </div></div>
+      <div class="tp-sum">
+        <div class="ln"><span>ค่าแรง ${d.picked.length} งาน</span><span class="mono">${money(d.gross)}</span></div>
+        <div class="ln"><span>หัก ณ ที่จ่าย ${Number(techPay.settings.wht_rate??3)}%</span><span class="mono">−${money(d.wht)}</span></div>
+        <div class="ln"><span>ปรับยอด (+/−)</span><input class="tp-adj mono" type="number" step="0.01" value="${d.adjust||''}" placeholder="0.00" onchange="tpState.adjust['${T}']=Number(this.value)||0;renderTP()"></div>
+        ${d.adjust?`<input class="tp-adj-note" placeholder="เหตุผลปรับยอด เช่น หักเบิกล่วงหน้า" value="${esc(d.adjustNote)}" onchange="tpState.adjustNote['${T}']=this.value">`:''}
+        <div class="ln big"><span>โอนสุทธิ</span><span class="mono">${money(d.net)}</span></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px;" ${d.picked.length?'':'disabled'} onclick="tpOpenPay('${T}')">ยืนยันโอนแล้ว + บันทึก</button>
+      </div>
+    </div>`;
+  }
+  if(payouts.length){
+    html+=`<div class="tp-sub" style="padding:14px 16px 6px;">บันทึกจ่ายแล้วในงวดนี้</div>${payouts.map(p=>{const its=tpItemsOf(p.id);return `<div class="tp-paid"><div><b>${esc(p.doc_no||p.id)}</b> · โอน ${tpThaiDate(p.paid_at)}${p.transfer_ref?' · อ้างอิง '+esc(p.transfer_ref):''}<div class="tm" style="font-size:12px;">${its.length} งาน · ค่าแรง ฿${money(p.gross)} · หัก ${money(p.wht_amount)}${Number(p.adjust_amount)?` · ปรับ ${money(p.adjust_amount)}${p.adjust_note?' ('+esc(p.adjust_note)+')':''}`:''} · บันทึกโดย ${esc(p.created_by||'-')}</div></div>
+      <div class="tp-paid-net mono">฿${money(p.net)}</div>
+      <div class="flex g8" style="flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-ghost btn-sm" onclick="tpPrintVoucher('${esc(p.id)}')">🧾 ใบสำคัญรับเงิน</button><button class="btn btn-ghost btn-sm" onclick="tpPrint50Tawi('${esc(p.id)}')">📄 50 ทวิ</button><button class="btn btn-ghost btn-sm" onclick="tpExportTeamXlsx('${esc(p.id)}')">⬇ Excel</button>${p.slip_url?`<button class="btn btn-ghost btn-sm" onclick="window.open('${esc(p.slip_url)}','_blank')">สลิป</button>`:''}<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="tpCancelPayout('${esc(p.id)}')">ยกเลิก</button></div></div>`;}).join('')}`;
+  }
+  return html+'</div>';
+}
+function tpToggleJob(id,on){const k=tpKey(id);on?tpState.excluded.delete(k):tpState.excluded.add(k);renderTP();}
+function tpToggleAll(team,on){tpUnpaidJobs(tpState.period).filter(j=>j.team===team).forEach(j=>{const k=tpKey(j.id);on?tpState.excluded.delete(k):tpState.excluded.add(k);});renderTP();}
+
+// ----- ผู้รับเงิน / ตั้งค่า -----
+function tpOpenPayee(team){
+  const p=tpPayee(team);
+  document.getElementById('tpp-team').value=team;
+  document.getElementById('tpp-team-label').textContent=team;
+  document.getElementById('tpp-name').value=p.payee_name||'';
+  document.getElementById('tpp-tax').value=p.tax_id||'';
+  document.getElementById('tpp-address').value=p.address||'';
+  document.getElementById('tpp-bank').value=p.bank||'';
+  openM('m-tp-payee');
+}
+async function tpSavePayee(){
+  if(!guardEdit())return;
+  const team=document.getElementById('tpp-team').value;
+  const tax=document.getElementById('tpp-tax').value.replace(/\D/g,'');
+  if(tax&&tax.length!==13){alert('เลขประจำตัวผู้เสียภาษีต้องมี 13 หลัก');return;}
+  const row={team,payee_name:document.getElementById('tpp-name').value.trim(),tax_id:tax,address:document.getElementById('tpp-address').value.trim(),bank:document.getElementById('tpp-bank').value.trim(),updated_at:new Date().toISOString(),updated_by:getActorName()};
+  try{
+    const r=await fetch(splitUrl('tech_payees','?on_conflict=team'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(row)});
+    if(!r.ok)throw new Error(await r.text());
+    techPay.payees[team]=row;closeM('m-tp-payee');renderTP();broadcastDataChanged('techpay');
+  }catch(e){alert('บันทึกข้อมูลผู้รับเงินไม่สำเร็จ: '+e.message);}
+}
+function tpOpenSettings(){
+  document.getElementById('tps-start').value=String(techPay.settings.start_date||'').slice(0,10);
+  document.getElementById('tps-rate').value=Number(techPay.settings.wht_rate??3);
+  const sel=document.getElementById('tps-payer');
+  sel.innerHTML=salesCompanyProfiles().filter(p=>p.id!=='custom').map(p=>`<option value="${esc(p.id)}" ${p.id===techPay.settings.payer_company?'selected':''}>${esc(p.label)}</option>`).join('');
+  openM('m-tp-settings');
+}
+async function tpSaveSettings(){
+  if(!guardEdit())return;
+  const patch={start_date:document.getElementById('tps-start').value||techPay.settings.start_date,wht_rate:Number(document.getElementById('tps-rate').value)||0,payer_company:document.getElementById('tps-payer').value||'profix',updated_at:new Date().toISOString(),updated_by:getActorName()};
+  try{
+    const r=await fetch(splitUrl('tech_pay_settings','?id=eq.main'),{method:'PATCH',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify(patch)});
+    if(!r.ok)throw new Error(await r.text());
+    techPay.settings={...techPay.settings,...patch};closeM('m-tp-settings');renderTP();broadcastDataChanged('techpay');
+  }catch(e){alert('บันทึกตั้งค่าไม่สำเร็จ: '+e.message);}
+}
+
+// ----- บันทึกจ่าย -----
+function tpOpenPay(team){
+  const d=tpTeamDraft(team,tpState.period);if(!d.picked.length)return;
+  const pe=tpPayee(team);
+  document.getElementById('tpm-team').value=team;
+  document.getElementById('tpm-summary').innerHTML=`<b>${esc(team)}</b> · ${d.picked.length} งาน<br>ค่าแรง ฿${money(d.gross)} − หัก ณ ที่จ่าย ฿${money(d.wht)}${d.adjust?` ${d.adjust>0?'+':'−'} ปรับยอด ฿${money(Math.abs(d.adjust))}`:''} = <b>โอนสุทธิ ฿${money(d.net)}</b>${pe.bank?`<br>โอนเข้า ${esc(pe.bank)}`:''}${pe.tax_id?'':'<br><span class="tr">⚠ ยังไม่มีเลขผู้เสียภาษีของผู้รับเงิน — บันทึกได้ แต่ 50 ทวิ จะไม่ครบ</span>'}`;
+  document.getElementById('tpm-date').value=todayISO();
+  document.getElementById('tpm-ref').value='';
+  document.getElementById('tpm-note').value='';
+  document.getElementById('tpm-slip').value='';
+  openM('m-tp-pay');
+}
+async function tpNextDocNo(paidAt){
+  const ym=String(paidAt||todayISO()).slice(0,7).replace('-','');
+  const prefix=`PV${ym}-`;
+  let max=0;
+  (techPay.payouts||[]).forEach(p=>{const s=String(p.doc_no||'');if(s.startsWith(prefix)){const n=parseInt(s.slice(prefix.length),10);if(n>max)max=n;}});
+  try{const rows=await sbFetchJson('tech_payouts',`?select=doc_no&doc_no=like.${encodeURIComponent(prefix+'*')}`);(rows||[]).forEach(p=>{const n=parseInt(String(p.doc_no||'').slice(prefix.length),10);if(n>max)max=n;});}catch(e){}
+  return prefix+String(max+1).padStart(3,'0');
+}
+async function tpConfirmPay(){
+  if(!guardEdit())return;
+  const team=document.getElementById('tpm-team').value,pk=tpState.period,r=tpPeriodRange(pk);
+  const d=tpTeamDraft(team,pk);if(!d.picked.length){closeM('m-tp-pay');return;}
+  const btn=document.getElementById('tpm-save');btn.disabled=true;btn.textContent='กำลังบันทึก...';
+  try{
+    let slipUrl='';
+    const f=document.getElementById('tpm-slip').files[0];
+    if(f){slipUrl=await uploadAccountingAttachment('purchase',f,'TPAY-'+pk);}
+    const pe=tpPayee(team),paidAt=document.getElementById('tpm-date').value||todayISO();
+    for(let attempt=0;attempt<3;attempt++){
+      const id=newAccountingId('TPAY'),docNo=await tpNextDocNo(paidAt);
+      const payout={id,period_key:pk,period_start:r.start,period_end:r.end,team,payee_name:pe.payee_name||team,payee_tax_id:pe.tax_id||'',payee_address:pe.address||'',payee_bank:pe.bank||'',
+        payer_company:techPay.settings.payer_company||'profix',gross:d.gross,wht_rate:Number(techPay.settings.wht_rate??3),wht_amount:d.wht,adjust_amount:d.adjust,adjust_note:d.adjustNote,net:d.net,
+        paid_at:paidAt,transfer_ref:document.getElementById('tpm-ref').value.trim(),slip_url:slipUrl,note:document.getElementById('tpm-note').value.trim(),doc_no:docNo,created_by:getActorName()};
+      const items=d.picked.map(j=>({id:newAccountingId('TPI'),job_id:String(j.id).trim(),amount:tpRound(j.pt),job_branch:j.branch||'',job_type:j.type||'',job_done_date:tpDoneDate(j)||null,job_status:j.status||''}));
+      const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/tech_pay_create`,{method:'POST',headers:sbHeaders(),body:JSON.stringify({p_payout:payout,p_items:items})});
+      if(res.ok){
+        writeAuditLog('tech_payout_create','tech_payout',id,null,payout,{...payout,items:items.map(i=>i.job_id)});
+        delete tpState.adjust[team];delete tpState.adjustNote[team];
+        closeM('m-tp-pay');
+        await ensureTechPayLoaded(true);renderTP();broadcastDataChanged('techpay');
+        setTimeout(()=>{if(confirm(`บันทึกจ่าย ${team} แล้ว (${docNo})\nพิมพ์ใบสำคัญรับเงินเลยไหม?`))tpPrintVoucher(id);},50);
+        return;
+      }
+      const txt=await res.text();
+      if(/tech_payouts_docno_uq/.test(txt))continue; // เลขเอกสารชน (อีกเครื่องเพิ่งออก) → ขอเลขใหม่
+      if(/tech_payout_items_job_uq|duplicate key/.test(txt)){await ensureTechPayLoaded(true);renderTP();throw new Error('มีบางงานถูกบันทึกจ่ายไปแล้ว (อาจมีแอดมินอีกคนเพิ่งกดจ่าย) — รีเฟรชรายการให้แล้ว ตรวจแล้วกดใหม่');}
+      throw new Error(txt);
+    }
+    throw new Error('ออกเลขเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง');
+  }catch(e){alert('บันทึกจ่ายไม่สำเร็จ: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='บันทึกจ่าย';}
+}
+async function tpCancelPayout(id){
+  if(!guardEdit())return;
+  const p=(techPay.payouts||[]).find(x=>x.id===id);if(!p)return;
+  const reason=prompt(`ยกเลิกการจ่าย ${p.doc_no||id} (${p.team} ฿${money(p.net)})?\nงานในงวดนี้จะกลับไปเป็น "ยังไม่จ่าย"\n\nเหตุผล:`,'');
+  if(reason===null)return;
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/tech_pay_cancel`,{method:'POST',headers:sbHeaders(),body:JSON.stringify({p_id:id,p_reason:reason,p_by:getActorName()})});
+    if(!r.ok)throw new Error(await r.text());
+    writeAuditLog('tech_payout_cancel','tech_payout',id,p,{status:'cancelled',cancel_reason:reason},{...p,status:'cancelled'});
+    await ensureTechPayLoaded(true);renderTP();broadcastDataChanged('techpay');
+  }catch(e){alert('ยกเลิกไม่สำเร็จ: '+e.message);}
+}
+
+// ----- เอกสาร -----
+// แหล่งข้อมูลเดียวกันทั้งเอกสารร่าง (ยังไม่บันทึก) และเอกสารที่บันทึกจ่ายแล้ว
+function tpDocData(payoutId,team){
+  if(payoutId){
+    const p=(techPay.payouts||[]).find(x=>x.id===payoutId);if(!p)return null;
+    const rows=tpItemsOf(p.id).map(it=>({id:it.job_id,branch:it.job_branch,type:it.job_type,done:it.job_done_date,amount:Number(it.amount||0)}));
+    return {draft:false,p,rows,payee:{name:p.payee_name||p.team,tax:p.payee_tax_id,address:p.payee_address,bank:p.payee_bank},period:tpPeriodRange(p.period_key),payer:tpPayerProfile(p.payer_company)};
+  }
+  if(!tpState.period)tpState.period=tpPeriodOf(todayISO());
+  const d=tpTeamDraft(team,tpState.period),pe=tpPayee(team);
+  const p={id:'',doc_no:'',team,gross:d.gross,wht_rate:Number(techPay.settings.wht_rate??3),wht_amount:d.wht,adjust_amount:d.adjust,adjust_note:d.adjustNote,net:d.net,paid_at:todayISO(),transfer_ref:''};
+  return {draft:true,p,rows:d.picked.map(j=>({id:j.id,branch:j.branch,type:j.type,done:tpDoneDate(j),amount:Number(j.pt||0)})),payee:{name:pe.payee_name||team,tax:pe.tax_id,address:pe.address,bank:pe.bank},period:tpPeriodRange(tpState.period),payer:tpPayerProfile()};
+}
+const TP_DOC_CSS=`@page{size:A4 portrait;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,'Noto Sans Thai',sans-serif}body{margin:0;background:#edf2f7;color:#111827;font-size:12.5px}
+.toolbar{position:fixed;top:0;left:0;right:0;background:#0b1220;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;z-index:2}.toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit}.btn-print{background:#175fff;color:#fff}.btn-ghost{background:#374151;color:#fff;margin-right:6px}
+.sheet{width:210mm;min-height:297mm;margin:52px auto 16px;background:#fff;padding:14mm 15mm;box-shadow:0 12px 34px rgba(16,24,40,.16);position:relative;page-break-after:always}
+.draft{position:absolute;top:40%;left:0;right:0;text-align:center;font-size:64px;font-weight:900;color:rgba(220,38,38,.10);transform:rotate(-18deg);pointer-events:none}
+.hd{display:flex;justify-content:space-between;gap:16px;border-bottom:2px solid #0b1220;padding-bottom:10px}.co b{font-size:15px}.co div{color:#4b5563;font-size:11.5px}
+.title{font-size:20px;font-weight:900;text-align:right}.title small{display:block;font-size:11px;font-weight:600;color:#6b7280;letter-spacing:.5px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;margin:12px 0}.meta div b{display:inline-block;min-width:96px;color:#4b5563;font-weight:600}
+table.it{width:100%;border-collapse:collapse;margin-top:8px}.it th{background:#0b1220;color:#fff;font-weight:700;font-size:11.5px;padding:6px;border:1px solid #0b1220}.it td{border:1px solid #d6dce5;padding:5px 7px}.it tr:nth-child(even) td{background:#f5f7fa}
+.c{text-align:center}.r{text-align:right}
+.tot{margin-left:auto;width:82mm;border-collapse:collapse;margin-top:10px}.tot td{padding:5px 8px;border:1px solid #d6dce5}.tot .g td{background:#0b1220;color:#fff;font-weight:800;font-size:14px}
+.words{margin-top:6px;text-align:right;font-weight:700}
+.sig{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px;text-align:center}.sig div{margin-top:46px;padding-top:6px;border-top:1px dotted #6b7280;color:#4b5563}
+.box{border:1px solid #9ca3af;border-radius:6px;padding:8px 10px;margin-top:8px}
+@media print{html,body{background:#fff}.toolbar{display:none}.sheet{margin:0;box-shadow:none}}`;
+function tpDocShell(title,body){return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>${esc(title)}</title><style>${TP_DOC_CSS}</style></head><body><div class="toolbar"><div>${esc(title)}</div><div><button class="btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>${body}</body></html>`;}
+function tpCoHead(co){return `<div class="co"><b>${esc(co.name||co.displayName||'')}</b> <span style="color:#6b7280">(${esc(co.branch||'สำนักงานใหญ่')})</span><div>${esc(co.address||'')}</div><div>เลขประจำตัวผู้เสียภาษี ${esc(co.taxId||'-')}${co.phone?' · โทร '+esc(co.phone):''}</div></div>`;}
+function tpPrintVoucher(payoutId,team){
+  const D=tpDocData(payoutId,team);if(!D)return;
+  const {p,rows,payee,period,payer}=D;
+  const body=`<div class="sheet">${D.draft?'<div class="draft">ร่าง · ยังไม่ได้บันทึกจ่าย</div>':''}
+  <div class="hd">${tpCoHead(payer)}<div class="title">ใบสำคัญรับเงิน<small>PAYMENT RECEIPT VOUCHER</small></div></div>
+  <div class="meta"><div><b>เลขที่</b>${esc(p.doc_no||'(ร่าง)')}</div><div><b>วันที่จ่าย</b>${tpThaiDate(p.paid_at)}</div><div><b>งวดงาน</b>${esc(period.label)}</div><div><b>ทีมช่าง</b>${esc(p.team)}</div></div>
+  <div class="box">ข้าพเจ้า <b>${esc(payee.name)}</b> เลขประจำตัวผู้เสียภาษี <b>${esc(payee.tax||'................................')}</b><br>ที่อยู่ ${esc(payee.address||'.................................................................................................')}<br>ได้รับเงินจาก <b>${esc(payer.name||'')}</b> เป็นค่าจ้างทำของ/ค่าบริการงานซ่อมตามรายการดังต่อไปนี้</div>
+  <table class="it"><thead><tr><th style="width:10mm">#</th><th style="width:30mm">PR</th><th>สาขา</th><th style="width:30mm">ประเภทงาน</th><th style="width:26mm">วันที่เสร็จ</th><th style="width:28mm">จำนวนเงิน</th></tr></thead><tbody>${rows.map((x,i)=>`<tr><td class="c">${i+1}</td><td>${esc(x.id)}</td><td>${esc(x.branch||'-')}</td><td>${esc(x.type||'-')}</td><td class="c">${tpThaiDate(x.done)}</td><td class="r">${money(x.amount)}</td></tr>`).join('')}</tbody></table>
+  <table class="tot"><tr><td>รวมค่าแรง</td><td class="r">${money(p.gross)}</td></tr><tr><td>หัก ภาษี ณ ที่จ่าย ${Number(p.wht_rate)}%</td><td class="r">−${money(p.wht_amount)}</td></tr>${Number(p.adjust_amount)?`<tr><td>ปรับยอด${p.adjust_note?' ('+esc(p.adjust_note)+')':''}</td><td class="r">${Number(p.adjust_amount)>0?'+':'−'}${money(Math.abs(p.adjust_amount))}</td></tr>`:''}<tr class="g"><td>รับเงินสุทธิ</td><td class="r">${money(p.net)}</td></tr></table>
+  <div class="words">(${esc(thaiBahtText(p.net))})</div>
+  <div class="box">ชำระโดย ☒ โอนเงิน ${payee.bank?'เข้าบัญชี '+esc(payee.bank):''}${p.transfer_ref?' · อ้างอิง '+esc(p.transfer_ref):''} &nbsp;&nbsp; ☐ เงินสด</div>
+  <div class="sig"><div>ผู้รับเงิน<br>(${esc(payee.name)})</div><div>ผู้จ่ายเงิน</div><div>ผู้อนุมัติ</div></div></div>`;
+  generateDocWindow(tpDocShell('ใบสำคัญรับเงิน '+(p.doc_no||p.team),body));
+}
+function tpTaxBoxes(id){const s=String(id||'').replace(/\D/g,'').padEnd(13,' ').slice(0,13);const g=[1,4,5,2,1];let i=0;return g.map(n=>{const part=s.slice(i,i+n);i+=n;return [...part].map(ch=>`<span class="tb">${ch.trim()?esc(ch):'&nbsp;'}</span>`).join('');}).join('<span class="dash">-</span>');}
+function tpPrint50Tawi(payoutId,team){
+  const D=tpDocData(payoutId,team);if(!D)return;
+  const {p,payee,payer}=D;
+  const juristic=String(payee.tax||'').replace(/\D/g,'').startsWith('0');
+  const paidD=tpThaiDate(p.paid_at);
+  const css=`.t50 h2{text-align:center;font-size:16px;margin:30px 0 2px}.t50 .sub{text-align:center;font-size:11px;color:#4b5563}.t50 .cp{position:absolute;top:12mm;right:15mm;font-size:10.5px;color:#4b5563;text-align:right}
+  .party{border:1px solid #6b7280;padding:8px 10px;margin-top:8px}.party .lb{font-weight:700}.tb{display:inline-block;width:16px;height:20px;border:1px solid #6b7280;text-align:center;line-height:18px;font-weight:700;margin:0 1px}.dash{margin:0 3px}
+  table.w{width:100%;border-collapse:collapse;margin-top:8px;font-size:11.5px}.w th,.w td{border:1px solid #6b7280;padding:4px 6px;vertical-align:top}.w th{background:#f3f4f6}`;
+  const sheet=copy=>`<div class="sheet t50">${D.draft?'<div class="draft">ร่าง · ยังไม่ได้บันทึกจ่าย</div>':''}<div class="cp">${copy}<br>เล่มที่ ........ เลขที่ ${esc(p.doc_no||'........')}</div>
+  <h2>หนังสือรับรองการหักภาษี ณ ที่จ่าย</h2><div class="sub">ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร</div>
+  <div class="party"><span class="lb">ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :</span> เลขประจำตัวผู้เสียภาษีอากร ${tpTaxBoxes(payer.taxId)}<br>ชื่อ <b>${esc(payer.name||'')}</b> (${esc(payer.branch||'สำนักงานใหญ่')})<br>ที่อยู่ ${esc(payer.address||'')}</div>
+  <div class="party"><span class="lb">ผู้ถูกหักภาษี ณ ที่จ่าย :</span> เลขประจำตัวผู้เสียภาษีอากร ${tpTaxBoxes(payee.tax)}<br>ชื่อ <b>${esc(payee.name||'')}</b><br>ที่อยู่ ${esc(payee.address||'.................................................................................................')}</div>
+  <div style="margin-top:8px">ลำดับที่ ........ ในแบบ &nbsp; ☐ ภ.ง.ด.1ก &nbsp; ☐ ภ.ง.ด.1ก พิเศษ &nbsp; ☐ ภ.ง.ด.2 &nbsp; ${juristic?'☐':'☒'} ภ.ง.ด.3 &nbsp; ☐ ภ.ง.ด.2ก &nbsp; ☐ ภ.ง.ด.3ก &nbsp; ${juristic?'☒':'☐'} ภ.ง.ด.53</div>
+  <table class="w"><thead><tr><th>ประเภทเงินได้พึงประเมินที่จ่าย</th><th style="width:30mm">วัน เดือน หรือปีภาษี ที่จ่าย</th><th style="width:30mm">จำนวนเงินที่จ่าย</th><th style="width:30mm">ภาษีที่หักและนำส่งไว้</th></tr></thead><tbody>
+  <tr><td>1. เงินเดือน ค่าจ้าง เบี้ยเลี้ยง โบนัส ฯลฯ ตามมาตรา 40 (1)</td><td></td><td></td><td></td></tr>
+  <tr><td>2. ค่าธรรมเนียม ค่านายหน้า ฯลฯ ตามมาตรา 40 (2)</td><td></td><td></td><td></td></tr>
+  <tr><td>3. ค่าแห่งลิขสิทธิ์ ฯลฯ ตามมาตรา 40 (3)</td><td></td><td></td><td></td></tr>
+  <tr><td>4. ดอกเบี้ย / เงินปันผล ฯลฯ ตามมาตรา 40 (4)</td><td></td><td></td><td></td></tr>
+  <tr><td>5. การจ่ายเงินได้ที่ต้องหักภาษี ณ ที่จ่าย ตามคำสั่งกรมสรรพากรที่ออกตามมาตรา 3 เตรส เช่น รางวัล ส่วนลดหรือประโยชน์ใดๆ เนื่องจากการส่งเสริมการขาย ค่าแสดงของนักแสดงสาธารณะ <b>ค่าจ้างทำของ ค่าบริการ</b> ค่าเบี้ยประกันวินาศภัย ค่าขนส่ง ฯลฯ<br>&nbsp;&nbsp;&nbsp;(ระบุ) <b>ค่าจ้างทำของ — งานซ่อม/บริการ ${esc(D.period.label)}</b></td><td class="c">${paidD}</td><td class="r">${money(p.gross)}</td><td class="r">${money(p.wht_amount)}</td></tr>
+  <tr><td>6. อื่นๆ (ระบุ) ..........................................</td><td></td><td></td><td></td></tr>
+  <tr><th style="text-align:right">รวมเงินที่จ่ายและภาษีที่หักนำส่ง</th><th></th><th class="r">${money(p.gross)}</th><th class="r">${money(p.wht_amount)}</th></tr>
+  </tbody></table>
+  <div style="margin-top:6px">รวมเงินภาษีที่หักนำส่ง (ตัวอักษร) <b>${esc(thaiBahtText(p.wht_amount))}</b></div>
+  <div style="margin-top:6px">ผู้จ่ายเงิน &nbsp; ☒ หัก ณ ที่จ่าย &nbsp; ☐ ออกให้ตลอดไป &nbsp; ☐ ออกให้ครั้งเดียว &nbsp; ☐ อื่นๆ</div>
+  <div class="party" style="margin-top:14px;display:flex;justify-content:space-between;gap:16px"><div style="font-size:11px;color:#4b5563;max-width:95mm">ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ</div><div style="text-align:center;min-width:92mm">ลงชื่อ ..................................................<br>ผู้มีหน้าที่หักภาษี ณ ที่จ่าย<br>${paidD}</div></div></div>`;
+  const body=`<style>${css}</style>`+sheet('ฉบับที่ 1 (สำหรับผู้ถูกหักภาษี ณ ที่จ่าย ใช้แนบพร้อมกับแบบแสดงรายการภาษี)')+sheet('ฉบับที่ 2 (สำหรับผู้ถูกหักภาษี ณ ที่จ่าย เก็บไว้เป็นหลักฐาน)');
+  generateDocWindow(tpDocShell('50 ทวิ '+(p.doc_no||p.team),body));
+}
+function tpPrintPeriodSummary(){
+  const pk=tpState.period,r=tpPeriodRange(pk),payouts=tpPayoutsIn(pk);
+  const unpaid=tpUnpaidJobs(pk),teams=[...new Set(unpaid.map(j=>j.team))];
+  const drafts=teams.map(t=>tpTeamDraft(t,pk)).filter(d=>d.picked.length);
+  const rows=[...payouts.map(p=>({team:p.team,payee:p.payee_name,n:tpItemsOf(p.id).length,gross:+p.gross,wht:+p.wht_amount,adj:+p.adjust_amount,net:+p.net,st:`โอนแล้ว ${tpThaiDate(p.paid_at)}${p.transfer_ref?' · '+p.transfer_ref:''}`,no:p.doc_no})),
+    ...drafts.map(d=>({team:d.team,payee:tpPayee(d.team).payee_name||'',n:d.picked.length,gross:d.gross,wht:d.wht,adj:d.adjust,net:d.net,st:'ยังไม่โอน',no:''}))];
+  const S=k=>tpRound(rows.reduce((s,x)=>s+x[k],0));
+  const co=tpPayerProfile();
+  const body=`<div class="sheet"><div class="hd">${tpCoHead(co)}<div class="title">สรุปงวดจ่ายช่าง<small>${esc(r.label)}</small></div></div>
+  <div class="meta"><div><b>ช่วงงาน</b>${tpThaiDate(r.start)} – ${tpThaiDate(r.end)}</div><div><b>พิมพ์เมื่อ</b>${tpThaiDate(todayISO())} โดย ${esc(getActorName())}</div></div>
+  <table class="it"><thead><tr><th>ทีม / ผู้รับเงิน</th><th style="width:14mm">งาน</th><th style="width:24mm">ค่าแรง</th><th style="width:22mm">หัก ณ ที่จ่าย</th><th style="width:20mm">ปรับยอด</th><th style="width:26mm">โอนสุทธิ</th><th style="width:40mm">สถานะ</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.team)}</b>${x.payee&&x.payee!==x.team?'<br><span style="color:#6b7280">'+esc(x.payee)+'</span>':''}${x.no?'<br><span style="color:#6b7280">'+esc(x.no)+'</span>':''}</td><td class="c">${x.n}</td><td class="r">${money(x.gross)}</td><td class="r">${money(x.wht)}</td><td class="r">${x.adj?money(x.adj):'-'}</td><td class="r"><b>${money(x.net)}</b></td><td>${esc(x.st)}</td></tr>`).join('')||'<tr><td colspan="7" class="c">ไม่มีรายการ</td></tr>'}</tbody></table>
+  <table class="tot"><tr><td>รวมค่าแรง</td><td class="r">${money(S('gross'))}</td></tr><tr><td>รวมหัก ณ ที่จ่าย</td><td class="r">${money(S('wht'))}</td></tr><tr><td>รวมปรับยอด</td><td class="r">${money(S('adj'))}</td></tr><tr class="g"><td>รวมโอนสุทธิ</td><td class="r">${money(S('net'))}</td></tr></table>
+  <div class="sig"><div>ผู้จัดทำ</div><div>ผู้ตรวจสอบ</div><div>ผู้อนุมัติ</div></div></div>`;
+  generateDocWindow(tpDocShell('สรุปงวดจ่ายช่าง '+r.label,body));
+}
+function tpXlsxReady(){if(typeof XLSX==='undefined'){alert('ไลบรารี xlsx ยังโหลดไม่เสร็จ — ลองใหม่อีกครั้ง');return false;}return true;}
+function tpExportTeamXlsx(payoutId,team){
+  if(!tpXlsxReady())return;
+  const D=tpDocData(payoutId,team);if(!D)return;
+  const {p,rows,payee,period}=D;
+  const aoa=[[`${p.team} — ${period.label}`],[`ผู้รับเงิน: ${payee.name||''}`,`เลขผู้เสียภาษี: ${payee.tax||''}`,`บัญชี: ${payee.bank||''}`],[],['PR','สาขา','ประเภทงาน','วันที่เสร็จ','ค่าแรง'],
+    ...rows.map(x=>[x.id,x.branch||'',x.type||'',x.done||'',Number(x.amount||0)]),[],['','','','รวมค่าแรง',Number(p.gross)],['','','',`หัก ณ ที่จ่าย ${Number(p.wht_rate)}%`,-Number(p.wht_amount)],
+    ...(Number(p.adjust_amount)?[['','','',`ปรับยอด ${p.adjust_note||''}`,Number(p.adjust_amount)]]:[]),['','','','โอนสุทธิ',Number(p.net)]];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:14},{wch:34},{wch:18},{wch:14},{wch:14}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'งานของทีม');
+  XLSX.writeFile(wb,`ProFix-จ่ายช่าง-${p.team}-${period.key}${D.draft?'-ร่าง':''}.xlsx`);
+}
+function tpExportPeriodXlsx(){
+  if(!tpXlsxReady())return;
+  const pk=tpState.period,r=tpPeriodRange(pk),payouts=tpPayoutsIn(pk);
+  const teams=[...new Set(tpUnpaidJobs(pk).map(j=>j.team))];
+  const drafts=teams.map(t=>tpTeamDraft(t,pk)).filter(d=>d.picked.length);
+  const sum=[['ทีม','ผู้รับเงิน','เลขผู้เสียภาษี','บัญชี','จำนวนงาน','ค่าแรง','หัก ณ ที่จ่าย','ปรับยอด','โอนสุทธิ','สถานะ','วันที่โอน','อ้างอิง','เลขที่เอกสาร'],
+    ...payouts.map(p=>[p.team,p.payee_name||'',p.payee_tax_id||'',p.payee_bank||'',tpItemsOf(p.id).length,+p.gross,+p.wht_amount,+p.adjust_amount,+p.net,'โอนแล้ว',p.paid_at||'',p.transfer_ref||'',p.doc_no||'']),
+    ...drafts.map(d=>{const pe=tpPayee(d.team);return [d.team,pe.payee_name||'',pe.tax_id||'',pe.bank||'',d.picked.length,d.gross,d.wht,d.adjust,d.net,'ยังไม่โอน','','',''];})];
+  const det=[['ทีม','PR','สาขา','ประเภทงาน','วันที่เสร็จ','ค่าแรง','สถานะจ่าย','เลขที่เอกสาร'],
+    ...payouts.flatMap(p=>tpItemsOf(p.id).map(it=>[p.team,it.job_id,it.job_branch||'',it.job_type||'',it.job_done_date||'',+it.amount,'โอนแล้ว',p.doc_no||''])),
+    ...drafts.flatMap(d=>d.picked.map(j=>[d.team,j.id,j.branch||'',j.type||'',tpDoneDate(j),Number(j.pt||0),'ยังไม่โอน','']))];
+  const wb=XLSX.utils.book_new();
+  const ws1=XLSX.utils.aoa_to_sheet(sum);ws1['!cols']=sum[0].map((_,i)=>({wch:i<4?20:13}));
+  const ws2=XLSX.utils.aoa_to_sheet(det);ws2['!cols']=det[0].map((_,i)=>({wch:i===2?32:14}));
+  XLSX.utils.book_append_sheet(wb,ws1,'สรุปงวด');XLSX.utils.book_append_sheet(wb,ws2,'รายการงาน');
+  XLSX.writeFile(wb,`ProFix-จ่ายช่าง-${r.key}.xlsx`);
+}
+
 
 // FILL SELECTS
 function fillSelects(){
@@ -11378,6 +11820,7 @@ function onProfixSync(kind,msg){
     setTimeout(()=>{lastRemoteRefreshAt=0;refreshRemoteIfIdle();},800);
     return;
   }
+  if(kind==='techpay'){if(typeof techPay!=='undefined'&&techPay.loaded)ensureTechPayLoaded(true).then(()=>{if(document.getElementById('page-tech-pay')?.classList.contains('active'))renderTP();});return;}
   if(kind!=='accounting')return;
   // กำลังแก้ไขบิลอยู่ในแท็บนี้ หรือมีงานค้างบันทึก → ยังไม่ทับ (poll ปกติจะซิงก์ให้ทีหลัง)
   if(document.getElementById('m-sales')?.classList.contains('open')||document.getElementById('m-purchase')?.classList.contains('open')||hasUnsyncedLocalChanges){
