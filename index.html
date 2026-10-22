@@ -3870,10 +3870,12 @@ function inDateScope(item,scope){
   }
   return true;
 }
+// ข้อความสำหรับค้นหา: ตัวเล็ก + รวมสระอำแบบแยกตัว (ํ + า เช่น "นํ้า" ที่ก๊อปมาจาก PDF/ระบบลูกค้า) ให้เป็น "ำ" → ค้น "น้ำ" เจอทั้งสองแบบ
+function searchNorm(v){return String(v??'').toLowerCase().replace(/\u0e4d([\u0e48-\u0e4b]?)\u0e32/g,'$1\u0e33').replace(/([\u0e48-\u0e4b])\u0e4d\u0e32/g,'$1\u0e33');}
 function matchText(item, fields, q){
-  const s=(q||'').trim().toLowerCase();
+  const s=searchNorm((q||'').trim());
   if(!s)return true;
-  return fields.some(f=>String(item[f]??'').toLowerCase().includes(s));
+  return fields.some(f=>searchNorm(item[f]).includes(s));
 }
 function mobileCard(pr,type,team,date,status,extra=''){
   return `<div class="mobile-card"><div class="mobile-card-top"><div><div class="mobile-card-pr">${esc(pr||'-')}</div><div class="mobile-card-type">${esc(type||'-')}</div></div><div>${status||''}</div></div><div class="mobile-card-meta"><div><b>ทีมซ่อม</b>${esc(team||'-')}</div><div><b>วันนัด</b>${esc(date||'-')}</div>${extra}</div></div>`;
@@ -5912,7 +5914,7 @@ function filterAccountingList(list,kind){
     if(kind==='sale'&&st.docType&&(inv.doc_type||'tax_invoice')!==st.docType)return false;
     if(!q)return true;
     const fields=kind==='pur'?[inv.purchase_no,inv.supplier_name,inv.supplier_tax_id,inv.invoice_no,inv.note]:[inv.sales_invoice_no,inv.job_id,inv.job_ids,inv.customer_name,inv.note];
-    return fields.some(f=>String(f||'').toLowerCase().includes(q));
+    return fields.some(f=>searchNorm(f).includes(searchNorm(q)));
   });
   const docNoOf=x=>String(x.doc_no||x.sales_invoice_no||x.purchase_no||'');
   const cmpDocNo=(a,b)=>docNoOf(a).localeCompare(docNoOf(b),undefined,{numeric:true});
@@ -7791,7 +7793,7 @@ function salesJobPickerMatches(q){
   const live=jobs.filter(j=>!isDeletedRecord(j));
   let f=live.filter(j=>{
     if(!q)return true;
-    return [j.id,j.client,j.branch,j.ref,j.type,j.team].some(v=>String(v||'').toLowerCase().includes(q));
+    return [j.id,j.client,j.branch,j.ref,j.type,j.team].some(v=>searchNorm(v).includes(searchNorm(q)));
   });
   // ใบกำกับภาษี: เหลือเฉพาะงานที่มีใบเสนอราคาแล้ว (แต่ยังคงงานที่เลือกไว้แล้วให้เอาออกได้)
   if(requireQt&&accountingLoaded)f=f.filter(j=>jobHasQuotation(j.id)||salesDraftJobs.some(x=>x.toLowerCase()===String(j.id).toLowerCase()));
@@ -9385,7 +9387,7 @@ function filteredDocs(type){
     const dateOk=docRangeFilter?inQuickRange({date:docDate(d)},docRangeFilter):(docDateFilter?docDate(d)===docDateFilter:true);
     if(!dateOk)return false;
     if(!s)return true;
-    return ['no','jid','cl','st','date','due'].some(k=>String(d[k]??'').toLowerCase().includes(s));
+    return ['no','jid','cl','st','date','due'].some(k=>searchNorm(d[k]).includes(searchNorm(s)));
   }).map(d=>({...d,date:docDate(d)})),docSortDir);
 }
 function buildDocControls(){
@@ -10608,7 +10610,7 @@ function renderReports(){
   if(rptFilter&&rptFilter!=='ทั้งหมด') fil=fil.filter(j=>j.status===rptFilter);
   if(rptSearch){
     const s=rptSearch.toLowerCase();
-    fil=fil.filter(j=>(j.id||'').toLowerCase().includes(s)||(j.branch||'').toLowerCase().includes(s)||(j.team||'').toLowerCase().includes(s)||(j.client||'').toLowerCase().includes(s));
+    {const ns=searchNorm(s);fil=fil.filter(j=>[j.id,j.branch,j.team,j.client].some(v=>searchNorm(v).includes(ns)));}
   }
   // ซ่อนงานปิดโดยอัตโนมัติ เว้นแต่เลือก filter "ปิดงาน" หรือกำลังค้นหา
   if(rptFilter!=='ปิดงาน'&&!rptSearch.trim())fil=fil.filter(j=>j.status!=='ปิดงาน');
