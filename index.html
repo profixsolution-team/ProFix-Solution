@@ -8084,7 +8084,7 @@ function pullSalesItemPrice(i){
   renderSalesItemEditor();
   setAccountingStatus('sales',`ดึงราคา "${row.name}" = ฿${money(row.price)} แล้ว`,'ok');
 }
-function updateSalesDraft(i,field,value){if(!salesDraftItems[i])return;if(field==='description'&&String(salesDraftItems[i].description||'')===String(value||''))return;salesDraftItems[i][field]=value;if(field==='description')applySalesItemDetails(i,value);renderSalesItemEditor();}
+function updateSalesDraft(i,field,value){if(!salesDraftItems[i])return;if(field==='description'&&(String(salesDraftItems[i].description||'')===String(value||'')||(salesSuggestState&&salesSuggestState.pickedRow===i&&Date.now()-(salesSuggestState.pickedAt||0)<800)))return;salesDraftItems[i][field]=value;if(field==='description')applySalesItemDetails(i,value);renderSalesItemEditor();}
 // ===== ช่องค้นหารายการจากราคากลาง (dropdown) — 2026-10-22 =====
 // แสดงเฉพาะรายการในราคากลาง · ค้นได้ทั้งชื่อ/รหัส/หมวด/สเปค แบบคำบางส่วน (พิมพ์หลายคำได้) · เลือกแล้วเติมราคา/หน่วย/รหัสให้
 let salesSuggestState={i:-1,el:null,list:[],active:0};
@@ -8133,7 +8133,7 @@ function salesSuggestOpen(i,el){
   if(!list.length){
     box.innerHTML=`<div class="ss-empty">${(!partsLoaded||partsLoadingPromise)?'กำลังโหลดราคากลาง...':'ไม่พบในราคากลาง'}</div>`;
   }else{
-    box.innerHTML=list.map((p,k)=>`<div class="ss-item${k===0?' active':''}" data-k="${k}" onmousedown="event.preventDefault();salesSuggestPick(${k})" onmouseenter="salesSuggestHover(${k})"><div class="ss-main"><div class="ss-name">${esc(p.name)}</div><div class="ss-sub">${[p.code,p.cat||p.category,p.brand||p.spec,p.unit].filter(Boolean).map(esc).join(' · ')}</div></div><div class="ss-price">฿${money(partSellPrice(p))}</div></div>`).join('');
+    box.innerHTML=list.map((p,k)=>`<div class="ss-item${k===0?' active':''}" data-k="${k}" onpointerdown="event.preventDefault();salesSuggestPick(${k})" onmouseenter="salesSuggestHover(${k})"><div class="ss-main"><div class="ss-name">${esc(p.name)}</div><div class="ss-sub">${[p.code,p.cat||p.category,p.brand||p.spec,p.unit].filter(Boolean).map(esc).join(' · ')}</div></div><div class="ss-price">฿${money(partSellPrice(p))}</div></div>`).join('');
   }
   box.hidden=false;salesSuggestPlace();
 }
@@ -8141,6 +8141,10 @@ function salesSuggestHover(k){salesSuggestState.active=k;document.querySelectorA
 function salesSuggestPick(k){
   const p=salesSuggestState.list[k],i=salesSuggestState.i;
   if(!p||!salesDraftItems[i])return;
+  // ใส่ชื่อที่เลือกลงช่องก่อนวาดตารางใหม่ — ไม่งั้นตอนช่องเดิมถูกถอดออก เบราว์เซอร์ยิง change ด้วยคำที่พิมพ์ค้าง
+  // ("แอร์") มาทับรายการที่เพิ่งเลือก → ต้องคลิกซ้ำ (เจอจริง 2026-10-22)
+  const el=salesSuggestState.el;if(el)el.value=p.name||'';
+  salesSuggestState.pickedRow=i;salesSuggestState.pickedAt=Date.now();
   applySalesCatalogPart(i,p);
   salesSuggestClose();
   renderSalesItemEditor();
@@ -8190,8 +8194,17 @@ function salesSourceBadge(src){
   if(src==='stock')return '<span class="jp-tag" style="background:var(--purple-dim);color:var(--purple);">สต็อก</span>';
   return '<span class="jp-tag" style="background:var(--surface3);color:var(--text3);">พิมพ์เอง</span>';
 }
+let salesEditorRendering=false;
 function renderSalesItemEditor(){
   const el=document.getElementById('sales-items-editor');if(!el)return;
+  // กันวาดซ้อน: ถ้าช่องในตารางกำลังโฟกัส การแทน innerHTML จะทำให้ช่องนั้น blur → change → เรียกวาดซ้ำกลางทาง (เคยเกิด DOM error)
+  if(salesEditorRendering)return;
+  salesEditorRendering=true;
+  try{const ae=document.activeElement;if(ae&&el.contains(ae)&&typeof ae.blur==='function')ae.blur();}catch(e){}
+  try{renderSalesItemEditorInner(el);}finally{salesEditorRendering=false;}
+  updateSalesSummary();
+}
+function renderSalesItemEditorInner(el){
   const catOpts=it=>['',...new Set([...(MASTER_PRICE_CATEGORIES||[]),it.category||''].filter((v,i,a)=>i===0||v||a.indexOf(v)===i))].map(c=>`<option value="${esc(c)}"${(it.category||'')===c?' selected':''}>${c||'— หมวด —'}</option>`).join('');
   const showPo=(document.getElementById('sale-doc-type')?.value==='tax_invoice'); // ช่อง PO ต่อบรรทัด เฉพาะตอนออกใบกำกับภาษี
   const n=salesDraftItems.length;
@@ -8399,6 +8412,8 @@ async function saveSalesInvoice(){if(!guardEdit())return;
       if(!del.ok)throw new Error(await del.text());
     }
     if(rows.length)await sbUpsertResilient('sales_invoice_items','?on_conflict=id',rows);
+    // แจ้งแท็บอื่นทันทีที่เอกสาร+รายการขึ้น server แล้ว — แท็บเอกสารปิดตัวเองหลัง closeM (60 ms) ถ้ารอแจ้งท้ายฟังก์ชันจะไม่ทันส่ง
+    broadcastDataChanged('accounting');
     upsertClientFromBill(inv.customer_name);
     // ใบเสนอราคาถูกแก้ราคา → อัปเดตใบกำกับแบบสรุปที่อ้างถึงงานนี้อัตโนมัติ (ลิงค์กัน)
     if(docType==='tax_invoice'){
@@ -11271,6 +11286,7 @@ function applyBroadcastFields(msg){
     try{cacheFastState();}catch(e){}
   },200);
 }
+let accountingSyncRetry=null;
 function onProfixSync(kind,msg){
   if(kind==='fields'){applyBroadcastFields(msg);return;}
   if(kind==='jobs'){
@@ -11280,7 +11296,13 @@ function onProfixSync(kind,msg){
   }
   if(kind!=='accounting')return;
   // กำลังแก้ไขบิลอยู่ในแท็บนี้ หรือมีงานค้างบันทึก → ยังไม่ทับ (poll ปกติจะซิงก์ให้ทีหลัง)
-  if(document.getElementById('m-sales')?.classList.contains('open')||document.getElementById('m-purchase')?.classList.contains('open')||hasUnsyncedLocalChanges)return;
+  if(document.getElementById('m-sales')?.classList.contains('open')||document.getElementById('m-purchase')?.classList.contains('open')||hasUnsyncedLocalChanges){
+    // ตอนนี้ยังรีโหลดไม่ได้ (เปิดฟอร์มบิลค้าง/มีงานรอบันทึก) → ลองใหม่อีกครั้งใน 3 วิ แทนการทิ้งสัญญาณ (เดิมต้องรอ poll หรือรีเฟรชเอง)
+    clearTimeout(accountingSyncRetry);
+    const tries=(msg&&msg._tries)||0;
+    if(tries<40)accountingSyncRetry=setTimeout(()=>onProfixSync('accounting',{_tries:tries+1}),3000);
+    return;
+  }
   if(!accountingLoaded)return;
   ensureAccountingLoaded(true).then(()=>{
     lastAccountingRefreshAt=Date.now(); // เพิ่งรีโหลดสด → กัน poll รีโหลดซ้ำติดกัน
