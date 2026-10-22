@@ -6424,7 +6424,8 @@ function convertSalesDoc(id,toType){
 // พิมพ์ / บันทึก PDF เอกสารขายตามชนิด
 // ===== พรีวิวเอกสารใน modal (คลิกที่ list บิลซื้อ/ขาย) =====
 function salesDocHtmlFor(inv,items){
-  if(((inv.doc_type==='tax_invoice'||inv.doc_type==='invoice')&&inv.doc_template==='summary'))return salesTaxSummaryHtml(inv,items);
+  // ใบกำกับภาษีทุกแบบ (สรุป/แจกแจง) พิมพ์ด้วยฟอร์มเดียวกัน — แบบแจกแจงใช้ยอดตามที่บันทึกไว้ (ดู storedAmt ใน salesTaxSummaryHtml)
+  if(inv.doc_type==='tax_invoice'||(inv.doc_type==='invoice'&&inv.doc_template==='summary'))return salesTaxSummaryHtml(inv,items);
   const useBoq=inv.doc_type==='quotation'&&(inv.doc_template||'boq')!=='modern';
   return useBoq?boqQuoteDocHtml(inv,items):salesDocHtml(inv,items);
 }
@@ -6708,11 +6709,20 @@ function salesTaxSummaryHtml(inv,items){
   const jobList=salesInvoiceJobs(inv);
   // ใบแจ้งหนี้/ใบวางบิล ใช้ฟอร์มสรุปเดียวกับใบกำกับภาษี แต่คอลัมน์ = รหัส PO / เลขที่ใบกำกับภาษี / ราคาต่อหน่วย (ดึงจากใบกำกับภาษี)
   const isInv=(inv.doc_type==='invoice');
+  // ใบกำกับภาษีแบบแจกแจง (ไม่ได้ผูกยอดสดกับใบเสนอราคา) → ใช้ยอดที่บันทึกไว้ + แสดง Overhead/เดินทาง/SLA เป็นบรรทัดท้ายตาราง
+  const storedAmt=!isInv&&inv.doc_template!=='summary';
+  if(storedAmt){
+    const adj=[];
+    if(Number(inv.overhead_amount||0))adj.push({description:'Overhead'+(Number(inv.overhead_rate||0)?' '+money(inv.overhead_rate)+'%':''),quantity:1,unit_price:Number(inv.overhead_amount),subtotal:Number(inv.overhead_amount),_adj:true});
+    if(Number(inv.travel_amount||0))adj.push({description:'ค่าเดินทาง'+(Number(inv.travel_km||0)?' '+money(inv.travel_km).replace(/\.00$/,'')+' กม.':''),quantity:1,unit_price:Number(inv.travel_amount),subtotal:Number(inv.travel_amount),_adj:true});
+    if(Number(inv.sla_fee_amount||0))adj.push({description:inv.sla_fee_label||'ค่าดำเนินการ SLA',quantity:1,unit_price:Number(inv.sla_fee_amount),subtotal:Number(inv.sla_fee_amount),_adj:true});
+    items=(items||[]).concat(adj);
+  }
   const invVatMode=isInv?inferVatMode(inv,(items||[]).reduce((s,it)=>s+Number(it.subtotal||0),0)):'';
   const lineRows=(items||[]).map((it,i)=>{
     const unitPrice=Number(it.unit_price||0);
     const qty=Number(it.quantity||1);
-    const pr=String(it.item_code||'').trim()||String(jobList[i]||'').trim()||'';
+    const pr=it._adj?'':(storedAmt?String(it.item_code||'').trim():(String(it.item_code||'').trim()||String(jobList[i]||'').trim()||''));
     let po='', taxNo='', liveAmt=null;
     if(isInv){
       // ใบแจ้งหนี้: หาใบกำกับภาษีต้นทาง (จาก source_doc_id ก่อน ไม่งั้นจาก PR) → ดึง "PO รวม" จากบรรทัดของใบกำกับภาษีนั้น + เลขที่ใบกำกับ
@@ -6733,7 +6743,7 @@ function salesTaxSummaryHtml(inv,items){
       qty:qty,
       unit:String(it.unit||'JOB').trim()||'JOB',
       unitPrice:liveAmt!=null?Math.round(liveAmt/(qty||1)*100)/100:unitPrice,
-      amount:isInv?(liveAmt!=null?liveAmt:Math.round(unitPrice*qty*100)/100):liveTaxSummaryLineAmount(it)
+      amount:isInv?(liveAmt!=null?liveAmt:Math.round(unitPrice*qty*100)/100):storedAmt?Math.round((it.subtotal!=null&&it.subtotal!==''?Number(it.subtotal):Math.max(0,unitPrice*qty-Number(it.discount||0)))*100)/100:liveTaxSummaryLineAmount(it)
     };
   });
   let lineSum,subtotal,discount,afterDiscount,vat,total;
@@ -6742,6 +6752,12 @@ function salesTaxSummaryHtml(inv,items){
     discount=invBillDiscount(inv,lineSum);
     const _vt=computeVatTotals(lineSum-discount,invVatMode); // ยอดสดจากใบกำกับภาษีที่ดึงมา (หักส่วนลดท้ายบิล) + VAT ตามที่เลือกท้ายบิล
     subtotal=_vt.subtotal+discount; afterDiscount=_vt.subtotal; vat=_vt.vat; total=_vt.total;
+  }else if(storedAmt){ // ยอดตามที่บันทึกไว้บนเอกสาร (ไม่คิดใหม่) — ส่วนต่างระหว่างผลรวมบรรทัดกับยอดก่อน VAT = ส่วนลด
+    lineSum=Math.round(lineRows.reduce((s,r)=>s+Number(r.amount||0),0)*100)/100;
+    total=Number(inv.total_amount||0); vat=Number(inv.vat_amount||0);
+    afterDiscount=Math.round((total-vat)*100)/100;
+    if(vat>0&&Math.abs(lineSum-total)<Math.max(1,total*0.01)){subtotal=afterDiscount;discount=0;} // ราคารวม VAT แล้ว
+    else{discount=Math.max(0,Math.round((lineSum-afterDiscount)*100)/100);subtotal=lineSum;}
   }else{
     const _lt=liveTaxSummaryTotals(inv,items);
     lineSum=_lt.lineSum; subtotal=_lt.subtotal; discount=_lt.discount; afterDiscount=_lt.afterDiscount; vat=_lt.vat; total=_lt.total;
