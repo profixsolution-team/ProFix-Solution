@@ -2216,6 +2216,35 @@ async function doRecoverySubmit(ev){
   }catch(err){msg.className='login-msg';msg.textContent='⚠️ '+(err.message||err);btn.disabled=false;}
   return false;
 }
+// แยกสาเหตุ error ตอนล็อกอิน — เดิมทุก error ขึ้นว่า "รหัสผ่านผิด" ทำให้เน็ตหลุด (เปลี่ยน wifi) / โดนจำกัดจำนวนครั้ง ดูเหมือนรหัสผิด
+function authErrorInfo(err){
+  const st=Number(err?.status||0),code=String(err?.code||'').toLowerCase(),m=String(err?.message||err||'').toLowerCase(),name=String(err?.name||'');
+  const tag=[st||'',code||name].filter(Boolean).join(' ');
+  if(code==='invalid_credentials'||m.includes('invalid login credentials'))return {kind:'cred',text:'อีเมลหรือรหัสผ่านไม่ถูกต้อง',tag};
+  if(code==='email_not_confirmed'||m.includes('not confirmed'))return {kind:'confirm',text:'กรุณายืนยันอีเมลก่อน (กดลิงก์ในเมลที่ส่งไป)',tag};
+  if(st===429||code.includes('rate_limit')||m.includes('rate limit')||m.includes('too many'))
+    return {kind:'rate',text:'ล็อกอินบ่อยเกินไปจากเครือข่ายนี้ ระบบพักไว้ชั่วคราว — รอประมาณ 5 นาทีแล้วลองใหม่ (ไม่ใช่รหัสผ่านผิด)',tag};
+  if(name==='AuthRetryableFetchError'||st===0||m.includes('failed to fetch')||m.includes('network')||m.includes('load failed')||m.includes('timeout')||m.includes('fetch'))
+    return {kind:'net',text:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ (เน็ตเพิ่งเปลี่ยน/หลุด) — ตรวจ wifi แล้วกดเข้าสู่ระบบอีกครั้ง (ไม่ใช่รหัสผ่านผิด)',tag};
+  if(st>=500)return {kind:'net',text:'เซิร์ฟเวอร์ตอบช้าชั่วคราว — ลองใหม่อีกครั้งในไม่กี่วินาที (ไม่ใช่รหัสผ่านผิด)',tag};
+  return {kind:'other',text:'เข้าสู่ระบบไม่สำเร็จ: '+(err?.message||err),tag};
+}
+const authSleep=ms=>new Promise(r=>setTimeout(r,ms));
+// เรียกซ้ำอัตโนมัติเฉพาะ error ฝั่งเครือข่าย (ไม่ลองซ้ำกรณีรหัสผิด/โดนจำกัดครั้ง เพื่อไม่ให้ติดลิมิตนานขึ้น)
+async function authWithRetry(fn,onRetry){
+  let last;
+  for(let i=0;i<3;i++){
+    try{const res=await fn();if(res&&res.error){if(authErrorInfo(res.error).kind!=='net')return res;last=res;}else return res;}
+    catch(e){if(authErrorInfo(e).kind!=='net')throw e;last={error:e};}
+    if(i<2){onRetry&&onRetry(i+1);await authSleep(i?2500:1000);}
+  }
+  return last;
+}
+async function fetchMyProfileRetry(onRetry){
+  const res=await authWithRetry(async()=>{try{return {data:await fetchMyProfile()};}catch(e){return {error:e};}},onRetry);
+  if(res.error)throw res.error;
+  return res.data;
+}
 async function doLoginSubmit(ev){
   ev.preventDefault();
   const email=(document.getElementById('login-user').value||'').trim().toLowerCase();
@@ -2224,15 +2253,17 @@ async function doLoginSubmit(ev){
   if(!email||!p){msg.className='login-msg';msg.textContent='กรอกอีเมลและรหัสผ่าน';return false;}
   btn.disabled=true;msg.className='login-msg';msg.textContent='กำลังตรวจสอบ...';
   try{
-    const {data,error}=await sbClient.auth.signInWithPassword({email,password:p});
+    const retryMsg=n=>{msg.className='login-msg';msg.textContent=`เน็ตสะดุด — กำลังลองเชื่อมต่อใหม่ (${n}/2)...`;};
+    const {data,error}=await authWithRetry(()=>sbClient.auth.signInWithPassword({email,password:p}),retryMsg);
     if(error){
-      const em=(error.message||'').toLowerCase();
+      const info=authErrorInfo(error);
+      console.warn('[login] failed',info.tag,error);
       msg.className='login-msg';
-      msg.textContent = (em.includes('not confirmed')||em.includes('confirm')) ? 'กรุณายืนยันอีเมลก่อน (กดลิงก์ในเมลที่ส่งไป)' : 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+      msg.innerHTML=esc(info.text)+(info.tag&&info.kind!=='cred'?`<div style="font-size:11px;opacity:.65;margin-top:4px;">รหัส: ${esc(info.tag)}</div>`:'');
       btn.disabled=false;return false;
     }
     ACCESS_TOKEN=(data&&data.session&&data.session.access_token)||null;
-    const me=await fetchMyProfile();
+    const me=await fetchMyProfileRetry(retryMsg);
     if(!me){await sbClient.auth.signOut();ACCESS_TOKEN=null;msg.className='login-msg';msg.textContent='บัญชีนี้ยังไม่ได้ตั้งค่าสิทธิ์ ติดต่อแอดมิน';btn.disabled=false;return false;}
     if(me.status!=='approved'||!me.active){
       await sbClient.auth.signOut();ACCESS_TOKEN=null;
@@ -2246,7 +2277,7 @@ async function doLoginSubmit(ev){
     document.getElementById('login-pass').value='';
     applyRolePermissions();
     if(!window.__appStarted){window.__appStarted=true;startApp();}
-  }catch(err){msg.className='login-msg';msg.textContent='⚠️ '+(err.message||err);}
+  }catch(err){const info=authErrorInfo(err);console.warn('[login] error',info.tag,err);msg.className='login-msg';msg.textContent='⚠️ '+info.text;}
   btn.disabled=false;return false;
 }
 async function logout(){
@@ -11928,7 +11959,19 @@ function startApp(){ initApp(); }
     plogMark('auth session');
     ACCESS_TOKEN=(session&&session.access_token)||null;
     if(session){
-      const me=await fetchMyProfile();
+      let me;
+      try{me=await fetchMyProfileRetry();}
+      catch(e){
+        // มี session ที่บันทึกไว้ แต่เน็ตยังเชื่อมไม่ได้ (เช่น เพิ่งสลับ wifi) → ไม่ออกจากระบบ ให้กดลองใหม่แทนการกรอกรหัสใหม่
+        if(authErrorInfo(e).kind==='net'){
+          console.warn('auth bootstrap: network error, keeping session',e);
+          showLogin();
+          const lm=document.getElementById('login-msg');
+          if(lm){lm.className='login-msg';lm.innerHTML='เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ (เน็ตเพิ่งเปลี่ยน/หลุด) — ยังจำการล็อกอินไว้ ไม่ต้องกรอกรหัสใหม่<br><button type="button" class="btn btn-primary btn-sm" style="margin-top:8px" onclick="location.reload()">ลองเชื่อมต่อใหม่</button>';}
+          return;
+        }
+        throw e;
+      }
       plogMark('profile ok');
       if(me&&me.status==='approved'&&me.active){
         AUTH={email:me.email,display_name:me.display_name||me.email,role:me.role,status:me.status};
