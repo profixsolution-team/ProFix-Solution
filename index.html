@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProFix Service Console</title>
 <link rel="icon" type="image/svg+xml" href="assets/profix-icon.svg">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--surface2:#1f2937;--surface3:#273344;--border:#30363d;--border2:#3d4754;--accent:#58a6ff;--accent-dim:#1a3a5c;--green:#3fb950;--green-dim:#1a3a1f;--yellow:#d29922;--yellow-dim:#3a2a0a;--red:#f85149;--red-dim:#3a0f0f;--purple:#bc8cff;--purple-dim:#2d1f4e;--orange:#f0883e;--orange-dim:#3a1e0a;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--mono:"IBM Plex Mono",monospace;--sans:"Noto Sans Thai",sans-serif;}
@@ -641,6 +641,143 @@ select option{background:var(--surface2);}
 .tp-paid>div:last-child{grid-column:1/-1}.tp-paid-net{font-weight:800;font-size:16px;color:var(--green)}
 .tp-note{background:var(--accent-dim);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.7;margin-bottom:12px}.tp-note.warn{background:var(--yellow-dim)}
 @media (max-width:980px){.tp-kpis{grid-template-columns:repeat(2,1fr)}.tp-grid,.tp-foot{grid-template-columns:1fr}#page-tech-pay .tp-field select{min-width:0;width:100%}}
+
+/* =====================================================================
+   ProFix 2026 — ฐานหน้าตาใหม่ (ขั้นที่ 1): เปลี่ยนเฉพาะหน้าตา ไม่แตะการทำงาน
+   สว่าง = ขาว/เทา/ฟ้าอมเทา เป็นหลัก · ดำ + น้ำเงิน #175FFF เป็นสีเน้น
+   ===================================================================== */
+:root{--sans:"Anuphan","Noto Sans Thai",sans-serif;--r-xl:24px;--r-lg:18px;--r-md:12px;--ink:#0b1220;--ink-text:#ffffff;--panel:#161d29;--shadow-1:0 1px 2px rgba(0,0,0,.25);}
+body[data-theme="light"]{--bg:#eef1f5;--surface:#ffffff;--surface2:#f4f6f9;--surface3:#e9edf2;--border:#e2e7ee;--border2:#cbd3df;--accent:#175fff;--accent-dim:#e6eeff;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--panel:#e4e9f0;--shadow-1:0 1px 2px rgba(15,23,42,.04),0 8px 24px rgba(15,23,42,.05);}
+body{font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+/* ป้าย/หัวตาราง/ชื่อกลุ่มเมนู ใช้ฟอนต์เดียวกับเนื้อหา (เดิมเป็นฟอนต์ mono ตัวพิมพ์ใหญ่) */
+th,.badge,.chip,.nav-section,.nav-badge,.nav-badge-y,.filter-label{font-family:var(--sans)!important;}
+/* ----- เมนูซ้าย ----- */
+.nav-section{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);padding:14px 12px 5px;}
+.nav-item{border-radius:12px;padding:9px 12px;font-size:13.5px;gap:12px;}
+.nav-item.active{background:var(--accent-dim);color:var(--accent);font-weight:600;}
+.nav-badge,.nav-badge-y{border-radius:999px;padding:1px 8px;min-width:22px;text-align:center;}
+@media(min-width:769px){
+  .app{padding:12px 0 0 12px;}
+  .sidebar{width:236px;min-width:236px;margin:0 12px 12px 0;top:12px;height:calc(100vh - 24px);border:0 !important;border-radius:var(--r-xl);box-shadow:var(--shadow-1);padding:4px 10px 10px;}
+}
+/* ----- หัวหน้า + แถบกรอง: ลอยบนพื้นเทา ไม่เป็นแถบขาวเต็มกว้าง ----- */
+.page-header{background:transparent;border-bottom:0;padding:18px 24px 10px;}
+.page-title{font-size:26px;font-weight:600;letter-spacing:-.3px;}
+.page-sub{color:var(--text3);}
+.filter-bar{background:transparent;border-bottom:0;padding:6px 24px 10px;gap:8px;}
+.content{padding:10px 24px 28px;}
+/* ----- ปุ่ม: ทรงแคปซูล ----- */
+.btn{border-radius:999px;padding:8px 16px;font-weight:500;gap:7px;}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-xs{border-radius:999px !important;}
+.btn-ghost{background:var(--surface);border:1px solid var(--border);color:var(--text2);}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);}
+.btn-primary{background:var(--accent);box-shadow:0 1px 2px rgba(23,95,255,.25);}
+/* ----- ช่องกรอก / dropdown ----- */
+input,select,textarea{border-radius:var(--r-md);}
+.filter-input,.filter-select,.search-input{border-radius:999px !important;padding:7px 14px !important;background:var(--surface);border:1px solid var(--border);}
+body[data-theme="light"] input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),body[data-theme="light"] select,body[data-theme="light"] textarea{background:#fff;border-color:var(--border);}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent) !important;box-shadow:0 0 0 3px var(--accent-dim);}
+.filter-tab{border-radius:999px;padding:6px 14px;background:var(--surface);}
+body[data-theme="light"] .filter-tab.active{background:var(--ink);color:var(--ink-text);border-color:var(--ink);}
+.tab-btn{border-radius:999px;padding:6px 14px;}
+/* ----- การ์ด / ตาราง ----- */
+.table-wrap{border:0 !important;border-radius:var(--r-lg) !important;box-shadow:var(--shadow-1);}
+.table-header{padding:14px 18px;}
+.table-title{font-size:15px;font-weight:600;}
+th{font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--text3);background:transparent;padding:11px 14px;}
+td{padding:11px 14px;}
+body[data-theme="light"] tr:hover td{background:#f7f9fc;}
+.stat-card,.fin-card{border:0;border-radius:var(--r-lg);box-shadow:var(--shadow-1);padding:16px 18px;}
+.stat-value{letter-spacing:-.4px;}
+/* ตัวเลข/รหัสงาน: เดิมเป็นฟอนต์ mono → ใช้ฟอนต์เดียวกันทั้งระบบ + ตัวเลขกว้างเท่ากัน (ตารางเงินยังตรงหลัก) */
+:root{--mono:"Anuphan","Noto Sans Thai",sans-serif;}
+body{font-variant-numeric:tabular-nums;}
+.stat-label,.fin-label{font-size:12px;letter-spacing:0;text-transform:none;color:var(--text3);}
+.stat-value{font-size:26px;font-weight:600;}
+.fin-value{font-size:24px;font-weight:600;letter-spacing:-.3px;}
+.login-card .btn{justify-content:center;}
+.login-card{border:0;border-radius:var(--r-xl);box-shadow:0 30px 80px rgba(11,18,32,.14);}
+/* ----- ป้ายสถานะ: พื้นอ่อน + ตัวหนังสือเข้มของสีเดียวกัน ----- */
+.badge{border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:600;}
+body[data-theme="light"] .badge{background:color-mix(in srgb,currentColor 11%,#fff) !important;border-color:transparent !important;box-shadow:none !important;}
+.chip{border-radius:999px;padding:2px 9px;font-size:11.5px;}
+/* ----- หน้าต่าง popup ----- */
+.modal-overlay{background:rgba(11,18,32,.38);backdrop-filter:blur(2px);}
+.modal{border:0;border-radius:var(--r-xl);box-shadow:0 30px 80px rgba(11,18,32,.28);}
+.modal-header{padding:18px 24px;}
+.modal-footer{border-radius:0 0 var(--r-xl) var(--r-xl);}
+/* ----- จ่ายช่าง: ใช้โทนเดียวกัน ----- */
+.tp-kpi,.tp-card,.tp-team{border:0;box-shadow:var(--shadow-1);border-radius:var(--r-lg);}
+.tp-team.on{box-shadow:0 0 0 2px var(--accent);}
+
+/* ===== กรอบหน้าจอ (ตาม mockup): เมนูโลโก้เล็ก + ไอคอนเส้น + แถบบน + หัวหน้าตัวใหญ่ ===== */
+.sidebar .sb-brand{display:flex;align-items:center;gap:8px;padding:14px 8px 8px;border-bottom:0;}
+.sidebar .sb-brand .brand-home{flex:1;min-width:0;}
+.sidebar .brand-logo{height:30px !important;max-width:132px !important;}
+.sidebar .logo-sub,.sidebar .sb-oldlogo{display:none;}
+.sidebar .sb-brand .brand-home{display:flex;align-items:center;gap:10px;background:none;border:0;cursor:pointer;padding:0;text-align:left;}
+.sb-mark{width:34px;height:34px;border-radius:10px;flex:none;}
+.sb-word{font-size:14.5px;font-weight:700;color:var(--text);white-space:nowrap;letter-spacing:-.1px;}
+.sb-word b{color:var(--accent);font-weight:700;}
+.nav-item{white-space:nowrap;}
+body.sb-mini .sb-word{display:none;}
+.sb-collapse{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;flex:none;font-size:13px;line-height:1;}
+.sb-collapse:hover{color:var(--text);}
+.nav-icon{display:inline-grid;place-items:center;width:20px;height:20px;flex:none;opacity:.85;}
+.nav-item.active .nav-icon{opacity:1;}
+.sidebar .version-chip{margin-top:auto;padding:10px 12px 4px;}
+#user-chip{margin-top:0;border-top:1px solid var(--border);}
+@media(min-width:769px){
+  body.sb-mini .sidebar{width:78px !important;min-width:78px !important;padding:4px 8px 10px;}
+  body.sb-mini .sidebar .sb-brand{flex-direction:column;}
+  body.sb-mini .sidebar .brand-logo{max-width:52px !important;height:22px !important;object-fit:contain;object-position:left;}
+  body.sb-mini .sb-collapse{transform:rotate(180deg);}
+  body.sb-mini .nav-section,body.sb-mini .version-chip{display:none !important;}
+  body.sb-mini .nav-item{font-size:0;justify-content:center;padding:10px;position:relative;}
+  body.sb-mini .nav-item .nav-badge,body.sb-mini .nav-item .nav-badge-y{position:absolute;top:3px;right:3px;font-size:9px;min-width:16px;padding:0 4px;}
+  body.sb-mini #user-chip{flex-direction:column;font-size:0;}
+  body.sb-mini #user-chip > div:first-child{display:none;}
+}
+.topbar2{display:flex;align-items:center;gap:10px;padding:2px 24px 0 0;margin-bottom:2px;}
+.tb-search{display:flex;align-items:center;gap:8px;flex:1;max-width:520px;background:var(--surface);border-radius:999px;padding:9px 16px;color:var(--text3);box-shadow:var(--shadow-1);cursor:text;}
+.tb-search input{border:0 !important;outline:0;background:transparent !important;flex:1;min-width:0;padding:0 !important;box-shadow:none !important;color:var(--text);font-size:13.5px;}
+.tb-spacer{flex:1;}
+.tb-theme{display:flex;background:var(--surface);border-radius:999px;padding:4px;box-shadow:var(--shadow-1);}
+.tb-theme button{border:0;background:none;border-radius:999px;padding:6px 12px;cursor:pointer;color:var(--text3);font-family:inherit;font-size:12.5px;}
+.tb-theme button.on{background:var(--ink);color:var(--ink-text);}
+body[data-theme="dark"] .tb-theme button.on{background:var(--accent);color:#fff;}
+.tb-user{display:flex;align-items:center;gap:8px;background:var(--surface);border:0;border-radius:999px;padding:4px 14px 4px 4px;box-shadow:var(--shadow-1);cursor:pointer;font-family:inherit;color:var(--text);}
+.tb-av{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:600;font-size:13px;}
+.tb-name{font-size:13px;font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media(max-width:768px){.topbar2{display:none;}}
+html.doc-mode .topbar2{display:none !important;}
+/* หัวหน้า: ชื่อหน้าใหญ่ + ตัวเลขสรุปด้านขวา */
+.page-header{align-items:flex-end;gap:20px;flex-wrap:wrap;}
+.page-title{font-size:30px;}
+.ph-big{display:flex;gap:26px;margin-left:auto;flex-wrap:wrap;}
+.ph-big .k{min-width:96px;}
+.ph-big .k + .k{padding-left:26px;border-left:1px solid var(--border);}
+.ph-big .l{font-size:12px;color:var(--text3);}
+.ph-big .v{font-size:28px;font-weight:600;letter-spacing:-.5px;line-height:1.15;}
+.ph-big .v.bad{color:var(--red);}
+@media(max-width:768px){.page-title{font-size:22px;}.ph-big{margin-left:0;gap:16px;width:100%;}.ph-big .k + .k{padding-left:16px;}.ph-big .v{font-size:22px;}}
+
+/* ===== กลุ่ม A (ให้เหมือน mockup ทุกหน้า) ===== */
+/* 1) กล่องเทาครอบการ์ดขาว — เฉพาะกล่องที่เป็นตาราง/มีหัวตาราง */
+.table-wrap:has(> table),.table-wrap:has(> .table-header),.table-wrap:has(> .table-scroll){background:var(--panel) !important;padding:6px;box-shadow:none !important;border-radius:24px !important;}
+.table-wrap:has(> .table-header) > .table-header{background:transparent;border-bottom:0;padding:10px 14px 12px;}
+.table-wrap:has(> table) > table,.table-wrap:has(> .table-header) > :not(.table-header),.table-wrap:has(> .table-scroll) > .table-scroll{background:var(--surface);border-radius:18px;overflow:hidden;}
+.table-wrap:has(> table) > table{display:table;width:100%;}
+/* 2) สถานะในตาราง = ชิปสีมน (สีมาจากสถานะเดิม) — ยังกดเลือกเปลี่ยนสถานะได้เหมือนเดิม */
+.status-select{-webkit-appearance:none;appearance:none;border:0 !important;border-radius:999px !important;padding:4px 26px 4px 11px !important;font-family:var(--sans) !important;font-size:12px !important;font-weight:600 !important;background-color:color-mix(in srgb,currentColor 13%,var(--surface)) !important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-position:right 9px center !important;box-shadow:none !important;max-width:200px;}
+.status-select:hover{filter:brightness(.97);}
+.status-select.su-urgent{background-color:#dc2626 !important;color:#fff !important;}
+/* 3) แถบกรอง: ป้ายนำหน้าถูกย้ายเข้าไปในช่อง (ดูสคริปต์ pfEnhanceFilters) */
+.filter-label.pf-hide,.pf-hide{display:none !important;}
+.filter-bar select,.filter-bar input:not([type=checkbox]):not([type=radio]){border-radius:999px !important;}
+/* 4) ป้ายประเภท/แท็ก: พื้นอ่อน ไม่มีกรอบเส้น */
+.chip{background:var(--surface2) !important;border:0 !important;color:var(--text2) !important;box-shadow:none !important;font-weight:500;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -701,45 +838,49 @@ select option{background:var(--surface2);}
 <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
 <div class="app">
 <aside class="sidebar">
-  <div class="logo">
-    <button class="brand-home brand-lockup" onclick="goTo('dashboard')" type="button" aria-label="กลับหน้า Dashboard">
-      <div><img class="brand-logo logo-dark" src="assets/profix-logo.svg" alt="ProFix Solution"><img class="brand-logo logo-light" src="assets/profix-logo-dark.svg" alt="ProFix Solution"><div class="logo-sub">Service Console</div></div>
+  <div class="logo sb-brand">
+    <button class="brand-home brand-lockup" onclick="goTo('dashboard')" type="button" aria-label="กลับหน้าภาพรวม">
+      <img class="sb-mark" src="assets/profix-icon.svg" alt=""><span class="sb-word">Pro<b>Fix</b> Console</span>
+      <div class="sb-oldlogo"><img class="brand-logo logo-dark" src="assets/profix-logo.svg" alt="ProFix Solution"><img class="brand-logo logo-light" src="assets/profix-logo-dark.svg" alt="ProFix Solution"><div class="logo-sub">Service Console</div></div>
     </button>
-    <button class="theme-toggle" onclick="toggleTheme()" type="button"><span id="theme-label">Light mode</span><span class="theme-icon" id="theme-icon">☀</span></button>
-    <div class="version-chip"><span>Version</span><b id="app-version-label">—</b></div>
+    <button class="sb-collapse" type="button" onclick="toggleSidebarMini()" title="ย่อ / ขยายเมนู" aria-label="ย่อ / ขยายเมนู">«</button>
+    <button class="theme-toggle" onclick="toggleTheme()" type="button" style="display:none"><span id="theme-label">Light mode</span><span class="theme-icon" id="theme-icon">☀</span></button>
   </div>
   <nav class="nav">
-    <div class="nav-section">หลัก</div>
-    <button class="nav-item active" data-page="dashboard" onclick="goTo('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</button>
-    <div class="nav-section">Tracker</div>
-    <button class="nav-item" data-page="admin-tracker" onclick="goTo('admin-tracker',this)"><span class="nav-icon">🗂</span>Admin Tracker<span class="nav-badge-y" id="nb-admin">2</span></button>
-    <button class="nav-item" data-page="jobs" onclick="goTo('jobs',this)"><span class="nav-icon">📋</span>คิวช่าง<span class="nav-badge" id="nb-new">3</span></button>
-    <button class="nav-item" data-page="job-calendar" onclick="goTo('job-calendar',this)"><span class="nav-icon">▦</span>Calendar คิวช่าง</button>
-    <div class="nav-section">งานลูกค้า</div>
-    <button class="nav-item" data-page="customer-requests" onclick="goTo('customer-requests',this)"><span class="nav-icon">☑</span>งานจากลูกค้า<span class="nav-badge-y" id="nb-customer-requests" style="display:none;">0</span></button>
-    <div class="nav-section">การเงิน</div>
-    <button class="nav-item" data-page="finance" onclick="goTo('finance',this)"><span class="nav-icon">💰</span>ภาพรวมการเงิน</button>
-    <button class="nav-item" data-page="tech-pay" onclick="goTo('tech-pay',this)"><span class="nav-icon">👷</span>จ่ายช่าง</button>
+    <div class="nav-section">งาน</div>
+    <button class="nav-item active" data-page="dashboard" onclick="goTo('dashboard',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>ภาพรวม</button>
+    <button class="nav-item" data-page="admin-tracker" onclick="goTo('admin-tracker',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span>Admin Tracker<span class="nav-badge-y" id="nb-admin">2</span></button>
+    <button class="nav-item" data-page="jobs" onclick="goTo('jobs',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg></span>คิวช่าง<span class="nav-badge" id="nb-new">3</span></button>
+    <button class="nav-item" data-page="job-calendar" onclick="goTo('job-calendar',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>ปฏิทิน</button>
+    <button class="nav-item" data-page="customer-requests" onclick="goTo('customer-requests',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg></span>งานจากลูกค้า<span class="nav-badge-y" id="nb-customer-requests" style="display:none;">0</span></button>
+    <button class="nav-item" data-page="reports" onclick="goTo('reports',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span>รายงานช่าง</button>
     <div class="nav-section">เอกสาร</div>
-    <button class="nav-item" data-page="workorders" onclick="goTo('workorders',this)"><span class="nav-icon">🗃</span>ใบงาน / แฟ้ม PR</button>
-    <button class="nav-item" data-page="purchase-tax" onclick="goTo('purchase-tax',this)"><span class="nav-icon">🧾</span>บิลซื้อ / ภาษีซื้อ</button>
-    <button class="nav-item" data-page="sales-tax" onclick="goTo('sales-tax',this)"><span class="nav-icon">🧾</span>บิลขาย / ภาษีขาย</button>
-    <div class="nav-section">ข้อมูลระบบ</div>
-    <button class="nav-item" data-page="settings-clients" onclick="goTo('settings-clients',this)"><span class="nav-icon">🏢</span>ลูกค้า / Vendor</button>
-    <button class="nav-item" data-page="settings-teams" onclick="goTo('settings-teams',this)"><span class="nav-icon">👷</span>ทีมช่าง & ราคา</button>
-    <button class="nav-item" data-page="master-price" onclick="goTo('master-price',this)"><span class="nav-icon">🏷️</span>ราคากลาง</button>
-    <button class="nav-item" data-page="settings-suppliers" onclick="goTo('settings-suppliers',this)"><span class="nav-icon">🔩</span>ซัพพลายเออร์</button>
-    <button class="nav-item" data-page="stock" onclick="goTo('stock',this)"><span class="nav-icon">📦</span>Stock / คลังอะไหล่<span class="nav-badge-y" id="nb-stock" style="display:none;">0</span></button>
-    <div class="nav-section">รายงาน</div>
-    <button class="nav-item" data-page="reports" onclick="goTo('reports',this)"><span class="nav-icon">📝</span>รายงานช่าง</button>
-    <button class="nav-item" data-page="system-safety" onclick="goTo('system-safety',this)"><span class="nav-icon">🛡</span>กู้ข้อมูล / Backup</button>
-    <div class="nav-section">บัญชี</div>
-    <button class="nav-item" data-page="account" onclick="goTo('account',this)"><span class="nav-icon">⚙️</span>ตั้งค่าบัญชี</button>
-    <button class="nav-item" data-page="technicians" onclick="goTo('technicians',this)"><span class="nav-icon">🧑‍🔧</span>ช่าง (LINE)<span class="nav-badge" id="nb-techs" style="display:none;">0</span></button>
-    <button class="nav-item" data-page="users" onclick="goTo('users',this)"><span class="nav-icon">👥</span>จัดการผู้ใช้<span class="nav-badge" id="nb-users" style="display:none;">0</span></button>
+    <button class="nav-item" data-page="sales-tax" onclick="goTo('sales-tax',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>เอกสารขาย</button>
+    <button class="nav-item" data-page="purchase-tax" onclick="goTo('purchase-tax',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></span>บิลซื้อ / ภาษีซื้อ</button>
+    <button class="nav-item" data-page="workorders" onclick="goTo('workorders',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg></span>แฟ้ม PR</button>
+    <div class="nav-section">การเงิน</div>
+    <button class="nav-item" data-page="finance" onclick="goTo('finance',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></span>ภาพรวมการเงิน</button>
+    <button class="nav-item" data-page="tech-pay" onclick="goTo('tech-pay',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></span>จ่ายช่าง</button>
+    <div class="nav-section">ตั้งค่า</div>
+    <button class="nav-item" data-page="settings-clients" onclick="goTo('settings-clients',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg></span>ลูกค้า / Vendor</button>
+    <button class="nav-item" data-page="settings-teams" onclick="goTo('settings-teams',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span>ทีมช่าง & ราคา</button>
+    <button class="nav-item" data-page="technicians" onclick="goTo('technicians',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg></span>ช่าง (LINE)<span class="nav-badge" id="nb-techs" style="display:none;">0</span></button>
+    <button class="nav-item" data-page="master-price" onclick="goTo('master-price',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></span>ราคากลาง</button>
+    <button class="nav-item" data-page="settings-suppliers" onclick="goTo('settings-suppliers',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2M15 18H9M19 18h2a1 1 0 0 0 1-1v-3.6a1 1 0 0 0-.2-.6l-3.5-4.4A1 1 0 0 0 17.5 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg></span>ซัพพลายเออร์</button>
+    <button class="nav-item" data-page="stock" onclick="goTo('stock',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg></span>Stock / คลังอะไหล่<span class="nav-badge-y" id="nb-stock" style="display:none;">0</span></button>
+    <button class="nav-item" data-page="users" onclick="goTo('users',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h5"/><circle cx="18" cy="17" r="3"/><path d="M18 12.5V14M18 20v1.5M22.5 17H21M15 17h-1.5"/></svg></span>จัดการผู้ใช้<span class="nav-badge" id="nb-users" style="display:none;">0</span></button>
+    <button class="nav-item" data-page="system-safety" onclick="goTo('system-safety',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>กู้ข้อมูล / Backup</button>
+    <button class="nav-item" data-page="account" onclick="goTo('account',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></span>ตั้งค่าบัญชี</button>
   </nav>
+  <div class="version-chip"><span>Version</span><b id="app-version-label">—</b></div>
 </aside>
 <main class="main">
+<div class="topbar2" id="topbar2">
+  <label class="tb-search" title="พิมพ์แล้วกด Enter → ค้นหาในคิวช่าง"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="tb-search" placeholder="ค้นหา PR / สาขา / ลูกค้า / เลขใบงาน… แล้วกด Enter" autocomplete="off" onkeydown="if(event.key==='Enter'){profixGlobalSearch(this.value);}"></label>
+  <span class="tb-spacer"></span>
+  <div class="tb-theme" role="group" aria-label="ธีม"><button type="button" data-t="dark" onclick="setThemeChoice('dark')">☾ มืด</button><button type="button" data-t="light" onclick="setThemeChoice('light')">☀ สว่าง</button></div>
+  <button type="button" class="tb-user" id="tb-user" onclick="goTo('account')" title="ตั้งค่าบัญชี"><span class="tb-av">?</span><span class="tb-name">—</span></button>
+</div>
 <div class="version-alert" id="version-alert"><span>มีเว็บเวอร์ชันใหม่ กรุณา refresh เพื่อป้องกันข้อมูลคนละรุ่น</span><button class="btn btn-ghost btn-sm" onclick="location.reload()">Refresh</button></div>
 
 <!-- DASHBOARD -->
@@ -2080,6 +2221,7 @@ let masterSplitKeys=new Set();
 function applyTheme(theme){
   const t=theme==='light'?'light':'dark';
   document.body.dataset.theme=t;
+  try{syncTopbarTheme(t);}catch(e){}
   localStorage.setItem(LS_THEME_KEY,t);
   const next=t==='light'?'Dark mode':'Light mode';
   const icon=t==='light'?'☾':'☀';
@@ -2090,7 +2232,15 @@ function applyTheme(theme){
   if(themeIcon)themeIcon.textContent=icon;
   if(mobileBtn)mobileBtn.textContent=icon;
 }
-function toggleTheme(){applyTheme(document.body.dataset.theme==='light'?'dark':'light');}
+function toggleTheme(){try{localStorage.setItem('profix_theme_chosen','1');}catch(e){}applyTheme(document.body.dataset.theme==='light'?'dark':'light');}
+// หน้าตาใหม่ (2026): ธีมสว่างเป็นค่าเริ่มต้นของทุกคน — ถ้ากดสลับธีมเองหลังจากนี้ จะจำตามที่เลือก
+function setThemeChoice(t){try{localStorage.setItem('profix_theme_chosen','1');}catch(e){}applyTheme(t);}
+function syncTopbarTheme(t){document.querySelectorAll('.tb-theme [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));}
+function toggleSidebarMini(){const on=!document.body.classList.contains('sb-mini');document.body.classList.toggle('sb-mini',on);try{localStorage.setItem('profix_sb_mini',on?'1':'');}catch(e){}}
+function initSidebarMini(){try{if(localStorage.getItem('profix_sb_mini'))document.body.classList.add('sb-mini');}catch(e){}document.querySelectorAll('.nav-item[data-page]').forEach(b=>{if(!b.title)b.title=(b.textContent||'').replace(/\d+$/,'').trim();});}
+// ค้นหาจากแถบบน → ไปหน้าคิวช่างพร้อมคำค้น (ใช้ตัวค้นหาเดิมของคิวช่าง)
+function profixGlobalSearch(q){q=String(q||'').trim();jobSearch=q;goTo('jobs');const el=document.getElementById('job-search-input');if(el)el.value=q;try{renderJobs();saveUIState();}catch(e){}}
+function profixInitialTheme(){try{return localStorage.getItem('profix_theme_chosen')?(localStorage.getItem(LS_THEME_KEY)||'light'):'light';}catch(e){return 'light';}}
 function initAppVersion(){
   const label=document.getElementById('app-version-label');
   if(label)label.textContent=APP_VERSION;
@@ -2353,6 +2503,12 @@ function applyRolePermissions(){
   document.querySelectorAll('.nav-item[data-page]').forEach(function(b){
     b.style.display = hidePages.indexOf(b.getAttribute('data-page'))>=0 ? 'none' : '';
   });
+  // ซ่อนหัวข้อกลุ่มเมนูที่ไม่เหลือปุ่มให้เห็น (เช่น "การเงิน" ของ staff)
+  document.querySelectorAll('.nav .nav-section').forEach(function(h){
+    let el=h.nextElementSibling,any=false;
+    while(el&&!el.classList.contains('nav-section')){if(el.classList.contains('nav-item')&&el.style.display!=='none')any=true;el=el.nextElementSibling;}
+    h.style.display=any?'':'none';
+  });
   // แสดงชื่อผู้ใช้ + ปุ่มออกจากระบบ ใน sidebar
   renderUserChip();
   if(role==='admin'){ refreshPendingBadge(); }
@@ -2363,6 +2519,8 @@ function renderUserChip(){
   const sb=document.querySelector('.sidebar');
   if(!AUTH||!sb)return;
   if(!chip){chip=document.createElement('div');chip.id='user-chip';sb.appendChild(chip);}
+  const tbu=document.getElementById('tb-user');
+  if(tbu){const nm=String(AUTH.display_name||AUTH.email||'').trim();tbu.querySelector('.tb-av').textContent=(nm.replace(/^(นาย|นางสาว|นาง|คุณ)\s*/,'').charAt(0)||'?').toUpperCase();tbu.querySelector('.tb-name').textContent=nm;tbu.title=nm+' · '+roleLabel(AUTH.role)+' — ตั้งค่าบัญชี';}
   chip.innerHTML='<div style="flex:1;min-width:0;"><div style="font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">👤 '+esc(AUTH.display_name)+'</div><div style="font-size:10px;">'+esc(roleLabel(AUTH.role))+'</div></div><button class="btn btn-ghost btn-sm" title="ตั้งค่าบัญชี" onclick="goTo(\'account\')">⚙</button><button class="btn btn-ghost btn-sm" onclick="logout()">ออก</button>';
 }
 // ===== หน้าตั้งค่าบัญชี (โปรไฟล์ + เปลี่ยนรหัสผ่าน) =====
@@ -11889,7 +12047,7 @@ async function initApp(){
   plogMark('initApp');
   initAppVersion();
   initAuditIdentity();
-  applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
+  applyTheme(profixInitialTheme());
   loadUIState();
   const hadFastCache=loadFastState();
   setAppLoading(!hadFastCache,'กำลังโหลด...',hadFastCache?'กำลังซิงก์ข้อมูลล่าสุด':'กำลังโหลดข้อมูลจาก Supabase');
@@ -11928,10 +12086,88 @@ async function initApp(){
     maybeAutoOpenSalesFromUrl();
   }).finally(()=>setAppLoading(false));
 }
+
+// ===== ตัวเลขสรุปบนหัวหน้า (ตาม mockup) — คำนวณจากข้อมูลที่โหลดอยู่แล้ว ไม่ยิงข้อมูลเพิ่ม =====
+const PH_AFTER_TECH=new Set(['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รออนุมัติอะไหล่','รอเปิด PO','รอออกใบกำกับภาษี','รอวางบิล','ปิดงาน','ดำเนินการแล้ว','ปิดงานสำรวจ']);
+function phSet(page,items,title,sub){
+  const ph=document.querySelector('#page-'+page+' .page-header');if(!ph)return;
+  if(title!=null){const t=ph.querySelector('.page-title');if(t)t.textContent=title;}
+  if(sub!=null){const st=ph.querySelector('.page-sub');if(st)st.textContent=sub;}
+  let box=ph.querySelector('.ph-big');
+  if(!box){box=document.createElement('div');box.className='ph-big';const first=ph.firstElementChild;first.after(box);}
+  box.innerHTML=items.map(([l,v,cls])=>`<div class="k"><div class="l">${esc(l)}</div><div class="v ${cls||''}">${esc(v)}</div></div>`).join('');
+}
+function updateHeaderStats(page){
+  try{
+    const today=todayISO(),ym=today.slice(0,7);
+    const live=liveJobs(),open=live.filter(j=>j.status!=='ปิดงาน');
+    const late=open.filter(j=>j.date&&String(j.date).slice(0,10)<today&&!PH_AFTER_TECH.has(j.status)).length;
+    if(page==='dashboard'){
+      const h=new Date().getHours(),g=h<12?'สวัสดีตอนเช้า':h<17?'สวัสดีตอนบ่าย':'สวัสดีตอนเย็น';
+      const who=(AUTH&&AUTH.display_name)?', '+AUTH.display_name:'';
+      const d=new Date(),th=d.toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      phSet('dashboard',[['งานเปิดอยู่',open.length],['รอตรวจรายงาน',open.filter(j=>j.status==='ช่างส่งงานแล้ว').length],['ปิดงานเดือนนี้',live.filter(j=>j.status==='ปิดงาน'&&String(j.dateDone||j.date||'').slice(0,7)===ym).length]],g+who+' 👋',th);
+    }else if(page==='jobs'){
+      const in7=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+      phSet('jobs',[['งานค้าง',open.length],['เลยวันนัด',late,late?'bad':''],['นัด 7 วันข้างหน้า',open.filter(j=>{const x=String(j.date||'').slice(0,10);return x>=today&&x<=in7&&!PH_AFTER_TECH.has(j.status);}).length]]);
+    }else if(page==='admin-tracker'){
+      const t=(adminTasks||[]).filter(x=>!isDeletedRecord(x)&&!['เสร็จแล้ว','ปิดงาน','Reject'].includes(x.status));
+      const od=t.filter(x=>x.due&&String(x.due).slice(0,10)<today).length;
+      phSet('admin-tracker',[['งานค้าง',t.length],['เลยกำหนด',od,od?'bad':''],['ครบกำหนดวันนี้',t.filter(x=>String(x.due||'').slice(0,10)===today).length]]);
+    }
+  }catch(e){console.warn('header stats',e);}
+}
+// เรนเดอร์หน้าใหม่ → อัปเดตตัวเลขบนหัวหน้าด้วย (ห่อฟังก์ชันเดิม ไม่แก้ข้างใน)
+['renderDash','renderJobs','renderAdmin'].forEach(fn=>{
+  const orig=window[fn];if(typeof orig!=='function')return;
+  const page={renderDash:'dashboard',renderJobs:'jobs',renderAdmin:'admin-tracker'}[fn];
+  window[fn]=function(){const r=orig.apply(this,arguments);updateHeaderStats(page);return r;};
+});
+
+// ===== กลุ่ม A: แถบกรองแบบ mockup — ย้ายป้าย "สถานะ:/ทีม:" เข้าไปในช่อง + ช่องค้นหาพิมพ์แล้วกรองทันที (ไม่แก้ตรรกะการกรองเดิม) =====
+function pfEnhanceFilters(root){
+  (root||document).querySelectorAll('.filter-bar .filter-label:not([data-pf]),.filter-label:not([data-pf])').forEach(lb=>{
+    lb.dataset.pf='1';
+    const el=lb.nextElementSibling;if(!el)return;
+    const label=String(lb.textContent||'').replace(/[:：]\s*$/,'').trim();if(!label)return;
+    if(el.tagName==='SELECT'){
+      const o=el.options[0];
+      if(o&&!o.text.includes(label)&&(o.value===''||/^(ทั้งหมด|ทุก)/.test(o.text)))o.text=label+': '+o.text;
+      el.title=label;lb.classList.add('pf-hide');
+    }else if(el.tagName==='INPUT'&&(el.type==='text'||el.type==='search'||!el.type)){
+      if(!el.placeholder)el.placeholder=label;
+      el.title=label;lb.classList.add('pf-hide');
+      // ปุ่ม "ค้นหา" ข้างช่อง → พิมพ์แล้วกรองเอง (เฉพาะช่องที่มี id เพื่อคืนเคอร์เซอร์หลังหน้าวาดใหม่)
+      const btn=el.nextElementSibling;
+      if(el.id&&btn&&btn.tagName==='BUTTON'&&/ค้นหา/.test(btn.textContent||'')&&!el.dataset.pfLive){
+        el.dataset.pfLive='1';btn.classList.add('pf-hide');
+        el.addEventListener('input',()=>{
+          clearTimeout(el._pfT);
+          el._pfT=setTimeout(()=>{
+            const id=el.id,pos=el.selectionStart;
+            const b=document.getElementById(id)?.nextElementSibling;
+            if(b&&b.tagName==='BUTTON')b.click();
+            // หน้าวาดแถบกรองใหม่ (ช่องค้นหาถูกสร้างใหม่) → คืนเคอร์เซอร์ให้ช่องใหม่ ถ้าผู้ใช้ยังไม่ได้ไปคลิกที่อื่น
+            const refocus=()=>{const n=document.getElementById(id),a=document.activeElement;if(n&&a!==n&&(!a||a===document.body||!a.isConnected)){n.focus();try{const p=Math.min(pos,n.value.length);n.setSelectionRange(p,p);}catch(e){}}};
+            requestAnimationFrame(refocus);setTimeout(refocus,80);setTimeout(refocus,250);
+          },350);
+        });
+      }
+    }
+  });
+}
+(function(){
+  let pend=false;
+  const run=()=>{pend=false;try{pfEnhanceFilters(document);}catch(e){}};
+  const mo=new MutationObserver(()=>{if(!pend){pend=true;requestAnimationFrame(run);}});
+  const start=()=>{run();mo.observe(document.body,{childList:true,subtree:true});};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
 function startApp(){ initApp(); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
 (async function bootstrap(){
-  applyTheme(localStorage.getItem(LS_THEME_KEY)||'dark');
+  applyTheme(profixInitialTheme());
+  try{initSidebarMini();}catch(e){}
   if(!AUTH_ENABLED){ window.__appStarted=true; startApp(); return; }
   function showLogin(){
     const loader=document.getElementById('app-loader'); if(loader)loader.style.display='none';
