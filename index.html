@@ -1116,6 +1116,24 @@ body[data-theme="dark"] .cal-dh.today b{background:var(--accent);color:#fff;}
 #cal-fbar .filter-select{height:40px;flex:none;align-self:center;}
 .cal-main{min-width:0;}
 @media(max-width:768px){#cal-fbar .filter-select{align-self:stretch;}.cal-main{order:-1;}.cal-tl{grid-template-columns:110px repeat(var(--cols),minmax(110px,1fr));min-width:calc(110px + var(--cols)*110px);}.cal-rh b{max-width:60px;}.cal-mc{min-height:76px;}.cal-mc .cal-blk{display:none;}.cal-mc .cal-more{display:none;}}
+
+/* ===== สี + รูปทีม ===== */
+.jq-av.ph{background-size:cover;background-position:center;color:transparent;box-shadow:0 0 0 2px var(--c,#cbd5e1);}
+.tm2-row{cursor:pointer;}
+.tm2-row:hover td{background:var(--surface2);}
+.tm2-who{display:flex;align-items:center;gap:10px;}
+.tm2-who .jq-av{width:34px;height:34px;font-size:14px;}
+.tm2-who b{display:block;font-weight:600;}
+.tm2-who small{display:block;font-size:11.5px;color:var(--text3);max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tm2-dot{display:inline-block;width:16px;height:16px;border-radius:50%;}
+.tm2-look{display:flex;gap:18px;align-items:center;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--surface2);}
+.tm2-prev{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:28px;font-weight:600;flex:none;}
+.tm2-sw{display:flex;flex-wrap:wrap;gap:7px;align-items:center;}
+.tm2-sw button[data-c]{width:26px;height:26px;border-radius:50%;border:0;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35);}
+.tm2-sw button[data-c].on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--text);}
+.tm2-custom{width:26px;height:26px;border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);position:relative;cursor:pointer;overflow:hidden;}
+.tm2-custom input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.cal-mpick{height:34px;max-width:170px;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1559,7 +1577,7 @@ body[data-theme="dark"] .cal-dh.today b{background:var(--accent);color:#fff;}
   <div class="content">
     <div class="table-wrap mb16">
       <div class="table-header"><div class="table-title">รายชื่อทีมช่าง</div></div>
-      <table><thead><tr><th>ทีม</th><th>หัวหน้าช่าง</th><th>เบอร์</th><th>ความเชี่ยวชาญ</th><th>สถานะ</th><th></th></tr></thead>
+      <table><thead><tr><th>ทีม</th><th>หัวหน้าช่าง</th><th>เบอร์</th><th>ความเชี่ยวชาญ</th><th>งาน</th><th>สี</th><th></th></tr></thead>
       <tbody id="team-tbody"></tbody></table>
     </div>
     <div class="table-wrap">
@@ -1745,6 +1763,7 @@ body[data-theme="dark"] .cal-dh.today b{background:var(--accent);color:#fff;}
       <div class="form-row"><div class="form-group"><label>ชื่อทีม</label><input type="text" id="ft-name" placeholder="ทีม A"></div><div class="form-group"><label>หัวหน้าช่าง</label><input type="text" id="ft-lead" placeholder="ชื่อ-นามสกุล"></div></div>
       <div class="form-row"><div class="form-group"><label>เบอร์ติดต่อ</label><input type="text" id="ft-phone" placeholder="08x-xxx-xxxx"></div><div class="form-group"><label>ความเชี่ยวชาญ</label><select id="ft-skill"><option>แอร์</option><option>ตู้แช่</option><option>แอร์ + ตู้แช่</option><option>ติดตั้ง</option></select></div></div>
       <div class="form-group"><label>หมายเหตุ</label><textarea id="ft-note" placeholder="พื้นที่รับผิดชอบ หรือข้อมูลเพิ่มเติม..."></textarea></div>
+      <div class="form-group" id="ft-look"></div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-team')">ยกเลิก</button><button class="btn btn-primary" onclick="saveTeam()">✓ บันทึก</button></div>
   </div>
@@ -11181,7 +11200,6 @@ function renderTeamPricing(){const f=document.getElementById('team-filter')?.val
 function editTP(i){const p=teamPricing[i];document.getElementById('ftp-team').value=p.team;document.getElementById('ftp-type').value=p.type;document.getElementById('ftp-price').value=p.price;document.getElementById('ftp-note').value=p.note;openM('m-team-pricing');}
 function saveTeamPricing(){if(!guardEdit())return;const tm=document.getElementById('ftp-team').value,tp=document.getElementById('ftp-type').value,pr=parseFloat(document.getElementById('ftp-price').value)||0,nt=document.getElementById('ftp-note').value;const ex=teamPricing.find(p=>p.team===tm&&p.type===tp);if(ex){ex.price=pr;ex.note=nt;}else{teamPricing.push({team:tm,type:tp,price:pr,note:nt});}closeM('m-team-pricing');renderTeamPricing();saveState();}
 function delTP(i){if(confirm('ลบราคานี้?')){teamPricing.splice(i,1);renderTeamPricing();saveState();}}
-function saveTeam(){const data={name:document.getElementById('ft-name').value,lead:document.getElementById('ft-lead').value,phone:document.getElementById('ft-phone').value,skill:document.getElementById('ft-skill').value,note:document.getElementById('ft-note').value};if(editTeamIndex==='')teams.push(data);else teams[+editTeamIndex]=data;closeM('m-team');renderTeams();fillSelects();saveState();}
 function delTeam(i){if(confirm('ลบทีมนี้?')){teams.splice(i,1);renderTeams();fillSelects();saveState();}}
 
 function renderBranches(){updateSystemUpdated();fillSelects();const q=document.getElementById('branch-search')?.value?.toLowerCase()||'';const cf=document.getElementById('branch-cl-filter')?.value||'';let fil=branches;if(q)fil=fil.filter(b=>b.name.toLowerCase().includes(q)||b.id.toLowerCase().includes(q));if(cf)fil=fil.filter(b=>b.client===cf);document.getElementById('branch-cnt').textContent=fil.length+' สาขา';document.getElementById('branch-tbody').innerHTML=fil.map(b=>{const i=branches.indexOf(b);return `<tr><td class="mono ta" style="font-size:11px;">${esc(b.id)}</td><td style="font-weight:600;">${esc(b.name)}</td><td>${esc(b.client)}</td><td class="tm" style="font-size:11px;max-width:160px;">${esc(b.addr)}</td><td>${esc(b.mgr)}</td><td class="mono" style="font-size:11px;">${esc(b.phone)}</td><td class="tm" style="font-size:11px;">${esc(b.hours)}</td>${actionCell('brm',i,`<button onclick="alert(detailText(branches[${i}]))">ดูดีเทล</button><button onclick="openBranchModal(${i})">แก้ไข</button><button onclick="delBranch(${i})">ลบ</button>`)}</tr>`;}).join('');}
@@ -12675,7 +12693,6 @@ function jqThDate(v){const d=String(v||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/
 function jqLateDays(j){const d=String(j.date||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||(JQ_AFTER_TECH&&JQ_AFTER_TECH.has(j.status))||j.status==='ปิดงาน')return 0;const t=todayISO();if(d>=t)return 0;return Math.round((new Date(t)-new Date(d))/864e5);}
 function jqRelTime(iso){if(!iso)return '';const t=new Date(iso).getTime();if(!t)return '';const m=Math.round((Date.now()-t)/6e4);if(m<1)return 'เมื่อสักครู่';if(m<60)return m+' นาทีที่แล้ว';const h=Math.round(m/60);if(h<24)return h+' ชม.ที่แล้ว';const d=Math.round(h/24);if(d<8)return d+' วันที่แล้ว';return jqThDate(new Date(t).toISOString());}
 var JQ_AV_COLORS=['#175FFF','#0ea5e9','#16a34a','#d97706','#9333ea','#db2777','#0d9488','#334155'];
-function jqTeamAvatar(team){const t=String(team||'').trim();if(!t)return '';const n=t.replace(/^ทีม\s*\d*\s*[-–]?\s*/,'').replace(/^(นาย|นางสาว|นาง|คุณ|ช่าง)\s*/,'').trim()||t;let h=0;for(const ch of t)h=(h*31+ch.charCodeAt(0))>>>0;return `<span class="jq-av" style="background:${JQ_AV_COLORS[h%JQ_AV_COLORS.length]}">${esc(n.charAt(0))}</span>`;}
 
 // =====================================================================
 // ภาพรวม (B-2) ตาม mockup — ช่างวันนี้ · ต้องทำวันนี้ · ตัวเลขที่ต้องตาม · งานตามสถานะ · อัปเดตล่าสุด
@@ -13216,6 +13233,7 @@ function calShift(dir){
   else calAnchor=calAdd(calAnchor,dir*(calView==='day'?1:7));
   calMiniMonth=calAnchor.slice(0,7);renderCalendar();
 }
+function calPickMonth(ym){const iso=ym+'-01';calAnchor=calView==='month'?iso:(ym===todayISO().slice(0,7)?todayISO():iso);calMiniMonth=ym;renderCalendar();}
 function calToday(){calAnchor=todayISO();calMiniMonth=calAnchor.slice(0,7);renderCalendar();}
 function calPick(iso){calAnchor=iso;calMiniMonth=iso.slice(0,7);renderCalendar();}
 function calMiniShift(dir){const d=calDate(calMiniMonth+'-01');d.setMonth(d.getMonth()+dir);calMiniMonth=calISO(d).slice(0,7);renderCalendar();}
@@ -13236,19 +13254,22 @@ function renderCalendar(){
       inp.addEventListener('input',()=>{clearTimeout(inp._t);inp._t=setTimeout(()=>{calendarSearch=inp.value.trim();renderCalendar();saveUIState();},250);});
       inp.addEventListener('keydown',e=>{if(e.key==='Escape'&&inp.value){inp.value='';calendarSearch='';renderCalendar();saveUIState();}});}
     const all=calJobsAll(),today=todayISO();
-    const names=calTeamNames(all);
-    const shown=names.filter(t=>!calHiddenTeams.has(t));
     // ----- ช่วงวัน -----
     let days=[];
     if(calView==='day')days=[calAnchor];
     else if(calView==='week'){const s=calWeekStart(calAnchor);days=Array.from({length:7},(_,i)=>calAdd(s,i));}
     const inRange=d=>calView==='month'?String(d).slice(0,7)===calAnchor.slice(0,7):days.includes(String(d).slice(0,10));
-    const list=all.filter(j=>inRange(j.date)&&shown.includes(calTeamOf(j)));
+    const ranged=all.filter(j=>inRange(j.date));
+    // แสดงเฉพาะทีมที่มีงานในช่วงที่ดู (เรียงจากงานมากไปน้อย)
+    const rc={};ranged.forEach(j=>{const t=calTeamOf(j);rc[t]=(rc[t]||0)+1;});
+    const names=Object.keys(rc).sort((a,b)=>(a===CAL_NOTEAM)-(b===CAL_NOTEAM)||rc[b]-rc[a]||a.localeCompare(b,'th'));
+    const shown=names.filter(t=>!calHiddenTeams.has(t));
+    const list=ranged.filter(j=>shown.includes(calTeamOf(j)));
     // ----- ตัวเลขหัวหน้า -----
     const wk=calWeekStart(today),wkDays=Array.from({length:7},(_,i)=>calAdd(wk,i));
     const wkJobs=all.filter(j=>wkDays.includes(String(j.date).slice(0,10)));
-    const idleToday=(teams||[]).map(t=>t.name).filter(t=>!all.some(j=>j.team===t&&String(j.date).slice(0,10)===today)).length;
-    phSet('job-calendar',[['สัปดาห์นี้',wkJobs.length+' งาน'],['วันนี้',all.filter(j=>String(j.date).slice(0,10)===today).length+' งาน'],['ทีมว่างวันนี้',idleToday]],'ปฏิทินงานช่าง','แถว = ทีมช่าง · คอลัมน์ = วัน · ลากบล็อกงานเพื่อย้ายวัน/ทีม · คลิกเพื่อดูรายละเอียด');
+    const wkTeams=new Set(wkJobs.map(j=>j.team).filter(Boolean)).size;
+    phSet('job-calendar',[['สัปดาห์นี้',wkJobs.length+' งาน'],['วันนี้',all.filter(j=>String(j.date).slice(0,10)===today).length+' งาน'],['ทีมที่มีงานสัปดาห์นี้',wkTeams]],'ปฏิทินงานช่าง','แถว = ทีมช่าง · คอลัมน์ = วัน · ลากบล็อกงานเพื่อย้ายวัน/ทีม · คลิกเพื่อดูรายละเอียด');
     // ----- ปฏิทินเดือนเล็ก -----
     const mm=calMiniMonth,first=calDate(mm+'-01'),lead=(first.getDay()+6)%7,dim=new Date(first.getFullYear(),first.getMonth()+1,0).getDate();
     const cnt={};all.filter(j=>shown.includes(calTeamOf(j))).forEach(j=>{const d=String(j.date).slice(0,10);cnt[d]=(cnt[d]||0)+1;});
@@ -13256,7 +13277,7 @@ function renderCalendar(){
     const mini=`<div class="cal-mini">${['จ','อ','พ','พฤ','ศ','ส','อา'].map(d=>`<div class="h">${d}</div>`).join('')}${'<div></div>'.repeat(lead)}${Array.from({length:dim},(_,i)=>{const iso=`${mm}-${String(i+1).padStart(2,'0')}`;const n=cnt[iso]||0;
       return `<button type="button" class="${iso===today?'today ':''}${selSet.has(iso)?'sel ':''}${n?'has':''}" onclick="calPick('${iso}')" title="${n?n+' งาน':''}">${i+1}${n?`<i style="opacity:${Math.min(1,.35+n/8)}"></i>`:''}</button>`;}).join('')}</div>`;
     const teamCnt=t=>list.filter(j=>calTeamOf(j)===t).length;
-    const teamList=names.map(t=>{const on=!calHiddenTeams.has(t);return `<button type="button" class="cal-team${on?' on':''}" onclick="calToggleTeam('${esc(t).replace(/'/g,'&#39;')}')"><span class="ck">${on?'✓':''}</span>${t===CAL_NOTEAM?'<span class="cal-nt">?</span>':jqTeamAvatar(t)}<span class="nm">${esc(t)}</span><span class="tm">${on?teamCnt(t)+' งาน':''}</span></button>`;}).join('');
+    const teamList=names.length?names.map(t=>{const on=!calHiddenTeams.has(t);return `<button type="button" class="cal-team${on?' on':''}" onclick="calToggleTeam('${esc(t).replace(/'/g,'&#39;')}')"><span class="ck">${on?'✓':''}</span>${t===CAL_NOTEAM?'<span class="cal-nt">?</span>':jqTeamAvatar(t)}<span class="nm">${esc(t)}</span><span class="tm">${rc[t]} งาน</span></button>`;}).join(''):'<div class="d2-empty">ไม่มีงานในช่วงนี้</div>';
     // ----- เนื้อหาหลัก -----
     let main='';
     if(calView==='month'){
@@ -13272,16 +13293,20 @@ function renderCalendar(){
       const rows=shown.map(t=>{const tj=list.filter(j=>calTeamOf(j)===t);
         return `<div class="cal-rh">${t===CAL_NOTEAM?'<span class="cal-nt">?</span>':jqTeamAvatar(t)}<div><b>${esc(t)}</b><small>${tj.length} งาน</small></div></div>`
           +days.map(d=>{const js=tj.filter(j=>String(j.date).slice(0,10)===d);return `<div class="cal-cell${d===today?' today':''}${js.length?'':' free'}" ondragover="calDragOver(event)" ondragleave="calDragLeave(event)" ondrop="calDrop(event,'${d}','${esc(t).replace(/'/g,'&#39;')}')">${js.map(j=>calBlock(j,false)).join('')}</div>`;}).join('');}).join('');
-      main=shown.length?`<div class="cal-tl" style="--cols:${cols}">${head}${rows}</div>`:'<div class="d2-empty">ยังไม่ได้เลือกทีมที่จะแสดง</div>';
+      main=shown.length?`<div class="cal-tl" style="--cols:${cols}">${head}${rows}</div>`:`<div class="d2-empty">${names.length?'ยังไม่ได้เลือกทีมที่จะแสดง':'ไม่มีงานนัดในช่วงนี้'}</div>`;
     }
     const label=calView==='month'?calThMonth(calAnchor.slice(0,7)):calRangeLabel(days[0],days[days.length-1]);
+    const firstYm=all.reduce((m,j)=>{const x=String(j.date).slice(0,7);return x&&x<m?x:m;},today.slice(0,7));
+    const months=[];{const d=calDate(firstYm+'-01'),end=calDate(today.slice(0,7)+'-01');end.setMonth(end.getMonth()+6);for(;d<=end;d.setMonth(d.getMonth()+1))months.push(calISO(d).slice(0,7));}
+    const curYm=calAnchor.slice(0,7);if(!months.includes(curYm))months.push(curYm);months.sort().reverse();
+    const mpick=`<select class="filter-select cal-mpick" title="เลือกเดือน" onchange="calPickMonth(this.value)">${months.map(m=>`<option value="${m}"${m===curYm?' selected':''}>${esc(calThMonth(m))}</option>`).join('')}</select>`;
     root.innerHTML=`<div class="cal-wrap">
       <aside class="cal-side">
         <section class="d2-box"><div class="d2-h"><div><div class="t">${esc(calThMonth(mm))}</div></div><button type="button" class="d2-round" onclick="calMiniShift(-1)" title="เดือนก่อน">‹</button><button type="button" class="d2-round" onclick="calMiniShift(1)" title="เดือนถัดไป">›</button></div><div class="d2-in d2-pad">${mini}</div></section>
-        <section class="d2-box"><div class="d2-h"><div><div class="t">แสดงทีม</div><div class="s">${shown.length}/${names.length} ทีม</div></div><button type="button" class="jq-link" onclick="calAllTeams(${calHiddenTeams.size?'true':'false'})">${calHiddenTeams.size?'แสดงทั้งหมด':'ซ่อนทั้งหมด'}</button></div><div class="d2-in">${teamList||'<div class="d2-empty">ยังไม่มีทีม</div>'}</div></section>
+        <section class="d2-box"><div class="d2-h"><div><div class="t">แสดงทีม</div><div class="s">เฉพาะทีมที่มีงานในช่วงนี้ · ${shown.length}/${names.length} ทีม</div></div><button type="button" class="jq-link" onclick="calAllTeams(${calHiddenTeams.size?'true':'false'})">${calHiddenTeams.size?'แสดงทั้งหมด':'ซ่อนทั้งหมด'}</button></div><div class="d2-in">${teamList}</div></section>
       </aside>
       <section class="d2-box cal-main"><div class="d2-h"><div><div class="t">${esc(label)}</div><div class="s">${list.length} งานในช่วงนี้</div></div>
-        <button type="button" class="d2-round" onclick="calShift(-1)" title="ก่อนหน้า">‹</button><button type="button" class="btn btn-ghost btn-sm" onclick="calToday()">วันนี้</button><button type="button" class="d2-round" onclick="calShift(1)" title="ถัดไป">›</button></div>
+        ${mpick}<button type="button" class="d2-round" onclick="calShift(-1)" title="ก่อนหน้า">‹</button><button type="button" class="btn btn-ghost btn-sm" onclick="calToday()">วันนี้</button><button type="button" class="d2-round" onclick="calShift(1)" title="ถัดไป">›</button></div>
         <div class="d2-in cal-scroll">${main}</div></section>
     </div>`;
     const seg=document.getElementById('cal-view-seg');if(seg)seg.innerHTML=[['day','วัน'],['week','สัปดาห์'],['month','เดือน']].map(([v,l])=>`<button type="button" class="${calView===v?'on':''}" onclick="setCalView('${v}')">${l}</button>`).join('');
@@ -13310,6 +13335,81 @@ async function calDrop(e,date,team){
     renderCalendar();try{renderJobs();renderDash();}catch(x){}
   }catch(err){console.error(err);alert('เลื่อนนัดไม่สำเร็จ: '+(err&&err.message||err));}
 }
+
+// =====================================================================
+// สี + รูปประจำทีมช่าง — เก็บใน teams[i].color / teams[i].photo (ข้อมูลระบบ) · ใช้กับวงกลมทีมทุกหน้า
+// =====================================================================
+var TEAM_COLORS=['#2563eb','#0ea5e9','#14b8a6','#16a34a','#65a30d','#ca8a04','#ea580c','#dc2626','#db2777','#9333ea','#6366f1','#475569'];
+function teamByName(name){const n=String(name||'').trim();return (teams||[]).find(t=>String(t.name||'').trim()===n);}
+function teamInitial(t){const n=String(t||'').replace(/^ทีม\s*\d*\s*[-–]?\s*/,'').replace(/^(นาย|นางสาว|นาง|คุณ|ช่าง)\s*/,'').trim()||String(t||'');return n.charAt(0);}
+function teamColorOf(name){const t=teamByName(name);if(t&&t.color)return t.color;let h=0;for(const ch of String(name||''))h=(h*31+ch.charCodeAt(0))>>>0;return JQ_AV_COLORS[h%JQ_AV_COLORS.length];}
+// วงกลมทีม (ใช้ทุกหน้า) — มีรูปใช้รูป ไม่มีใช้สีประจำทีม
+function jqTeamAvatar(team){
+  const t=String(team||'').trim();if(!t)return '';
+  const rec=teamByName(t);
+  if(rec&&rec.photo)return `<span class="jq-av ph" style="background-image:url('${esc(rec.photo)}');--c:${esc(teamColorOf(t))}" title="${esc(t)}"></span>`;
+  return `<span class="jq-av" style="background:${esc(teamColorOf(t))}" title="${esc(t)}">${esc(teamInitial(t))}</span>`;
+}
+// ----- หน้ารายชื่อทีม -----
+function renderTeamsV2(){
+  const tb=document.getElementById('team-tbody');if(!tb)return;
+  const open=liveJobs().filter(j=>j.status!=='ปิดงาน');
+  tb.innerHTML=teams.map((t,i)=>{const n=open.filter(j=>j.team===t.name).length;
+    return `<tr class="tm2-row" onclick="openTeamModal(${i})"><td><div class="tm2-who">${jqTeamAvatar(t.name)}<div><b>${esc(t.name)}</b><small>${esc(t.note||'')}</small></div></div></td>
+      <td>${esc(t.lead||'-')}</td><td class="mono" style="font-size:12px;">${esc(t.phone||'-')}</td><td>${t.skill?`<span class="chip">${esc(t.skill)}</span>`:'-'}</td>
+      <td>${n?`<b>${n}</b> <span class="tm">งานค้าง</span>`:'<span class="tm">—</span>'}</td>
+      <td><span class="tm2-dot" style="background:${esc(teamColorOf(t.name))}"></span></td>
+      <td class="action-cell" onclick="event.stopPropagation()"><button class="btn btn-ghost btn-xs" onclick="openTeamModal(${i})">แก้ไข</button><button class="btn btn-danger btn-xs" onclick="delTeam(${i})">ลบ</button></td></tr>`;}).join('');
+}
+// ----- หน้าต่างแก้ไขทีม: สี + รูป -----
+var teamEditColor='',teamEditPhoto='';
+function teamModalExtras(i){
+  const t=i===''?{}:(teams[+i]||{});
+  teamEditColor=t.color||'';teamEditPhoto=t.photo||'';
+  ['ft-name','ft-lead','ft-phone','ft-note'].forEach(id=>{const el=document.getElementById(id);if(el&&el.value==='undefined')el.value='';}); // ช่องที่ทีมเก่าไม่มีข้อมูล
+  const box=document.getElementById('ft-look');if(!box)return;
+  box.innerHTML=`<label>สี + รูปประจำทีม <span class="tm" style="font-weight:400">(แสดงในคิวช่าง / ปฏิทิน / ภาพรวม)</span></label>
+    <div class="tm2-look"><div class="tm2-prev" id="ft-prev"></div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;">
+        <div class="tm2-sw" id="ft-sw">${TEAM_COLORS.map(c=>`<button type="button" style="background:${c}" data-c="${c}" onclick="teamSetColor('${c}')" title="${c}"></button>`).join('')}<label class="tm2-custom" title="เลือกสีเอง"><input type="color" id="ft-color" onchange="teamSetColor(this.value)"></label><button type="button" class="jq-link" onclick="teamSetColor('')">สีอัตโนมัติ</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><label class="btn btn-ghost btn-sm" style="cursor:pointer;">🖼 อัปโหลดรูป<input type="file" accept="image/*" style="display:none" onchange="teamUploadPhoto(this.files[0]);this.value=''"></label><button type="button" class="btn btn-ghost btn-sm" id="ft-photo-del" onclick="teamEditPhoto='';teamLookRefresh()">ลบรูป</button><span class="tm" id="ft-photo-st" style="font-size:12px;"></span></div>
+      </div></div>`;
+  teamLookRefresh();
+}
+function teamSetColor(c){teamEditColor=c;teamLookRefresh();}
+function teamLookRefresh(){
+  const name=document.getElementById('ft-name')?.value||'ทีม';
+  const col=teamEditColor||(()=>{let h=0;for(const ch of name)h=(h*31+ch.charCodeAt(0))>>>0;return JQ_AV_COLORS[h%JQ_AV_COLORS.length];})();
+  const p=document.getElementById('ft-prev');
+  if(p){p.style.background=teamEditPhoto?`center/cover no-repeat url('${teamEditPhoto}')`:col;p.style.boxShadow=`0 0 0 3px var(--surface),0 0 0 6px ${col}`;p.textContent=teamEditPhoto?'':teamInitial(name);}
+  document.querySelectorAll('#ft-sw button[data-c]').forEach(b=>b.classList.toggle('on',b.dataset.c===teamEditColor));
+  const ci=document.getElementById('ft-color');if(ci&&teamEditColor)ci.value=teamEditColor;
+  const d=document.getElementById('ft-photo-del');if(d)d.style.display=teamEditPhoto?'':'none';
+}
+// ย่อรูปเป็น 256px ก่อนอัปโหลด (โหลดเร็ว ไม่เปลืองที่)
+function teamShrinkImage(file){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const s=256,c=document.createElement('canvas');c.width=c.height=s;const g=c.getContext('2d');const m=Math.min(img.width,img.height);g.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,s,s);c.toBlob(b=>b?res(b):rej(new Error('ย่อรูปไม่สำเร็จ')),'image/jpeg',0.86);URL.revokeObjectURL(img.src);};img.onerror=()=>rej(new Error('เปิดรูปไม่ได้'));img.src=URL.createObjectURL(file);});}
+async function teamUploadPhoto(file){
+  if(!file)return;const st=document.getElementById('ft-photo-st');
+  if(!String(file.type||'').startsWith('image/')){if(st)st.textContent='รองรับเฉพาะรูปภาพ';return;}
+  try{
+    if(st)st.textContent='กำลังอัปโหลด...';
+    const blob=await teamShrinkImage(file);
+    const fd=new FormData();fd.append('file',new File([blob],'team.jpg',{type:'image/jpeg'}));fd.append('job_id','TEAMS');fd.append('category','avatar');
+    const r=await fetch(R2_WORKER_BASE+'/upload',{method:'POST',body:fd});if(!r.ok)throw new Error(await r.text());
+    const up=await r.json();teamEditPhoto=up.url||up.fileUrl||'';if(st)st.textContent='✓ อัปโหลดแล้ว — กดบันทึกเพื่อใช้รูปนี้';teamLookRefresh();
+  }catch(e){console.error(e);if(st)st.textContent='อัปโหลดไม่สำเร็จ: '+(e&&e.message||e);}
+}
+// เปิด/บันทึกทีม: เก็บช่องเดิมทั้งหมด + สี/รูป (เดิมบันทึกทับทั้งก้อน ทำให้ช่องอื่นหาย)
+(function(){const o=window.openTeamModal;if(typeof o!=='function')return;window.openTeamModal=function(i=''){const r=o.apply(this,arguments);try{teamModalExtras(i);const n=document.getElementById('ft-name');if(n&&!n.dataset.lk){n.dataset.lk='1';n.addEventListener('input',teamLookRefresh);}}catch(e){console.warn(e);}return r;};})();
+function saveTeam(){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const data={name:document.getElementById('ft-name').value.trim(),lead:document.getElementById('ft-lead').value,phone:document.getElementById('ft-phone').value,skill:document.getElementById('ft-skill').value,note:document.getElementById('ft-note').value,color:teamEditColor||'',photo:teamEditPhoto||''};
+  if(!data.name){alert('กรุณาใส่ชื่อทีม');return;}
+  if(editTeamIndex==='')teams.push(data);else teams[+editTeamIndex]={...teams[+editTeamIndex],...data};
+  closeM('m-team');renderTeams();fillSelects();saveState();
+  try{renderJobs();renderDash();renderCalendar();}catch(e){}
+}
+(function(){const o=window.renderTeams;if(typeof o!=='function')return;window.renderTeams=function(){const r=o.apply(this,arguments);try{renderTeamsV2();}catch(e){console.warn(e);}return r;};})();
 
 function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){} initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
