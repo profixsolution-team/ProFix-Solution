@@ -977,6 +977,44 @@ body[data-theme="dark"] .d2-seg button.on{background:var(--accent);color:#fff;}
 .pfsv-box.pfsv-empty{height:auto;max-width:520px;}
 .pfsv-msg{display:flex;flex-direction:column;align-items:center;gap:10px;padding:34px 24px 30px;text-align:center;}
 .pfsv-msg b{font-size:15px;}
+
+/* ===== ใบอนุมัติ + ดูเอกสารขายจากแผงงาน ===== */
+.pf-appr{display:inline-flex;align-items:center;gap:5px;height:28px;border-radius:999px;padding:0 11px 0 9px;border:1px solid color-mix(in srgb,#16a34a 35%,var(--border));background:color-mix(in srgb,#16a34a 9%,var(--surface));color:#15803d;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;flex:none;}
+.pf-appr:hover{background:color-mix(in srgb,#16a34a 16%,var(--surface));}
+body[data-theme="dark"] .pf-appr{color:#4ade80;}
+.pf-appr-slot:empty{display:none;}
+.pfsv-img{flex:1;overflow:auto;background:#525659;display:flex;align-items:flex-start;justify-content:center;padding:16px;}
+.pfsv-img img{max-width:100%;height:auto;border-radius:6px;box-shadow:0 4px 18px rgba(0,0,0,.3);background:#fff;}
+#m-doc-preview.open{z-index:1100;}
+/* เต็มจอ */
+#pf-sheet-viewer{padding:0 !important;}
+#pf-sheet-viewer .pfsv-box{width:100%;height:100%;max-width:none;border-radius:0;}
+#pf-sheet-viewer .pfsv-box.pfsv-empty{width:min(520px,92vw);height:auto;border-radius:20px;}
+.pfsv-img.fit{align-items:center;}
+.pfsv-img.fit img{max-width:100%;max-height:calc(100vh - 100px);width:auto;}
+#m-doc-preview{padding:0 !important;align-items:stretch !important;}
+#m-doc-preview .modal{max-width:none !important;width:100vw;height:100vh;max-height:none !important;margin:0;border-radius:0;display:flex;flex-direction:column;}
+#m-doc-preview .modal-body{flex:1;display:flex;flex-direction:column;overflow:hidden;max-height:none;}
+#m-doc-preview #doc-preview-frame{flex:1;height:auto !important;background:#e9ecf1 !important;}
+.pf-zoom{display:inline-flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:2px;}
+.pf-zoom button{border:0;background:none;min-width:32px;height:30px;border-radius:999px;cursor:pointer;font-family:inherit;font-size:15px;color:var(--text);}
+.pf-zoom button:hover{background:var(--surface);}
+.pf-zoom .pf-zl{font-size:12.5px;font-weight:600;min-width:62px;font-variant-numeric:tabular-nums;}
+.pf-zoom .pf-fit{font-size:12px;padding:0 10px;color:var(--text2);}
+.jas-row{cursor:pointer;}
+.jas-row .link-btn{white-space:nowrap;}
+#m-report .modal-footer label.btn{white-space:nowrap;}
+#m-report .modal{max-width:860px !important;}
+#m-report .modal-footer{display:flex;align-items:center;justify-content:flex-start;gap:10px;flex-wrap:wrap;}
+#m-report .modal-footer .btn{flex:none;height:42px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:13.5px;line-height:1;cursor:pointer;margin:0;}
+#m-report .mrpt-tools,#m-report .mrpt-main{display:flex;gap:8px;flex-wrap:wrap;}
+#m-report .mrpt-main{margin-left:auto;}
+#m-report .modal-footer{justify-content:space-between;row-gap:10px;}
+#m-report .mrpt-close{background:#0b1220 !important;color:#fff !important;border:1px solid #0b1220 !important;min-width:72px;}
+#m-report .mrpt-close:hover{background:#1e293b !important;}
+body[data-theme="dark"] #m-report .mrpt-close{border-color:#334155 !important;}
+@media(max-width:768px){#m-report .mrpt-tools,#m-report .mrpt-main{width:100%;}#m-report .modal-footer .btn{flex:1;padding:0 10px;}#m-report .mrpt-close{flex:0 0 auto !important;}}
+.jas-row:hover td{background:var(--surface2);}
 /* ===== ปุ่มดูใบงาน + หน้าต่างดู PDF ===== */
 .pf-sheet{display:none;align-items:center;justify-content:center;gap:5px;border:1px solid var(--border);background:var(--surface);color:var(--accent);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;flex:none;}
 .pf-sheet:hover{background:var(--accent-dim,#e8efff);border-color:var(--accent);}
@@ -992,7 +1030,6 @@ body[data-sheetpos="a"] .pf-sheet-ico,body[data-sheetpos="b"] .pf-sheet-l,body[d
 .pfsv-h b{font-size:15px;}
 .pfsv-h .filter-select{max-width:320px;}
 #pfsv-frame{flex:1;border:0;width:100%;background:#525659;}
-
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1379,7 +1416,7 @@ body[data-sheetpos="a"] .pf-sheet-ico,body[data-sheetpos="b"] .pf-sheet-l,body[d
 <div class="page" id="page-workorders">
   <div class="page-header">
     <div><div class="page-title">ใบงาน / แฟ้ม PR</div><div class="page-sub">รวมเอกสารและข้อมูลทั้งหมดของแต่ละ PR</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><span class="tm" id="wo-recover-status" style="font-size:12px;"></span><button class="btn btn-ghost" id="wo-recover-btn" onclick="recoverWorkOrdersFromR2()" title="ผูกลิงก์ใบงาน PDF ที่อยู่ใน R2 แต่ลิงก์หายจากระบบ กลับเข้าแฟ้ม PR">🛟 กู้ลิงก์ใบงานจาก R2</button><button class="btn btn-primary" onclick="goTo('admin-tracker');openAdminModal()">+ เปิดงานใหม่</button></div>
+    <button class="btn btn-primary" onclick="goTo('admin-tracker');openAdminModal()">+ เปิดงานใหม่</button>
   </div>
   <div class="content">
     <div class="filter-bar" style="margin-bottom:16px;border-radius:8px;border:1px solid var(--border);">
@@ -2088,7 +2125,7 @@ body[data-sheetpos="a"] .pf-sheet-ico,body[data-sheetpos="b"] .pf-sheet-l,body[d
 <!-- DOCUMENT PREVIEW MODAL -->
 <div class="modal-overlay" id="m-doc-preview">
   <div class="modal" style="max-width:1040px;">
-    <div class="modal-header"><div><div class="modal-title" id="doc-preview-title">พรีวิวเอกสาร</div><div class="tm" style="font-size:11px;margin-top:2px;" id="doc-preview-sub"></div></div><button class="close-btn" onclick="closeM('m-doc-preview')">×</button></div>
+    <div class="modal-header"><div><div class="modal-title" id="doc-preview-title">พรีวิวเอกสาร</div><div class="tm" style="font-size:11px;margin-top:2px;" id="doc-preview-sub"></div></div><div style="display:flex;align-items:center;gap:10px;align-self:flex-start;"><span id="dp-zoom-slot"></span><button class="close-btn" onclick="closeM('m-doc-preview')">×</button></div></div>
     <div class="modal-body" style="padding:0;">
       <div id="doc-preview-actions" style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--border);"></div>
       <iframe id="doc-preview-frame" title="พรีวิวเอกสาร" style="width:100%;height:64vh;border:0;background:#fff;display:block;"></iframe>
@@ -9389,7 +9426,7 @@ function renderJobAccountingSection(jobId){
   const stockMoves=stockMovements.filter(m=>sameJob(m.job_id,jobId)&&m.status!=='cancelled');
   el.innerHTML=`<div class="table-wrap" style="margin-top:14px;">
     <div class="table-header"><div class="table-title">จับคู่อะไหล่และต้นทุน</div><span class="mono tm" style="font-size:11px;">ขาย ฿${money(salesTotal)} | ต้นทุนจริง ฿${money(totalCost)} | VAT ซื้อ ฿${money(totalVat)} | pending ${pending}</span></div>
-    <div class="form-group"><label>บิลขาย / ภาษีขาย</label>${sales.length?`<table><thead><tr><th>เลขบิล</th><th>วันที่</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th>รับเงิน</th></tr></thead><tbody>${sales.map(s=>`<tr><td class="mono ta">${esc(s.sales_invoice_no)}</td><td>${esc(s.invoice_date||'-')}</td><td class="mono tr">฿${money(s.subtotal)}</td><td class="mono tr">฿${money(s.vat_amount)}</td><td class="mono tg">฿${money(s.total_amount)}</td><td><span class="badge ${s.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(s.payment_status||'unpaid')}</span></td></tr>`).join('')}</tbody></table>`:`<div class="text-box">ยังไม่มีบิลขายของ PR นี้<br><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="openSalesForJob('${esc(jobId)}')">ออกบิลขาย</button></div>`}</div>
+    <div class="form-group"><label>บิลขาย / ภาษีขาย</label>${sales.length?`<table><thead><tr><th>เลขบิล</th><th>วันที่</th><th>ก่อน VAT</th><th>VAT</th><th>รวม</th><th>รับเงิน</th></tr></thead><tbody>${sales.map(s=>`<tr class="jas-row" onclick="openSalesDocPreview('${esc(s.id)}')" title="กดเพื่อดูเอกสาร"><td><button type="button" class="link-btn mono" onclick="event.stopPropagation();openSalesDocPreview('${esc(s.id)}')">${esc(s.sales_invoice_no)}</button></td><td>${esc(s.invoice_date||'-')}</td><td class="mono tr">฿${money(s.subtotal)}</td><td class="mono tr">฿${money(s.vat_amount)}</td><td class="mono tg">฿${money(s.total_amount)}</td><td><span class="badge ${s.payment_status==='paid'?'b-paid':'b-unpaid'}">${esc(s.payment_status||'unpaid')}</span></td></tr>`).join('')}</tbody></table>`:`<div class="text-box">ยังไม่มีบิลขายของ PR นี้<br><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="openSalesForJob('${esc(jobId)}')">ออกบิลขาย</button></div>`}</div>
     <div class="form-group"><label>อะไหล่ที่ช่างแจ้ง</label>${techRows.length?techRows.map(r=>`<div class="text-box" style="margin-bottom:8px;"><b>${esc(r.part_name_text)}</b> ${esc(r.quantity||'')} ${esc(r.unit||'')}<br><span class="tm">${esc(r.note||'')} | ${esc(r.matched_status)}</span>${r.matched_status==='pending'?`<div class="form-row" style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="openCostMatchModal('${esc(jobId)}','${esc(r.id)}')">จับคู่เป็นต้นทุน</button><button class="btn btn-ghost btn-sm" onclick="ignoreTechnicianPart('${esc(jobId)}','${esc(r.id)}')">ไม่คิดต้นทุน</button></div>`:''}</div>`).join(''):'<div class="text-box">ยังไม่มีอะไหล่ที่ช่างแจ้ง</div>'}</div>
     <div class="form-group"><label>ต้นทุนจริงของงาน</label>${costs.length?`<table><thead><tr><th>ประเภท</th><th>รายละเอียด</th><th>จำนวน</th><th>ต้นทุน</th><th>VAT</th></tr></thead><tbody>${costs.map(c=>`<tr><td>${esc(c.cost_type)}</td><td>${esc(c.description)}</td><td>${esc(c.quantity)} ${esc(c.unit||'')}</td><td class="mono tr">฿${money(c.cost_amount)}</td><td class="mono tr">฿${money(c.vat_amount)}</td></tr>`).join('')}</tbody></table>`:'<div class="text-box">ยังไม่มีต้นทุนจริงที่แอดมินยืนยัน</div>'}</div>
     <div class="form-group"><label>เบิกอะไหล่จาก Stock เข้างานนี้</label>${stockMoves.length?`<table><thead><tr><th>เวลา</th><th>สินค้า</th><th>จำนวน</th><th>ต้นทุน</th><th>โดย</th></tr></thead><tbody>${stockMoves.map(m=>{const it=stockItemById(m.stock_item_id);return `<tr><td class="tm" style="font-size:11px;">${esc((m.created_at||'').replace('T',' ').slice(0,16))}</td><td>${esc(it?it.item_name:m.stock_item_id)}</td><td class="mono tr">${esc(Math.abs(Number(m.quantity||0)))} ${esc(it?.unit||'')}</td><td class="mono tr">฿${money(m.total_cost)}</td><td class="tm" style="font-size:11px;">${esc(m.created_by||'-')}</td></tr>`;}).join('')}</tbody></table><div style="margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="openStockOutModal('','${esc(jobId)}')">+ เบิก stock อีก</button></div>`:`<div class="text-box">ยังไม่มีการเบิก stock เข้างานนี้<br><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="openStockOutModal('','${esc(jobId)}')">เบิก stock เข้างานนี้</button></div>`}</div>
@@ -10199,7 +10236,8 @@ function workOrderBundle(pr){
   return {
     job:liveJobs().find(j=>sameJob(j.id,pr)),
     admin:adminTasks.filter(t=>sameJob(t.jobId,pr)),
-    workDocs:docs.workOrders.filter(d=>sameJob(d.pr,pr)),
+    workDocs:docs.workOrders.filter(d=>sameJob(d.pr,pr)&&d.kind!=='approval'),
+    approvals:docs.workOrders.filter(d=>sameJob(d.pr,pr)&&d.kind==='approval'),
     // เอกสารขายจากหน้าบิลขาย (ระบบปัจจุบัน) — ใช้เทมเพลตเดียวกับที่พิมพ์จากหน้าบิลขาย
     sales:(salesInvoices||[]).filter(x=>x.status!=='cancelled'&&salesInvoiceMatchesJob(x,pr)).sort((a,b)=>String(a.invoice_date||'').localeCompare(String(b.invoice_date||''))),
     quotes:docs.qt.filter(d=>sameJob(d.jid,pr)),
@@ -10377,7 +10415,7 @@ function renderWorkOrders(){
   document.getElementById('workorder-pr-list-panel').innerHTML=prs.length?`<div class="workorder-doc-list">${prs.map(pr=>{const d=workOrderPrimaryData(pr),active=pr===workOrderPrFilter;return `<button class="filter-tab ${active?'active':''}" style="width:100%;justify-content:space-between;border-radius:8px;padding:10px 12px;" onclick="selectWorkOrderPR('${esc(pr)}')"><span class="mono">${esc(pr)}</span><span>${esc(d.status)}</span></button>`;}).join('')}</div>`:'<div class="empty"><div class="empty-icon">-</div><div>ยังไม่มี PR</div></div>';
   const detail=document.getElementById('workorder-detail');
   if(!workOrderPrFilter){document.getElementById('workorder-title').textContent='เลือก PR เพื่อดูแฟ้มงาน';document.getElementById('workorder-doc-count').textContent='';detail.innerHTML='<div class="empty"><div class="empty-icon">🗃</div><div>เลือก PR ด้านซ้ายก่อน</div></div>';return;}
-  const b=workOrderBundle(workOrderPrFilter),d=workOrderPrimaryData(workOrderPrFilter),reportReady=!!b.job,docCount=b.workDocs.length+b.sales.length+b.quotes.length+b.invoices.length+(reportReady?3:0);
+  const b=workOrderBundle(workOrderPrFilter),d=workOrderPrimaryData(workOrderPrFilter),reportReady=!!b.job,docCount=b.workDocs.length+b.approvals.length+b.sales.length+b.quotes.length+b.invoices.length+(reportReady?3:0);
   if(!accountingLoaded&&!workOrderSalesLoading){workOrderSalesLoading=true;ensureAccountingLoaded().then(()=>{if(document.getElementById('page-workorders')?.classList.contains('active'))renderWorkOrders();}).catch(()=>{}).finally(()=>{workOrderSalesLoading=false;});}
   document.getElementById('workorder-title').textContent='แฟ้มงาน '+workOrderPrFilter;
   document.getElementById('workorder-doc-count').textContent=docCount+' เอกสาร';
@@ -10394,6 +10432,7 @@ function renderWorkOrders(){
   <div class="form-group"><label>รายละเอียดงาน</label><div class="text-box">${esc(d.detail)}</div></div>
   <div class="flex g8 mb16" style="flex-wrap:wrap;"><button class="btn btn-primary" onclick="printAllForPR('${esc(workOrderPrFilter)}')">พิมพ์เอกสารทั้งหมด</button><button class="btn btn-primary" onclick="openDocBundle('${esc(workOrderPrFilter)}')">📑 รวมเอกสารเป็นไฟล์เดียว</button><button class="btn btn-ghost" onclick="document.getElementById('workorder-pdf-upload').click()">+ อัปโหลดเอกสารเพิ่ม</button>${reportReady?`<button class="btn btn-ghost" onclick="openJobDocWithImages('${esc(workOrderPrFilter)}',[acceptanceReportHtml])">ใบตรวจรับ</button><button class="btn btn-ghost" onclick="openJobDocWithImages('${esc(workOrderPrFilter)}',[serviceReportHtml])">รายงานช่าง</button><button class="btn btn-ghost" onclick="openJobDocWithImages('${esc(workOrderPrFilter)}',[photoBillingReportHtml])">ใบงานรูปภาพ</button>`:'<span class="tm" style="font-size:12px;">ยังไม่มีคิวช่าง/รายงานสำหรับสร้างเอกสารงานช่าง</span>'}</div>
   <div class="workorder-doc-list">
+    ${b.approvals.map(x=>`<div class="workorder-doc"><div><div class="workorder-doc-title">ใบอนุมัติ ${String(x.type||'').startsWith('image/')?'(รูป)':'(PDF)'}</div><div class="workorder-doc-sub">${esc(x.fileName||'')} · ${x.uploadedAt?new Date(x.uploadedAt).toLocaleString('th-TH'):'—'}${x.uploadedBy?' · '+esc(x.uploadedBy):''}</div></div><div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="openStoredWorkOrderDoc('${esc(x.id)}')">เปิด</button><button class="btn btn-danger btn-sm" onclick="deleteWorkOrderDoc('${esc(x.id)}')">ลบ</button></div></div>`).join('')}
     ${b.workDocs.map(x=>`<div class="workorder-doc"><div><div class="workorder-doc-title">ใบงานต้นฉบับ PDF</div><div class="workorder-doc-sub">${esc(x.fileName||'workorder.pdf')} · ${x.uploadedAt?new Date(x.uploadedAt).toLocaleString('th-TH'):'—'}</div></div><div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="openStoredWorkOrderDoc('${esc(x.id)}')">เปิด/พิมพ์</button><button class="btn btn-danger btn-sm" onclick="deleteWorkOrderDoc('${esc(x.id)}')">ลบ</button></div></div>`).join('')}
     ${b.sales.map(x=>`<div class="workorder-doc"><div><div class="workorder-doc-title">${esc((SALES_DOC_META[x.doc_type||'tax_invoice']||SALES_DOC_META.tax_invoice).title)} ${esc(x.doc_no||x.sales_invoice_no||'')}</div><div class="workorder-doc-sub">ยอด ฿${money((x.doc_type||'tax_invoice')==='tax_invoice'?taxInvoiceLiveTotal(x):Number(x.total_amount||0))} · ${esc(x.invoice_date||'—')}</div></div><div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="openSalesDocPreview('${esc(x.id)}')">ดู</button><button class="btn btn-ghost btn-sm" onclick="openSalesInNewTab('${esc(x.id)}')">แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="printSalesDoc('${esc(x.id)}')">พิมพ์</button></div></div>`).join('')}
     ${b.quotes.map(x=>`<div class="workorder-doc"><div><div class="workorder-doc-title">ใบเสนอราคา ${esc(x.no)} <span class="tm" style="font-size:11px;">(ระบบเก่า)</span></div><div class="workorder-doc-sub">ยอด ฿${(x.amt||0).toLocaleString()} · ${esc(x.date||'—')} · ${esc(x.st||'')}</div></div><div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="openQuoteModal('${esc(x.no)}')">แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="printQuoteDoc('${esc(x.no)}')">พิมพ์</button><button class="btn btn-danger btn-sm" onclick="deleteDoc('qt','${esc(x.no)}');renderWorkOrders()">ลบ</button></div></div>`).join('')}
@@ -11438,6 +11477,7 @@ function openReportModal(id){
   document.getElementById('mrpt-title').textContent=j.id+' — '+j.branch;
   document.getElementById('mrpt-sub').textContent=j.client+' | '+j.type+' | '+j.team;
   document.getElementById('mrpt-jobid').value=id;
+  {const st=document.getElementById('mrpt-appr-status');if(st)st.textContent='';}
   document.getElementById('mrpt-info').innerHTML=`
     <div class="detail-item"><div class="detail-label">PR / Job ID</div><div class="detail-val mono ta">${j.id}</div></div>
     <div class="detail-item"><div class="detail-label">สาขา</div><div class="detail-val">${j.branch}</div></div>
@@ -12525,7 +12565,7 @@ function openDet(id){
   const statusSel=`<select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" style="color:${pfStatusColor(j.status)}" onchange="setJS('${jid}',this.value);setTimeout(()=>openDet('${jid}'),60)" title="เปลี่ยนสถานะ">${J_ST.concat(J_ST.includes(j.status)?[]:[j.status]).map(s=>`<option value="${esc(s)}"${s===j.status?' selected':''}>${esc(s)}</option>`).join('')}</select>`;
   const info=[['ทีมช่าง',esc(j.team||'-')],['ประเภทงาน',esc(j.type||'-')],['วันนัด',esc(j.date||'-')],['วันที่ Assign',esc(j.assignedAt||'-')],['เลขใบงานลูกค้า',esc(j.ref||'-')],['อัปเดตจากช่าง',hasTechUpdate(j)?techUpdatePill(j):'—']];
   document.getElementById('det-body').innerHTML=`<div class="dw-h">
-    <div class="dw-top"><span class="dw-pr">${esc(j.id)}</span><button class="btn btn-ghost btn-xs" title="คัดลอกเลขงาน" onclick="navigator.clipboard&&navigator.clipboard.writeText('${jid}')">📋</button>${pfSheetBtn(j.id,'','l')}<span style="flex:1"></span>${pfSheetBtn(j.id,'','r')}
+    <div class="dw-top"><span class="dw-pr">${esc(j.id)}</span><button class="btn btn-ghost btn-xs" title="คัดลอกเลขงาน" onclick="navigator.clipboard&&navigator.clipboard.writeText('${jid}')">📋</button>${pfSheetBtn(j.id,'','l')}${pfApprSlot(j.id)}<span style="flex:1"></span>${pfSheetBtn(j.id,'','r')}
       <button class="dw-ib" title="งานก่อนหน้า" ${pos>0?'':'disabled'} onclick="dwGo(-1)">‹</button><button class="dw-ib" title="งานถัดไป" ${pos>=0&&pos<ids.length-1?'':'disabled'} onclick="dwGo(1)">›</button>
       <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button></div></div>
       <button class="dw-ib" title="ปิด (Esc)" onclick="closeM('m-detail')">✕</button></div>
@@ -12740,7 +12780,7 @@ function openAdminDetail(id){
   if(t.jobType)info.push(['ประเภทงานช่าง',esc(t.jobType)]);
   if(t.phone)info.push(['เบอร์ติดต่อ',`<a href="tel:${esc(String(t.phone).replace(/[^\d+]/g,''))}">${esc(t.phone)}</a>`]);
   document.getElementById('det-body').innerHTML=`<div class="dw-h">
-    <div class="dw-top"><span class="dw-pr">${esc(t.id)}</span>${pfSheetBtn(pr,t.id,'l')}<span style="flex:1"></span>${pfSheetBtn(pr,t.id,'r')}
+    <div class="dw-top"><span class="dw-pr">${esc(t.id)}</span>${pfSheetBtn(pr,t.id,'l')}${pfApprSlot(pr)}<span style="flex:1"></span>${pfSheetBtn(pr,t.id,'r')}
       <button class="dw-ib" title="งานก่อนหน้า" ${pos>0?'':'disabled'} onclick="atGo(-1)">‹</button><button class="dw-ib" title="งานถัดไป" ${pos>=0&&pos<ids.length-1?'':'disabled'} onclick="atGo(1)">›</button>
       <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editAdminTask('${tid}')">✏️ แก้ไขงาน</button><button onclick="openJobFromAdmin('${tid}')">🔧 เปิดคิวช่างจาก PR</button><button onclick="closeM('m-detail');deleteAdminTask('${tid}')" style="color:var(--red)">🗑 ลบงาน</button></div></div>
       <button class="dw-ib" title="ปิด (Esc)" onclick="closeM('m-detail')">✕</button></div>
@@ -12766,7 +12806,7 @@ var PF_SHEET_POS='b';
 var PF_SHEET_ICON='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg>';
 function pfSheetDocs(pr,taskId){
   const list=(docs&&Array.isArray(docs.workOrders))?docs.workOrders:[];
-  return list.filter(d=>d&&!isDeletedRecord(d)&&(d.url||d.fileUrl||d.dataUrl)&&((pr&&sameJob(d.pr,pr))||(taskId&&d.sourceTaskId===taskId)))
+  return list.filter(d=>d&&d.kind!=='approval'&&!isDeletedRecord(d)&&(d.url||d.fileUrl||d.dataUrl)&&((pr&&sameJob(d.pr,pr))||(taskId&&d.sourceTaskId===taskId)))
     .sort((a,b)=>(a.kind==='original-workorder'?0:1)-(b.kind==='original-workorder'?0:1)||String(b.savedAt||b.uploadedAt||'').localeCompare(String(a.savedAt||a.uploadedAt||'')));
 }
 function pfSheetAttr(pr,taskId){return `data-pr="${esc(pr||'')}" data-task="${esc(taskId||'')}" onclick="event.stopPropagation();pfOpenJobSheet(this.dataset.pr,this.dataset.task)"`;}
@@ -12784,6 +12824,7 @@ function pfSheetBtn(pr,taskId,spot){
 function pfSheetRefresh(){
   Promise.resolve(typeof ensureWorkOrdersLoaded==='function'?ensureWorkOrdersLoaded():null).catch(()=>{}).then(()=>{
     document.querySelectorAll('.pf-sheet[data-pr]').forEach(b=>{const n=pfSheetNone(b.dataset.pr,b.dataset.task);b.classList.toggle('none',n);b.title=n?'ยังไม่มีใบงาน PDF — กดเพื่ออัปโหลด':'ดูใบงาน PDF';});
+    try{pfApprRefresh();}catch(e){}
   });
 }
 // ดึงไฟล์มาเป็น blob (application/pdf) เพื่อให้เปิดในหน้าต่างได้ แม้ปลายทางจะส่งมาแบบ "ดาวน์โหลด"
@@ -12792,29 +12833,36 @@ async function pfSheetHref(d){
   const src=d.url||d.fileUrl||d.dataUrl||'';if(!src)return '';
   if(pfSheetBlobCache[src])return pfSheetBlobCache[src];
   try{const r=await fetch(src);if(!r.ok)throw new Error(r.status);const b=await r.blob();
-    return pfSheetBlobCache[src]=URL.createObjectURL(b.type==='application/pdf'?b:new Blob([b],{type:'application/pdf'}));}
+    const img=String(d.type||b.type||'').startsWith('image/');
+    return pfSheetBlobCache[src]=URL.createObjectURL(img||b.type==='application/pdf'?b:new Blob([b],{type:'application/pdf'}));}
   catch(e){console.warn('job sheet fetch',e);return src;}
 }
-async function pfOpenJobSheet(pr,taskId){
+async function pfOpenJobSheet(pr,taskId,kind){
+  const appr=kind==='approval',label=appr?'ใบอนุมัติ':'ใบงาน';
   const mobile=window.matchMedia('(max-width:768px)').matches;
   const w=mobile?window.open('','_blank'):null; // เปิดแท็บทันทีตอนกด (กัน browser บล็อก popup) แล้วค่อยใส่ลิงก์
   try{await ensureWorkOrdersLoaded();}catch(e){}
-  const list=pfSheetDocs(pr,taskId);
-  if(!list.length){if(w)w.close();pfSheetRefresh();pfSheetEmpty(pr,taskId);return;}
+  const list=appr?pfApprDocs(pr):pfSheetDocs(pr,taskId);
+  if(!list.length){if(w)w.close();pfSheetRefresh();if(appr)alert('ยังไม่มีใบอนุมัติของ '+pr);else pfSheetEmpty(pr,taskId);return;}
   if(mobile){const h=await pfSheetHref(list[0]);if(w&&h){w.location.href=h;}else if(h&&!window.open(h,'_blank'))alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
   const v=pfSheetViewerEl();
   v._list=list;
-  v.innerHTML=`<div class="pfsv-box"><div class="pfsv-h"><b>ใบงาน ${esc(pr||'')}</b>
-    ${list.length>1?`<select class="filter-select" onchange="pfSheetShow(+this.value)">${list.map((d,i)=>`<option value="${i}">${esc(d.fileName||'ใบงาน '+(i+1))}${d.savedAt||d.uploadedAt?' · '+esc(String(d.savedAt||d.uploadedAt).slice(0,10)):''}</option>`).join('')}</select>`:`<span class="tm">${esc(list[0].fileName||'')}</span>`}
-    <span style="flex:1"></span><a class="btn btn-ghost btn-xs" id="pfsv-open" target="_blank" rel="noopener">เปิดแท็บใหม่ ↗</a><button type="button" class="dw-ib" title="ปิด (Esc)" onclick="pfCloseJobSheet()">✕</button></div>
-    <iframe id="pfsv-frame" title="ใบงาน PDF"></iframe></div>`;
-  v.classList.add('open');
+  v.innerHTML=`<div class="pfsv-box"><div class="pfsv-h"><b>${label} ${esc(pr||'')}</b>
+    ${list.length>1?`<select class="filter-select" onchange="pfSheetShow(+this.value)">${list.map((d,i)=>`<option value="${i}">${esc(d.fileName||label+' '+(i+1))}${d.savedAt||d.uploadedAt?' · '+esc(String(d.savedAt||d.uploadedAt).slice(0,10)):''}</option>`).join('')}</select>`:`<span class="tm">${esc(list[0].fileName||'')}</span>`}
+    <span style="flex:1"></span>${pfZoomBar('pfsv')}<a class="btn btn-ghost btn-sm" id="pfsv-open" target="_blank" rel="noopener">เปิดแท็บใหม่ ↗</a><button type="button" class="dw-ib" title="ปิด (Esc)" onclick="pfCloseJobSheet()">✕</button></div>
+    <iframe id="pfsv-frame" title="${label}"></iframe><div id="pfsv-img" class="pfsv-img"></div></div>`;
+  v.classList.add('open');v._zoom=1;
   pfSheetShow(0);
 }
 async function pfSheetShow(i){
   const v=document.getElementById('pf-sheet-viewer');if(!v||!v._list)return;
-  const h=await pfSheetHref(v._list[i]||v._list[0]);
-  document.getElementById('pfsv-frame').src=h;document.getElementById('pfsv-open').href=h;
+  const d=v._list[i]||v._list[0],h=await pfSheetHref(d);
+  const img=String(d.type||'').startsWith('image/'),fr=document.getElementById('pfsv-frame'),box=document.getElementById('pfsv-img');
+  fr.style.display=img?'none':'';box.style.display=img?'':'none';
+  v._cur={d,h};delete fr.dataset.src;
+  if(img){fr.src='about:blank';box.innerHTML=`<img src="${h}" alt="${esc(d.fileName||'')}">`;}else{box.innerHTML='';}
+  document.getElementById('pfsv-open').href=h;
+  pfsvApplyZoom();
 }
 function pfSheetViewerEl(){let v=document.getElementById('pf-sheet-viewer');
   if(!v){v=document.createElement('div');v.id='pf-sheet-viewer';v.onclick=e=>{if(e.target===v)pfCloseJobSheet();};document.body.appendChild(v);}return v;}
@@ -12849,69 +12897,121 @@ document.body&&(document.body.dataset.sheetpos=PF_SHEET_POS);
 // หน้าต่างรายงานช่าง: เติมปุ่มหลังเปิด
 (function(){const orig=window.openReportModal;if(typeof orig!=='function')return;window.openReportModal=function(id){const r=orig.apply(this,arguments);try{
   const l=document.getElementById('mrpt-sheet-l'),rr=document.getElementById('mrpt-sheet-r');
-  if(l)l.innerHTML=pfSheetBtn(id,'','l');if(rr)rr.innerHTML=pfSheetBtn(id,'','r');pfSheetRefresh();}catch(e){}return r;};})();
+  if(l)l.innerHTML=pfSheetBtn(id,'','l')+pfApprSlot(id);if(rr)rr.innerHTML=pfSheetBtn(id,'','r');pfSheetRefresh();}catch(e){}return r;};})();
 
 // =====================================================================
-// กู้ลิงก์ใบงานจาก R2 — ไฟล์ใบงานที่อัปโหลดแล้วแต่ลิงก์ไม่ถูกบันทึก (บั๊กเดิมก่อน fce1210a)
-// ใช้คำสั่ง GET /list-workorders ของ Worker (ต้องใส่รหัส LIST_TOKEN ตอนกด — ไม่เก็บในหน้าเว็บ)
-// คีย์ใน R2: <PR>/documents/workorder/<เวลา>_<uuid>.pdf → ผูกกลับเข้า PR นั้น
+// ใบอนุมัติ — อัปโหลดรูป/PDF ใบอนุมัติงานจากลูกค้า (หน้ารายงานช่าง) เก็บ R2 + แถวในแฟ้ม PR (work_orders, kind 'approval')
+// ปุ่ม "ใบอนุมัติ" ข้าง "ใบงาน" แสดงเฉพาะงานที่มีไฟล์แล้ว
 // =====================================================================
-var WORKORDER_LIST_ENDPOINT=WORKORDER_UPLOAD_ENDPOINT.replace(/\/upload-workorder$/,'/list-workorders');
-var WORKORDER_FILE_BASE=WORKORDER_UPLOAD_ENDPOINT.replace(/\/upload-workorder$/,'/file/');
-function r2WoIdFromKey(key){let h=0;for(let i=0;i<key.length;i++)h=(h*31+key.charCodeAt(i))|0;return 'WOD-R2-'+(h>>>0).toString(36)+'-'+key.length;}
-async function recoverWorkOrdersFromR2(){
-  if(AUTH&&AUTH.role!=='admin'){alert('เฉพาะแอดมิน');return;}
-  const token=prompt('ใส่รหัสสำหรับดึงรายชื่อไฟล์ใบงานจาก R2 (LIST_TOKEN ที่ตั้งใน Worker)');
-  if(!token)return;
-  const bar=msg=>{const el=document.getElementById('wo-recover-status');if(el)el.textContent=msg;};
-  try{
-    bar('กำลังโหลดแฟ้มใบงานในระบบ...');
-    await ensureWorkOrdersReadyForWrite();
-    ensureDocsShape();
-    const objs=[];let cursor='';
-    do{
-      bar(`กำลังดึงรายชื่อไฟล์จาก R2... (${objs.length})`);
-      const res=await fetch(WORKORDER_LIST_ENDPOINT+'?t='+encodeURIComponent(token)+(cursor?'&cursor='+encodeURIComponent(cursor):''));
-      const js=await res.json().catch(()=>({}));
-      if(!res.ok||!js.ok)throw new Error(js.error||('HTTP '+res.status));
-      objs.push(...(js.objects||[]));cursor=js.cursor||'';
-    }while(cursor);
-    const haveKeys=new Set(docs.workOrders.map(d=>d.key).filter(Boolean));
-    const haveUrls=new Set(docs.workOrders.map(d=>d.url||d.fileUrl).filter(Boolean));
-    const jobIds=new Set(liveJobs().map(j=>normalizePR(j.id)));
-    const fresh=[],noJob=[];
-    objs.forEach(o=>{
-      const m=String(o.key||'').match(/^([^/]+)\/documents\/workorder\/[^/]+\.pdf$/i);if(!m)return;
-      const url=WORKORDER_FILE_BASE+o.key;
-      if(haveKeys.has(o.key)||haveUrls.has(url))return;
-      const pr=m[1].trim();
-      const up=o.uploaded?new Date(o.uploaded).toISOString():new Date().toISOString();
-      const d={id:r2WoIdFromKey(o.key),pr,fileName:'WorkOrder-'+pr+'.pdf',size:o.size||0,type:'application/pdf',uploadedAt:up,url,fileUrl:url,key:o.key,storage:'r2',kind:'original-workorder',sourceTaskId:'r2-recover',savedAt:new Date().toISOString()};
-      (jobIds.has(normalizePR(pr))?fresh:noJob).push(d);
-    });
-    const total=objs.filter(o=>/^[^/]+\/documents\/workorder\/[^/]+\.pdf$/i.test(String(o.key||''))).length;
-    const prs=new Set(fresh.map(d=>normalizePR(d.pr)));
-    bar('');
-    if(!fresh.length&&!noJob.length){alert(`ไฟล์ใบงานใน R2 ทั้งหมด ${total} ไฟล์ มีลิงก์ในระบบครบแล้ว ไม่ต้องกู้`);return;}
-    if(!confirm(`พบไฟล์ใบงานใน R2 ${total} ไฟล์\n• ยังไม่มีลิงก์ในระบบ ${fresh.length+noJob.length} ไฟล์\n  - ตรงกับงานในระบบ ${fresh.length} ไฟล์ (${prs.size} PR)\n  - PR ไม่ตรงกับงานใดเลย ${noJob.length} ไฟล์ (จะเก็บเข้าแฟ้ม PR ไว้ด้วย)\n\nกด OK เพื่อผูกลิงก์ทั้งหมดกลับเข้าแฟ้ม PR`))return;
-    const all=[...fresh,...noJob].sort((a,b)=>String(b.uploadedAt).localeCompare(String(a.uploadedAt)));
-    docs.workOrders.push(...all);
-    all.forEach(d=>{if(!prValues.includes(d.pr))prValues.push(d.pr);});
-    fillSelects();
-    saveState();
-    renderWorkOrders();
-    try{pfSheetRefresh();}catch(e){}
-    bar(`กู้ลิงก์ใบงานแล้ว ${all.length} ไฟล์ (${new Set(all.map(d=>normalizePR(d.pr))).size} PR) — กำลังบันทึก`);
-    try{await writeAuditLog('recover','work_orders','r2-recover',null,{count:all.length},null);}catch(e){}
-    alert(`กู้ลิงก์ใบงานแล้ว ${all.length} ไฟล์`);
-  }catch(err){
-    console.error(err);bar('');
-    alert('กู้ลิงก์ใบงานไม่สำเร็จ: '+(err&&err.message||err)+(String(err&&err.message).includes('Unauthorized')?'\n(รหัสไม่ถูกต้อง)':''));
+var R2_WORKER_BASE=WORKORDER_UPLOAD_ENDPOINT.replace(/\/upload-workorder$/,'');
+var PF_APPR_ICON='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+function pfApprDocs(pr){
+  const list=(docs&&Array.isArray(docs.workOrders))?docs.workOrders:[];
+  return pr?list.filter(d=>d&&d.kind==='approval'&&!isDeletedRecord(d)&&(d.url||d.fileUrl)&&sameJob(d.pr,pr))
+    .sort((a,b)=>String(b.uploadedAt||b.savedAt||'').localeCompare(String(a.uploadedAt||a.savedAt||''))):[];
+}
+function pfApprHtml(pr){
+  const n=pfApprDocs(pr).length;if(!n)return '';
+  return `<button type="button" class="pf-appr" data-pr="${esc(pr)}" onclick="event.stopPropagation();pfOpenJobSheet(this.dataset.pr,'','approval')" title="ดูใบอนุมัติ ${n} ไฟล์">${PF_APPR_ICON}<span>ใบอนุมัติ${n>1?' '+n:''}</span></button>`;
+}
+// ช่องวางปุ่ม (เติมทีหลังเมื่อโหลดแฟ้มเสร็จ)
+function pfApprSlot(pr){return pr?`<span class="pf-appr-slot" data-pr="${esc(pr)}">${pfApprHtml(pr)}</span>`:'';}
+function pfApprRefresh(){document.querySelectorAll('.pf-appr-slot[data-pr]').forEach(s=>{s.innerHTML=pfApprHtml(s.dataset.pr);});}
+async function pfUploadApprovalFile(file,pr){
+  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name||'');
+  const isImg=String(file.type||'').startsWith('image/');
+  if(!isPdf&&!isImg)throw new Error('รองรับเฉพาะรูปภาพหรือ PDF: '+(file.name||''));
+  const fd=new FormData();
+  fd.append('file',file,file.name||(isPdf?'approval.pdf':'approval.jpg'));
+  fd.append('job_id',pr);
+  if(isPdf)fd.append('doc_type','approval');else fd.append('category','approval');
+  const res=await fetch(R2_WORKER_BASE+(isPdf?'/upload-document':'/upload'),{method:'POST',body:fd});
+  if(!res.ok)throw new Error(await res.text());
+  const up=await res.json();
+  return {id:'APV-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),pr,fileName:file.name||'',size:file.size,type:isPdf?'application/pdf':(file.type||'image/jpeg'),
+    url:up.url||up.fileUrl||'',fileUrl:up.fileUrl||up.url||'',key:up.key||'',storage:'r2',kind:'approval',sourceTaskId:'approval-upload',
+    uploadedAt:new Date().toISOString(),uploadedBy:(typeof getActorName==='function'?getActorName():''),savedAt:new Date().toISOString()};
+}
+async function mrptUploadApproval(files){
+  files=[...(files||[])];if(!files.length)return;
+  const pr=document.getElementById('mrpt-jobid')?.value||'';
+  const st=document.getElementById('mrpt-appr-status');
+  if(!pr){alert('ไม่พบเลข PR ของงานนี้');return;}
+  let ok=0;const errs=[];
+  for(const f of files){
+    if(st)st.textContent=`กำลังอัปโหลดใบอนุมัติ ${ok+errs.length+1}/${files.length}...`;
+    try{const d=await pfUploadApprovalFile(f,pr);await ensureWorkOrdersReadyForWrite();ensureDocsShape();docs.workOrders.unshift(d);ok++;}
+    catch(err){console.error(err);errs.push((f.name||'ไฟล์')+': '+(err&&err.message||err));}
   }
+  if(ok){saveState();pfApprRefresh();try{renderWorkOrders();}catch(e){}}
+  if(st)st.textContent=ok?`✓ อัปโหลดใบอนุมัติแล้ว ${ok} ไฟล์ — ดูได้ที่ปุ่ม "ใบอนุมัติ" ด้านบน`:'';
+  if(errs.length)alert('อัปโหลดไม่สำเร็จ:\n'+errs.join('\n'));
 }
 
-// ปุ่มกู้ลิงก์: แสดงเฉพาะแอดมิน
-(function(){const orig=window.renderWorkOrders;if(typeof orig!=='function')return;window.renderWorkOrders=function(){const r=orig.apply(this,arguments);try{const b=document.getElementById('wo-recover-btn');if(b)b.style.display=(!AUTH||AUTH.role==='admin')?'':'none';}catch(e){}return r;};})();
+// =====================================================================
+// ซูมในหน้าดูเอกสาร (เต็มจอ) — หน้าต่างใบงาน/ใบอนุมัติ และพรีวิวเอกสารขาย
+// =====================================================================
+var PF_ZOOM_STEPS=[0.5,0.67,0.75,0.9,1,1.1,1.25,1.5,1.75,2,2.5,3];
+function pfZoomNext(z,dir){
+  if(typeof z!=='number')z=1;
+  if(dir>0)return PF_ZOOM_STEPS.find(s=>s>z+0.001)||PF_ZOOM_STEPS[PF_ZOOM_STEPS.length-1];
+  return [...PF_ZOOM_STEPS].reverse().find(s=>s<z-0.001)||PF_ZOOM_STEPS[0];
+}
+function pfZoomBar(prefix){
+  return `<div class="pf-zoom" onclick="event.stopPropagation()"><button type="button" title="ย่อ (−)" onclick="${prefix}Zoom(-1)">−</button><button type="button" class="pf-zl" id="${prefix}-zl" title="กลับเป็น 100%" onclick="${prefix}Zoom(0)">100%</button><button type="button" title="ขยาย (+)" onclick="${prefix}Zoom(1)">+</button><button type="button" class="pf-fit" title="พอดีจอ" onclick="${prefix}Zoom('fit')">พอดีจอ</button></div>`;
+}
+// ---- หน้าต่างใบงาน / ใบอนุมัติ ----
+function pfsvZoom(dir){
+  const v=document.getElementById('pf-sheet-viewer');if(!v||!v._list)return;
+  v._zoom=dir==='fit'?'fit':dir===0?1:pfZoomNext(v._zoom==='fit'?1:v._zoom,dir);
+  pfsvApplyZoom();
+}
+function pfsvApplyZoom(){
+  const v=document.getElementById('pf-sheet-viewer');if(!v||!v._cur)return;
+  const z=v._zoom||1,lab=document.getElementById('pfsv-zl');
+  if(lab)lab.textContent=z==='fit'?'พอดีจอ':Math.round(z*100)+'%';
+  const {d,h}=v._cur;
+  if(String(d.type||'').startsWith('image/')){
+    const box=document.getElementById('pfsv-img'),img=box&&box.querySelector('img');if(!img)return;
+    box.classList.toggle('fit',z==='fit');
+    if(z==='fit'){img.style.width='';}
+    else img.style.width=Math.round((box.clientWidth-32)*z)+'px'; // 100% = เต็มความกว้างหน้าจอ
+  }else{
+    const fr=document.getElementById('pfsv-frame');if(!fr)return;
+    const want=h+(z==='fit'?'#view=Fit':'#zoom='+Math.round(z*100));
+    if(fr.dataset.src===want)return;
+    fr.dataset.src=want;fr.src='about:blank';setTimeout(()=>{fr.src=want;},30);
+  }
+}
+// ---- พรีวิวเอกสารขาย (srcdoc เดียวกัน origin → ซูมด้วย CSS zoom) ----
+var dpZoomLevel=1;
+function dpZoom(dir){dpZoomLevel=dir==='fit'?'fit':dir===0?1:pfZoomNext(dpZoomLevel==='fit'?dpFitLevel():dpZoomLevel,dir);dpApplyZoom();}
+function dpFitLevel(){
+  const fr=document.getElementById('doc-preview-frame'),doc=fr&&fr.contentDocument;if(!doc||!doc.documentElement)return 1;
+  const el=doc.documentElement,cur=parseFloat(el.style.zoom)||1;
+  const natural=Math.max(el.scrollWidth,doc.body?doc.body.scrollWidth:0)/cur;
+  return natural?Math.max(0.3,Math.min(3,(fr.clientWidth-24)/natural)):1;
+}
+function dpApplyZoom(){
+  const fr=document.getElementById('doc-preview-frame'),doc=fr&&fr.contentDocument;
+  const z=dpZoomLevel==='fit'?dpFitLevel():dpZoomLevel;
+  if(doc&&doc.documentElement)doc.documentElement.style.zoom=z;
+  const lab=document.getElementById('dp-zl');if(lab)lab.textContent=dpZoomLevel==='fit'?'พอดีจอ':Math.round(z*100)+'%';
+}
+(function(){const fr=document.getElementById('doc-preview-frame');if(fr)fr.addEventListener('load',()=>{try{dpApplyZoom();}catch(e){}});
+  const bar=document.getElementById('dp-zoom-slot');if(bar)bar.innerHTML=pfZoomBar('dp');})();
+// ปุ่มลัด: + / − / 0 และ Ctrl+ล้อเมาส์
+window.addEventListener('keydown',e=>{
+  if(e.target&&/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))return;
+  const sv=document.getElementById('pf-sheet-viewer'),dp=document.getElementById('m-doc-preview');
+  const fn=sv&&sv.classList.contains('open')&&sv._list?pfsvZoom:dp&&dp.classList.contains('open')?dpZoom:null;if(!fn)return;
+  if(e.key==='+'||e.key==='='){e.preventDefault();fn(1);}else if(e.key==='-'||e.key==='_'){e.preventDefault();fn(-1);}else if(e.key==='0'){e.preventDefault();fn(0);}
+});
+document.addEventListener('wheel',e=>{
+  if(!e.ctrlKey)return;const box=e.target&&e.target.closest&&e.target.closest('#pfsv-img');if(!box)return;
+  e.preventDefault();pfsvZoom(e.deltaY<0?1:-1);
+},{passive:false});
+
 function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){} initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
 (async function bootstrap(){
@@ -12979,7 +13079,7 @@ function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){}
     <div class="modal-header">
       <div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><div class="modal-title" id="mrpt-title">รายงานงานซ่อม</div><span id="mrpt-sheet-l"></span></div>
-        <div style="font-size:11px;color:var(--text2);margin-top:3px;" id="mrpt-sub"></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px;" id="mrpt-sub"></div><div class="tm" id="mrpt-appr-status" style="font-size:12px;margin-top:4px;"></div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;"><span id="mrpt-sheet-r" style="display:flex;gap:6px;"></span><button class="close-btn" onclick="closeM('m-report')">×</button></div>
     </div>
@@ -13051,13 +13151,16 @@ function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){}
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeM('m-report')">ปิด</button>
-      <button class="btn btn-ghost" onclick="generatePartsQuote()">ทำใบเสนอราคา</button>
-      <button class="btn btn-ghost" onclick="generateAcceptanceReport()">ใบตรวจรับ</button>
-      <button class="btn btn-ghost" onclick="generatePhotoBillingReport()">ใบงานรูปภาพ</button>
-      <button class="btn btn-ghost" onclick="returnReportForFix()">ส่งกลับแก้ไข</button>
-      <button class="btn btn-success" onclick="approveReport()">อนุมัติรายงาน</button>
-      <button class="btn btn-primary" onclick="saveReport()">✓ บันทึกรายงาน</button>
+      <div class="mrpt-tools">
+        <button class="btn btn-ghost" onclick="generatePartsQuote()">🧾 ทำใบเสนอราคา</button>
+        <button class="btn btn-ghost" onclick="generatePhotoBillingReport()">🖼 ใบงานรูปภาพ</button>
+        <label class="btn btn-ghost" title="อัปโหลดรูปหรือ PDF ใบอนุมัติงาน (เลือกได้หลายไฟล์)">⬆ อัปโหลดใบอนุมัติ<input type="file" multiple accept="image/*,application/pdf,.pdf" style="display:none" onchange="mrptUploadApproval(this.files);this.value=''"></label>
+      </div>
+      <div class="mrpt-main">
+        <button class="btn btn-success" onclick="approveReport()">✓ อนุมัติรายงาน</button>
+        <button class="btn btn-primary" onclick="saveReport()">💾 บันทึกรายงาน</button>
+        <button class="btn mrpt-close" onclick="closeM('m-report')">ปิด</button>
+      </div>
     </div>
   </div>
 </div>
