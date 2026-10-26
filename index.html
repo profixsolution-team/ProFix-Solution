@@ -1032,6 +1032,8 @@ body[data-theme="dark"] #m-report .mrpt-close{border-color:#334155 !important;}
 .sh-add{background:color-mix(in srgb,#16a34a 10%,var(--surface));}
 .sh-del{background:color-mix(in srgb,#dc2626 9%,var(--surface));}
 .sh-new{background:color-mix(in srgb,var(--accent) 8%,var(--surface));}
+.sh-rm{border-style:dashed;}
+.sh-live{border-color:color-mix(in srgb,var(--accent) 40%,var(--border));}
 .sh-card .btn{align-self:flex-start;margin-top:2px;}
 /* ===== ปุ่มดูใบงาน + หน้าต่างดู PDF ===== */
 .pf-sheet{display:none;align-items:center;justify-content:center;gap:5px;border:1px solid var(--border);background:var(--surface);color:var(--accent);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;flex:none;}
@@ -8968,11 +8970,16 @@ async function saveSalesInvoice(){if(!guardEdit())return;
       }
     }
     const old=salesInvoiceItems.filter(x=>x.sales_invoice_id===id);
+    // ฉบับก่อนแก้ (จากข้อมูลที่โหลดไว้) — ใช้ในประวัติการแก้ไข
+    const _prevInv=isNewDoc?null:salesInvoices.find(x=>x.id===id);
+    const _histBefore=_prevInv?{...clonePlain(_prevInv),items:clonePlain(old.filter(x=>x.status!=='cancelled'))}:null;
     for(const item of old.filter(x=>!rows.some(row=>row.id===x.id))){
       const del=await fetch(splitUrl('sales_invoice_items',`?id=eq.${encodeURIComponent(item.id)}`),{method:'PATCH',headers:sbHeaders(),body:JSON.stringify({status:'cancelled',updated_by:getActorName()})});
       if(!del.ok)throw new Error(await del.text());
     }
     if(rows.length)await sbUpsertResilient('sales_invoice_items','?on_conflict=id',rows);
+    // บันทึกประวัติทันทีหลังบันทึกเอกสารสำเร็จ และรอให้เสร็จก่อน (แท็บเอกสารปิดตัวเองหลัง closeM)
+    try{await Promise.race([writeAuditLog('save_sales_invoice','sales_invoice',id,_histBefore,inv,{...inv,items:rows}),new Promise(r=>setTimeout(r,5000))]);}catch(e){console.warn('บันทึกประวัติเอกสารไม่สำเร็จ',e);}
     // แจ้งแท็บอื่นทันทีที่เอกสาร+รายการขึ้น server แล้ว — แท็บเอกสารปิดตัวเองหลัง closeM (60 ms) ถ้ารอแจ้งท้ายฟังก์ชันจะไม่ทันส่ง
     broadcastDataChanged('accounting');
     upsertClientFromBill(inv.customer_name);
@@ -9006,7 +9013,6 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     renderSalesTax();
     const sec=document.getElementById('job-accounting-section');
     if(sec&&jobList.includes(currentDetailJobId))renderJobAccountingSection(currentDetailJobId);
-    writeAuditLog('save_sales_invoice','sales_invoice',id,null,inv,{...inv,items:rows});
     broadcastDataChanged('accounting'); // แจ้งทุกแท็บให้รีเฟรชทันที (กันข้อมูลค้าง/ปรินท์ผิด)
   }catch(e){
     console.warn('Save sales invoice failed',e);
@@ -13076,7 +13082,7 @@ function shDiff(prev,cur){
   return out;
 }
 async function shLoad(id){
-  const q=`?select=id,actor_name,device_id,action,after_data,created_at&target_type=eq.sales_invoice&target_id=eq.${encodeURIComponent(id)}&order=created_at.asc`;
+  const q=`?select=id,actor_name,device_id,action,before_data,after_data,created_at&target_type=eq.sales_invoice&target_id=eq.${encodeURIComponent(id)}&order=created_at.asc`;
   const rows=await sbFetchAll('admin_audit_logs',q);
   return (rows||[]).filter(r=>r.action==='save_sales_invoice'&&r.after_data);
 }
@@ -13085,7 +13091,12 @@ async function openSalesHistory(){
   const box=document.getElementById('sh-panel');if(!box)return;
   box.classList.add('open');shState={id,logs:[],sel:-1};
   box.innerHTML=`<div class="sh-h"><b>🕘 ประวัติการแก้ไข</b><span style="flex:1"></span><button type="button" class="dw-ib" title="ปิด" onclick="closeSalesHistory()">✕</button></div><div class="sh-body"><div class="tm" style="padding:18px;">กำลังโหลดประวัติ...</div></div>`;
-  try{shState.logs=await shLoad(id);}catch(e){console.error(e);box.querySelector('.sh-body').innerHTML='<div class="tm" style="padding:18px;">โหลดประวัติไม่สำเร็จ ลองใหม่อีกครั้ง</div>';return;}
+  try{
+    const [logs,removed]=await Promise.all([shLoad(id),sbFetchAll('sales_invoice_items',`?select=*&sales_invoice_id=eq.${encodeURIComponent(id)}&status=eq.cancelled&order=updated_at.desc`).catch(()=>[])]);
+    shState.logs=logs;
+    // ตัดรายการที่ถูกลบซึ่งมีอยู่ในฉบับล่าสุดที่บันทึกไว้แล้ว (กันซ้ำ) ไม่ต้องตัด — แสดงทั้งหมดที่ระบบเก็บไว้
+    shState.removed=removed||[];
+  }catch(e){console.error(e);box.querySelector('.sh-body').innerHTML='<div class="tm" style="padding:18px;">โหลดประวัติไม่สำเร็จ ลองใหม่อีกครั้ง</div>';return;}
   shRender();
 }
 function closeSalesHistory(){const b=document.getElementById('sh-panel');if(b){b.classList.remove('open');b.innerHTML='';}if(shState.sel>=0)shShowVersion(-1);}
@@ -13094,10 +13105,15 @@ function shRender(){
   const box=document.getElementById('sh-panel');if(!box)return;
   const L=shState.logs,body=box.querySelector('.sh-body');
   box.querySelector('.sh-h b').textContent=`🕘 ประวัติการแก้ไข (${L.length} ครั้ง)`;
-  if(!L.length){body.innerHTML='<div class="tm" style="padding:18px;line-height:1.6;">ยังไม่มีประวัติของเอกสารนี้<br>(ระบบเริ่มเก็บประวัติเมื่อ 15 มิ.ย. 2569 — เอกสารที่ไม่ได้แก้หลังจากนั้นจะไม่มีประวัติ)</div>';return;}
+  const R=shState.removed||[];
+  const removedCard=R.length?`<div class="sh-card sh-rm"><div class="sh-top"><span class="sh-no">รายการที่ถูกลบออกจากเอกสาร (${R.length})</span></div>
+      <div class="sh-who">ระบบเก็บรายการที่ลบไว้เสมอ แม้ครั้งนั้นจะไม่มีประวัติฉบับเต็ม</div>
+      ${R.map(x=>`<div class="sh-ch sh-del">－ <b>${esc(x.description||'(ไม่มีชื่อ)')}</b> <span class="tm">${esc(String(x.quantity||0))} ${esc(x.unit||'')} × ฿${money(x.unit_price||0)} = ฿${money(x.subtotal||x.total_amount||0)}</span><br><span class="tm">ลบโดย ${esc(x.updated_by||'-')}${x.updated_at&&x.updated_at!==x.created_at?' · '+esc(shWhen(x.updated_at)):''}</span></div>`).join('')}</div>`:'';
+  if(!L.length){body.innerHTML=removedCard+'<div class="tm" style="padding:18px;line-height:1.6;">ยังไม่มีประวัติฉบับเต็มของเอกสารนี้<br>(ระบบเริ่มเก็บเมื่อ 15 มิ.ย. 2569 — การแก้ผ่านแท็บเอกสารก่อนการแก้ไขครั้งนี้ไม่ถูกบันทึก ตั้งแต่นี้ไปจะเก็บทุกครั้ง)</div>';return;}
   const cards=L.map((r,i)=>{
-    const d=shDiff(i?L[i-1].after_data:null,r.after_data);
-    const items=i===0?`<div class="sh-ch sh-new">สร้าง/บันทึกครั้งแรกที่มีประวัติ · รวม ${shVal('total_amount',r.after_data.total_amount)} · ${shItems(r.after_data).length} รายการ</div>`
+    const prev=r.before_data||(i?L[i-1].after_data:null);
+    const d=shDiff(prev,r.after_data);
+    const items=!prev?`<div class="sh-ch sh-new">สร้าง/บันทึกครั้งแรกที่มีประวัติ · รวม ${shVal('total_amount',r.after_data.total_amount)} · ${shItems(r.after_data).length} รายการ</div>`
       :d.length?d.map(c=>c.t==='f'?`<div class="sh-ch"><span class="sh-l">${esc(c.l)}</span> <s>${esc(c.a)}</s> → <b>${esc(c.b)}</b></div>`
         :c.t==='add'?`<div class="sh-ch sh-add">＋ เพิ่มรายการ <b>${esc(c.l)}</b> <span class="tm">${esc(c.b)}</span></div>`
         :c.t==='del'?`<div class="sh-ch sh-del">－ ลบรายการ <s>${esc(c.l)}</s> <span class="tm">${esc(c.a)}</span></div>`
@@ -13107,7 +13123,16 @@ function shRender(){
       <div class="sh-who">โดย ${esc(r.actor_name||'-')}</div>${items}
       <button type="button" class="btn btn-ghost btn-sm" onclick="shShowVersion(${shState.sel===i?-1:i})">${shState.sel===i?'↩ กลับฉบับปัจจุบัน':'👁 ดูฉบับนี้'}</button></div>`;
   }).reverse().join('');
-  body.innerHTML=cards;
+  // ฉบับปัจจุบันต่างจากฉบับล่าสุดที่บันทึกไว้ = มีการแก้ที่ไม่ถูกบันทึกประวัติ (ก่อนแก้ระบบ) → แสดงสิ่งที่ต่างให้เห็น
+  let liveCard='';
+  try{const inv=salesInvoices.find(x=>x.id===shState.id);
+    if(inv){const live={...inv,items:salesInvoiceItems.filter(x=>x.sales_invoice_id===inv.id&&x.status!=='cancelled')};
+      const dd=shDiff(L[L.length-1].after_data,live);
+      if(dd.length)liveCard=`<div class="sh-card sh-live"><div class="sh-top"><span class="sh-no">ฉบับปัจจุบัน · แก้หลังฉบับที่ ${L.length}</span><span class="tm">${esc(shWhen(inv.updated_at))}</span></div>
+        <div class="sh-who">โดย ${esc(inv.updated_by||'-')} · การแก้ครั้งนี้ไม่มีบันทึกฉบับเต็ม (ก่อนปรับระบบ) — แสดงสิ่งที่ต่างจากฉบับที่ ${L.length}</div>
+        ${dd.map(c=>c.t==='f'?`<div class="sh-ch"><span class="sh-l">${esc(c.l)}</span> <s>${esc(c.a)}</s> → <b>${esc(c.b)}</b></div>`:c.t==='add'?`<div class="sh-ch sh-add">＋ เพิ่มรายการ <b>${esc(c.l)}</b> <span class="tm">${esc(c.b)}</span></div>`:c.t==='del'?`<div class="sh-ch sh-del">－ ลบรายการ <s>${esc(c.l)}</s> <span class="tm">${esc(c.a)}</span></div>`:`<div class="sh-ch"><span class="sh-l">${esc(c.l)}</span><br>${c.ch.map(esc).join('<br>')}</div>`).join('')}</div>`;}}
+  catch(e){console.warn(e);}
+  body.innerHTML=liveCard+cards+removedCard;
 }
 // แสดงฉบับย้อนหลังในกรอบพรีวิว (ดูอย่างเดียว) · -1 = กลับฉบับปัจจุบัน
 function shShowVersion(i){
