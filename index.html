@@ -767,7 +767,12 @@ html.doc-mode .topbar2{display:none !important;}
 /* 1) กล่องเทาครอบการ์ดขาว — เฉพาะกล่องที่เป็นตาราง/มีหัวตาราง */
 .table-wrap:has(> table),.table-wrap:has(> .table-header),.table-wrap:has(> .table-scroll){background:var(--panel) !important;padding:6px;box-shadow:none !important;border-radius:24px !important;}
 .table-wrap:has(> .table-header) > .table-header{background:transparent;border-bottom:0;padding:10px 14px 12px;}
-.table-wrap:has(> table) > table,.table-wrap:has(> .table-header) > :not(.table-header),.table-wrap:has(> .table-scroll) > .table-scroll{background:var(--surface);border-radius:18px;overflow:hidden;}
+.table-wrap:has(> table) > table,.table-wrap:has(> .table-header) > :not(.table-header),.table-wrap:has(> .table-scroll) > .table-scroll{background:var(--surface);border-radius:18px;}
+.table-wrap:has(> table) > table,.table-wrap:has(> .table-header) > table,.table-wrap:has(> .table-header) > .table-scroll,.table-wrap:has(> .table-scroll) > .table-scroll{overflow:hidden;}
+/* ช่องที่ไม่ใช่ตาราง (เช่น หัวข้อ + ข้อความ) ในกล่องเทา: เว้นขอบใน ไม่ให้ตัวหนังสือชนมุมโค้งจนถูกตัด */
+.table-wrap:has(> .table-header) > :not(.table-header):not(table):not(.table-scroll){padding:12px 14px;margin:0 0 6px;}
+.table-wrap:has(> .table-header) > :last-child{margin-bottom:0;}
+.table-wrap:has(> .table-header) > .form-group > label{display:block;margin-bottom:6px;}
 .table-wrap:has(> table) > table{display:table;width:100%;}
 /* 2) สถานะในตาราง = ชิปสีมน (สีมาจากสถานะเดิม) — ยังกดเลือกเปลี่ยนสถานะได้เหมือนเดิม */
 .status-select{-webkit-appearance:none;appearance:none;border:0 !important;border-radius:999px !important;padding:4px 26px 4px 11px !important;font-family:var(--sans) !important;font-size:12px !important;font-weight:600 !important;background-color:color-mix(in srgb,currentColor 13%,var(--surface)) !important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-position:right 9px center !important;box-shadow:none !important;max-width:200px;}
@@ -860,6 +865,25 @@ html.doc-mode .topbar2{display:none !important;}
 .dw-link .tm{font-size:12px;}
 .dw-acts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
 @media(max-width:768px){#m-detail .modal{width:100%;margin:0;height:100vh;border-radius:0;}.dw-info{grid-template-columns:1fr 1fr;}}
+
+/* ===== หมายเหตุจากแอดมิน (จากรายงานช่าง) ===== */
+:root{--an:#f5b400;}
+.adm-note{display:flex;align-items:flex-start;gap:6px;margin-top:6px;max-width:340px;background:color-mix(in srgb,var(--an) 16%,#fff);color:color-mix(in srgb,var(--an) 55%,#000);border:1px solid color-mix(in srgb,var(--an) 45%,#fff);border-radius:10px;padding:5px 9px;font-size:12px;line-height:1.45;white-space:normal;}
+.adm-note b{font-weight:700;flex:none;}
+.adm-note span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+body[data-theme="dark"] .adm-note{background:color-mix(in srgb,var(--an) 22%,#141b27);color:color-mix(in srgb,var(--an) 55%,#fff);border-color:color-mix(in srgb,var(--an) 40%,#141b27);}
+.dw-note{background:color-mix(in srgb,var(--an) 16%,#fff);border:1px solid color-mix(in srgb,var(--an) 45%,#fff);color:color-mix(in srgb,var(--an) 45%,#000);border-radius:16px;padding:12px 14px;margin-bottom:12px;line-height:1.6;white-space:pre-wrap;}
+.dw-note .t{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;margin-bottom:4px;white-space:normal;}
+.dw-note .t small{font-weight:500;opacity:.75;margin-left:auto;}
+body[data-theme="dark"] .dw-note{background:color-mix(in srgb,var(--an) 22%,#141b27);border-color:color-mix(in srgb,var(--an) 40%,#141b27);color:color-mix(in srgb,var(--an) 55%,#fff);}
+
+/* สีป้ายหมายเหตุแอดมิน (เลือกในหน้าตรวจรายงานช่าง) */
+.note-colors{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px;font-size:12px;}
+.note-colors .sw{width:24px;height:24px;border-radius:50%;border:0;cursor:pointer;background:var(--c);box-shadow:0 0 0 2px var(--surface),0 0 0 3px color-mix(in srgb,var(--c) 40%,transparent);padding:0;}
+.note-colors .sw.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--text);}
+.note-colors .sw-custom{position:relative;overflow:hidden;background:conic-gradient(#ef4444,#f59e0b,#22c55e,#06b6d4,#3b82f6,#a855f7,#ef4444);}
+.note-colors .sw-custom input{position:absolute;inset:-8px;width:40px;height:40px;opacity:0;cursor:pointer;border:0;padding:0;}
+#mrpt-review-note.has-color{background:color-mix(in srgb,var(--an) 12%,var(--surface)) !important;border-color:color-mix(in srgb,var(--an) 50%,transparent) !important;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -11325,6 +11349,7 @@ function openReportModal(id){
   document.getElementById('mrpt-recommendation').value=j.recommendation||tr.recommendation||'';
   document.getElementById('mrpt-note2').value=j.note2||tr.note||'';
   document.getElementById('mrpt-review-note').value=j.reviewNote||tr.reviewNote||'';
+  try{mrptSetNoteColor(j.reviewNoteColor||tr.reviewNoteColor||'');}catch(e){}
   document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+(reportImages(j).length||reportDocumentImages(j).length?renderReportImages(j):'<div class="text-box">กำลังโหลดรูปจากรายงานช่าง...</div>');
   ensureJobImages(id,0).then(()=>{
     if(document.getElementById('mrpt-jobid')?.value!==id)return;
@@ -11355,6 +11380,7 @@ function syncReportFormToJob(){
   j.recommendation=document.getElementById('mrpt-recommendation')?.value||'';
   j.note2=document.getElementById('mrpt-note2').value;
   j.reviewNote=document.getElementById('mrpt-review-note').value;
+  j.reviewNoteColor=mrptNoteColor();
   j.report=j.fix;
   j.reportReviewStatus=j.reportReviewStatus||reportReviewStatus(j);
   j.technicianReport={...(j.technicianReport||{}),dateIn:j.dateIn,timeIn:j.timeIn,dateDone:j.dateDone,timeDone:j.timeDone,symptom:j.symptom,cause:j.cause,fix:j.fix,parts:j.partsUsed,recommendation:j.recommendation,note:j.note2,reviewStatus:j.reportReviewStatus,reviewNote:j.reviewNote,reviewedAt:j.technicianReport?.reviewedAt||''};
@@ -11375,6 +11401,7 @@ function reportReviewPatch(j){
     recommendation:j.recommendation||'',
     note2:j.note2||'',
     reviewNote:j.reviewNote||'',
+    reviewNoteColor:j.reviewNoteColor||'',
     report:j.report||'',
     reportReviewStatus:j.reportReviewStatus||'',
     techUpdateUnread:!!j.techUpdateUnread,
@@ -12202,7 +12229,10 @@ function pfStatusColor(s){return (pfStatusColors&&pfStatusColors[s])||(PF_STATUS
 function pfChip(s,extra=''){const c=pfStatusColor(s);return `<span class="pf-chip" style="--c:${c}">${esc(s)}${extra}</span>`;}
 async function pfLoadUiSettings(){
   try{const ls=JSON.parse(localStorage.getItem('profix_status_colors')||'{}');if(ls&&typeof ls==='object')pfStatusColors={...ls};}catch(e){}
-  try{const rows=await sbFetchAllOptional('console_ui_settings','?select=key,value&key=eq.status_colors');if(rows&&rows[0]&&rows[0].value&&typeof rows[0].value==='object')pfStatusColors={...rows[0].value};}catch(e){}
+  try{
+    const rows=await sbFetchAllOptional('console_ui_settings','?select=key,value&key=eq.status_colors');
+    if(rows&&rows[0]&&rows[0].value&&typeof rows[0].value==='object')pfStatusColors={...rows[0].value};
+  }catch(e){}
 }
 async function pfSaveStatusColor(status,hex){
   pfStatusColors={...pfStatusColors,[status]:hex};
@@ -12391,6 +12421,7 @@ function openDet(id){
     <div class="dw-steps">${DW_FLOW.map((f,i)=>`<div class="${i<k?'done':i===k?'cur':''}">${f}</div>`).join('')}</div>
     <div class="dw-tabs">${[['ov','ภาพรวม'],['link','ลิงก์ช่าง / ลูกค้า'],['doc','เอกสาร & การเงิน']].map(([t,l])=>`<button type="button" class="dw-tab" data-t="${t}" onclick="dwTabSet('${t}')">${l}</button>`).join('')}</div></div>
   <div class="dw-pane" data-t="ov">
+    ${jobAdminNote(j)?`<div class="dw-note"${adminNoteStyle(j)}><div class="t">📝 หมายเหตุจากแอดมิน${j.technicianReport?.reviewedAt?`<small>${esc(String(j.technicianReport.reviewedAt).slice(0,10))}</small>`:'<small></small>'}</div>${esc(jobAdminNote(j))}</div>`:''}
     <div class="dw-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${v}</b></div>`).join('')}</div>
     <div class="dw-box"><div class="dw-box-t">ลูกค้า / สาขา</div>${esc(j.client)} - ${esc(j.branch)}${j.ref?` (${esc(j.ref)})`:''}</div>
     <div class="dw-box"><div class="dw-box-t">รายละเอียดงาน</div>${esc(j.note||'-')}</div>
@@ -12411,6 +12442,29 @@ function openDet(id){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('m-detail')?.classList.contains('open')&&!document.querySelector('.modal-overlay.open:not(#m-detail)'))closeM('m-detail');});
 document.addEventListener('click',e=>{if(!e.target.closest('.dw-menu-w'))document.getElementById('dw-menu')?.classList.remove('open');});
 
+
+// หมายเหตุจากแอดมิน = ช่อง "หมายเหตุรีวิว" ตอนตรวจรายงานช่าง (j.reviewNote) — ช่างเห็นข้อความเดียวกันในแอป LINE
+// ข้อความอัตโนมัติ (เช่น "อนุมัติรายงานแล้ว") ไม่ขึ้นป้าย เพราะสถานะงานบอกอยู่แล้ว
+var ADMIN_AUTO_NOTES=new Set(['อนุมัติรายงานแล้ว','อนุมัติอะไหล่แล้ว รอช่างเข้าซ่อมต่อ','ไม่อนุมัติซ่อมต่อ / ปิดงานสำรวจ','บันทึกการตรวจรายงาน']);
+function jobAdminNote(j){const n=String((j&&(j.reviewNote||j.technicianReport?.reviewNote))||'').trim();return ADMIN_AUTO_NOTES.has(n)?'':n;}
+// สีป้าย = สีที่แอดมินเลือกตอนเขียนหมายเหตุในหน้าตรวจรายงานช่าง (ต่องาน) — ไม่ได้เลือก = สีเหลืองเริ่มต้น
+function jobAdminNoteColor(j){const c=String((j&&(j.reviewNoteColor||j.technicianReport?.reviewNoteColor))||'');return /^#[0-9a-f]{6}$/i.test(c)?c:'';}
+function adminNoteStyle(j){const c=jobAdminNoteColor(j);return c?` style="--an:${c}"`:'';}
+function adminNotePill(j){const n=jobAdminNote(j);return n?`<div class="adm-note"${adminNoteStyle(j)} title="${esc(n)}"><b>📝 แอดมิน:</b><span>${esc(n)}</span></div>`:'';}
+
+// ตัวเลือกสีป้ายหมายเหตุในหน้าตรวจรายงาน — เก็บเป็น reviewNoteColor ของงานนั้น
+var NOTE_COLOR_PRESETS=[['#f5b400','เหลือง (ค่าเริ่มต้น)'],['#ea580c','ส้ม'],['#dc2626','แดง'],['#16a34a','เขียว'],['#175fff','น้ำเงิน'],['#9333ea','ม่วง'],['#64748b','เทา']];
+function mrptNoteColor(){const v=document.getElementById('mrpt-note-color')?.value||'';return /^#[0-9a-f]{6}$/i.test(v)?v:'';}
+function mrptSetNoteColor(hex){
+  const hid=document.getElementById('mrpt-note-color'),box=document.getElementById('mrpt-note-colors'),ta=document.getElementById('mrpt-review-note');
+  if(!hid||!box)return;
+  hex=/^#[0-9a-f]{6}$/i.test(String(hex||''))?String(hex).toLowerCase():'';
+  hid.value=hex;
+  const cur=hex||'#f5b400',isPreset=NOTE_COLOR_PRESETS.some(([c])=>c===cur);
+  box.innerHTML='<span class="tm">สีป้ายในหน้าคิวช่าง:</span>'+NOTE_COLOR_PRESETS.map(([c,l])=>`<button type="button" class="sw ${c===cur?'on':''}" style="--c:${c}" title="${l}" onclick="mrptSetNoteColor('${c==='#f5b400'?'':c}')"></button>`).join('')
+    +`<label class="sw sw-custom ${isPreset?'':'on'}" title="เลือกสีเอง"><input type="color" value="${cur}" onchange="mrptSetNoteColor(this.value)"></label>`;
+  if(ta){ta.classList.toggle('has-color',true);ta.style.setProperty('--an',cur);}
+}
 function startApp(){ initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
 (async function bootstrap(){
@@ -12540,6 +12594,8 @@ function startApp(){ initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}c
         <div class="form-group">
           <label>หมายเหตุแอดมิน / เหตุผลส่งกลับแก้ไข</label>
           <textarea id="mrpt-review-note" placeholder="เช่น รูปไม่ครบ ขอเพิ่มรูปหลังทำ / ข้อมูลครบ อนุมัติแล้ว" style="min-height:50px;"></textarea>
+          <div class="note-colors" id="mrpt-note-colors"><span class="tm">สีป้ายในหน้าคิวช่าง:</span></div>
+          <input type="hidden" id="mrpt-note-color">
         </div>
         <div class="form-group">
           <label>รูปจากช่าง</label>
