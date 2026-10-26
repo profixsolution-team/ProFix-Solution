@@ -1050,6 +1050,72 @@ body[data-sheetpos="a"] .pf-sheet-ico,body[data-sheetpos="b"] .pf-sheet-l,body[d
 .pfsv-h b{font-size:15px;}
 .pfsv-h .filter-select{max-width:320px;}
 #pfsv-frame{flex:1;border:0;width:100%;background:#525659;}
+
+/* ===== ปฏิทินงานช่าง (B-4) ===== */
+.cal-vseg{background:var(--surface);box-shadow:var(--shadow-1);}
+.cal-wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:14px;align-items:start;}
+.cal-side{display:flex;flex-direction:column;gap:14px;position:sticky;top:12px;}
+.cal-mini{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;}
+.cal-mini .h{font-size:11px;color:var(--text3);padding:2px 0 4px;}
+.cal-mini button{position:relative;border:0;background:none;border-radius:9px;height:32px;cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--text);font-variant-numeric:tabular-nums;}
+.cal-mini button:hover{background:var(--surface2);}
+.cal-mini button.has{font-weight:600;}
+.cal-mini button i{position:absolute;left:50%;bottom:3px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--accent);}
+.cal-mini button.sel{background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent);}
+.cal-mini button.today{background:var(--ink);color:var(--ink-text);}
+.cal-mini button.today i{background:var(--ink-text);}
+body[data-theme="dark"] .cal-mini button.today{background:var(--accent);color:#fff;}
+.cal-team{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:13px;color:var(--text);text-align:left;}
+.cal-team:last-child{border-bottom:0;}
+.cal-team:hover{background:var(--surface2);}
+.cal-team .ck{width:18px;height:18px;border-radius:6px;border:2px solid var(--border2);display:grid;place-items:center;font-size:11px;color:#fff;flex:none;}
+.cal-team.on .ck{background:var(--accent);border-color:var(--accent);}
+.cal-team:not(.on){color:var(--text3);}
+.cal-team .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cal-team .tm{font-size:11.5px;}
+.cal-nt{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;background:var(--surface2);color:var(--text3);font-weight:700;font-size:12px;flex:none;}
+.cal-main .d2-h .btn{height:34px;}
+.cal-scroll{overflow:auto;}
+.cal-tl{display:grid;grid-template-columns:150px repeat(var(--cols),minmax(96px,1fr));min-width:calc(150px + var(--cols)*96px);}
+.cal-tl>.cal-rh,.cal-tl>.cal-dh,.cal-tl>.cal-cell{border-bottom:1px solid var(--border);border-right:1px solid var(--border);}
+.cal-tl>*:nth-child(calc(var(--cols) + 1)n){border-right:0;}
+.cal-dh{display:flex;align-items:baseline;justify-content:center;gap:6px;padding:10px 6px;font-size:12px;color:var(--text3);position:sticky;top:0;background:var(--surface);z-index:1;}
+.cal-dh b{font-size:17px;color:var(--text);font-weight:600;}
+.cal-dh.sun span,.cal-dh.sun b{color:var(--red);}
+.cal-dh.today b{background:var(--ink);color:var(--ink-text);border-radius:999px;padding:1px 9px;}
+body[data-theme="dark"] .cal-dh.today b{background:var(--accent);color:#fff;}
+.cal-rh{display:flex;align-items:center;gap:9px;padding:10px 12px;min-width:0;position:sticky;left:0;background:var(--surface);z-index:1;}
+.cal-rh b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;}
+.cal-rh small{display:block;font-size:11.5px;color:var(--text3);}
+.cal-tl>.cal-rh:first-child{background:var(--surface);z-index:2;}
+.cal-cell{padding:6px;display:flex;flex-direction:column;gap:5px;min-height:64px;}
+.cal-cell.today{background:color-mix(in srgb,var(--accent) 5%,var(--surface));}
+.cal-cell.free{background-image:repeating-linear-gradient(135deg,transparent 0 9px,color-mix(in srgb,var(--border) 45%,transparent) 9px 10px);}
+.cal-cell.today.free{background-color:color-mix(in srgb,var(--accent) 5%,var(--surface));}
+.cal-cell.drop,.cal-mc.drop{outline:2px dashed var(--accent);outline-offset:-3px;background:color-mix(in srgb,var(--accent) 9%,var(--surface));}
+.cal-blk{--c:#64748b;display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;border:0;border-left:3px solid var(--c);border-radius:10px;padding:6px 9px;cursor:grab;text-align:left;font-family:inherit;font-size:11.5px;line-height:1.35;background:color-mix(in srgb,var(--c) 13%,var(--surface));color:color-mix(in srgb,var(--c) 68%,var(--text));}
+.cal-blk:hover{filter:brightness(.97);box-shadow:0 2px 8px rgba(15,23,42,.08);}
+.cal-blk:active{cursor:grabbing;}
+.cal-blk b{font-size:12.5px;font-weight:600;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);}
+.cal-blk span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cal-blk .st{font-size:10.5px;opacity:.85;}
+.cal-blk.sm{padding:3px 7px;border-radius:7px;}
+.cal-blk.sm b{font-size:11.5px;font-weight:500;}
+.cal-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
+.cal-mh{padding:9px 6px;text-align:center;font-size:12px;color:var(--text3);border-bottom:1px solid var(--border);}
+.cal-mc{min-height:112px;padding:6px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:4px;min-width:0;}
+.cal-mc:nth-child(7n){border-right:0;}
+.cal-mc.mute{background:var(--surface2);}
+.cal-mc.today{background:color-mix(in srgb,var(--accent) 5%,var(--surface));}
+.cal-mc .dn{display:flex;align-items:center;justify-content:space-between;}
+.cal-mc .dn button{border:0;background:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;color:var(--text);border-radius:999px;padding:1px 7px;}
+.cal-mc.today .dn button{background:var(--ink);color:var(--ink-text);}
+.cal-mc .dn .tm{font-size:11px;}
+.cal-more{border:0;background:none;color:var(--accent);font-family:inherit;font-size:11.5px;cursor:pointer;text-align:left;padding:2px 4px;}
+@media(max-width:1100px){.cal-wrap{grid-template-columns:minmax(0,1fr);}.cal-side{position:static;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));min-width:0;}}
+#cal-fbar .filter-select{height:40px;flex:none;align-self:center;}
+.cal-main{min-width:0;}
+@media(max-width:768px){#cal-fbar .filter-select{align-self:stretch;}.cal-main{order:-1;}.cal-tl{grid-template-columns:110px repeat(var(--cols),minmax(110px,1fr));min-width:calc(110px + var(--cols)*110px);}.cal-rh b{max-width:60px;}.cal-mc{min-height:76px;}.cal-mc .cal-blk{display:none;}.cal-mc .cal-more{display:none;}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1244,23 +1310,14 @@ body[data-sheetpos="a"] .pf-sheet-ico,body[data-sheetpos="b"] .pf-sheet-l,body[d
 <!-- JOB CALENDAR -->
 <div class="page" id="page-job-calendar">
   <div class="page-header">
-    <div><div class="page-title">Calendar คิวช่าง</div><div class="page-sub">ดูตารางงานตามทีมและเดือน</div></div>
-    <button class="btn btn-primary" onclick="openJobModal()">+ เปิดงานใหม่</button>
+    <div><div class="page-title">ปฏิทินงานช่าง</div><div class="page-sub">แถว = ทีมช่าง · คอลัมน์ = วัน</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><div class="d2-seg cal-vseg" id="cal-view-seg"></div><button class="btn btn-primary" onclick="openJobModal()">+ เปิดงานใหม่</button></div>
   </div>
-  <div class="content">
-    <div class="calendar-toolbar">
-      <span class="filter-label">บริษัท:</span>
-      <select class="filter-select" id="cal-company" onchange="setCompanyFilter('cal',this.value)"></select>
-      <span class="filter-label">ทีม:</span>
-      <select class="filter-select" id="cal-team" onchange="calendarTeamFilter=this.value;renderCalendar();saveUIState();"></select>
-      <span class="filter-label">เดือน:</span>
-      <input class="filter-input" id="cal-month" type="month" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="calendarMonthFilter=this.value;renderCalendar();saveUIState();">
-      <span class="filter-label">ค้นหา:</span>
-      <input class="search-input" id="cal-search" placeholder="PR / สาขา / งาน" onkeydown="if(event.key==='Enter')applyCalendarSearch()">
-      <button class="btn btn-ghost btn-sm" onclick="applyCalendarSearch()">ค้นหา</button>
-    </div>
-    <div class="calendar-grid" id="job-calendar-grid"></div>
+  <div class="filter-bar jq-fbar" id="cal-fbar">
+    <div class="at-top"><label class="jq-search" style="flex:1;min-width:240px;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="cal-search" autocomplete="off" placeholder="ค้นหา PR / สาขา / ลูกค้า / ประเภท — พิมพ์แล้วกรองทันที"></label>
+    <select class="filter-select" id="cal-company" onchange="setCompanyFilter('cal',this.value)"></select></div>
   </div>
+  <div class="content" style="padding-top:12px;"><div id="cal2"></div></div>
 </div>
 
 <!-- FINANCE -->
@@ -5864,36 +5921,6 @@ function deleteJob(id){if(!guardEdit())return;
 function goFinanceForJob(id){closeM('m-detail');finFilter='ทั้งหมด';goTo('finance');setTimeout(()=>openFinanceEdit(id),0);}
 
 // JOB CALENDAR
-function renderCalendar(){
-  const month=calendarMonthFilter||monthOf(todayISO());
-  calendarMonthFilter=month;
-  const teamSel=document.getElementById('cal-team');
-  const monthInp=document.getElementById('cal-month');
-  const searchInp=document.getElementById('cal-search');
-  const compSel=document.getElementById('cal-company');if(compSel)compSel.innerHTML=companyFilterOptionsHtml('cal');
-  companyEnsureSales('cal');
-  if(teamSel)teamSel.innerHTML=['ทั้งหมด',...teams.map(t=>t.name)].map(t=>`<option value="${esc(t)}"${t===calendarTeamFilter?' selected':''}>${esc(t)}</option>`).join('');
-  if(monthInp)monthInp.value=month;
-  if(searchInp)searchInp.value=calendarSearch;
-  const grid=document.getElementById('job-calendar-grid');if(!grid)return;
-  const [yy,mm]=month.split('-').map(Number);
-  const first=new Date(yy,mm-1,1);
-  const last=new Date(yy,mm,0);
-  const start=new Date(first);start.setDate(first.getDate()-first.getDay());
-  const end=new Date(last);end.setDate(last.getDate()+(6-last.getDay()));
-  const headers=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="cal-head">${d}</div>`).join('');
-  const days=[];
-  for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
-    const iso=dateLocalISO(d);
-    const dayJobs=liveJobs().filter(j=>j.date===iso)
-      .filter(j=>companyMatch('cal',()=>jobCompanyId(j)))
-      .filter(j=>calendarTeamFilter==='ทั้งหมด'||j.team===calendarTeamFilter)
-      .filter(j=>matchText(j,['id','ref','branch','client','type','team','status','note'],calendarSearch));
-    const muted=d.getMonth()!==mm-1;
-    days.push(`<div class="cal-day${muted?' muted':''}"><div class="cal-num">${d.getDate()}${dayJobs.length?` <span class="fc">${dayJobs.length}</span>`:''}</div>${sortByTechUpdateThenDate(dayJobs,'desc').map(j=>`<div class="cal-job${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><div class="cal-job-pr">${techUpdateMark(j)}${esc(j.id)} ${statusBadge(j,j.status)}</div><div class="cal-job-meta">${esc(j.team)} · ${esc(j.branch)}</div><div class="cal-job-meta">${esc(j.type)} ${techUpdatePill(j)}</div></div>`).join('')}</div>`);
-  }
-  grid.innerHTML=headers+days.join('');
-}
 
 // FINANCE
 function setFinFilter(f){finFilter=f;renderFin();}
@@ -13155,6 +13182,134 @@ function shShowVersion(i){
   try{const a=document.getElementById('doc-preview-actions');if(a&&salesInvoices.some(x=>x.id===id)){const h=`<button class="btn btn-ghost btn-sm sh-btn" onclick="openSalesHistory()">🕘 ประวัติการแก้ไข</button>`,ref=a.children[1];if(ref)ref.insertAdjacentHTML('afterend',h);else a.insertAdjacentHTML('beforeend',h);}}catch(e){}
   return r;};})();
 (function(){const m=document.querySelector('#m-doc-preview .modal-body');if(m&&!document.getElementById('sh-panel')){m.style.position='relative';m.insertAdjacentHTML('beforeend','<aside id="sh-panel"></aside>');}})();
+
+// =====================================================================
+// ปฏิทินงานช่าง (B-4) ตาม mockup — แถว = ทีม · คอลัมน์ = วัน · มุมมอง วัน / สัปดาห์ / เดือน
+// ปฏิทินเดือนเล็ก + เลือกทีมที่แสดง · ลากบล็อกงานไปวัน/ทีมอื่น = เลื่อนนัด (ถามยืนยันก่อนบันทึก)
+// =====================================================================
+var calView=(()=>{try{return localStorage.getItem('profix_cal_view')||'week';}catch(e){return 'week';}})();
+var calAnchor=todayISO();
+var calMiniMonth=todayISO().slice(0,7);
+var calHiddenTeams=(()=>{try{return new Set(JSON.parse(localStorage.getItem('profix_cal_hidden')||'[]'));}catch(e){return new Set();}})();
+var CAL_NOTEAM='ยังไม่จัดทีม';
+var CAL_DOW=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+function calISO(d){return dateLocalISO(d);}
+function calDate(iso){const [y,m,d]=String(iso).slice(0,10).split('-').map(Number);return new Date(y,(m||1)-1,d||1);}
+function calAdd(iso,n){const d=calDate(iso);d.setDate(d.getDate()+n);return calISO(d);}
+function calWeekStart(iso){const d=calDate(iso);const dow=(d.getDay()+6)%7;d.setDate(d.getDate()-dow);return calISO(d);} // เริ่มวันจันทร์
+function calThMonth(ym){const [y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleDateString('th-TH',{month:'long',year:'numeric'});}
+function calRangeLabel(a,b){const A=calDate(a),B=calDate(b);const mo=d=>d.toLocaleDateString('th-TH',{month:'short'});const yr=B.getFullYear()+543;
+  return a===b?A.toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):A.getMonth()===B.getMonth()?`${A.getDate()} – ${B.getDate()} ${mo(B)} ${yr}`:`${A.getDate()} ${mo(A)} – ${B.getDate()} ${mo(B)} ${yr}`;}
+function calJobsAll(){
+  return liveJobs().filter(j=>j.date&&companyMatch('cal',()=>jobCompanyId(j)))
+    .filter(j=>matchText(j,['id','ref','branch','client','type','team','status','note'],calendarSearch));
+}
+function calTeamNames(list){
+  const names=[...new Set([...(teams||[]).map(t=>t.name),...list.map(j=>j.team).filter(Boolean)])];
+  if(list.some(j=>!j.team))names.push(CAL_NOTEAM);
+  return names;
+}
+function calTeamOf(j){return j.team||CAL_NOTEAM;}
+function setCalView(v){calView=v;try{localStorage.setItem('profix_cal_view',v);}catch(e){}renderCalendar();}
+function calShift(dir){
+  if(calView==='month'){const d=calDate(calAnchor);d.setDate(1);d.setMonth(d.getMonth()+dir);calAnchor=calISO(d);}
+  else calAnchor=calAdd(calAnchor,dir*(calView==='day'?1:7));
+  calMiniMonth=calAnchor.slice(0,7);renderCalendar();
+}
+function calToday(){calAnchor=todayISO();calMiniMonth=calAnchor.slice(0,7);renderCalendar();}
+function calPick(iso){calAnchor=iso;calMiniMonth=iso.slice(0,7);renderCalendar();}
+function calMiniShift(dir){const d=calDate(calMiniMonth+'-01');d.setMonth(d.getMonth()+dir);calMiniMonth=calISO(d).slice(0,7);renderCalendar();}
+function calToggleTeam(t){calHiddenTeams.has(t)?calHiddenTeams.delete(t):calHiddenTeams.add(t);try{localStorage.setItem('profix_cal_hidden',JSON.stringify([...calHiddenTeams]));}catch(e){}renderCalendar();}
+function calAllTeams(on){if(on)calHiddenTeams.clear();else calTeamNames(calJobsAll()).forEach(t=>calHiddenTeams.add(t));try{localStorage.setItem('profix_cal_hidden',JSON.stringify([...calHiddenTeams]));}catch(e){}renderCalendar();}
+function calBlock(j,compact){
+  const jid=esc(j.id).replace(/'/g,'&#39;');
+  return `<button type="button" class="cal-blk${compact?' sm':''}" draggable="true" ondragstart="calDragStart(event,'${jid}')" style="--c:${pfStatusColor(j.status)}" onclick="openDet('${jid}')" title="${esc(j.id)} · ${esc(j.status||'')}"><b>${esc(j.branch||j.client||'-')}</b>${compact?'':`<span>${esc(j.type||'')} · ${esc(j.id)}</span>`}${compact?'':`<span class="st">${esc(j.status||'')}</span>`}</button>`;
+}
+function renderCalendar(){
+  const page=document.getElementById('page-job-calendar');if(!page)return;
+  const root=document.getElementById('cal2');if(!root)return;
+  try{
+    const compSel=document.getElementById('cal-company');if(compSel)compSel.innerHTML=companyFilterOptionsHtml('cal');
+    companyEnsureSales('cal');
+    const inp=document.getElementById('cal-search');
+    if(inp&&!inp.dataset.v2){inp.dataset.v2='1';inp.value=calendarSearch||'';
+      inp.addEventListener('input',()=>{clearTimeout(inp._t);inp._t=setTimeout(()=>{calendarSearch=inp.value.trim();renderCalendar();saveUIState();},250);});
+      inp.addEventListener('keydown',e=>{if(e.key==='Escape'&&inp.value){inp.value='';calendarSearch='';renderCalendar();saveUIState();}});}
+    const all=calJobsAll(),today=todayISO();
+    const names=calTeamNames(all);
+    const shown=names.filter(t=>!calHiddenTeams.has(t));
+    // ----- ช่วงวัน -----
+    let days=[];
+    if(calView==='day')days=[calAnchor];
+    else if(calView==='week'){const s=calWeekStart(calAnchor);days=Array.from({length:7},(_,i)=>calAdd(s,i));}
+    const inRange=d=>calView==='month'?String(d).slice(0,7)===calAnchor.slice(0,7):days.includes(String(d).slice(0,10));
+    const list=all.filter(j=>inRange(j.date)&&shown.includes(calTeamOf(j)));
+    // ----- ตัวเลขหัวหน้า -----
+    const wk=calWeekStart(today),wkDays=Array.from({length:7},(_,i)=>calAdd(wk,i));
+    const wkJobs=all.filter(j=>wkDays.includes(String(j.date).slice(0,10)));
+    const idleToday=(teams||[]).map(t=>t.name).filter(t=>!all.some(j=>j.team===t&&String(j.date).slice(0,10)===today)).length;
+    phSet('job-calendar',[['สัปดาห์นี้',wkJobs.length+' งาน'],['วันนี้',all.filter(j=>String(j.date).slice(0,10)===today).length+' งาน'],['ทีมว่างวันนี้',idleToday]],'ปฏิทินงานช่าง','แถว = ทีมช่าง · คอลัมน์ = วัน · ลากบล็อกงานเพื่อย้ายวัน/ทีม · คลิกเพื่อดูรายละเอียด');
+    // ----- ปฏิทินเดือนเล็ก -----
+    const mm=calMiniMonth,first=calDate(mm+'-01'),lead=(first.getDay()+6)%7,dim=new Date(first.getFullYear(),first.getMonth()+1,0).getDate();
+    const cnt={};all.filter(j=>shown.includes(calTeamOf(j))).forEach(j=>{const d=String(j.date).slice(0,10);cnt[d]=(cnt[d]||0)+1;});
+    const selSet=new Set(calView==='month'?[]:days);
+    const mini=`<div class="cal-mini">${['จ','อ','พ','พฤ','ศ','ส','อา'].map(d=>`<div class="h">${d}</div>`).join('')}${'<div></div>'.repeat(lead)}${Array.from({length:dim},(_,i)=>{const iso=`${mm}-${String(i+1).padStart(2,'0')}`;const n=cnt[iso]||0;
+      return `<button type="button" class="${iso===today?'today ':''}${selSet.has(iso)?'sel ':''}${n?'has':''}" onclick="calPick('${iso}')" title="${n?n+' งาน':''}">${i+1}${n?`<i style="opacity:${Math.min(1,.35+n/8)}"></i>`:''}</button>`;}).join('')}</div>`;
+    const teamCnt=t=>list.filter(j=>calTeamOf(j)===t).length;
+    const teamList=names.map(t=>{const on=!calHiddenTeams.has(t);return `<button type="button" class="cal-team${on?' on':''}" onclick="calToggleTeam('${esc(t).replace(/'/g,'&#39;')}')"><span class="ck">${on?'✓':''}</span>${t===CAL_NOTEAM?'<span class="cal-nt">?</span>':jqTeamAvatar(t)}<span class="nm">${esc(t)}</span><span class="tm">${on?teamCnt(t)+' งาน':''}</span></button>`;}).join('');
+    // ----- เนื้อหาหลัก -----
+    let main='';
+    if(calView==='month'){
+      const f=calDate(calAnchor.slice(0,7)+'-01'),ld=(f.getDay()+6)%7,dm=new Date(f.getFullYear(),f.getMonth()+1,0).getDate();
+      const cells=[];for(let i=0;i<ld;i++)cells.push('<div class="cal-mc mute"></div>');
+      for(let i=1;i<=dm;i++){const iso=`${calAnchor.slice(0,7)}-${String(i).padStart(2,'0')}`;const js=list.filter(j=>String(j.date).slice(0,10)===iso);
+        cells.push(`<div class="cal-mc${iso===today?' today':''}" ondragover="calDragOver(event)" ondragleave="calDragLeave(event)" ondrop="calDrop(event,'${iso}','')"><div class="dn"><button type="button" onclick="calView='day';calPick('${iso}')">${i}</button>${js.length?`<span class="tm">${js.length}</span>`:''}</div>${js.slice(0,4).map(j=>calBlock(j,true)).join('')}${js.length>4?`<button type="button" class="cal-more" onclick="calView='day';calPick('${iso}')">+${js.length-4} งาน</button>`:''}</div>`);}
+      while(cells.length%7)cells.push('<div class="cal-mc mute"></div>');
+      main=`<div class="cal-month">${['จ.','อ.','พ.','พฤ.','ศ.','ส.','อา.'].map(d=>`<div class="cal-mh">${d}</div>`).join('')}${cells.join('')}</div>`;
+    }else{
+      const cols=days.length;
+      const head=`<div class="cal-rh"></div>${days.map(d=>{const D=calDate(d);return `<div class="cal-dh${d===today?' today':''}${D.getDay()===0?' sun':''}"><span>${CAL_DOW[D.getDay()]}</span><b>${D.getDate()}</b></div>`;}).join('')}`;
+      const rows=shown.map(t=>{const tj=list.filter(j=>calTeamOf(j)===t);
+        return `<div class="cal-rh">${t===CAL_NOTEAM?'<span class="cal-nt">?</span>':jqTeamAvatar(t)}<div><b>${esc(t)}</b><small>${tj.length} งาน</small></div></div>`
+          +days.map(d=>{const js=tj.filter(j=>String(j.date).slice(0,10)===d);return `<div class="cal-cell${d===today?' today':''}${js.length?'':' free'}" ondragover="calDragOver(event)" ondragleave="calDragLeave(event)" ondrop="calDrop(event,'${d}','${esc(t).replace(/'/g,'&#39;')}')">${js.map(j=>calBlock(j,false)).join('')}</div>`;}).join('');}).join('');
+      main=shown.length?`<div class="cal-tl" style="--cols:${cols}">${head}${rows}</div>`:'<div class="d2-empty">ยังไม่ได้เลือกทีมที่จะแสดง</div>';
+    }
+    const label=calView==='month'?calThMonth(calAnchor.slice(0,7)):calRangeLabel(days[0],days[days.length-1]);
+    root.innerHTML=`<div class="cal-wrap">
+      <aside class="cal-side">
+        <section class="d2-box"><div class="d2-h"><div><div class="t">${esc(calThMonth(mm))}</div></div><button type="button" class="d2-round" onclick="calMiniShift(-1)" title="เดือนก่อน">‹</button><button type="button" class="d2-round" onclick="calMiniShift(1)" title="เดือนถัดไป">›</button></div><div class="d2-in d2-pad">${mini}</div></section>
+        <section class="d2-box"><div class="d2-h"><div><div class="t">แสดงทีม</div><div class="s">${shown.length}/${names.length} ทีม</div></div><button type="button" class="jq-link" onclick="calAllTeams(${calHiddenTeams.size?'true':'false'})">${calHiddenTeams.size?'แสดงทั้งหมด':'ซ่อนทั้งหมด'}</button></div><div class="d2-in">${teamList||'<div class="d2-empty">ยังไม่มีทีม</div>'}</div></section>
+      </aside>
+      <section class="d2-box cal-main"><div class="d2-h"><div><div class="t">${esc(label)}</div><div class="s">${list.length} งานในช่วงนี้</div></div>
+        <button type="button" class="d2-round" onclick="calShift(-1)" title="ก่อนหน้า">‹</button><button type="button" class="btn btn-ghost btn-sm" onclick="calToday()">วันนี้</button><button type="button" class="d2-round" onclick="calShift(1)" title="ถัดไป">›</button></div>
+        <div class="d2-in cal-scroll">${main}</div></section>
+    </div>`;
+    const seg=document.getElementById('cal-view-seg');if(seg)seg.innerHTML=[['day','วัน'],['week','สัปดาห์'],['month','เดือน']].map(([v,l])=>`<button type="button" class="${calView===v?'on':''}" onclick="setCalView('${v}')">${l}</button>`).join('');
+  }catch(e){console.warn('calendar v2',e);}
+}
+// ----- ลากเพื่อเลื่อนนัด -----
+var calDragId='';
+function calDragStart(e,id){calDragId=id;try{e.dataTransfer.setData('text/plain',id);e.dataTransfer.effectAllowed='move';}catch(x){}}
+function calDragOver(e){if(!calDragId)return;e.preventDefault();e.currentTarget.classList.add('drop');}
+function calDragLeave(e){e.currentTarget.classList.remove('drop');}
+async function calDrop(e,date,team){
+  e.preventDefault();e.currentTarget.classList.remove('drop');
+  const id=calDragId;calDragId='';if(!id)return;
+  const j=liveJobs().find(x=>x.id===id);if(!j)return;
+  const newTeam=team===''?j.team:(team===CAL_NOTEAM?'':team);
+  if(String(j.date).slice(0,10)===date&&(j.team||'')===(newTeam||''))return;
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const dTh=calDate(date).toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short',year:'2-digit'});
+  const msg=`เลื่อนนัด ${j.id} (${j.branch||''})\n\nวันนัด: ${jqThDate(j.date)} → ${dTh}${(j.team||'')!==(newTeam||'')?`\nทีม: ${j.team||'-'} → ${newTeam||'-'}`:''}\n\nยืนยันบันทึก?`;
+  if(!confirm(msg))return;
+  const before=clonePlain(j),fields={date};
+  if((j.team||'')!==(newTeam||''))fields.team=newTeam;
+  try{
+    await patchJobFieldsOnServer(j.id,fields);
+    try{writeAuditLog('reschedule_job','job',j.id,before,fields,clonePlain(liveJobs().find(x=>x.id===id)||j));}catch(x){}
+    renderCalendar();try{renderJobs();renderDash();}catch(x){}
+  }catch(err){console.error(err);alert('เลื่อนนัดไม่สำเร็จ: '+(err&&err.message||err));}
+}
 
 function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){} initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
