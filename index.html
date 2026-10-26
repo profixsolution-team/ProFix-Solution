@@ -1134,6 +1134,21 @@ body[data-theme="dark"] .cal-dh.today b{background:var(--accent);color:#fff;}
 .tm2-custom{width:26px;height:26px;border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);position:relative;cursor:pointer;overflow:hidden;}
 .tm2-custom input{position:absolute;inset:0;opacity:0;cursor:pointer;}
 .cal-mpick{height:34px;max-width:170px;}
+
+/* ===== เอกสารขาย (B-5) ===== */
+#page-sales-tax .acc-stats{display:none !important;}
+.sl-tabs{background:var(--surface);box-shadow:var(--shadow-1);}
+.sl-tabs button b{font-weight:600;font-size:11px;opacity:.7;margin-left:2px;}
+.sl-dates{display:inline-flex;align-items:center;gap:6px;}
+.sl-no{font-weight:600;font-size:13.5px;color:var(--text);white-space:nowrap;}
+.sl-type{display:inline-block;margin-top:3px;font-size:11px;font-weight:600;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--c,#64748b) 12%,var(--surface));color:color-mix(in srgb,var(--c,#64748b) 75%,var(--text));}
+.sl-quotation{--c:#175fff;}.sl-invoice{--c:#d97706;}.sl-tax_invoice{--c:#16a34a;}.sl-receipt{--c:#9333ea;}
+.sl-date{white-space:nowrap;color:var(--text2);}
+.sl-amt{text-align:right;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;}
+#sale-merge-bar{background:color-mix(in srgb,var(--accent) 7%,var(--surface)) !important;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border)) !important;border-radius:16px !important;padding:12px 16px !important;box-shadow:var(--shadow-1);font-size:13px !important;margin-bottom:12px !important;}
+#sale-merge-bar > div + div{border-top-color:color-mix(in srgb,var(--accent) 25%,var(--border)) !important;}
+.jq-fbar > .at-top,.jq-fbar > .jq-row{max-width:100%;min-width:0;}
+@media(max-width:768px){.jq-fbar > .at-top,.jq-fbar > .jq-row{width:100%;}.sl-dates{display:none;}.sl-tabs{overflow-x:auto;scrollbar-width:none;max-width:100%;}.sl-tabs button{white-space:nowrap;flex:none;}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1391,7 +1406,7 @@ body[data-theme="dark"] .cal-dh.today b{background:var(--accent);color:#fff;}
 <div class="page" id="page-sales-tax">
   <div class="page-header">
     <div><div class="page-title">บิลขาย / เอกสารขาย</div><div class="page-sub">ใบเสนอราคา · ใบแจ้งหนี้ · ใบกำกับภาษี · ใบเสร็จ — ดึงข้อมูลลูกค้า/PR/ราคากลาง/สต็อกมาใช้ได้ทันที</div></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" onclick="openSalesInNewTab('','','quotation')">+ ใบเสนอราคา</button><button class="btn btn-ghost btn-sm" onclick="openSalesInNewTab('','','invoice')">+ ใบแจ้งหนี้</button><button class="btn btn-primary btn-sm" onclick="openSalesInNewTab('','','tax_invoice')">+ ใบกำกับภาษี</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-ghost" onclick="openSalesInNewTab('','','invoice')">+ ใบแจ้งหนี้</button><button class="btn btn-ghost" onclick="openSalesInNewTab('','','tax_invoice')">+ ใบกำกับภาษี</button><button class="btn btn-primary" onclick="openSalesInNewTab('','','quotation')">+ ใบเสนอราคา</button></div>
   </div>
   <div class="content">
     <div class="fin-grid acc-stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
@@ -1403,8 +1418,8 @@ body[data-theme="dark"] .cal-dh.today b{background:var(--accent);color:#fff;}
     <div class="filter-bar" id="sale-fbar" style="margin-bottom:16px;border-radius:8px;border:1px solid var(--border);"></div>
     <div id="sale-merge-bar" style="display:none;background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;"></div>
         <div class="table-wrap mobile-list">
-      <div class="table-header"><div class="table-title">รายการบิลขาย</div><span class="mono tm" id="sale-table-count" style="font-size:11px;"></span></div>
-      <table><thead><tr><th style="width:34px;"><input type="checkbox" id="sale-check-all" onclick="event.stopPropagation()" onchange="toggleAllSalesDocs(this.checked)"></th><th>เลขบิลขาย</th><th>PR</th><th>สาขา</th><th>วันที่</th><th>รับเงิน</th><th>แก้ล่าสุด</th><th></th></tr></thead><tbody id="sales-tbody"></tbody></table>
+      <div class="table-header"><div class="table-title" id="sale-tbl-title">เอกสารขาย</div><div class="jq-tags" id="sale-tags"></div><span class="mono tm" id="sale-table-count" style="font-size:11px;display:none"></span></div>
+      <table><thead><tr><th style="width:34px;"><input type="checkbox" id="sale-check-all" onclick="event.stopPropagation()" onchange="toggleAllSalesDocs(this.checked)"></th><th>เลขที่เอกสาร</th><th>PR</th><th>ลูกค้า / สาขา</th><th>วันที่</th><th style="text-align:right">ยอดรวม</th><th>รับเงิน</th><th>แก้ล่าสุด</th><th></th></tr></thead><tbody id="sales-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -6839,9 +6854,9 @@ function renderSalesTax(){
   document.getElementById('sale-count').textContent=list.length+' บิล';
   document.getElementById('sale-unpaid').textContent='฿'+money(unpaid);
   document.getElementById('sale-table-count').textContent=list.length+' รายการ'; renderSalesMergeBar();
-  if(!accountingLoaded){tb.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลขาย</div></div></td></tr>';return;}
-  if(accountingLoadError&&!salesInvoices.length){tb.innerHTML=accountingLoadErrorHtml(8,'renderSalesTax');return;}
-  if(!list.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">🧾</div><div>${salesInvoices.length?'ไม่พบบิลขายตามตัวกรอง':'ยังไม่มีบิลขาย'}</div></div></td></tr>`;return;}
+  if(!accountingLoaded){tb.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">...</div><div>กำลังโหลดบิลขาย</div></div></td></tr>';return;}
+  if(accountingLoadError&&!salesInvoices.length){tb.innerHTML=accountingLoadErrorHtml(9,'renderSalesTax');return;}
+  if(!list.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">🧾</div><div>${salesInvoices.length?'ไม่พบบิลขายตามตัวกรอง':'ยังไม่มีบิลขาย'}</div></div></td></tr>`;return;}
   tb.innerHTML=list.map(inv=>{
     const prBtns=salesInvoiceJobs(inv).map(p=>`<span style="display:inline-flex;align-items:center;flex-wrap:wrap;gap:2px;margin:1px 0;"><span class="pr-chip" onclick="event.stopPropagation();openDet('${esc(p)}')">${esc(p)}</span>${salesJobStatusBadge(p)}</span>`).join('')||'<span class="tm">-</span>';
     const dt=inv.doc_type||'tax_invoice';const dmeta=SALES_DOC_META[dt]||SALES_DOC_META.tax_invoice;
@@ -6849,7 +6864,7 @@ function renderSalesTax(){
     const card=docMobileCard({no:inv.doc_no||inv.sales_invoice_no,type:dmeta.title,total:inv.total_amount,pay:docPayBadge(inv,'sale'),party:salesInvoiceBranchText(inv)||inv.customer_name||'-',
       sub:inv.customer_name&&salesInvoiceBranchText(inv)!==inv.customer_name?esc(inv.customer_name):'',chips:`<div class="pr-chips" onclick="event.stopPropagation()">${prBtns}</div>`,editor:docEditorHtml(inv),date:inv.invoice_date,
       actions:`<button class="btn btn-ghost btn-sm" onclick="openSalesInNewTab('${esc(inv.id)}')">✏️ แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="printSalesDoc('${esc(inv.id)}')">🖨️ พิมพ์</button><label class="btn btn-ghost btn-sm dc-pick"><input type="checkbox" ${salesPicked.has(inv.id)?'checked':''} onchange="toggleSalesDocPick('${esc(inv.id)}',this.checked);renderSalesTax();"> เลือก</label><button class="btn btn-ghost btn-sm" onclick="toggleMenu('sale-${esc(inv.id)}',event)">⋯</button>`});
-    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td class="m-card-cell">${card}</td><td onclick="event.stopPropagation()"><input type="checkbox" class="sale-pick" value="${esc(inv.id)}" ${salesPicked.has(inv.id)?'checked':''} onchange="toggleSalesDocPick('${esc(inv.id)}',this.checked)"></td><td><div class="sale-doc-no">${esc(inv.doc_no||inv.sales_invoice_no)}</div><span class="sale-doc-type">${esc(dmeta.title)}</span></td><td onclick="event.stopPropagation()"><div class="pr-chips">${prBtns}</div></td><td><div class="sale-branch">${esc(salesInvoiceBranchText(inv))}</div></td><td><span class="sale-date">${esc(inv.invoice_date||'-')}</span></td><td>${docPayBadge(inv,'sale')}</td><td>${docEditorHtml(inv)}</td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesInNewTab('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
+    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td class="m-card-cell">${card}</td><td onclick="event.stopPropagation()"><input type="checkbox" class="sale-pick" value="${esc(inv.id)}" ${salesPicked.has(inv.id)?'checked':''} onchange="toggleSalesDocPick('${esc(inv.id)}',this.checked)"></td><td><div class="sl-no">${esc(inv.doc_no||inv.sales_invoice_no)}</div><span class="sl-type sl-${esc(dt)}">${esc(dmeta.title)}</span></td><td onclick="event.stopPropagation()"><div class="pr-chips">${prBtns}</div></td><td><div class="jq-two"><b>${esc(salesInvoiceBranchText(inv)||inv.customer_name||'-')}</b>${inv.customer_name&&salesInvoiceBranchText(inv)!==inv.customer_name?`<small>${esc(inv.customer_name)}</small>`:''}</div></td><td><span class="sl-date">${esc(inv.invoice_date?jqThDate(inv.invoice_date):'-')}</span></td><td class="sl-amt">฿${money(saleDocTotal(inv))}</td><td>${docPayBadge(inv,'sale')}</td><td>${docEditorHtml(inv)}</td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesInNewTab('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
   }).join('');
 }
 // ลบ (ยกเลิก) บิลขาย — soft cancel ทั้งเอกสารและรายการ
@@ -13410,6 +13425,54 @@ function saveTeam(){
   try{renderJobs();renderDash();renderCalendar();}catch(e){}
 }
 (function(){const o=window.renderTeams;if(typeof o!=='function')return;window.renderTeams=function(){const r=o.apply(this,arguments);try{renderTeamsV2();}catch(e){console.warn(e);}return r;};})();
+
+// =====================================================================
+// เอกสารขาย (B-5) หน้าตาตาม mockup — แท็บประเภทเอกสาร · ค้นหาทันที · ตัวกรอง/แท็ก · ตารางแบบใหม่
+// คลิกแถว = พรีวิวเต็มจอแบบเดิม (ไม่มีกล่องพรีวิวด้านข้าง) · ฟังก์ชันเดิมทั้งหมดยังอยู่ (เลือกหลายใบ/รวม/ดาวน์โหลด/แปลง/ลบ)
+// =====================================================================
+function saleDocTotal(d){return (d.doc_type||'')==='tax_invoice'&&typeof taxInvoiceLiveTotal==='function'?taxInvoiceLiveTotal(d):Number(d.total_amount||0);}
+function saleTypeCounts(){const keep=saleDocType;saleDocType='';let base=[];try{base=filterAccountingList(salesInvoices,'sale');}finally{saleDocType=keep;}
+  const c={'':base.length};Object.keys(SALES_DOC_META).forEach(k=>{c[k]=base.filter(x=>(x.doc_type||'tax_invoice')===k).length;});return c;}
+function buildSalesControlsV2(){
+  const b=document.getElementById('sale-fbar');if(!b)return;
+  if(!b.dataset.v2){
+    b.dataset.v2='1';b.classList.add('jq-fbar');b.removeAttribute('style');
+    b.innerHTML=`<div class="at-top"><div class="d2-seg sl-tabs" id="sale-tabs"></div><label class="jq-search" style="flex:1;min-width:240px;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="sale-search-input" autocomplete="off" placeholder="ค้นหาเลขเอกสาร / PR / ลูกค้า / สาขา — พิมพ์แล้วกรองทันที"></label></div>
+      <div class="jq-row"><span id="sale-fb-dyn" class="jq-dyn"></span></div>`;
+    const inp=document.getElementById('sale-search-input');inp.value=saleSearch||'';
+    inp.addEventListener('input',()=>{clearTimeout(inp._t);inp._t=setTimeout(()=>{saleSearch=inp.value.trim();renderSalesTax();},250);});
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(inp._t);saleSearch=inp.value.trim();renderSalesTax();}if(e.key==='Escape'&&inp.value){inp.value='';saleSearch='';renderSalesTax();}});
+  }
+  const inp=document.getElementById('sale-search-input');if(inp&&document.activeElement!==inp&&inp.value!==(saleSearch||''))inp.value=saleSearch||'';
+  const c=saleTypeCounts();
+  document.getElementById('sale-tabs').innerHTML=[['','ทั้งหมด'],...Object.keys(SALES_DOC_META).map(k=>[k,SALES_DOC_META[k].title])].map(([k,l])=>`<button type="button" class="${(saleDocType||'')===k?'on':''}" onclick="setAccountingDocType('${k}')">${esc(l)} <b>${c[k]||0}</b></button>`).join('');
+  const st=accountingFilterState('sale');
+  document.getElementById('sale-fb-dyn').innerHTML=companyFilterHtml('sale')
+    +`<select class="filter-select ${st.month?'jq-set':''}" onchange="setAccountingMonth('sale',this.value)" title="เลือกทั้งเดือน">${accountingMonthOptions('sale',st.month)}</select>`
+    +`<span class="sl-dates"><input class="filter-input ${st.date?'jq-set':''}" type="date" value="${esc(st.date)}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDate('sale',this.value)" title="ตั้งแต่วันที่"><span class="tm">ถึง</span><input class="filter-input ${st.dateTo?'jq-set':''}" type="date" value="${esc(st.dateTo||'')}" onclick="openDatePicker(this)" onfocus="openDatePicker(this)" onchange="setAccountingDateTo('sale',this.value)" title="ถึงวันที่"></span>`
+    +`<button class="btn btn-ghost btn-sm ${st.range==='today'?'active':''}" onclick="setAccountingRange('sale','today')">วันนี้</button><button class="btn btn-ghost btn-sm ${st.range==='week'?'active':''}" onclick="setAccountingRange('sale','week')">สัปดาห์นี้</button>`
+    +`<select class="filter-select" onchange="setAccountingSortBy('sale',this.value)" title="เรียงตาม">${Object.keys(ACCOUNTING_SORT_FIELDS).map(k=>`<option value="${k}"${st.sortBy===k?' selected':''}>เรียง: ${esc(ACCOUNTING_SORT_FIELDS[k])}</option>`).join('')}</select>`
+    +`<button class="btn btn-ghost btn-sm" onclick="toggleAccountingSort('sale')">${st.sort==='desc'?'ใหม่→เก่า':'เก่า→ใหม่'}</button>`;
+}
+(function(){const o=window.buildAccountingControls;if(typeof o!=='function')return;window.buildAccountingControls=function(kind){if(kind==='sale'){try{return buildSalesControlsV2();}catch(e){console.warn(e);}}return o.apply(this,arguments);};})();
+function saleRenderTags(list){
+  const el=document.getElementById('sale-tags');if(!el)return;
+  const st=accountingFilterState('sale'),tags=[];
+  if(st.search)tags.push(['q','ค้นหา: "'+st.search+'"']);
+  if(st.docType)tags.push(['ty',(SALES_DOC_META[st.docType]||{}).title||st.docType]);
+  if(st.month)tags.push(['dt','เดือน '+st.month]);else if(st.date||st.dateTo)tags.push(['dt',(st.date||'…')+' ถึง '+(st.dateTo||'…')]);else if(st.range)tags.push(['dt',st.range==='today'?'วันนี้':'สัปดาห์นี้']);
+  const unpaid=list.filter(x=>x.payment_status!=='paid').reduce((s,x)=>s+saleDocTotal(x),0);
+  el.innerHTML=`<span class="tm">รวม ฿${money(list.reduce((s,x)=>s+saleDocTotal(x),0))} · ค้างรับ ฿${money(unpaid)}</span>`+(tags.length?tags.map(([k,l])=>`<span class="jq-tag">${esc(l)}<button type="button" onclick="saleUntag('${k}')" title="เอาตัวกรองนี้ออก">×</button></span>`).join('')+`<button type="button" class="jq-link" onclick="clearAccountingFilter('sale');const i=document.getElementById('sale-search-input');if(i)i.value='';">ล้างทั้งหมด</button>`:'');
+}
+function saleUntag(k){if(k==='q'){saleSearch='';const i=document.getElementById('sale-search-input');if(i)i.value='';}if(k==='ty')saleDocType='';if(k==='dt'){saleDate='';saleDateTo='';saleMonth='';saleRange='';}renderSalesTax();}
+// หัวหน้า: ตัวเลขสรุปตามตัวกรอง (แทนการ์ด 4 ใบเดิม)
+(function(){const o=window.renderSalesTax;if(typeof o!=='function')return;window.renderSalesTax=function(){const r=o.apply(this,arguments);try{
+  const list=filterAccountingList(salesInvoices,'sale');
+  const total=list.reduce((s,x)=>s+saleDocTotal(x),0),unpaid=list.filter(x=>x.payment_status!=='paid').reduce((s,x)=>s+saleDocTotal(x),0);
+  phSet('sales-tax',[['ยอดรวม (ตามตัวกรอง)','฿'+money(total)],['ยังไม่รับเงิน','฿'+money(unpaid),unpaid?'bad':''],['เอกสาร',list.length+' ใบ']],'เอกสารขาย','ใบเสนอราคา · ใบแจ้งหนี้ · ใบกำกับภาษี · ใบเสร็จ — คลิกแถวเพื่อพรีวิว');
+  const t=document.getElementById('sale-tbl-title');if(t)t.textContent=list.length+' ใบ';
+  saleRenderTags(list);
+}catch(e){console.warn('sales v2',e);}return r;};})();
 
 function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){} initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
