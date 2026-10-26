@@ -973,6 +973,10 @@ body[data-theme="dark"] .d2-seg button.on{background:var(--accent);color:#fff;}
 .at-task .jq-two b{max-width:340px;white-space:normal;}
 @media(max-width:768px){.at-pri-td .at-dk{display:none;}.at-pri-td{width:auto;padding-right:inherit !important;}.at-top{flex-direction:column;align-items:stretch;}.at-quick{overflow-x:auto;scrollbar-width:none;max-width:100%;}.at-top > *{min-width:0 !important;}.at-quick button{white-space:nowrap;flex:none;}}
 
+
+.pfsv-box.pfsv-empty{height:auto;max-width:520px;}
+.pfsv-msg{display:flex;flex-direction:column;align-items:center;gap:10px;padding:34px 24px 30px;text-align:center;}
+.pfsv-msg b{font-size:15px;}
 /* ===== ปุ่มดูใบงาน + หน้าต่างดู PDF ===== */
 .pf-sheet{display:none;align-items:center;justify-content:center;gap:5px;border:1px solid var(--border);background:var(--surface);color:var(--accent);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;flex:none;}
 .pf-sheet:hover{background:var(--accent-dim,#e8efff);border-color:var(--accent);}
@@ -4786,6 +4790,12 @@ async function uploadWorkOrderPdfToR2(file,pr,sourceTaskId='manual-upload'){
   if(!res.ok)throw new Error(await res.text());
   return res.json();
 }
+// ต้องโหลดแฟ้มใบงานจากฐานข้อมูลก่อนเพิ่มไฟล์ใหม่ ไม่งั้น saveState จะไม่บันทึก work_orders และการโหลดทีหลังจะล้างรายการที่เพิ่งเพิ่มทิ้ง
+async function ensureWorkOrdersReadyForWrite(){
+  try{await ensureWorkOrdersLoaded();}catch(e){console.error(e);}
+  if(workOrdersLoaded||!splitTablesOnline&&!loadedFromSplitTables)return true;
+  throw new Error('โหลดแฟ้มใบงานจากฐานข้อมูลไม่สำเร็จ');
+}
 function storeWorkOrderPdfData(pr,pdfData,sourceTaskId='manual-upload'){
   ensureDocsShape();
   const cleanPr=(pr||'').trim();
@@ -4816,6 +4826,7 @@ async function tryAutoSavePendingAdminPdf(){
   try{
     setPdfStatus(canUploadWorkOrderToR2()?'กำลังอัปโหลดใบงาน PDF ไป R2...':'กำลังบันทึกใบงาน PDF...','warn');
     const pdfData=await resolvePendingAdminPdfData(pr,sourceTaskId);
+    await ensureWorkOrdersReadyForWrite();
     storeWorkOrderPdfData(pr,pdfData,sourceTaskId);
     pendingAdminPdfFile=null;
     setPdfStatus(`บันทึกใบงาน PDF เข้าแฟ้ม ${pr} แล้ว${pdfData.storage==='r2'?' (R2)':''}`,'ok');
@@ -4857,8 +4868,11 @@ async function savePendingAdminPdf(pr,taskId){
   if(!pendingAdminPdfFile)return;
   ensureDocsShape();
   if(!pr){alert('อัปโหลดใบงานแล้ว กรุณาใส่ PR ก่อนบันทึก เพื่อให้ระบบเก็บไฟล์เข้าแฟ้ม PR');return false;}
-  const pdfData=await resolvePendingAdminPdfData(pr,taskId);
-  storeWorkOrderPdfData(pr,pdfData,taskId);
+  try{
+    const pdfData=await resolvePendingAdminPdfData(pr,taskId);
+    await ensureWorkOrdersReadyForWrite();
+    storeWorkOrderPdfData(pr,pdfData,taskId);
+  }catch(err){console.error(err);alert('บันทึกงานแล้ว แต่เก็บใบงาน PDF ไม่สำเร็จ — กดปุ่ม 🔍 ใบงาน ในรายละเอียดงานเพื่ออัปโหลดใหม่');return false;}
   pendingAdminPdfFile=null;
   return true;
 }
@@ -10214,6 +10228,7 @@ async function handleWorkOrderPdfUpload(file){
   if(file.type&&file.type!=='application/pdf'&&!file.name.toLowerCase().endsWith('.pdf')){alert('รองรับเฉพาะไฟล์ PDF เท่านั้น');return;}
   try{
     const pdfData=await buildPdfData(file,pr,'manual-upload');
+    await ensureWorkOrdersReadyForWrite();
     storeWorkOrderPdfData(pr,pdfData,'manual-upload');
     workOrderPrFilter=pr;
     renderWorkOrders();
@@ -12759,6 +12774,7 @@ function pfSheetNone(pr,taskId){return !!(workOrdersLoaded&&!pfSheetDocs(pr,task
 function pfSheetBtn(pr,taskId,spot){
   if(!pr&&!taskId)return '';
   const none=pfSheetNone(pr,taskId)?' none':'';
+  // title จะถูกปรับใน pfSheetRefresh ตามว่ามีไฟล์หรือไม่
   if(spot==='l')return `<button type="button" class="pf-sheet pf-sheet-l${none}" ${pfSheetAttr(pr,taskId)} title="ดูใบงาน PDF">${PF_SHEET_ICON}<span>ใบงาน</span></button>`;
   return `<button type="button" class="pf-sheet pf-sheet-ico${none}" ${pfSheetAttr(pr,taskId)} title="ดูใบงาน PDF">${PF_SHEET_ICON}</button>`
     +`<button type="button" class="pf-sheet pf-sheet-lbl${none}" ${pfSheetAttr(pr,taskId)} title="ดูใบงาน PDF">${PF_SHEET_ICON}<span>ดูใบงาน</span></button>`;
@@ -12766,23 +12782,26 @@ function pfSheetBtn(pr,taskId,spot){
 // โหลดรายการใบงาน (ครั้งแรก) แล้วทำปุ่มที่ไม่มีไฟล์ให้จางลง
 function pfSheetRefresh(){
   Promise.resolve(typeof ensureWorkOrdersLoaded==='function'?ensureWorkOrdersLoaded():null).catch(()=>{}).then(()=>{
-    document.querySelectorAll('.pf-sheet[data-pr]').forEach(b=>b.classList.toggle('none',pfSheetNone(b.dataset.pr,b.dataset.task)));
+    document.querySelectorAll('.pf-sheet[data-pr]').forEach(b=>{const n=pfSheetNone(b.dataset.pr,b.dataset.task);b.classList.toggle('none',n);b.title=n?'ยังไม่มีใบงาน PDF — กดเพื่ออัปโหลด':'ดูใบงาน PDF';});
   });
 }
+// ดึงไฟล์มาเป็น blob (application/pdf) เพื่อให้เปิดในหน้าต่างได้ แม้ปลายทางจะส่งมาแบบ "ดาวน์โหลด"
+var pfSheetBlobCache={};
 async function pfSheetHref(d){
-  const href=d.url||d.fileUrl||'';if(href)return href;
-  if(d.dataUrl){try{return URL.createObjectURL(await (await fetch(d.dataUrl)).blob());}catch(e){return d.dataUrl;}}
-  return '';
+  const src=d.url||d.fileUrl||d.dataUrl||'';if(!src)return '';
+  if(pfSheetBlobCache[src])return pfSheetBlobCache[src];
+  try{const r=await fetch(src);if(!r.ok)throw new Error(r.status);const b=await r.blob();
+    return pfSheetBlobCache[src]=URL.createObjectURL(b.type==='application/pdf'?b:new Blob([b],{type:'application/pdf'}));}
+  catch(e){console.warn('job sheet fetch',e);return src;}
 }
 async function pfOpenJobSheet(pr,taskId){
   const mobile=window.matchMedia('(max-width:768px)').matches;
   const w=mobile?window.open('','_blank'):null; // เปิดแท็บทันทีตอนกด (กัน browser บล็อก popup) แล้วค่อยใส่ลิงก์
   try{await ensureWorkOrdersLoaded();}catch(e){}
   const list=pfSheetDocs(pr,taskId);
-  if(!list.length){if(w)w.close();pfSheetRefresh();alert(`ยังไม่มีใบงาน PDF ของ ${pr||taskId}\nอัปโหลดได้ที่เมนู แฟ้ม PR`);return;}
+  if(!list.length){if(w)w.close();pfSheetRefresh();pfSheetEmpty(pr,taskId);return;}
   if(mobile){const h=await pfSheetHref(list[0]);if(w&&h){w.location.href=h;}else if(h&&!window.open(h,'_blank'))alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
-  let v=document.getElementById('pf-sheet-viewer');
-  if(!v){v=document.createElement('div');v.id='pf-sheet-viewer';v.onclick=e=>{if(e.target===v)pfCloseJobSheet();};document.body.appendChild(v);}
+  const v=pfSheetViewerEl();
   v._list=list;
   v.innerHTML=`<div class="pfsv-box"><div class="pfsv-h"><b>ใบงาน ${esc(pr||'')}</b>
     ${list.length>1?`<select class="filter-select" onchange="pfSheetShow(+this.value)">${list.map((d,i)=>`<option value="${i}">${esc(d.fileName||'ใบงาน '+(i+1))}${d.savedAt||d.uploadedAt?' · '+esc(String(d.savedAt||d.uploadedAt).slice(0,10)):''}</option>`).join('')}</select>`:`<span class="tm">${esc(list[0].fileName||'')}</span>`}
@@ -12795,6 +12814,32 @@ async function pfSheetShow(i){
   const v=document.getElementById('pf-sheet-viewer');if(!v||!v._list)return;
   const h=await pfSheetHref(v._list[i]||v._list[0]);
   document.getElementById('pfsv-frame').src=h;document.getElementById('pfsv-open').href=h;
+}
+function pfSheetViewerEl(){let v=document.getElementById('pf-sheet-viewer');
+  if(!v){v=document.createElement('div');v.id='pf-sheet-viewer';v.onclick=e=>{if(e.target===v)pfCloseJobSheet();};document.body.appendChild(v);}return v;}
+// ยังไม่มีใบงานในระบบ → อัปโหลดได้จากตรงนี้เลย (เก็บ R2 + บันทึกเข้าแฟ้ม PR)
+function pfSheetEmpty(pr,taskId){
+  const v=pfSheetViewerEl();v._list=null;v._pr=pr;v._task=taskId;
+  v.innerHTML=`<div class="pfsv-box pfsv-empty"><div class="pfsv-h"><b>ใบงาน ${esc(pr||taskId||'')}</b><span style="flex:1"></span><button type="button" class="dw-ib" title="ปิด (Esc)" onclick="pfCloseJobSheet()">✕</button></div>
+    <div class="pfsv-msg"><div style="font-size:34px;">📄</div><b>ยังไม่มีใบงาน PDF ของ ${esc(pr||taskId||'')} ในระบบ</b>
+    <div class="tm">${pr?'เลือกไฟล์ PDF เพื่ออัปโหลดเก็บไว้ (R2) และเข้าแฟ้ม PR นี้':'งานนี้ยังไม่มีเลข PR — ใส่ PR ในงานก่อนจึงจะอัปโหลดใบงานได้'}</div>
+    ${pr?`<label class="btn btn-primary" style="cursor:pointer;">⬆ อัปโหลดใบงาน PDF<input type="file" accept="application/pdf,.pdf" style="display:none" onchange="pfSheetUpload(this.files[0])"></label><div class="tm" id="pfsv-status"></div>`:''}</div></div>`;
+  v.classList.add('open');
+}
+async function pfSheetUpload(file){
+  const v=document.getElementById('pf-sheet-viewer');if(!v||!file)return;
+  const pr=v._pr,taskId=v._task,st=document.getElementById('pfsv-status');
+  if(file.type&&file.type!=='application/pdf'&&!file.name.toLowerCase().endsWith('.pdf')){st.textContent='รองรับเฉพาะไฟล์ PDF';return;}
+  st.textContent='กำลังอัปโหลดไป R2...';
+  try{
+    const src=taskId||'manual-upload';
+    const pdfData=await buildPdfData(file,pr,src);
+    await ensureWorkOrdersReadyForWrite();
+    storeWorkOrderPdfData(pr,pdfData,src);
+    saveState();
+    pfSheetRefresh();
+    pfOpenJobSheet(pr,taskId);
+  }catch(err){console.error(err);st.textContent='อัปโหลดไม่สำเร็จ: '+(err&&err.message||err);}
 }
 function pfCloseJobSheet(){const v=document.getElementById('pf-sheet-viewer');if(!v)return;v.classList.remove('open');v.innerHTML='';}
 window.addEventListener('keydown',e=>{const v=document.getElementById('pf-sheet-viewer');if(e.key==='Escape'&&v&&v.classList.contains('open')){e.stopImmediatePropagation();e.preventDefault();pfCloseJobSheet();}},true);
