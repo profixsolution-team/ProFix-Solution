@@ -884,6 +884,26 @@ body[data-theme="dark"] .dw-note{background:color-mix(in srgb,var(--an) 22%,#141
 .note-colors .sw-custom{position:relative;overflow:hidden;background:conic-gradient(#ef4444,#f59e0b,#22c55e,#06b6d4,#3b82f6,#a855f7,#ef4444);}
 .note-colors .sw-custom input{position:absolute;inset:-8px;width:40px;height:40px;opacity:0;cursor:pointer;border:0;padding:0;}
 #mrpt-review-note.has-color{background:color-mix(in srgb,var(--an) 12%,var(--surface)) !important;border-color:color-mix(in srgb,var(--an) 50%,transparent) !important;}
+/* ===== แถวคิวช่างแบบ mockup ===== */
+.jq-table td{vertical-align:middle;}
+.jq-pr .jq-prid{font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;display:flex;align-items:center;gap:4px;}
+.jq-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+.jq-badges > *{margin:0 !important;font-size:11px !important;}
+.jq-two{display:flex;flex-direction:column;line-height:1.35;}
+.jq-two b{font-weight:600;color:var(--text);}
+.jq-two small{font-size:11.5px;color:var(--text3);}
+.jq-team{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;}
+.jq-av{width:28px;height:28px;border-radius:50%;color:#fff;display:inline-grid;place-items:center;font-size:12px;font-weight:600;flex:none;}
+.jq-late{color:var(--red);font-weight:600;}
+.jq-upd{font-size:12px;color:var(--text3);white-space:nowrap;}
+@media(max-width:768px){.jq-pr .jq-prid,.jq-pr .jq-badges{display:none;}} /* มือถือใช้การ์ดอยู่แล้ว ไม่ต้องแสดงซ้ำ */
+/* รูปในหน้าตรวจรายงาน: พับไว้ กดหัวข้อ/ลูกศรเพื่อเปิด */
+details.report-gallery-section > summary{list-style:none;cursor:pointer;user-select:none;}
+details.report-gallery-section > summary::-webkit-details-marker{display:none;}
+details.report-gallery-section > summary .rg-arrow{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--surface2);margin-right:8px;transition:transform .15s;font-size:10px;color:var(--text2);}
+details.report-gallery-section[open] > summary .rg-arrow{transform:rotate(90deg);}
+details.report-gallery-section > summary .rg-hint{font-size:11px;color:var(--text3);font-weight:400;margin-left:8px;}
+details.report-gallery-section[open] > summary .rg-hint{display:none;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1069,7 +1089,7 @@ body[data-theme="dark"] .dw-note{background:color-mix(in srgb,var(--an) 22%,#141
     </div>
     <div class="table-wrap mobile-list">
       <div class="table-header"><div class="table-title" id="job-tbl-title">คิวช่าง</div><div class="jq-tags" id="job-tags"></div><span class="mono tm" style="font-size:11px;display:none" id="job-cnt"></span></div>
-      <table><thead><tr><th>PR</th><th>วันที่ Assign</th><th>สถานะ</th><th>ลูกค้า</th><th>สาขา</th><th>ประเภท</th><th>ทีม</th><th>วันนัด</th><th></th></tr></thead><tbody id="job-tbody"></tbody></table>
+      <table class="jq-table"><thead><tr><th>PR</th><th>สาขา / ลูกค้า</th><th>ประเภท</th><th>ทีม</th><th>วันนัด</th><th>สถานะ</th><th>อัปเดต</th><th></th></tr></thead><tbody id="job-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -5133,8 +5153,8 @@ function renderJobs(){
   document.getElementById('job-tbl-title').textContent=fil.length+' งาน';
   window.__jobQueueFil=fil;try{jqRenderTags(fil,scoped);}catch(e){}
   const tb=document.getElementById('job-tbody');
-  if(!fil.length){tb.innerHTML=trackerEmptyHtml('jobs',allJobs.length,9);return;}
-  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="mono ta fw7" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}${techUpdateMark(j)}${esc(j.id)}${techUpdatePill(j)}${level1Badge(j)}${techAcceptPill(j)}</td><td class="tm" style="font-size:11px;">${esc(j.assignedAt||'-')}</td><td><select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="${SB[j.status]==='b-urgent'?'':'color:'+pfStatusColor(j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.client)}</td><td>${esc(j.branch)}<br><span style="font-size:10px;color:var(--text3);">${esc(j.ref)}</span></td><td><span class="chip">${esc(j.type)}</span></td><td>${esc(j.team)}</td><td class="tm" style="font-size:11px;">${esc(j.date)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
+  if(!fil.length){tb.innerHTML=trackerEmptyHtml('jobs',allJobs.length,8);return;}
+  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');const _b=`${techUpdatePill(j)}${level1Badge(j)}${techAcceptPill(j)}`;const _late=jqLateDays(j);return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="jq-pr">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}<div class="jq-prid">${techUpdateMark(j)}${esc(j.id)}</div>${_b?`<div class="jq-badges">${_b}</div>`:''}</td><td><div class="jq-two"><b>${esc(j.branch||'-')}</b><small>${esc(j.client||'')}${j.ref&&j.ref!=='N/A'?' · '+esc(j.ref):''}</small></div></td><td>${esc(j.type||'-')}</td><td><span class="jq-team">${jqTeamAvatar(j.team)}<span>${esc(j.team||'-')}</span></span></td><td><div class="jq-two"><span class="${_late?'jq-late':''}">${esc(jqThDate(j.date))}${_late?` · เลย ${_late} วัน`:''}</span><small>Assign ${esc(jqThDate(j.assignedAt)||'-')}</small></div></td><td><select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="${SB[j.status]==='b-urgent'?'':'color:'+pfStatusColor(j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="jq-upd">${esc(jqRelTime(j.modifiedAt||j.techUpdateAt||''))}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
 async function setJS(id,s){if(!guardEdit())return;
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
@@ -11254,11 +11274,11 @@ function renderReportImages(j){
   if(!imgs.length&&!docs.length)return '<div class="text-box">ยังไม่มีรูปจากช่าง</div>';
   return `<div class="report-gallery">${['before','during','after'].map(cat=>{
     const group=imgs.filter(im=>im.category===cat);
-    return `<div class="report-gallery-section"><div class="report-gallery-title"><span>${REPORT_IMAGE_LABELS[cat]}</span><span class="report-gallery-count">${group.length} รูป</span></div>${group.length?`<div class="report-thumbs">${group.map(im=>{
+    return `<details class="report-gallery-section"><summary class="report-gallery-title"><span><span class="rg-arrow">▶</span>${REPORT_IMAGE_LABELS[cat]}</span><span class="report-gallery-count">${group.length} รูป<span class="rg-hint">กดเพื่อดูรูป</span></span></summary>${group.length?`<div class="report-thumbs">${group.map(im=>{
       const idx=imgs.indexOf(im);
-      return `<button class="report-thumb" type="button" onclick="openReportImage('${esc(j.id)}',${idx})"><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat])}"><span class="report-thumb-badge">${idx+1}</span></button>`;
-    }).join('')}</div>`:'<div class="tm" style="font-size:12px;">ไม่มีรูปในหมวดนี้</div>'}</div>`;
-  }).join('')}${docs.length?`<div class="report-gallery-section"><div class="report-gallery-title"><span>${REPORT_IMAGE_LABELS.documents}</span><span class="report-gallery-count">${docs.length} รูป</span></div><div class="report-thumbs">${docs.map((im,idx)=>`<button class="report-thumb" type="button" onclick="openReportDocumentImage('${esc(j.id)}',${idx})"><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS.documents)}"><span class="report-thumb-badge">DOC</span></button>`).join('')}</div></div>`:''}</div>`;
+      return `<button class="report-thumb" type="button" onclick="openReportImage('${esc(j.id)}',${idx})"><img loading="lazy" src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat])}"><span class="report-thumb-badge">${idx+1}</span></button>`;
+    }).join('')}</div>`:'<div class="tm" style="font-size:12px;">ไม่มีรูปในหมวดนี้</div>'}</details>`;
+  }).join('')}${docs.length?`<details class="report-gallery-section"><summary class="report-gallery-title"><span><span class="rg-arrow">▶</span>${REPORT_IMAGE_LABELS.documents}</span><span class="report-gallery-count">${docs.length} รูป<span class="rg-hint">กดเพื่อดูรูป</span></span></summary><div class="report-thumbs">${docs.map((im,idx)=>`<button class="report-thumb" type="button" onclick="openReportDocumentImage('${esc(j.id)}',${idx})"><img loading="lazy" src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS.documents)}"><span class="report-thumb-badge">DOC</span></button>`).join('')}</div></details>`:''}</div>`;
 }
 function renderReportRounds(j){
   const rounds=j.reportRounds||j.technicianReport?.rounds||[];
@@ -12461,10 +12481,17 @@ function mrptSetNoteColor(hex){
   hex=/^#[0-9a-f]{6}$/i.test(String(hex||''))?String(hex).toLowerCase():'';
   hid.value=hex;
   const cur=hex||'#f5b400',isPreset=NOTE_COLOR_PRESETS.some(([c])=>c===cur);
-  box.innerHTML='<span class="tm">สีป้ายในหน้าคิวช่าง:</span>'+NOTE_COLOR_PRESETS.map(([c,l])=>`<button type="button" class="sw ${c===cur?'on':''}" style="--c:${c}" title="${l}" onclick="mrptSetNoteColor('${c==='#f5b400'?'':c}')"></button>`).join('')
+  box.innerHTML='<span class="tm">สีป้ายหมายเหตุ (แสดงในรายละเอียดงาน):</span>'+NOTE_COLOR_PRESETS.map(([c,l])=>`<button type="button" class="sw ${c===cur?'on':''}" style="--c:${c}" title="${l}" onclick="mrptSetNoteColor('${c==='#f5b400'?'':c}')"></button>`).join('')
     +`<label class="sw sw-custom ${isPreset?'':'on'}" title="เลือกสีเอง"><input type="color" value="${cur}" onchange="mrptSetNoteColor(this.value)"></label>`;
   if(ta){ta.classList.toggle('has-color',true);ta.style.setProperty('--an',cur);}
 }
+// ----- ตัวช่วยแถวคิวช่าง (ตาม mockup) -----
+var JQ_TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function jqThDate(v){const d=String(v||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return v||'';return Number(d.slice(8))+' '+JQ_TH_MON[Number(d.slice(5,7))-1];}
+function jqLateDays(j){const d=String(j.date||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||(JQ_AFTER_TECH&&JQ_AFTER_TECH.has(j.status))||j.status==='ปิดงาน')return 0;const t=todayISO();if(d>=t)return 0;return Math.round((new Date(t)-new Date(d))/864e5);}
+function jqRelTime(iso){if(!iso)return '';const t=new Date(iso).getTime();if(!t)return '';const m=Math.round((Date.now()-t)/6e4);if(m<1)return 'เมื่อสักครู่';if(m<60)return m+' นาทีที่แล้ว';const h=Math.round(m/60);if(h<24)return h+' ชม.ที่แล้ว';const d=Math.round(h/24);if(d<8)return d+' วันที่แล้ว';return jqThDate(new Date(t).toISOString());}
+var JQ_AV_COLORS=['#175FFF','#0ea5e9','#16a34a','#d97706','#9333ea','#db2777','#0d9488','#334155'];
+function jqTeamAvatar(team){const t=String(team||'').trim();if(!t)return '';const n=t.replace(/^ทีม\s*\d*\s*[-–]?\s*/,'').replace(/^(นาย|นางสาว|นาง|คุณ|ช่าง)\s*/,'').trim()||t;let h=0;for(const ch of t)h=(h*31+ch.charCodeAt(0))>>>0;return `<span class="jq-av" style="background:${JQ_AV_COLORS[h%JQ_AV_COLORS.length]}">${esc(n.charAt(0))}</span>`;}
 function startApp(){ initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
 (async function bootstrap(){
@@ -12594,7 +12621,7 @@ function startApp(){ initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}c
         <div class="form-group">
           <label>หมายเหตุแอดมิน / เหตุผลส่งกลับแก้ไข</label>
           <textarea id="mrpt-review-note" placeholder="เช่น รูปไม่ครบ ขอเพิ่มรูปหลังทำ / ข้อมูลครบ อนุมัติแล้ว" style="min-height:50px;"></textarea>
-          <div class="note-colors" id="mrpt-note-colors"><span class="tm">สีป้ายในหน้าคิวช่าง:</span></div>
+          <div class="note-colors" id="mrpt-note-colors"><span class="tm">สีป้ายหมายเหตุ (แสดงในรายละเอียดงาน):</span></div>
           <input type="hidden" id="mrpt-note-color">
         </div>
         <div class="form-group">
