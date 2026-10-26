@@ -992,6 +992,7 @@ body[data-sheetpos="a"] .pf-sheet-ico,body[data-sheetpos="b"] .pf-sheet-l,body[d
 .pfsv-h b{font-size:15px;}
 .pfsv-h .filter-select{max-width:320px;}
 #pfsv-frame{flex:1;border:0;width:100%;background:#525659;}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1378,7 +1379,7 @@ body[data-sheetpos="a"] .pf-sheet-ico,body[data-sheetpos="b"] .pf-sheet-l,body[d
 <div class="page" id="page-workorders">
   <div class="page-header">
     <div><div class="page-title">ใบงาน / แฟ้ม PR</div><div class="page-sub">รวมเอกสารและข้อมูลทั้งหมดของแต่ละ PR</div></div>
-    <button class="btn btn-primary" onclick="goTo('admin-tracker');openAdminModal()">+ เปิดงานใหม่</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><span class="tm" id="wo-recover-status" style="font-size:12px;"></span><button class="btn btn-ghost" id="wo-recover-btn" onclick="recoverWorkOrdersFromR2()" title="ผูกลิงก์ใบงาน PDF ที่อยู่ใน R2 แต่ลิงก์หายจากระบบ กลับเข้าแฟ้ม PR">🛟 กู้ลิงก์ใบงานจาก R2</button><button class="btn btn-primary" onclick="goTo('admin-tracker');openAdminModal()">+ เปิดงานใหม่</button></div>
   </div>
   <div class="content">
     <div class="filter-bar" style="margin-bottom:16px;border-radius:8px;border:1px solid var(--border);">
@@ -12850,6 +12851,67 @@ document.body&&(document.body.dataset.sheetpos=PF_SHEET_POS);
   const l=document.getElementById('mrpt-sheet-l'),rr=document.getElementById('mrpt-sheet-r');
   if(l)l.innerHTML=pfSheetBtn(id,'','l');if(rr)rr.innerHTML=pfSheetBtn(id,'','r');pfSheetRefresh();}catch(e){}return r;};})();
 
+// =====================================================================
+// กู้ลิงก์ใบงานจาก R2 — ไฟล์ใบงานที่อัปโหลดแล้วแต่ลิงก์ไม่ถูกบันทึก (บั๊กเดิมก่อน fce1210a)
+// ใช้คำสั่ง GET /list-workorders ของ Worker (ต้องใส่รหัส LIST_TOKEN ตอนกด — ไม่เก็บในหน้าเว็บ)
+// คีย์ใน R2: <PR>/documents/workorder/<เวลา>_<uuid>.pdf → ผูกกลับเข้า PR นั้น
+// =====================================================================
+var WORKORDER_LIST_ENDPOINT=WORKORDER_UPLOAD_ENDPOINT.replace(/\/upload-workorder$/,'/list-workorders');
+var WORKORDER_FILE_BASE=WORKORDER_UPLOAD_ENDPOINT.replace(/\/upload-workorder$/,'/file/');
+function r2WoIdFromKey(key){let h=0;for(let i=0;i<key.length;i++)h=(h*31+key.charCodeAt(i))|0;return 'WOD-R2-'+(h>>>0).toString(36)+'-'+key.length;}
+async function recoverWorkOrdersFromR2(){
+  if(AUTH&&AUTH.role!=='admin'){alert('เฉพาะแอดมิน');return;}
+  const token=prompt('ใส่รหัสสำหรับดึงรายชื่อไฟล์ใบงานจาก R2 (LIST_TOKEN ที่ตั้งใน Worker)');
+  if(!token)return;
+  const bar=msg=>{const el=document.getElementById('wo-recover-status');if(el)el.textContent=msg;};
+  try{
+    bar('กำลังโหลดแฟ้มใบงานในระบบ...');
+    await ensureWorkOrdersReadyForWrite();
+    ensureDocsShape();
+    const objs=[];let cursor='';
+    do{
+      bar(`กำลังดึงรายชื่อไฟล์จาก R2... (${objs.length})`);
+      const res=await fetch(WORKORDER_LIST_ENDPOINT+'?t='+encodeURIComponent(token)+(cursor?'&cursor='+encodeURIComponent(cursor):''));
+      const js=await res.json().catch(()=>({}));
+      if(!res.ok||!js.ok)throw new Error(js.error||('HTTP '+res.status));
+      objs.push(...(js.objects||[]));cursor=js.cursor||'';
+    }while(cursor);
+    const haveKeys=new Set(docs.workOrders.map(d=>d.key).filter(Boolean));
+    const haveUrls=new Set(docs.workOrders.map(d=>d.url||d.fileUrl).filter(Boolean));
+    const jobIds=new Set(liveJobs().map(j=>normalizePR(j.id)));
+    const fresh=[],noJob=[];
+    objs.forEach(o=>{
+      const m=String(o.key||'').match(/^([^/]+)\/documents\/workorder\/[^/]+\.pdf$/i);if(!m)return;
+      const url=WORKORDER_FILE_BASE+o.key;
+      if(haveKeys.has(o.key)||haveUrls.has(url))return;
+      const pr=m[1].trim();
+      const up=o.uploaded?new Date(o.uploaded).toISOString():new Date().toISOString();
+      const d={id:r2WoIdFromKey(o.key),pr,fileName:'WorkOrder-'+pr+'.pdf',size:o.size||0,type:'application/pdf',uploadedAt:up,url,fileUrl:url,key:o.key,storage:'r2',kind:'original-workorder',sourceTaskId:'r2-recover',savedAt:new Date().toISOString()};
+      (jobIds.has(normalizePR(pr))?fresh:noJob).push(d);
+    });
+    const total=objs.filter(o=>/^[^/]+\/documents\/workorder\/[^/]+\.pdf$/i.test(String(o.key||''))).length;
+    const prs=new Set(fresh.map(d=>normalizePR(d.pr)));
+    bar('');
+    if(!fresh.length&&!noJob.length){alert(`ไฟล์ใบงานใน R2 ทั้งหมด ${total} ไฟล์ มีลิงก์ในระบบครบแล้ว ไม่ต้องกู้`);return;}
+    if(!confirm(`พบไฟล์ใบงานใน R2 ${total} ไฟล์\n• ยังไม่มีลิงก์ในระบบ ${fresh.length+noJob.length} ไฟล์\n  - ตรงกับงานในระบบ ${fresh.length} ไฟล์ (${prs.size} PR)\n  - PR ไม่ตรงกับงานใดเลย ${noJob.length} ไฟล์ (จะเก็บเข้าแฟ้ม PR ไว้ด้วย)\n\nกด OK เพื่อผูกลิงก์ทั้งหมดกลับเข้าแฟ้ม PR`))return;
+    const all=[...fresh,...noJob].sort((a,b)=>String(b.uploadedAt).localeCompare(String(a.uploadedAt)));
+    docs.workOrders.push(...all);
+    all.forEach(d=>{if(!prValues.includes(d.pr))prValues.push(d.pr);});
+    fillSelects();
+    saveState();
+    renderWorkOrders();
+    try{pfSheetRefresh();}catch(e){}
+    bar(`กู้ลิงก์ใบงานแล้ว ${all.length} ไฟล์ (${new Set(all.map(d=>normalizePR(d.pr))).size} PR) — กำลังบันทึก`);
+    try{await writeAuditLog('recover','work_orders','r2-recover',null,{count:all.length},null);}catch(e){}
+    alert(`กู้ลิงก์ใบงานแล้ว ${all.length} ไฟล์`);
+  }catch(err){
+    console.error(err);bar('');
+    alert('กู้ลิงก์ใบงานไม่สำเร็จ: '+(err&&err.message||err)+(String(err&&err.message).includes('Unauthorized')?'\n(รหัสไม่ถูกต้อง)':''));
+  }
+}
+
+// ปุ่มกู้ลิงก์: แสดงเฉพาะแอดมิน
+(function(){const orig=window.renderWorkOrders;if(typeof orig!=='function')return;window.renderWorkOrders=function(){const r=orig.apply(this,arguments);try{const b=document.getElementById('wo-recover-btn');if(b)b.style.display=(!AUTH||AUTH.role==='admin')?'':'none';}catch(e){}return r;};})();
 function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){} initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
 (async function bootstrap(){
