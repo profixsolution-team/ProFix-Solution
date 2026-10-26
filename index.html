@@ -962,6 +962,32 @@ body[data-theme="dark"] .d2-seg button.on{background:var(--accent);color:#fff;}
 .d2-bar b{text-align:right;font-weight:600;}
 @media(max-width:980px){.d2-grid,.d2-grid.two{grid-template-columns:1fr;}.d2-kpis{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:768px){.d2-row{grid-template-columns:1fr;}.d2-bar{grid-template-columns:130px minmax(0,1fr) 28px;}.d2-fin .go{margin-left:0;}}
+
+/* ===== Admin Tracker (B-3) ===== */
+.at-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.at-quick{background:var(--surface);box-shadow:var(--shadow-1);}
+.at-quick button b{font-weight:600;font-size:11px;opacity:.7;margin-left:2px;}
+.at-quick button.on b{opacity:.85;}
+.at-pri{display:inline-block;width:9px;height:9px;border-radius:50%;}
+.at-pri-td{width:18px;padding-right:0 !important;}
+.at-task .jq-two b{max-width:340px;white-space:normal;}
+@media(max-width:768px){.at-pri-td .at-dk{display:none;}.at-pri-td{width:auto;padding-right:inherit !important;}.at-top{flex-direction:column;align-items:stretch;}.at-quick{overflow-x:auto;scrollbar-width:none;max-width:100%;}.at-top > *{min-width:0 !important;}.at-quick button{white-space:nowrap;flex:none;}}
+
+/* ===== ปุ่มดูใบงาน + หน้าต่างดู PDF ===== */
+.pf-sheet{display:none;align-items:center;justify-content:center;gap:5px;border:1px solid var(--border);background:var(--surface);color:var(--accent);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;flex:none;}
+.pf-sheet:hover{background:var(--accent-dim,#e8efff);border-color:var(--accent);}
+.pf-sheet.none{color:var(--text3);opacity:.55;}
+.pf-sheet-ico{width:32px;height:32px;border-radius:50%;padding:0;}
+.pf-sheet-l,.pf-sheet-lbl{height:28px;border-radius:999px;padding:0 11px 0 9px;}
+.pf-sheet-lbl{height:32px;}
+body[data-sheetpos="a"] .pf-sheet-ico,body[data-sheetpos="b"] .pf-sheet-l,body[data-sheetpos="c"] .pf-sheet-lbl{display:inline-flex;}
+#pf-sheet-viewer{display:none;position:fixed;inset:0;z-index:5000;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);padding:3vh 3vw;}
+#pf-sheet-viewer.open{display:flex;align-items:center;justify-content:center;}
+.pfsv-box{width:min(1000px,100%);height:100%;background:var(--surface);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;}
+.pfsv-h{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.pfsv-h b{font-size:15px;}
+.pfsv-h .filter-select{max-width:320px;}
+#pfsv-frame{flex:1;border:0;width:100%;background:#525659;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1113,8 +1139,8 @@ body[data-theme="dark"] .d2-seg button.on{background:var(--accent);color:#fff;}
       <div id="admin-reject-list"></div>
     </div>
     <div class="table-wrap mobile-list">
-      <div class="table-header"><div class="table-title" id="admin-tbl-title">งาน Admin</div><span class="mono tm" style="font-size:11px;" id="admin-cnt"></span></div>
-      <table><thead><tr><th>PR</th><th>วันที่ Assign</th><th>ประเภท</th><th>รายละเอียด</th><th>ลูกค้า/สาขา</th><th>Assign</th><th>กำหนด</th><th>สถานะ</th><th>JOB ID</th><th></th></tr></thead><tbody id="admin-tbody"></tbody></table>
+      <div class="table-header"><div class="table-title" id="admin-tbl-title">งาน Admin</div><div class="jq-tags" id="admin-tags"></div><span class="mono tm" style="font-size:11px;display:none" id="admin-cnt"></span></div>
+      <table class="jq-table at-table"><thead><tr><th style="width:18px"></th><th>งาน</th><th>PR</th><th>ลูกค้า / สาขา</th><th>ผู้รับผิดชอบ</th><th>กำหนด</th><th>สถานะ</th><th></th></tr></thead><tbody id="admin-tbody"></tbody></table>
     </div>
   </div>
 </div>
@@ -4211,12 +4237,6 @@ function fmtUpdated(v){
 function updateSystemUpdated(){
   document.querySelectorAll('.system-updated').forEach(el=>{el.textContent=lastDataUpdatedAt?' | อัปเดตล่าสุด: '+fmtUpdated(lastDataUpdatedAt):' | ยังไม่มีข้อมูลอัปเดต';});
 }
-function buildAdminControls(counts){
-  const b=document.getElementById('admin-fbar');if(!b)return;
-  b.innerHTML=companyFilterHtml('admin')+`<span class="filter-label">สถานะ:</span><select class="filter-select" onchange="adminFilter=this.value;renderAdmin();saveUIState();">${statusOptionHtml(A_ST,counts,adminFilter)}</select><span class="filter-label">ค้นหา:</span><input class="search-input" id="admin-search-input" value="${esc(adminSearch)}" placeholder="Task / PR / ชื่องาน" onkeydown="if(event.key==='Enter')applyAdminSearch()"><button class="btn btn-ghost btn-sm" onclick="applyAdminSearch()">ค้นหา</button>`;
-  addDateControls('admin-fbar','admin');
-  addQuickControls('admin-fbar','admin');
-}
 function buildFinanceControls(counts){
   const b=document.getElementById('fin-fbar');if(!b)return;
   const teamOpts=['ทั้งหมด',...teams.map(t=>t.name)].map(t=>`<option value="${esc(t)}"${financeTeamFilter===t?' selected':''}>${esc(t)}</option>`).join('');
@@ -4430,22 +4450,27 @@ function renderAdmin(){
   if(rj.length){rb.style.display='block';document.getElementById('admin-reject-c').textContent='('+rj.length+' รายการ)';document.getElementById('admin-reject-list').innerHTML=rj.map(t=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(248,81,73,.2);"><span class="mono ta" style="font-size:11px;">${esc(t.id)}</span><span>${esc(t.type)}</span><span class="tm">-</span><span>${esc(taskSiteText(t))}</span><span class="badge ${SB[t.status]||'b-reject'}">${esc(t.status)}</span><button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="setAS('${t.id}','รอดำเนินการ')">รีเซ็ต</button></div>`).join('');}
   else rb.style.display='none';
   let fil=adminFilter==='ทั้งหมด'?scoped:adminFilter==='ติดปัญหา'?scoped.filter(t=>t.status==='ติดปัญหา'||t.status==='Reject'):scoped.filter(t=>t.status===adminFilter);
+  if(adminQuick&&adminQuick!=='all')fil=fil.filter(t=>atQuickMatch(t,adminQuick));
+  if(adminAssignFilter)fil=fil.filter(t=>t.assign===adminAssignFilter);
+  if(adminTypeFilter)fil=fil.filter(t=>t.type===adminTypeFilter);
   // ซ่อน task ที่งานเชื่อมโยงถูกปิดแล้ว เว้นแต่กำลังค้นหา
-  if(!adminSearch.trim()){
+  if(!adminSearch.trim()&&adminQuick!=='done'){
     const closedIds=new Set(liveJobs().filter(j=>j.status==='ปิดงาน').map(j=>String(j.id)));
     if(closedIds.size)fil=fil.filter(t=>!(t.jobId&&closedIds.has(String(t.jobId))));
   }
   fil=sortByActivity(fil.filter(t=>matchText(t,['id','jobId','type','detail','client','customer','jobType','assign','due','status'],adminSearch)),adminSortDir);
   document.getElementById('admin-cnt').textContent=fil.length+' รายการ';
-  document.getElementById('admin-tbl-title').textContent='งาน Admin - '+adminFilter+(adminSearch?' / ค้นหา: '+adminSearch:'');
+  document.getElementById('admin-tbl-title').textContent=fil.length+' งาน';
+  try{atRenderTags(fil,scoped);}catch(e){}
   const tb=document.getElementById('admin-tbody');
-  if(!fil.length){tb.innerHTML=trackerEmptyHtml('admin',all.length,10);return;}
+  if(!fil.length){tb.innerHTML=trackerEmptyHtml('admin',all.length,8);return;}
   tb.innerHTML=fil.map(t=>{
     const pr=t.jobId||'';
     const linked=liveJobs().find(j=>sameJob(j.id,pr));
     const mid='am-'+t.id;
     const stBadge=statusBadge(t,t.status||'-');
-    return `<tr class="task-row${techUpdateRowClass(t)}" onclick="openAdminDetail('${t.id}')"><td class="mono ta" style="font-size:11px;">${mobileCard(pr||'ยังไม่เปิด PR',t.type,t.assign,t.due,stBadge)}${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openReportModal('${pr}')`:`openJobFromAdmin('${t.id}')`}">${techUpdateMark(t)}${esc(pr)}</button>`:`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">เปิดคิว</button>`}${adminNeedsQueueBadge(t)?' <span class="queue-pill">รอจัดคิวช่าง</span>':''}${techUpdatePill(t)}</td><td class="tm" style="font-size:11px;">${esc(t.assignedAt||'-')}</td><td><span class="chip">${esc(t.type)}</span>${t.pri==='เร่งด่วนมาก'?'<span class="badge b-reject" style="margin-left:4px;">ด่วนมาก</span>':t.pri==='ด่วน'?'<span class="badge b-working" style="margin-left:4px;">ด่วน</span>':''}</td><td class="task-detail" style="max-width:260px;font-size:12px;">${esc(t.detail)}${t.phone?`<span class="task-phone">เบอร์ติดต่อ: ${esc(t.phone)}</span>`:''}</td><td style="font-size:12px;">${esc(taskSiteText(t))}</td><td>${esc(t.assign)}</td><td class="tm" style="font-size:11px;">${esc(t.due)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${statusSelectColor(t,t.status,'admin')}">${A_ST.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select>${techUpdatePill(t)}</td><td class="mono ta" style="font-size:11px;">${esc(t.id)}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
+    const _opts=A_ST.concat(A_ST.includes(t.status)?[]:[t.status]).filter(Boolean);
+    return `<tr class="task-row${techUpdateRowClass(t)}" onclick="openAdminDetail('${t.id}')"><td class="at-pri-td">${mobileCard(pr||'ยังไม่เปิด PR',t.type,t.assign,t.due,stBadge)}<span class="at-dk">${atPriDot(t)}</span></td><td class="at-task"><div class="jq-two"><b>${esc(t.detail||t.type||'-')}</b><small>${esc(t.type||'')}${t.phone?' · '+esc(t.phone):''} · ${esc(t.id)}</small></div></td><td class="jq-pr"><div class="jq-prid">${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${techUpdateMark(t)}${esc(pr)}</button>`:`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">＋ เปิดคิว</button>`}</div>${adminNeedsQueueBadge(t)||techUpdatePill(t)?`<div class="jq-badges">${adminNeedsQueueBadge(t)?'<span class="queue-pill">รอจัดคิวช่าง</span>':''}${techUpdatePill(t)}</div>`:''}</td><td><div class="jq-two"><span>${esc(taskSiteText(t)||'-')}</span></div></td><td>${t.assign?`<span class="jq-team">${jqTeamAvatar(t.assign)}<span>${esc(t.assign)}</span></span>`:'<span class="tm">—</span>'}</td><td>${atDueHtml(t)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${pfStatusColor(t.status)}">${_opts.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
   }).join('');
 }
 async function setAS(id,s){
@@ -4918,13 +4943,6 @@ async function deleteAdminTask(id){
     renderAdmin();renderDash();saveState();
     await writeAuditLog('soft_delete_admin_task','admin_task',id,before,patch,clonePlain(t));
   }
-}
-function openAdminDetail(id){
-  const t=adminTasks.find(x=>x.id===id);if(!t)return;
-  document.getElementById('det-title').textContent=t.id+' - '+t.type;
-  document.getElementById('det-sub').textContent=(taskSiteText(t)||'-')+' | Assign: '+(t.assign||'-');
-  document.getElementById('det-body').innerHTML=`<div class="detail-grid mb12"><div class="detail-item"><div class="detail-label">Assign</div><div class="detail-val">${esc(t.assign||'-')}</div></div><div class="detail-item"><div class="detail-label">กำหนด</div><div class="detail-val">${esc(t.due||'-')}</div></div><div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-val"><span class="badge ${SB[t.status]||'b-wait'}">${esc(t.status||'-')}</span></div></div><div class="detail-item"><div class="detail-label">PR</div><div class="detail-val">${esc(t.jobId||'-')}</div></div></div><div class="form-group"><label>ลูกค้า/สาขา</label><div class="text-box">${esc(taskSiteText(t)||'-')}</div></div>${t.jobType?`<div class="form-group"><label>ประเภทงานช่าง</label><div class="text-box">${esc(t.jobType)}</div></div>`:''}${t.phone?`<div class="form-group"><label>เบอร์ติดต่อ</label><div class="text-box">${esc(t.phone)}</div></div>`:''}<div class="form-group"><label>รายละเอียด</label><div class="text-box">${esc(t.detail||'-')}</div></div>${t.reportReviewNote?`<div class="form-group"><label>หมายเหตุจากรายงานช่าง</label><div class="text-box">${esc(t.reportReviewNote)}</div></div>`:''}<div class="form-row"><button class="btn btn-ghost" onclick="editAdminTask('${t.id}')">แก้ไขงาน</button><button class="btn btn-primary" onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button></div>`;
-  openM('m-detail');
 }
 function customerRequestStatusLabel(st){return {new:'รอรับงาน',accepted:'รับเข้าแล้ว',rejected:'ปฏิเสธ',cancelled:'ยกเลิก'}[st]||st||'-';}
 function customerRequestPriorityLabel(p){return {normal:'ปกติ',urgent:'ด่วน',critical:'เร่งด่วนมาก'}[p]||p||'ปกติ';}
@@ -12301,7 +12319,7 @@ function pfEnhanceFilters(root){
 // คิวช่าง (กลุ่ม B-1): สีสถานะ · dropdown สถานะเลือกหลายอัน · แท็กตัวกรอง · สรุปทีม · Export · แผงรายละเอียดงาน
 // ตรรกะงานเดิมไม่เปลี่ยน — ปุ่ม/ฟังก์ชันเดิมทุกตัวยังถูกเรียกเหมือนเดิม
 // =====================================================================
-var PF_STATUS_DEFAULT={'รอเปิดงาน':'#64748b','รอดำเนินการ':'#64748b','รอจัดช่าง':'#64748b','จัดช่างแล้ว':'#0ea5e9','รอช่างเข้าซ่อม':'#0ea5e9','ช่างออกงาน':'#0ea5e9','ช่างบันทึกร่าง':'#a16207','รอช่างส่งงาน':'#d97706','ช่างส่งงานแล้ว':'#175FFF','แอดมินตรวจแล้ว':'#4f46e5','รออนุมัติอะไหล่':'#db2777','รออะไหล่':'#db2777','รอขออนุมัติ':'#dc2626','รอส่งขออนุมัติ':'#ea580c','รอเปิด PO':'#9333ea','รอออกใบกำกับภาษี':'#ea580c','รอวางบิล':'#0d9488','รอจ่าย':'#0d9488','เสร็จงาน':'#16a34a','ดำเนินการแล้ว':'#16a34a','ปิดงาน':'#16a34a','ปิดงานสำรวจ':'#16a34a','ติดปัญหา':'#dc2626','Reject':'#7f1d1d'};
+var PF_STATUS_DEFAULT={'กำลังทำ':'#0ea5e9','รอลูกค้า':'#d97706','เสร็จแล้ว':'#16a34a','รอเปิดงาน':'#64748b','รอดำเนินการ':'#64748b','รอจัดช่าง':'#64748b','จัดช่างแล้ว':'#0ea5e9','รอช่างเข้าซ่อม':'#0ea5e9','ช่างออกงาน':'#0ea5e9','ช่างบันทึกร่าง':'#a16207','รอช่างส่งงาน':'#d97706','ช่างส่งงานแล้ว':'#175FFF','แอดมินตรวจแล้ว':'#4f46e5','รออนุมัติอะไหล่':'#db2777','รออะไหล่':'#db2777','รอขออนุมัติ':'#dc2626','รอส่งขออนุมัติ':'#ea580c','รอเปิด PO':'#9333ea','รอออกใบกำกับภาษี':'#ea580c','รอวางบิล':'#0d9488','รอจ่าย':'#0d9488','เสร็จงาน':'#16a34a','ดำเนินการแล้ว':'#16a34a','ปิดงาน':'#16a34a','ปิดงานสำรวจ':'#16a34a','ติดปัญหา':'#dc2626','Reject':'#7f1d1d'};
 var PF_STAGES=[['เตรียมงาน',['รอเปิดงาน','รอดำเนินการ','รอจัดช่าง','จัดช่างแล้ว','รอช่างเข้าซ่อม']],['ช่าง',['ช่างออกงาน','ช่างบันทึกร่าง','รอช่างส่งงาน','ช่างส่งงานแล้ว']],['แอดมิน / อนุมัติ',['แอดมินตรวจแล้ว','รออนุมัติอะไหล่','รออะไหล่','รอขออนุมัติ','รอส่งขออนุมัติ','รอเปิด PO']],['เอกสาร / เงิน',['รอออกใบกำกับภาษี','รอวางบิล','รอจ่าย']],['จบ / ปัญหา',['เสร็จงาน','ดำเนินการแล้ว','ปิดงาน','ปิดงานสำรวจ','ติดปัญหา','Reject']]];
 var pfStatusColors={};
 function pfStatusColor(s){return (pfStatusColors&&pfStatusColors[s])||(PF_STATUS_DEFAULT&&PF_STATUS_DEFAULT[s])||'#64748b';}
@@ -12491,7 +12509,7 @@ function openDet(id){
   const statusSel=`<select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" style="color:${pfStatusColor(j.status)}" onchange="setJS('${jid}',this.value);setTimeout(()=>openDet('${jid}'),60)" title="เปลี่ยนสถานะ">${J_ST.concat(J_ST.includes(j.status)?[]:[j.status]).map(s=>`<option value="${esc(s)}"${s===j.status?' selected':''}>${esc(s)}</option>`).join('')}</select>`;
   const info=[['ทีมช่าง',esc(j.team||'-')],['ประเภทงาน',esc(j.type||'-')],['วันนัด',esc(j.date||'-')],['วันที่ Assign',esc(j.assignedAt||'-')],['เลขใบงานลูกค้า',esc(j.ref||'-')],['อัปเดตจากช่าง',hasTechUpdate(j)?techUpdatePill(j):'—']];
   document.getElementById('det-body').innerHTML=`<div class="dw-h">
-    <div class="dw-top"><span class="dw-pr">${esc(j.id)}</span><button class="btn btn-ghost btn-xs" title="คัดลอกเลขงาน" onclick="navigator.clipboard&&navigator.clipboard.writeText('${jid}')">📋</button><span style="flex:1"></span>
+    <div class="dw-top"><span class="dw-pr">${esc(j.id)}</span><button class="btn btn-ghost btn-xs" title="คัดลอกเลขงาน" onclick="navigator.clipboard&&navigator.clipboard.writeText('${jid}')">📋</button>${pfSheetBtn(j.id,'','l')}<span style="flex:1"></span>${pfSheetBtn(j.id,'','r')}
       <button class="dw-ib" title="งานก่อนหน้า" ${pos>0?'':'disabled'} onclick="dwGo(-1)">‹</button><button class="dw-ib" title="งานถัดไป" ${pos>=0&&pos<ids.length-1?'':'disabled'} onclick="dwGo(1)">›</button>
       <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button></div></div>
       <button class="dw-ib" title="ปิด (Esc)" onclick="closeM('m-detail')">✕</button></div>
@@ -12516,7 +12534,7 @@ function openDet(id){
   </div>`;
   dwTabSet(dwTab||'ov');
   ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
-  openM('m-detail');
+  openM('m-detail');pfSheetRefresh();
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('m-detail')?.classList.contains('open')&&!document.querySelector('.modal-overlay.open:not(#m-detail)'))closeM('m-detail');});
 document.addEventListener('click',e=>{if(!e.target.closest('.dw-menu-w'))document.getElementById('dw-menu')?.classList.remove('open');});
@@ -12622,7 +12640,172 @@ function renderDashV2(){
 // หน้าเดิมเรนเดอร์เสร็จ → วาดหน้าภาพรวมใหม่ต่อ (ใช้ตัวเลขเงินที่หน้าเดิมคำนวณไว้)
 (function(){const orig=window.renderDash;if(typeof orig!=='function')return;window.renderDash=function(){const r=orig.apply(this,arguments);try{renderDashV2();}catch(e){}return r;};})();
 
-function startApp(){ initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
+
+// =====================================================================
+// Admin Tracker (B-3) ตาม mockup — แท็บด่วน · ค้นหาทันที · ตัวกรอง ผู้รับผิดชอบ/ประเภท · แถวแบบใหม่ · แผงรายละเอียดด้านขวา
+// =====================================================================
+var adminQuick=(()=>{try{return localStorage.getItem('profix_admin_quick')||'all';}catch(e){return 'all';}})();
+var adminAssignFilter='',adminTypeFilter='';
+var AT_DONE=['เสร็จแล้ว','ปิดงาน','Reject'];
+function atIsLate(t){return !!(t.due&&String(t.due).slice(0,10)<todayISO()&&!AT_DONE.includes(t.status));}
+function atIsMine(t){const me=String((AUTH&&AUTH.display_name)||'').trim();const a=String(t.assign||'').trim();return !!(me&&a&&(me.includes(a)||a.includes(me)||a==='ทั้งคู่'));}
+function atQuickMatch(t,q){const today=todayISO();
+  if(q==='mine')return atIsMine(t);
+  if(q==='late')return atIsLate(t);
+  if(q==='today')return String(t.due||'').slice(0,10)===today&&!AT_DONE.includes(t.status);
+  if(q==='done')return AT_DONE.includes(t.status);
+  return true;}
+function setAdminQuick(q){adminQuick=q;try{localStorage.setItem('profix_admin_quick',q);}catch(e){}renderAdmin();saveUIState();}
+function buildAdminControls(counts){
+  const b=document.getElementById('admin-fbar');if(!b)return;
+  if(!b.dataset.v2){
+    b.dataset.v2='1';b.classList.add('jq-fbar');
+    b.innerHTML=`<div class="at-top"><div class="d2-seg at-quick" id="at-quick"></div><label class="jq-search" style="flex:1;min-width:240px;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="admin-search-input" autocomplete="off" placeholder="ค้นหา TASK / PR / ลูกค้า / รายละเอียด — พิมพ์แล้วกรองทันที"></label></div>
+      <div class="jq-row"><span id="admin-fb-dyn" class="jq-dyn"></span></div>`;
+    const inp=document.getElementById('admin-search-input');inp.value=adminSearch||'';
+    inp.addEventListener('input',()=>{clearTimeout(inp._t);inp._t=setTimeout(()=>{adminSearch=inp.value.trim();renderAdmin();saveUIState();},250);});
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(inp._t);adminSearch=inp.value.trim();renderAdmin();saveUIState();}if(e.key==='Escape'&&inp.value){inp.value='';adminSearch='';renderAdmin();saveUIState();}});
+  }
+  const inp=document.getElementById('admin-search-input');
+  if(inp&&document.activeElement!==inp&&inp.value!==(adminSearch||''))inp.value=adminSearch||'';
+  const base=liveAdminTasks().filter(t=>companyMatch('admin',()=>taskCompanyId(t))&&inDateScope(t,'admin'));
+  const qn=q=>base.filter(t=>atQuickMatch(t,q)).length;
+  document.getElementById('at-quick').innerHTML=[['all','ทั้งหมด'],['mine','ของฉัน'],['late','เลยกำหนด'],['today','ครบวันนี้'],['done','เสร็จแล้ว']].map(([q,l])=>`<button type="button" class="${adminQuick===q?'on':''}" onclick="setAdminQuick('${q}')">${l}${q==='all'?'':` <b>${qn(q)}</b>`}</button>`).join('');
+  const assigns=[...new Set([...(adminNames||[]),...base.map(t=>t.assign).filter(Boolean)])];
+  const types=[...new Set([...(adminTypes||[]),...base.map(t=>t.type).filter(Boolean)])];
+  const dyn=document.getElementById('admin-fb-dyn');
+  dyn.innerHTML=companyFilterHtml('admin')
+    +`<select class="filter-select ${adminFilter!=='ทั้งหมด'?'jq-set':''}" title="สถานะ" onchange="adminFilter=this.value;renderAdmin();saveUIState();">${statusOptionHtml(A_ST,counts,adminFilter).replace('>ทั้งหมด (','>สถานะ: ทั้งหมด (')}</select>`
+    +`<select class="filter-select ${adminAssignFilter?'jq-set':''}" title="ผู้รับผิดชอบ" onchange="adminAssignFilter=this.value;renderAdmin();"><option value="">ผู้รับผิดชอบ: ทุกคน</option>${assigns.map(a=>`<option value="${esc(a)}"${a===adminAssignFilter?' selected':''}>${esc(a)}</option>`).join('')}</select>`
+    +`<select class="filter-select ${adminTypeFilter?'jq-set':''}" title="ประเภท" onchange="adminTypeFilter=this.value;renderAdmin();"><option value="">ประเภท: ทั้งหมด</option>${types.map(a=>`<option value="${esc(a)}"${a===adminTypeFilter?' selected':''}>${esc(a)}</option>`).join('')}</select>`;
+  addDateControls('admin-fb-dyn','admin');
+  addQuickControls('admin-fb-dyn','admin');
+}
+function atRenderTags(shown,base){
+  const el=document.getElementById('admin-tags');if(!el)return;
+  const tags=[];
+  if(adminSearch)tags.push(['q','ค้นหา: "'+adminSearch+'"']);
+  if(adminFilter&&adminFilter!=='ทั้งหมด')tags.push(['st',adminFilter]);
+  if(adminAssignFilter)tags.push(['as',adminAssignFilter]);
+  if(adminTypeFilter)tags.push(['ty',adminTypeFilter]);
+  if(adminQuick&&adminQuick!=='all')tags.push(['qk',{mine:'ของฉัน',late:'เลยกำหนด',today:'ครบวันนี้',done:'เสร็จแล้ว'}[adminQuick]]);
+  if(adminDateFilter||adminMonthFilter||adminRangeFilter)tags.push(['dt','ช่วงวันที่']);
+  el.innerHTML=`<span class="tm">จาก ${base.length}</span>`+(tags.length?tags.map(([k,l])=>`<span class="jq-tag">${esc(l)}<button type="button" onclick="atUntag('${k}')" title="เอาตัวกรองนี้ออก">×</button></span>`).join('')+`<button type="button" class="jq-link" onclick="atUntag('*')">ล้างทั้งหมด</button>`:'');
+}
+function atUntag(k){const all=k==='*';
+  if(all||k==='q'){adminSearch='';const i=document.getElementById('admin-search-input');if(i)i.value='';}
+  if(all||k==='st')adminFilter='ทั้งหมด';
+  if(all||k==='as')adminAssignFilter='';
+  if(all||k==='ty')adminTypeFilter='';
+  if(all||k==='qk'){adminQuick='all';try{localStorage.setItem('profix_admin_quick','all');}catch(e){}}
+  if(all||k==='dt'){adminDateFilter='';adminMonthFilter='';adminRangeFilter='';}
+  renderAdmin();saveUIState();}
+function atPriDot(t){const p=String(t.pri||'');const c=p==='เร่งด่วนมาก'?'#dc2626':p==='ด่วน'?'#f59e0b':'#cbd5e1';return `<span class="at-pri" style="background:${c}" title="ความสำคัญ: ${esc(p||'ปกติ')}"></span>`;}
+function atDueHtml(t){const d=String(t.due||'').slice(0,10);if(!d)return '<span class="tm">—</span>';const today=todayISO();
+  if(!AT_DONE.includes(t.status)&&d<today){const n=Math.round((new Date(today)-new Date(d))/864e5);return `<span class="jq-late">${esc(jqThDate(d))} · เลย ${n} วัน</span>`;}
+  if(d===today)return `<b style="color:var(--accent)">วันนี้</b>`;return esc(jqThDate(d));}
+
+// ----- แผงรายละเอียดงาน Admin (ใช้แผงเดียวกับคิวช่าง) -----
+function atListIds(){return [...document.querySelectorAll('#admin-tbody tr[onclick^="openAdminDetail"]')].map(tr=>(tr.getAttribute('onclick').match(/openAdminDetail\('([^']*)'\)/)||[])[1]).filter(Boolean);}
+var currentAdminDetailId='';
+function atGo(dir){const ids=atListIds(),i=ids.indexOf(currentAdminDetailId);if(i<0)return;const n=ids[i+dir];if(n)openAdminDetail(n);}
+function openAdminDetail(id){
+  const t=adminTasks.find(x=>x.id===id);if(!t)return;
+  currentAdminDetailId=id;
+  const tid=esc(t.id).replace(/'/g,'&#39;'),pr=String(t.jobId||'').trim();
+  const linked=pr?liveJobs().find(j=>sameJob(j.id,pr)):null;
+  const ids=atListIds(),pos=ids.indexOf(id);
+  document.getElementById('det-title').textContent=t.id+' - '+t.type;
+  document.getElementById('det-sub').textContent=(taskSiteText(t)||'-')+' | Assign: '+(t.assign||'-');
+  const opts=A_ST.concat(A_ST.includes(t.status)?[]:[t.status]).filter(Boolean);
+  const statusSel=`<select class="status-select" style="color:${pfStatusColor(t.status)}" onchange="setAS('${tid}',this.value);setTimeout(()=>openAdminDetail('${tid}'),60)" title="เปลี่ยนสถานะ">${opts.map(s=>`<option value="${esc(s)}"${s===t.status?' selected':''}>${esc(s)}</option>`).join('')}</select>`;
+  const prim=linked?`<button class="btn btn-primary" onclick="openDet('${esc(linked.id).replace(/'/g,'&#39;')}')">🔧 ดูงานในคิวช่าง</button>`:`<button class="btn btn-primary" onclick="openJobFromAdmin('${tid}')">＋ เปิดคิวช่างจาก PR</button>`;
+  const info=[['ประเภท',esc(t.type||'-')],['ผู้รับผิดชอบ',t.assign?`<span class="jq-team">${jqTeamAvatar(t.assign)}<span>${esc(t.assign)}</span></span>`:'-'],['กำหนด',atDueHtml(t)],['ความสำคัญ',`${atPriDot(t)} ${esc(t.pri||'ปกติ')}`],['PR',pr?(linked?`<a href="javascript:void(0)" onclick="openDet('${esc(linked.id).replace(/'/g,'&#39;')}')">${esc(pr)}</a>`:esc(pr)):'ยังไม่เปิด PR'],['วันที่ Assign',esc(jqThDate(t.assignedAt)||'-')]];
+  if(t.jobType)info.push(['ประเภทงานช่าง',esc(t.jobType)]);
+  if(t.phone)info.push(['เบอร์ติดต่อ',`<a href="tel:${esc(String(t.phone).replace(/[^\d+]/g,''))}">${esc(t.phone)}</a>`]);
+  document.getElementById('det-body').innerHTML=`<div class="dw-h">
+    <div class="dw-top"><span class="dw-pr">${esc(t.id)}</span>${pfSheetBtn(pr,t.id,'l')}<span style="flex:1"></span>${pfSheetBtn(pr,t.id,'r')}
+      <button class="dw-ib" title="งานก่อนหน้า" ${pos>0?'':'disabled'} onclick="atGo(-1)">‹</button><button class="dw-ib" title="งานถัดไป" ${pos>=0&&pos<ids.length-1?'':'disabled'} onclick="atGo(1)">›</button>
+      <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editAdminTask('${tid}')">✏️ แก้ไขงาน</button><button onclick="openJobFromAdmin('${tid}')">🔧 เปิดคิวช่างจาก PR</button><button onclick="closeM('m-detail');deleteAdminTask('${tid}')" style="color:var(--red)">🗑 ลบงาน</button></div></div>
+      <button class="dw-ib" title="ปิด (Esc)" onclick="closeM('m-detail')">✕</button></div>
+    <div class="dw-title">${esc(t.detail||t.type||t.id)}</div><div class="tm dw-sub">${esc(taskSiteText(t)||'-')}</div>
+    <div class="dw-status">${statusSel}${techUpdatePill(t)}<span style="flex:1"></span>${prim}<button class="btn btn-ghost" onclick="editAdminTask('${tid}')">✏️ แก้ไข</button></div>
+    <div style="height:14px"></div></div>
+  <div class="dw-pane on">
+    ${t.reportReviewNote?`<div class="dw-note"><div class="t">📝 หมายเหตุจากรายงานช่าง${t.reportReviewedAt?`<small>${esc(String(t.reportReviewedAt).slice(0,10))}</small>`:''}</div>${esc(t.reportReviewNote)}</div>`:''}
+    <div class="dw-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${v}</b></div>`).join('')}</div>
+    <div class="dw-box"><div class="dw-box-t">ลูกค้า / สาขา</div>${esc(taskSiteText(t)||'-')}</div>
+    <div class="dw-box"><div class="dw-box-t">รายละเอียด</div>${esc(t.detail||'-')}</div>
+  </div>`;
+  openM('m-detail');pfSheetRefresh();
+}
+
+
+// =====================================================================
+// ปุ่ม "ดูใบงาน" (แว่นขยาย) — เปิดใบงาน PDF ที่อัปโหลดตอนเปิดงาน (docs.workOrders)
+// ใช้ในแผงรายละเอียดคิวช่าง / Admin Tracker และหน้าต่างรายงานช่าง
+// ตำแหน่งปุ่ม: body[data-sheetpos] a = ไอคอนกลมมุมขวาบน · b = ป้าย "ใบงาน" ข้างเลข PR มุมซ้ายบน · c = ปุ่มมีคำ "ดูใบงาน" มุมขวาบน
+// =====================================================================
+var PF_SHEET_POS='b';
+var PF_SHEET_ICON='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg>';
+function pfSheetDocs(pr,taskId){
+  const list=(docs&&Array.isArray(docs.workOrders))?docs.workOrders:[];
+  return list.filter(d=>d&&!isDeletedRecord(d)&&(d.url||d.fileUrl||d.dataUrl)&&((pr&&sameJob(d.pr,pr))||(taskId&&d.sourceTaskId===taskId)))
+    .sort((a,b)=>(a.kind==='original-workorder'?0:1)-(b.kind==='original-workorder'?0:1)||String(b.savedAt||b.uploadedAt||'').localeCompare(String(a.savedAt||a.uploadedAt||'')));
+}
+function pfSheetAttr(pr,taskId){return `data-pr="${esc(pr||'')}" data-task="${esc(taskId||'')}" onclick="event.stopPropagation();pfOpenJobSheet(this.dataset.pr,this.dataset.task)"`;}
+function pfSheetNone(pr,taskId){return !!(workOrdersLoaded&&!pfSheetDocs(pr,taskId).length);}
+// spot 'l' = ข้างเลข PR (ซ้าย) · 'r' = แถวไอคอนขวาบน
+function pfSheetBtn(pr,taskId,spot){
+  if(!pr&&!taskId)return '';
+  const none=pfSheetNone(pr,taskId)?' none':'';
+  if(spot==='l')return `<button type="button" class="pf-sheet pf-sheet-l${none}" ${pfSheetAttr(pr,taskId)} title="ดูใบงาน PDF">${PF_SHEET_ICON}<span>ใบงาน</span></button>`;
+  return `<button type="button" class="pf-sheet pf-sheet-ico${none}" ${pfSheetAttr(pr,taskId)} title="ดูใบงาน PDF">${PF_SHEET_ICON}</button>`
+    +`<button type="button" class="pf-sheet pf-sheet-lbl${none}" ${pfSheetAttr(pr,taskId)} title="ดูใบงาน PDF">${PF_SHEET_ICON}<span>ดูใบงาน</span></button>`;
+}
+// โหลดรายการใบงาน (ครั้งแรก) แล้วทำปุ่มที่ไม่มีไฟล์ให้จางลง
+function pfSheetRefresh(){
+  Promise.resolve(typeof ensureWorkOrdersLoaded==='function'?ensureWorkOrdersLoaded():null).catch(()=>{}).then(()=>{
+    document.querySelectorAll('.pf-sheet[data-pr]').forEach(b=>b.classList.toggle('none',pfSheetNone(b.dataset.pr,b.dataset.task)));
+  });
+}
+async function pfSheetHref(d){
+  const href=d.url||d.fileUrl||'';if(href)return href;
+  if(d.dataUrl){try{return URL.createObjectURL(await (await fetch(d.dataUrl)).blob());}catch(e){return d.dataUrl;}}
+  return '';
+}
+async function pfOpenJobSheet(pr,taskId){
+  const mobile=window.matchMedia('(max-width:768px)').matches;
+  const w=mobile?window.open('','_blank'):null; // เปิดแท็บทันทีตอนกด (กัน browser บล็อก popup) แล้วค่อยใส่ลิงก์
+  try{await ensureWorkOrdersLoaded();}catch(e){}
+  const list=pfSheetDocs(pr,taskId);
+  if(!list.length){if(w)w.close();pfSheetRefresh();alert(`ยังไม่มีใบงาน PDF ของ ${pr||taskId}\nอัปโหลดได้ที่เมนู แฟ้ม PR`);return;}
+  if(mobile){const h=await pfSheetHref(list[0]);if(w&&h){w.location.href=h;}else if(h&&!window.open(h,'_blank'))alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+  let v=document.getElementById('pf-sheet-viewer');
+  if(!v){v=document.createElement('div');v.id='pf-sheet-viewer';v.onclick=e=>{if(e.target===v)pfCloseJobSheet();};document.body.appendChild(v);}
+  v._list=list;
+  v.innerHTML=`<div class="pfsv-box"><div class="pfsv-h"><b>ใบงาน ${esc(pr||'')}</b>
+    ${list.length>1?`<select class="filter-select" onchange="pfSheetShow(+this.value)">${list.map((d,i)=>`<option value="${i}">${esc(d.fileName||'ใบงาน '+(i+1))}${d.savedAt||d.uploadedAt?' · '+esc(String(d.savedAt||d.uploadedAt).slice(0,10)):''}</option>`).join('')}</select>`:`<span class="tm">${esc(list[0].fileName||'')}</span>`}
+    <span style="flex:1"></span><a class="btn btn-ghost btn-xs" id="pfsv-open" target="_blank" rel="noopener">เปิดแท็บใหม่ ↗</a><button type="button" class="dw-ib" title="ปิด (Esc)" onclick="pfCloseJobSheet()">✕</button></div>
+    <iframe id="pfsv-frame" title="ใบงาน PDF"></iframe></div>`;
+  v.classList.add('open');
+  pfSheetShow(0);
+}
+async function pfSheetShow(i){
+  const v=document.getElementById('pf-sheet-viewer');if(!v||!v._list)return;
+  const h=await pfSheetHref(v._list[i]||v._list[0]);
+  document.getElementById('pfsv-frame').src=h;document.getElementById('pfsv-open').href=h;
+}
+function pfCloseJobSheet(){const v=document.getElementById('pf-sheet-viewer');if(!v)return;v.classList.remove('open');v.innerHTML='';}
+window.addEventListener('keydown',e=>{const v=document.getElementById('pf-sheet-viewer');if(e.key==='Escape'&&v&&v.classList.contains('open')){e.stopImmediatePropagation();e.preventDefault();pfCloseJobSheet();}},true);
+function setSheetPos(p){PF_SHEET_POS=p;document.body.dataset.sheetpos=p;}
+document.body&&(document.body.dataset.sheetpos=PF_SHEET_POS);
+// หน้าต่างรายงานช่าง: เติมปุ่มหลังเปิด
+(function(){const orig=window.openReportModal;if(typeof orig!=='function')return;window.openReportModal=function(id){const r=orig.apply(this,arguments);try{
+  const l=document.getElementById('mrpt-sheet-l'),rr=document.getElementById('mrpt-sheet-r');
+  if(l)l.innerHTML=pfSheetBtn(id,'','l');if(rr)rr.innerHTML=pfSheetBtn(id,'','r');pfSheetRefresh();}catch(e){}return r;};})();
+
+function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){} initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
 (async function bootstrap(){
   applyTheme(profixInitialTheme());
@@ -12688,10 +12871,10 @@ function startApp(){ initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}c
   <div class="modal" style="max-width:700px;">
     <div class="modal-header">
       <div>
-        <div class="modal-title" id="mrpt-title">รายงานงานซ่อม</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><div class="modal-title" id="mrpt-title">รายงานงานซ่อม</div><span id="mrpt-sheet-l"></span></div>
         <div style="font-size:11px;color:var(--text2);margin-top:3px;" id="mrpt-sub"></div>
       </div>
-      <button class="close-btn" onclick="closeM('m-report')">×</button>
+      <div style="display:flex;align-items:center;gap:6px;"><span id="mrpt-sheet-r" style="display:flex;gap:6px;"></span><button class="close-btn" onclick="closeM('m-report')">×</button></div>
     </div>
     <div class="modal-body">
       <!-- Info Grid -->
