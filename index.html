@@ -7393,7 +7393,7 @@ function salesDocHtml(inv,items){
 @media print{html,body{width:210mm;background:#fff;}.toolbar{display:none}.sheet{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:12mm 15mm 8mm;}.items thead{display:table-header-group}.items tr,.note-total,.amount-text,.signs,.footer{break-inside:avoid;page-break-inside:avoid}}</style></head>
 <body><div class="toolbar"><div>${esc(meta.title)} · ${esc(inv.doc_no||inv.sales_invoice_no||'')}</div><div><button class="btn-ghost" onclick="window.close()">ปิด</button><button class="btn-print" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
 <div class="sheet"><section class="top"><div><img class="brand-logo" src="${esc(company.logoUrl)}" alt="${esc(company.displayName)}"></div><div><div class="doc-title">${esc(meta.label.split(' / ')[1]||'Quotation')}/${esc(meta.title)}</div><div class="doc-meta"><span>เลขที่ :</span><b>${esc(inv.doc_no||inv.sales_invoice_no||'')}</b><span>JOB / PR :</span><b>${esc(jobText||'-')}</b><span>สาขา :</span><b>${esc(branchText||'-')}</b><span>วันที่ :</span><b>${esc(quoteDateText(inv.invoice_date||todayISO()))}</b></div></div></section>
-<section class="party"><div><h3>จากบริษัท</h3><div class="name">${esc(company.displayName)}</div><div>${esc(company.name)}${esc(companyBranch)}</div><div>${esc(company.address)}</div><div>TAX ID : ${esc(company.taxId||'-')}</div>${companyEmail?`<div>${esc(companyEmail)}</div>`:''}</div><div><h3>ลูกค้า</h3><div class="name">${esc(inv.customer_name||inv.customer_id||'-')}</div><div>${esc(customer.address||'-')}</div><div>TAX ID : ${esc(customer.taxId||'-')}</div><div>${customer.phone?`โทร ${esc(customer.phone)}`:''}</div><div>${jobText?`Job / PR : ${esc(jobText)}`:''}</div></div></section>
+<section class="party"><div><h3>จากบริษัท</h3><div class="name">${esc(company.displayName)}</div><div>${esc(company.name)}${esc(companyBranch)}</div><div>${esc(company.address)}</div><div>TAX ID : ${esc(company.taxId||'-')}</div>${companyEmail?`<div>${esc(companyEmail)}</div>`:''}</div><div><h3>ลูกค้า</h3><div class="name">${esc(inv.customer_name||inv.customer_id||'-')}</div><div>${esc(customer.address||'-')}</div><div>TAX ID : ${esc(customer.taxId||'-')}${String(customer.branchNo||'').trim()?` &nbsp;·&nbsp; สาขาที่ ${esc(String(customer.branchNo).trim())}`:' &nbsp;·&nbsp; สำนักงานใหญ่'}</div><div>${customer.phone?`โทร ${esc(customer.phone)}`:''}</div><div>${jobText?`Job / PR : ${esc(jobText)}`:''}</div></div></section>
 <table class="items"><thead><tr><th class="no">ลำดับ</th><th class="cat">หมวด</th><th class="desc">รายการ</th><th class="qty">จำนวน</th><th class="unit">หน่วย</th><th class="price">ราคา/หน่วย</th><th class="amount">ราคา</th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="no muted">ไม่มีรายการ</td></tr>'}${Array.from({length:blankRows}).map(()=>'<tr><td class="no"></td><td class="cat"></td><td class="desc"></td><td class="qty"></td><td class="unit"></td><td class="price"></td><td class="amount"></td></tr>').join('')}</tbody></table>
 <section class="note-total"><div class="note"><h3>หมายเหตุ / เงื่อนไข</h3><div class="box">${esc(noteLines||'-')}</div></div><div class="total"><table>${totalRows}</table></div></section>
 <div class="amount-text"><div>ตัวอักษร</div><div>(${esc(totalText)})</div></div>
@@ -7507,7 +7507,7 @@ function salesTaxSummaryHtml(inv,items){
     <tr><td class="tl">มูลค่าสินค้าหลังหักส่วนลด<div class="en">TOTAL AMOUNT AFTER DISCOUNT</div></td><td class="tp"></td><td class="tv">${money2(afterDiscount)}</td></tr>
     <tr><td class="tl">ภาษีมูลค่าเพิ่ม<div class="en">VAT</div></td><td class="tp">${vatPct}%</td><td class="tv">${money2(vat)}</td></tr>
     <tr class="grand"><td class="tl"><b>ยอดเงินสุทธิ</b><div class="en">GRAND TOTAL</div></td><td class="tp"></td><td class="tv">${money2(total)}</td></tr>`;
-  const _cc=isInv?['#4b5563','#6b7280','#374151']:salesDocTheme(company).copies; // สีตามบริษัทที่ออกบิล (ProFix=เขียว, อื่นๆ=น้ำเงิน/ส้ม/ฟ้า) · ใบแจ้งหนี้/ใบวางบิล = โทนเทา
+  const _cc=isInv?['#4b5563','#6b7280','#374151']:salesDocTheme(company).copies; // สีตามบริษัทที่ออกบิล (พีพี แอนด์ เอ็มพี=เขียว, ProFix/อื่นๆ=น้ำเงิน/ส้ม/ฟ้า) · ใบแจ้งหนี้/ใบวางบิล = โทนเทา
   const COPIES=[{k:'original',th:'ต้นฉบับ',en:'ORIGINAL',color:_cc[0]},{k:'copy',th:'สำเนา',en:'COPY',color:_cc[1]},{k:'account',th:'สำเนา (บัญชี)',en:'COPY - ACCOUNTING',color:_cc[2]}];
   const sheet=(c,idx)=>`<section class="sheet" data-copy="${c.k}" style="--theme:${c.color};${idx===0?'':'display:none;'}"><div class="fit">
   <header class="head">
@@ -7683,13 +7683,18 @@ function isProfixCompany(nameOrCompany){
     :(nameOrCompany||'')).toLowerCase();
   return /profix|โปรฟิกซ์/.test(key);
 }
-// สีเอกสารตามบริษัทที่ออกบิล — แยก ProFix (โทนเขียว) ออกจากบริษัทอื่น (โทนน้ำเงินเดิม เช่น พีพี แอนด์ เอ็มพี / พีที แอคคูลิตี้)
+// สีเอกสารตามบริษัทที่ออกบิล — พีพี แอนด์ เอ็มพี (โทนเขียว) · ProFix และบริษัทอื่น (โทนน้ำเงิน)
 // copies = สี 3 ชุดของใบกำกับภาษีแบบสรุป (ต้นฉบับ / สำเนา / สำเนาบัญชี)
+function isPpmpCompany(c){
+  const key=String((c&&typeof c==='object')?[c.name,c.displayName,c.label].join(' '):(c||'')).toLowerCase();
+  return /พีพี|pp\s*(&|and|แอนด์)?\s*mp|pp-mp/.test(key);
+}
 function salesDocTheme(company){
-  if(isProfixCompany(company)){
+  // ProFix = น้ำเงิน · พีพี แอนด์ เอ็มพี = เขียว · บริษัทอื่น = น้ำเงิน (เหมือนเดิม)
+  if(isPpmpCompany(company)&&!isProfixCompany(company)){
     return {primary:'#1b5e20',primaryText:'#ffffff',soft:'#e8f5e9',copies:['#1b5e20','#43a047','#6b7280']}; // เขียวเข้ม / เขียวอ่อน / เทา
   }
-  return {primary:'#17325c',primaryText:'#ffffff',soft:'#eef2f8',copies:['#17325c','#c2560f','#2b7fb8']}; // น้ำเงิน / ส้ม / ฟ้า (เดิม)
+  return {primary:'#17325c',primaryText:'#ffffff',soft:'#eef2f8',copies:['#17325c','#c2560f','#2b7fb8']}; // น้ำเงิน / ส้ม / ฟ้า
 }
 function salesCompanyProfiles(){
   const d=quoteCompanyDefaults();
