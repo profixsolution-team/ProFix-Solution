@@ -14158,6 +14158,23 @@ function pmWriteSheet(w,labels){
   if(!(typeof AUTH!=='undefined'&&AUTH&&AUTH.role)||typeof isHydrated==='undefined'||!isHydrated)return;clearInterval(t);
   if(AUTH.role!=='admin')return;pmView='assets';goTo('pm');await pmLoad();const c=code.toUpperCase();const a=pm.assets.find(x=>x.id===c||x.qr_code===c);if(a)pmOpenAsset(a.id);else alert('ไม่พบเครื่อง/สติกเกอร์ '+c+' ในทะเบียน');},500);})();
 
+// =====================================================================
+// กันตัวอักษรล่องหน NUL (\u0000) — มักติดมาจากการคัดลอกข้อความ/อ่านไฟล์ PDF
+// Postgres เก็บตัวนี้ไม่ได้ (error 22P05 "\u0000 cannot be converted to text") → บันทึกบิล/งานไม่สำเร็จ
+// ตัดทิ้งก่อนส่งข้อมูลขึ้น Supabase ทุกครั้ง (ทุกตาราง ทุกทาง)
+// =====================================================================
+(function(){
+  if(window.__pfNulGuard)return;window.__pfNulGuard=true;
+  const orig=window.fetch.bind(window);
+  const clean=b=>typeof b==='string'&&b.indexOf('\\u0000')>=0?b.replace(/(?<!\\)((?:\\\\)*)\\u0000/g,'$1'):b;
+  window.fetch=function(input,init){
+    try{const url=String(input&&input.url||input||'');
+      if(init&&init.body&&typeof init.body==='string'&&typeof SUPABASE_URL!=='undefined'&&url.indexOf(SUPABASE_URL)===0){const nb=clean(init.body);if(nb!==init.body){init={...init,body:nb};console.warn('[NUL] ตัดอักษร \\u0000 ออกก่อนบันทึก',url.split('?')[0]);}}
+    }catch(e){}
+    return orig(input,init);
+  };
+})();
+
 function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){} initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
 (async function bootstrap(){
