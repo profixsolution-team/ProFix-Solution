@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProFix — เครื่อง</title>
+<link rel="icon" href="assets/profix-icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f5;--card:#fff;--text:#0b1220;--muted:#64748b;--accent:#175fff}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#131c2e;--text:#e2e8f0;--muted:#94a3b8}}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);font-family:Anuphan,sans-serif;color:var(--text);padding:16px}
+.c{width:min(420px,100%);background:var(--card);border-radius:24px;padding:28px 24px;text-align:center;box-shadow:0 10px 40px rgba(15,23,42,.08)}
+.logo{width:52px;height:52px;margin:0 auto 10px}
+.code{font-size:28px;font-weight:700;letter-spacing:.5px;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.m{color:var(--muted);font-size:14px;line-height:1.7}
+a.b{display:block;margin-top:20px;background:var(--accent);color:#fff;text-decoration:none;border-radius:14px;padding:14px;font-weight:600}
+.s{margin-top:14px;font-size:12px;color:var(--muted)}
+</style></head><body>
+<div class="c">
+  <img class="logo" src="assets/profix-icon.svg" alt="ProFix">
+  <div class="m">ProFix Solution · ทะเบียนเครื่อง</div>
+  <div class="code" id="code">—</div>
+  <div class="m">เครื่องนี้อยู่ในระบบดูแลบำรุงรักษาของ ProFix<br>หากพบปัญหาการใช้งาน โปรดแจ้งผู้ดูแลสาขา</div>
+  <a class="b" id="open" href="https://console.profixsolution-service.com/">เปิดประวัติเครื่อง (สำหรับทีมงาน)</a>
+  <div class="s">ทีมงานต้องเข้าสู่ระบบคอนโซลก่อนจึงจะเห็นประวัติ</div>
+</div>
+<script>
+const c=(new URLSearchParams(location.search).get('c')||'').trim().toUpperCase().replace(/[^A-Z0-9-]/g,'');
+if(c){document.getElementById('code').textContent=c;document.title='ProFix — '+c;document.getElementById('open').href='https://console.profixsolution-service.com/?asset='+encodeURIComponent(c);}
+</script>
+</body></html>
