@@ -3386,7 +3386,16 @@ function loadFastState(){
     return true;
   }catch(e){console.warn('Fast cache load failed',e);return false;}
 }
-function renderCurrentPage(){let ui={};try{ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');}catch(e){}goTo(ui.lastPage||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard');updateNavBadges();}
+// หน้าที่เปิดอยู่เป็นของแต่ละแท็บ: ครั้งแรกใช้หน้าที่แท็บนี้เคยเปิด (sessionStorage) หรือหน้าล่าสุดของเครื่อง · หลังจากนั้นวาดหน้าเดิมของแท็บนี้เสมอ
+// (เดิมอ่าน lastPage จาก localStorage ที่ทุกแท็บใช้ร่วมกัน → พออีกแท็บเปลี่ยนหน้าแล้วข้อมูลซิงก์ แท็บนี้กระโดดตามไปด้วย)
+var pfPageBooted=false;
+function renderCurrentPage(){
+  let page=document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard';
+  if(!pfPageBooted){pfPageBooted=true;let ui={};try{ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');}catch(e){}
+    let tabPage='';try{tabPage=sessionStorage.getItem('profix_tab_page')||'';}catch(e){}
+    page=tabPage||ui.lastPage||page;}
+  goTo(page);updateNavBadges();
+}
 function refreshAfterDataChange(){
   updateNavBadges();
   renderDash();
@@ -3394,7 +3403,7 @@ function refreshAfterDataChange(){
   if(active&&active!=='dashboard')renderCurrentPage();
 }
 function loadUIState(){try{const ui=JSON.parse(localStorage.getItem(LS_UI_KEY)||'{}');if(ui.jobFilter)jobFilter=ui.jobFilter;if(ui.adminFilter)adminFilter=ui.adminFilter;if(ui.finFilter)finFilter=ui.finFilter;if(ui.rptFilter)rptFilter=ui.rptFilter;if(ui.rptReviewFilter)rptReviewFilter=ui.rptReviewFilter;if(ui.adminDateFilter!==undefined)adminDateFilter=ui.adminDateFilter;if(ui.jobDateFilter!==undefined)jobDateFilter=ui.jobDateFilter;if(ui.rptDateFilter!==undefined)rptDateFilter=ui.rptDateFilter;if(ui.docDateFilter!==undefined)docDateFilter=ui.docDateFilter;adminMonthFilter='';jobMonthFilter='';if(ui.adminRangeFilter!==undefined)adminRangeFilter=ui.adminRangeFilter;if(ui.jobRangeFilter!==undefined)jobRangeFilter=ui.jobRangeFilter;if(ui.rptRangeFilter!==undefined)rptRangeFilter=ui.rptRangeFilter;if(ui.docRangeFilter!==undefined)docRangeFilter=ui.docRangeFilter;if(ui.adminSearch!==undefined)adminSearch=ui.adminSearch;if(ui.jobSearch!==undefined)jobSearch=ui.jobSearch;if(ui.rptSearch!==undefined)rptSearch=ui.rptSearch;if(ui.docSearch!==undefined)docSearch=ui.docSearch;if(ui.jobTeamFilter)jobTeamFilter=ui.jobTeamFilter;if(ui.calendarTeamFilter)calendarTeamFilter=ui.calendarTeamFilter;if(ui.calendarMonthFilter!==undefined)calendarMonthFilter=ui.calendarMonthFilter;if(ui.calendarSearch!==undefined)calendarSearch=ui.calendarSearch;if(ui.financeSearch!==undefined)financeSearch=ui.financeSearch;if(ui.financeDateFilter!==undefined)financeDateFilter=ui.financeDateFilter;if(ui.adminSortDir)adminSortDir=ui.adminSortDir;if(ui.jobSortDir)jobSortDir=ui.jobSortDir;if(ui.rptSortDir)rptSortDir=ui.rptSortDir;if(ui.docSortDir)docSortDir=ui.docSortDir;if(ui.activeDocTab)activeDocTab=ui.activeDocTab;if(ui.workOrderPrFilter!==undefined)workOrderPrFilter=ui.workOrderPrFilter;if(ui.workOrderSortDir)workOrderSortDir=ui.workOrderSortDir;}catch(e){}}
-function saveUIState(page){try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,rptFilter,rptReviewFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,rptDateFilter,docDateFilter,adminRangeFilter,jobRangeFilter,rptRangeFilter,docRangeFilter,adminSearch,jobSearch,rptSearch,docSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch,financeSearch,financeDateFilter,adminSortDir,jobSortDir,rptSortDir,docSortDir,activeDocTab,workOrderPrFilter,workOrderSortDir}));}catch(e){}}
+function saveUIState(page){try{sessionStorage.setItem('profix_tab_page',page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard');}catch(e){}try{localStorage.setItem(LS_UI_KEY,JSON.stringify({lastPage:page||document.querySelector('.page.active')?.id?.replace('page-','')||'dashboard',jobFilter,adminFilter,finFilter,rptFilter,rptReviewFilter,adminDateFilter,adminMonthFilter,jobDateFilter,jobMonthFilter,rptDateFilter,docDateFilter,adminRangeFilter,jobRangeFilter,rptRangeFilter,docRangeFilter,adminSearch,jobSearch,rptSearch,docSearch,jobTeamFilter,calendarTeamFilter,calendarMonthFilter,calendarSearch,financeSearch,financeDateFilter,adminSortDir,jobSortDir,rptSortDir,docSortDir,activeDocTab,workOrderPrFilter,workOrderSortDir}));}catch(e){}}
 function stableJson(v){return JSON.stringify(v||null);}
 function rowHashMap(rows,idOf){
   return rows.reduce((m,row)=>{const id=idOf(row);if(id)m[id]=stableJson(row);return m;},{});
