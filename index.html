@@ -1856,7 +1856,7 @@ button.pm-hc{cursor:pointer;}
           <label class="btn btn-ghost btn-sm" style="margin:0;cursor:pointer;">📤 นำเข้าจากไฟล์ (Excel/CSV)<input type="file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importVendorBranchesFile(this)"></label>
           <span id="fc-branch-import-status" style="font-size:11px;color:var(--text2);"></span>
         </div>
-        <div class="tm" style="font-size:10px;margin-top:4px;">ไฟล์ต้องมีหัวคอลัมน์ (ไทยหรืออังกฤษก็ได้): ชื่อสาขา/name, สาขาที่/branch no, ที่อยู่/address, เบอร์โทร/phone</div>
+        <div class="tm" style="font-size:10px;margin-top:4px;">ไฟล์ต้องมีหัวคอลัมน์ (ไทยหรืออังกฤษก็ได้): Location Name/ชื่อสาขา, Name/รหัสสาขา, Branch ID/สาขาที่, Address/ที่อยู่, Phone/เบอร์โทร · สาขาที่มีอยู่แล้วจะไม่ถูกเพิ่มซ้ำ</div>
         </div>
       </div>
 
@@ -11120,19 +11120,34 @@ function addVendorBranchRow(){
 }
 function removeVendorBranchRow(idx){editingVendorBranches.splice(idx,1);renderVendorBranches();}
 // นำเข้าสาขาจากไฟล์ Excel/CSV — จับหัวคอลัมน์แบบยืดหยุ่น (ไทย/อังกฤษ) ด้วย XLSX ที่โหลดไว้อยู่แล้วทั้งระบบ
+// ไฟล์แบบ LocationList: Name = รหัสสาขา (AGE001) · Location Name = ชื่อสาขา · Branch ID = สาขาที่ (00067)
 function vendorBranchImportHeaderMap(headerRow){
-  const norm=s=>String(s||'').trim().toLowerCase();
-  const map={name:-1,no:-1,addr:-1,phone:-1};
+  const norm=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+  const map={loc:-1,code:-1,no:-1,addr:-1,phone:-1};
   headerRow.forEach((h,i)=>{
     const v=norm(h);
-    if(map.name<0&&/ชื่อสาขา|branch\s*name|^name$|สาขา$/.test(v))map.name=i;
-    else if(map.no<0&&/สาขาที่|เลขสาขา|branch\s*no|branch\s*code|^no$|^code$/.test(v))map.no=i;
+    if(!v)return;
+    if(map.loc<0&&/location\s*name|ชื่อสาขา|branch\s*name|store\s*name|^สาขา$/.test(v))map.loc=i;
+    else if(map.code<0&&/^name$|^code$|รหัสสาขา|store\s*code|location\s*code|location\s*id/.test(v))map.code=i;
+    else if(map.no<0&&/สาขาที่|เลขสาขา|branch\s*(no|id|number|code)|tax\s*branch|^no$/.test(v))map.no=i;
     else if(map.addr<0&&/ที่อยู่|address|addr/.test(v))map.addr=i;
     else if(map.phone<0&&/เบอร์|โทร|phone|tel/.test(v))map.phone=i;
   });
-  if(map.name<0)map.name=0; // เผื่อไฟล์ไม่มีหัวคอลัมน์ที่จับคู่ได้ — ใช้คอลัมน์แรกเป็นชื่อสาขา
+  if(map.loc<0&&map.code<0)map.loc=0; // เผื่อไฟล์ไม่มีหัวคอลัมน์ที่จับคู่ได้ — ใช้คอลัมน์แรกเป็นชื่อสาขา
   return map;
 }
+// ชื่อสาขาที่บันทึก = "Location Name - รหัส" (แบบเดียวกับที่ใช้ในงาน เช่น Coucou the flavorhood - COU001)
+function vendorBranchImportName(loc,code){
+  if(loc&&code)return vendorBranchTokens(loc).includes(code.toLowerCase())?loc:`${loc} - ${code}`;
+  return loc||code;
+}
+function vendorBranchTokens(name){return String(name||'').toLowerCase().split(/[^a-z0-9ก-๙.]+/i).filter(Boolean);}
+function vendorBranchImportNo(v){
+  let s=String(v==null?'':v).trim();
+  if(/^\d{1,5}$/.test(s))s=s.padStart(5,'0');
+  return /^0+$/.test(s)?'':s; // 00000 = สำนักงานใหญ่
+}
+function vendorBranchImportText(v){return String(v==null?'':v).replace(/_x000D_/gi,'').replace(/\s*[\r\n]+\s*/g,' ').replace(/\s{2,}/g,' ').trim();}
 async function importVendorBranchesFile(input){
   const file=input?.files?.[0];if(!file)return;
   const statusEl=document.getElementById('fc-branch-import-status');
@@ -11145,22 +11160,45 @@ async function importVendorBranchesFile(input){
     const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:''});
     if(!rows.length)throw new Error('ไฟล์ว่างเปล่า');
     const map=vendorBranchImportHeaderMap(rows[0]);
-    let added=0,skipped=0;
-    rows.slice(1).forEach((r,idx)=>{
-      const name=String(r[map.name]||'').trim();
+    const cell=(r,i)=>i>=0?vendorBranchImportText(r[i]):'';
+    const norm=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+    const body=rows.slice(1);
+    const locCount={};
+    body.forEach(r=>{const l=norm(cell(r,map.loc));if(l)locCount[l]=(locCount[l]||0)+1;});
+    // หาสาขาที่มีอยู่แล้ว (ของ vendor นี้ + ที่เพิ่งนำเข้าจากไฟล์เดียวกัน): ตรงรหัส > ตรงชื่อเต็ม > ตรงชื่อสาขาเฉย ๆ (เฉพาะชื่อที่ไม่ซ้ำในไฟล์ และสาขาเดิมยังไม่มีรหัส)
+    const findExisting=(code,loc,name)=>{
+      const c=code.toLowerCase(),n=norm(name),l=norm(loc);
+      return editingVendorBranches.find(b=>c&&(norm(b.code)===c||vendorBranchTokens(b.name).includes(c)))
+        ||editingVendorBranches.find(b=>norm(b.name)===n)
+        ||(l&&locCount[l]===1?editingVendorBranches.find(b=>!b.code&&norm(b.name)===l):null);
+    };
+    let added=0,dup=0,filled=0,skipped=0;
+    body.forEach((r,idx)=>{
+      const code=cell(r,map.code),loc=cell(r,map.loc);
+      const name=vendorBranchImportName(loc,code);
       if(!name){skipped++;return;}
+      const no=map.no>=0?vendorBranchImportNo(r[map.no]):'';
+      const addr=cell(r,map.addr),phone=cell(r,map.phone);
+      const ex=findExisting(code,loc,name);
+      if(ex){
+        // ซ้ำ — ไม่เพิ่มแถวใหม่ แค่เติมช่องที่ยังว่าง (และแก้ชื่อที่เคยนำเข้ามาเป็นรหัสล้วน ๆ ให้มีชื่อสาขาด้วย)
+        let ch=false;
+        if(code&&!ex.code){ex.code=code;ch=true;}
+        if(loc&&code&&norm(ex.name)===code.toLowerCase()){ex.name=name;ch=true;}
+        if(no&&!String(ex.taxBranchNo||'').trim()){ex.taxBranchNo=no;ch=true;}
+        if(addr&&!String(ex.addr||ex.address||'').trim()){ex.addr=addr;ch=true;}
+        if(phone&&!String(ex.phone||'').trim()){ex.phone=phone;ch=true;}
+        dup++;if(ch)filled++;
+        return;
+      }
       editingVendorBranches.push({
         id:'BRN-'+Date.now().toString(36)+'-imp'+idx,
-        name,
-        taxBranchNo:map.no>=0?String(r[map.no]||'').trim():'',
-        addr:map.addr>=0?String(r[map.addr]||'').trim():'',
-        phone:map.phone>=0?String(r[map.phone]||'').trim():'',
-        mgr:'',hours:''
+        name,code,taxBranchNo:no,addr,phone,mgr:'',hours:''
       });
       added++;
     });
     renderVendorBranches();
-    statusEl.textContent=`นำเข้าสำเร็จ ${added} สาขา${skipped?` (ข้าม ${skipped} แถวที่ไม่มีชื่อสาขา)`:''}`;
+    statusEl.textContent=`เพิ่มใหม่ ${added} สาขา`+(dup?` · ข้าม ${dup} สาขาที่มีอยู่แล้ว${filled?` (เติมข้อมูลที่ขาดให้ ${filled})`:''}`:'')+(skipped?` · ข้าม ${skipped} แถวว่าง`:'')+' — กด บันทึก เพื่อยืนยัน';
     input.value='';
   }catch(e){
     statusEl.textContent='นำเข้าไม่สำเร็จ: '+(e?.message||e);
