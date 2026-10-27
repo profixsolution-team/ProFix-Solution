@@ -1235,6 +1235,59 @@ body[data-theme="dark"] .cal-dh.today b{background:var(--accent);color:#fff;}
   .cal-main .cal-mpick{flex:1;max-width:none;}
   #cal-fbar .at-top{flex-direction:column;}
 }
+
+/* ===== PM (ทดลอง) ===== */
+.pm-beta{font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:color-mix(in srgb,#d97706 15%,transparent);color:#b45309;margin-left:4px;}
+.pm-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.pm-tabs{background:var(--surface);box-shadow:var(--shadow-1);}
+.pm-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.pm-cchip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:7px 14px;font-family:inherit;font-size:13px;cursor:pointer;color:var(--text2);}
+.pm-cchip.on{background:var(--ink);border-color:var(--ink);color:var(--ink-text);}
+.pm-cchip.add{border-style:dashed;color:var(--accent);}
+.pm-empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:40px 20px !important;text-align:center;}
+.pm-heat{display:grid;gap:4px;align-items:center;}
+.pm-rh{display:flex;flex-direction:column;align-items:flex-start;border:0;background:none;text-align:left;font-family:inherit;cursor:pointer;padding:4px 6px;border-radius:10px;color:var(--text);}
+.pm-rh small{font-size:11px;color:var(--text3);}
+.pm-rh.on{background:color-mix(in srgb,var(--accent) 10%,var(--surface));}
+.pm-hc{height:36px;border-radius:9px;display:grid;place-items:center;font-weight:600;font-size:12.5px;border:0;font-family:inherit;}
+button.pm-hc{cursor:pointer;}
+.pm-hc.c0{background:var(--surface2);color:var(--text3);}
+.pm-hc.cd,.pm-legend i.cd{background:#dcfce7;color:#166534;}
+.pm-hc.cm,.pm-legend i.cm{background:#dbeafe;color:#1e40af;}
+.pm-hc.cp,.pm-legend i.cp{background:#ffedd5;color:#9a3412;outline:2px dashed #fb923c;outline-offset:-2px;}
+.pm-hc.sel{box-shadow:0 0 0 2px var(--ink);}
+.pm-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;}
+.pm-legend i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-1px;}
+.pm-scroll{overflow-x:auto;}
+.pm-tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.pm-tbl th{font-weight:500;color:var(--text3);font-size:12px;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.pm-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.pm-tbl tr:last-child td{border-bottom:0;}
+.pm-in{height:34px !important;min-width:0;max-width:170px;}
+.pm-prin{width:120px;}
+.pm-pr{display:flex;align-items:center;gap:6px;}
+.pm-x{border:0;background:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0 4px;}
+.pm-st{white-space:nowrap;}
+.chip.pm-st{background:color-mix(in srgb,var(--c) 13%,var(--surface));color:color-mix(in srgb,var(--c) 75%,var(--text));}
+.pm-ckl{max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:6px 10px;}
+.pm-ck{display:flex;align-items:center;gap:8px;padding:6px 2px;font-size:13px;cursor:pointer;border-bottom:1px dashed var(--border);}
+.pm-ck:last-child{border-bottom:0;}
+.pm-arow{cursor:pointer;}.pm-arow:hover td{background:var(--surface2);}.pm-arow.off{opacity:.55;}
+.pm-code{display:flex;align-items:center;gap:8px;}.pm-code b{display:block;font-family:var(--mono);}.pm-code small{display:block;font-size:11px;color:var(--text3);}
+.pm-qrmini{width:22px;height:22px;border-radius:4px;flex:none;background:repeating-conic-gradient(var(--text) 0 25%,var(--surface) 0 50%) 0 0/6px 6px;opacity:.85;}
+.pm-afbar{margin-bottom:12px;}
+.pm-ahead{display:flex;gap:18px;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;}
+.pm-qrbox{width:150px;flex:none;text-align:center;padding:8px;border:1px solid var(--border);border-radius:14px;background:#fff;color:#0b1220;min-height:150px;}
+.pm-qrbox svg{width:132px;height:132px;}
+.pm-info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;font-size:13px;}
+.pm-info .tm{font-size:11.5px;}
+.pm-sec{border-top:1px solid var(--border);padding-top:12px;margin-top:6px;}
+.pm-sech{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.pm-ev{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--border);font-size:13px;}
+.pm-ev:last-child{border-bottom:0;}
+.pm-grid2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;align-items:start;}
+.pm-qrlist{max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:4px 10px;}
+@media(max-width:900px){.pm-grid2{grid-template-columns:1fr;}.pm-info{grid-template-columns:repeat(2,minmax(0,1fr));}.pm-heat{grid-template-columns:90px repeat(12,minmax(26px,1fr)) !important;overflow-x:auto;}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1309,6 +1362,7 @@ body[data-theme="dark"] .cal-dh.today b{background:var(--accent);color:#fff;}
     <button class="nav-item" data-page="admin-tracker" onclick="goTo('admin-tracker',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span>Admin Tracker<span class="nav-badge-y" id="nb-admin">2</span></button>
     <button class="nav-item" data-page="jobs" onclick="goTo('jobs',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg></span>คิวช่าง<span class="nav-badge" id="nb-new">3</span></button>
     <button class="nav-item" data-page="job-calendar" onclick="goTo('job-calendar',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>ปฏิทิน</button>
+    <button class="nav-item" data-page="pm" onclick="goTo('pm',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span>PM <span class="pm-beta">ทดลอง</span></button>
     <button class="nav-item" data-page="customer-requests" onclick="goTo('customer-requests',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/></svg></span>งานจากลูกค้า<span class="nav-badge-y" id="nb-customer-requests" style="display:none;">0</span></button>
     <button class="nav-item" data-page="reports" onclick="goTo('reports',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span>รายงานช่าง</button>
     <div class="nav-section">เอกสาร</div>
@@ -1437,6 +1491,14 @@ body[data-theme="dark"] .cal-dh.today b{background:var(--accent);color:#fff;}
     <select class="filter-select" id="cal-company" onchange="setCompanyFilter('cal',this.value)"></select></div>
   </div>
   <div class="content" style="padding-top:12px;"><div id="cal2"></div></div>
+</div>
+
+<!-- PM (ทดลอง) -->
+<div class="page" id="page-pm">
+  <div class="page-header">
+    <div><div class="page-title">PM (ทดลอง)</div><div class="page-sub">แผนบำรุงรักษา · ทะเบียนเครื่อง · สติกเกอร์ QR</div></div>
+  </div>
+  <div class="content" style="padding-top:12px;"><div id="pm-root"></div></div>
 </div>
 
 <!-- FINANCE -->
@@ -2950,7 +3012,7 @@ function applyRolePermissions(){
   document.body.classList.remove('role-admin','role-staff','role-viewer');
   document.body.classList.add('role-'+role);
   // staff/viewer ไม่เห็นหน้าการเงิน/จ่ายช่าง (ต้นทุน-กำไร) และหน้าจัดการผู้ใช้ (admin เท่านั้น)
-  const hidePages = (role==='admin') ? [] : ['finance','tech-pay','users'];
+  const hidePages = (role==='admin') ? [] : ['finance','tech-pay','users','pm'];
   document.querySelectorAll('.nav-item[data-page]').forEach(function(b){
     b.style.display = hidePages.indexOf(b.getAttribute('data-page'))>=0 ? 'none' : '';
   });
@@ -4250,7 +4312,7 @@ async function saveSplitStateNowInner(force=false){
   const snap=splitStateSnapshot();
   const now=new Date().toISOString();
   const jobsHash=stableJson(snap.jobs), adminHash=stableJson(snap.adminTasks), partsHash=stableJson(snap.parts), woHash=stableJson(snap.workOrders), docHash=stableJson(snap.documents), metaHash=stableJson(snap.meta);
-  if(force||splitSaveHashes.jobs!==jobsHash){await syncSplitRowsChanged('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}),'jobs',j=>j.id,force,false);splitSaveHashes.jobs=jobsHash;}
+  if(force||splitSaveHashes.jobs!==jobsHash){await syncSplitRowsChanged('jobs',snap.jobs,j=>({id:j.id,data:j,updated_at:now}),'jobs',j=>j.id,force,false);splitSaveHashes.jobs=jobsHash;pfNotifyJobsSaved();}
   if(force||splitSaveHashes.adminTasks!==adminHash){await syncSplitRowsChanged('admin_tasks',snap.adminTasks,t=>({id:t.id,data:t,updated_at:now}),'adminTasks',t=>t.id,force,false);splitSaveHashes.adminTasks=adminHash;}
   if(workOrdersLoaded&&(force||splitSaveHashes.workOrders!==woHash)){await syncSplitRowsChanged('work_orders',snap.workOrders,d=>({id:d.id,data:d,pr:d.pr||'',updated_at:now}),'workOrders',d=>d.id,force);splitSaveHashes.workOrders=woHash;}
   if(docsLoaded&&(force||splitSaveHashes.documents!==docHash)){await syncSplitRowsChanged('documents',snap.documents,d=>({id:(d.docType||'doc')+':'+(d.no||d.jid||''),doc_type:d.docType||'doc',job_id:d.jid||'',data:d,updated_at:now}),'documents',d=>(d.docType||'doc')+':'+(d.no||d.jid||''),force);splitSaveHashes.documents=docHash;}
@@ -4394,6 +4456,7 @@ function goTo(id, el){
     'customer-requests':()=>{renderCustomerRequests();ensureCustomerRequestsLoaded(true).then(renderCustomerRequests);},
     jobs:renderJobs,
     'job-calendar':renderCalendar,
+    pm:renderPM,
     finance:renderFin,
     'purchase-tax':()=>{renderPurchaseTax();ensureAccountingLoaded().then(renderPurchaseTax);},
     'sales-tax':()=>{renderSalesTax();ensureAccountingLoaded().then(renderSalesTax);},
@@ -12367,6 +12430,31 @@ function setupCrossTabSync(){
   // สำรอง: localStorage (storage event ยิงเฉพาะแท็บอื่น) เผื่อ BroadcastChannel ใช้ไม่ได้
   window.addEventListener('storage',e=>{ if(e.key==='profix_sync_ping'&&e.newValue){ try{const m=JSON.parse(e.newValue);onProfixSync(m.kind,m);}catch(_){}}});
 }
+// งานถูกบันทึกขึ้น server แล้ว → บอกแท็บอื่น (เช่น แท็บทำเอกสาร) ให้ดึงงานใหม่ทันที
+var pfJobsSavedTimer=null;
+function pfNotifyJobsSaved(){clearTimeout(pfJobsSavedTimer);pfJobsSavedTimer=setTimeout(()=>broadcastDataChanged('jobs-saved'),300);}
+// แท็บทำเอกสาร: ดึงเฉพาะงานที่เพิ่ม/แก้หลังเวลาล่าสุดที่เคยดึง แล้วรวมเข้ากับรายการในแท็บนี้ (ไม่รีโหลดทั้งหน้า ไม่กระทบฟอร์มที่กรอกค้าง)
+var docJobsSince=new Date(Date.now()-5*60*1000).toISOString(),docJobsRefreshAt=0,docJobsRefreshing=null;
+async function docTabRefreshJobs(force){
+  if(!salesDocKioskMode||typeof splitTablesOnline==='undefined'||!splitTablesOnline)return;
+  if(docJobsRefreshing)return docJobsRefreshing;
+  if(!force&&Date.now()-docJobsRefreshAt<5000)return;
+  docJobsRefreshAt=Date.now();
+  docJobsRefreshing=(async()=>{
+    try{
+      const rows=await sbFetchAll('jobs',`?select=id,data,updated_at&updated_at=gt.${encodeURIComponent(docJobsSince)}&order=updated_at.asc`);
+      if(!rows.length)return;
+      rows.forEach(r=>{const d=r&&r.data;if(!d||!d.id)return;const i=jobs.findIndex(j=>j.id===d.id);if(i>=0)jobs[i]=d;else jobs.push(d);if(r.updated_at&&r.updated_at>docJobsSince)docJobsSince=r.updated_at;});
+      const inp=document.getElementById('sale-job-input'),pk=document.getElementById('sale-job-picker');
+      if(inp&&pk&&pk.style.display!=='none')renderSalesJobPicker(inp.value||'');
+    }catch(e){console.warn('doc tab job refresh',e);}
+    finally{docJobsRefreshing=null;}
+  })();
+  return docJobsRefreshing;
+}
+// แท็บทำเอกสาร: กลับมาที่แท็บ หรือกดช่องเลือก PR → เช็กงานใหม่ (ครอบคลุมงานที่เพิ่มจากเครื่องอื่นด้วย)
+window.addEventListener('focus',()=>{try{docTabRefreshJobs();}catch(e){}});
+document.addEventListener('focusin',e=>{if(e.target&&e.target.id==='sale-job-input'){try{docTabRefreshJobs();}catch(_){}}});
 function broadcastDataChanged(kind,extra={}){
   try{ profixSyncChannel&&profixSyncChannel.postMessage({...extra,kind,ts:Date.now()}); }catch(e){}
   try{ localStorage.setItem('profix_sync_ping',JSON.stringify({...extra,kind,ts:Date.now(),r:Math.random()})); }catch(e){}
@@ -12390,7 +12478,9 @@ function applyBroadcastFields(msg){
 let accountingSyncRetry=null;
 function onProfixSync(kind,msg){
   if(kind==='fields'){applyBroadcastFields(msg);return;}
+  if(kind==='jobs-saved'){if(salesDocKioskMode)docTabRefreshJobs(true);return;} // เฉพาะแท็บทำเอกสาร (แท็บปกติซิงก์ตามรอบเดิม ไม่รีโหลดหนัก)
   if(kind==='jobs'){
+    if(salesDocKioskMode){docTabRefreshJobs(true);return;} // แท็บเอกสาร: ฟอร์มเปิดอยู่ตลอด → ดึงเฉพาะงานที่เปลี่ยน (เบา) แทนการรีโหลดทั้งหมด
     // แท็บอื่นแก้สถานะ/ข้อมูลงานบน server → ดึงเฉพาะส่วนที่เปลี่ยนทันที (ระยะ A)
     setTimeout(()=>{lastRemoteRefreshAt=0;refreshRemoteIfIdle();},800);
     return;
@@ -13686,6 +13776,387 @@ function pfmRefresh(){try{pfmBuildTabs();pfmEnhanceFilters();}catch(e){console.w
   window.addEventListener('keydown',e=>{if(e.key==='Escape')pfmCloseSheet();});
   setTimeout(pfmRefresh,0);
 })();
+
+// =====================================================================
+// PM (ทดลอง) ช่วงที่ 1 — สัญญา + แผนทั้งปี + ผูก PR · ทะเบียนเครื่อง + นำเข้า Excel · สติกเกอร์ QR
+// ตารางใหม่ล้วน (console_pm_phase1.sql) · admin เท่านั้น · ไม่แตะ jobs/เอกสาร/การเงิน
+// =====================================================================
+var pm={loaded:false,loading:null,missing:false,contracts:[],sites:[],visits:[],assets:[],logs:[]};
+var pmView='plan',pmContractId='',pmRound=1,pmMonth='',pmAsset={client:'',branch:'',q:''},pmQrPick=new Set();
+var PM_ASSET_TYPES=['แอร์','ตู้แช่','อื่น ๆ'];
+var PM_QR_BASE='https://console.profixsolution-service.com/asset.html?c=';
+var PM_TH_MONTHS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function pmId(p){return p+'-'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,6).toUpperCase();}
+function pmNorm(s){return String(s||'').toLowerCase().replace(/\s+/g,'').replace(/[()\-_.,/]/g,'');}
+async function pmReq(table,query,opt){const r=await fetch(splitUrl(table,query),{...opt,headers:sbHeaders(opt&&opt.prefer?{'Prefer':opt.prefer}:{})});if(!r.ok)throw new Error(await r.text());const t=await r.text();return t?JSON.parse(t):null;}
+function pmUpsert(table,rows){return pmReq(table,'?on_conflict=id',{method:'POST',prefer:'resolution=merge-duplicates,return=representation',body:JSON.stringify(rows)});}
+function pmInsert(table,rows){return pmReq(table,'',{method:'POST',prefer:'return=representation',body:JSON.stringify(rows)});}
+function pmPatch(table,id,fields){return pmReq(table,`?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',prefer:'return=representation',body:JSON.stringify(fields)});}
+async function pmLoad(force){
+  if(pm.loaded&&!force)return;
+  if(pm.loading)return pm.loading;
+  pm.loading=(async()=>{
+    try{
+      const [c,s,v,a,l]=await Promise.all([sbFetchAll('pm_contracts','?select=*&order=year.desc'),sbFetchAll('pm_sites','?select=*&status=eq.active&order=sort_no.asc'),sbFetchAll('pm_visits','?select=*'),sbFetchAll('pm_assets','?select=*&order=id.asc'),sbFetchAll('pm_asset_logs','?select=*&order=done_at.desc')]);
+      Object.assign(pm,{contracts:c,sites:s,visits:v,assets:a,logs:l,loaded:true,missing:false});
+    }catch(e){console.warn('pm load',e);pm.missing=/PGRST205|does not exist|schema cache|relation/i.test(String(e&&e.message||e));pm.loaded=true;pm.error=String(e&&e.message||e);}
+    finally{pm.loading=null;}
+  })();
+  return pm.loading;
+}
+function pmContract(){return pm.contracts.find(c=>c.id===pmContractId)||pm.contracts.find(c=>c.status==='active')||pm.contracts[0];}
+function pmSitesOf(cid){return pm.sites.filter(s=>s.contract_id===cid);}
+function pmVisit(cid,round,siteId){return pm.visits.find(v=>v.contract_id===cid&&+v.round_no===+round&&v.site_id===siteId);}
+function pmAssetsAt(client,branch){const b=pmNorm(branch),c=pmNorm(client);return pm.assets.filter(a=>a.status!=='retired'&&pmNorm(a.branch)===b&&(!c||pmNorm(a.client)===c));}
+function pmJob(pr){return pr?liveJobs().find(j=>sameJob(j.id,pr)):null;}
+function pmVisitState(v){
+  if(!v)return {k:'none',l:'ยังไม่จัด',c:'#94a3b8'};
+  if(v.status==='skipped')return {k:'skip',l:'ข้าม',c:'#64748b'};
+  const j=pmJob(v.job_id);
+  if(v.status==='done'||(j&&['ปิดงาน','ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รอออกใบกำกับภาษี','รอวางบิล'].includes(j.status)))return {k:'done',l:j?j.status:'เสร็จแล้ว',c:'#16a34a'};
+  if(v.job_id)return {k:'job',l:j?j.status:'มี PR',c:'#175fff'};
+  return {k:'plan',l:'รอ PR',c:'#d97706'};
+}
+function pmEnsureModal(){
+  if(document.getElementById('m-pm'))return;
+  document.body.insertAdjacentHTML('beforeend','<div class="modal-overlay" id="m-pm"><div class="modal" style="max-width:680px;"><div class="modal-header"><div><div class="modal-title" id="m-pm-title"></div><div class="tm" style="font-size:12px;margin-top:2px;" id="m-pm-sub"></div></div><button class="close-btn" onclick="closeM(\'m-pm\')">×</button></div><div class="modal-body" id="m-pm-body"></div><div class="modal-footer" id="m-pm-foot"></div></div></div>');
+}
+function pmModal(title,sub,body,foot,wide){pmEnsureModal();document.getElementById('m-pm-title').textContent=title;document.getElementById('m-pm-sub').textContent=sub||'';document.getElementById('m-pm-body').innerHTML=body;document.getElementById('m-pm-foot').innerHTML=foot||`<button class="btn btn-ghost" onclick="closeM('m-pm')">ปิด</button>`;document.querySelector('#m-pm .modal').style.maxWidth=wide?'980px':'680px';openM('m-pm');}
+function pmErr(e){console.error(e);alert('บันทึกไม่สำเร็จ: '+(e&&e.message||e));}
+
+// ===================== หน้า PM =====================
+async function renderPM(){
+  const root=document.getElementById('pm-root');if(!root)return;
+  if(!pm.loaded){root.innerHTML='<div class="d2-empty">กำลังโหลดข้อมูล PM...</div>';await pmLoad();}
+  if(pm.missing){root.innerHTML=`<div class="d2-box"><div class="d2-in d2-pad" style="line-height:1.8"><b>ยังไม่ได้สร้างตาราง PM</b><br>รันไฟล์ <code>console_pm_phase1.sql</code> ใน Supabase SQL Editor ก่อน แล้วกดรีเฟรชหน้านี้</div></div>`;return;}
+  if(pm.error&&!pm.contracts.length&&!pm.assets.length){root.innerHTML=`<div class="d2-empty">โหลดข้อมูล PM ไม่สำเร็จ: ${esc(pm.error)}</div>`;}
+  const tabs=[['plan','แผน PM'],['assets','ทะเบียนเครื่อง'],['qr','สติกเกอร์ QR']];
+  const seg=`<div class="d2-seg sl-tabs pm-tabs">${tabs.map(([k,l])=>`<button type="button" class="${pmView===k?'on':''}" onclick="pmView='${k}';renderPM()">${l}</button>`).join('')}</div>`;
+  const body=pmView==='assets'?pmAssetsHtml():pmView==='qr'?pmQrHtml():pmPlanHtml();
+  root.innerHTML=`<div class="pm-bar">${seg}<span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pm.loaded=false;renderPM()" title="โหลดใหม่">⟳ รีเฟรช</button></div>${body}`;
+  const live=pm.assets.filter(a=>a.status!=='retired');
+  phSet('pm',[['สัญญา',pm.contracts.filter(c=>c.status==='active').length],['เครื่องในทะเบียน',live.length],['สาขาในสัญญา',pm.sites.length]],'PM (ทดลอง)','แผนบำรุงรักษา · ทะเบียนเครื่อง · สติกเกอร์ QR — ช่วงทดลองเห็นเฉพาะแอดมิน');
+}
+
+// ---------- แผน PM ----------
+function pmPlanHtml(){
+  if(!pm.contracts.length)return `<div class="d2-box"><div class="d2-in d2-pad pm-empty"><div style="font-size:40px">🗓</div><b>ยังไม่มีสัญญา PM</b><div class="tm">เริ่มจากสร้างสัญญา: ลูกค้า + ปี + จำนวนรอบ แล้วเพิ่มสาขา</div><button class="btn btn-primary" onclick="pmEditContract()">＋ สร้างสัญญา PM</button></div></div>`;
+  const c=pmContract();pmContractId=c.id;
+  if(pmRound>c.rounds)pmRound=1;
+  const sites=pmSitesOf(c.id);
+  const vis=pm.visits.filter(v=>v.contract_id===c.id);
+  const chips=pm.contracts.map(x=>`<button type="button" class="pm-cchip${x.id===c.id?' on':''}" onclick="pmContractId='${x.id}';pmRound=1;pmMonth='';renderPM()">${esc(x.client)} · ${esc(x.name)}${x.status!=='active'?' <span class="tm">(ปิด)</span>':''}</button>`).join('');
+  // heatmap รอบ × เดือน
+  const yr=+c.year;
+  let heat=`<div class="pm-heat" style="grid-template-columns:110px repeat(12,minmax(0,1fr));"><div></div>${PM_TH_MONTHS.map(m=>`<div class="tm" style="text-align:center;font-size:11.5px">${m}</div>`).join('')}`;
+  for(let r=1;r<=c.rounds;r++){
+    const rv=vis.filter(v=>+v.round_no===r&&v.status!=='cancelled');
+    const done=sites.filter(s=>pmVisitState(pmVisit(c.id,r,s.id)).k==='done').length;
+    heat+=`<button type="button" class="pm-rh${pmRound===r?' on':''}" onclick="pmRound=${r};pmMonth='';renderPM()"><b>รอบที่ ${r}</b><small>${done}/${sites.length} เสร็จ</small></button>`;
+    for(let m=1;m<=12;m++){
+      const ym=`${yr}-${String(m).padStart(2,'0')}`,inm=rv.filter(v=>String(v.planned_date||'').slice(0,7)===ym);
+      if(!inm.length){heat+=`<div class="pm-hc c0">·</div>`;continue;}
+      const st=inm.map(pmVisitState),k=st.every(x=>x.k==='done')?'cd':st.some(x=>x.k==='plan')?'cp':'cm';
+      heat+=`<button type="button" class="pm-hc ${k}${pmRound===r&&pmMonth===ym?' sel':''}" onclick="pmRound=${r};pmMonth=pmMonth==='${ym}'?'':'${ym}';renderPM()" title="${inm.length} สาขา">${inm.length}</button>`;
+    }
+  }
+  heat+='</div>';
+  // ตารางสาขาของรอบ
+  const teamOpts=t=>`<option value="">— ทีม —</option>${(teams||[]).map(x=>`<option value="${esc(x.name)}"${x.name===t?' selected':''}>${esc(x.name)}</option>`).join('')}`;
+  let rows=sites.map(s=>({s,v:pmVisit(c.id,pmRound,s.id)}));
+  if(pmMonth)rows=rows.filter(r=>String(r.v&&r.v.planned_date||'').slice(0,7)===pmMonth);
+  rows.sort((a,b)=>String(a.v&&a.v.planned_date||'9999').localeCompare(String(b.v&&b.v.planned_date||'9999'))||a.s.sort_no-b.s.sort_no);
+  const rs=sites.map(s=>pmVisitState(pmVisit(c.id,pmRound,s.id)));
+  const cnt=k=>rs.filter(x=>x.k===k).length,doneN=cnt('done');
+  const tbl=rows.length?`<table class="pm-tbl"><thead><tr><th>สาขา</th><th>เครื่อง</th><th>วันนัด</th><th>ทีม</th><th>PR</th><th>สถานะ</th><th></th></tr></thead><tbody>${rows.map(({s,v})=>{
+      const st=pmVisitState(v),j=v&&pmJob(v.job_id),na=pmAssetsAt(c.client,s.branch).length,sid=esc(s.id);
+      return `<tr><td><b>${esc(s.branch)}</b>${s.note?`<div class="tm" style="font-size:11.5px">${esc(s.note)}</div>`:''}</td>
+        <td>${na?`<button type="button" class="jq-link" onclick="pmView='assets';pmAsset={client:'${esc(c.client).replace(/'/g,'&#39;')}',branch:'${esc(s.branch).replace(/'/g,'&#39;')}',q:''};renderPM()">${na} เครื่อง</button>`:'<span class="tm">—</span>'}</td>
+        <td><input type="date" class="filter-input pm-in" value="${esc(v&&v.planned_date||'')}" onchange="pmSetVisit('${sid}',{planned_date:this.value||null})"></td>
+        <td><select class="filter-select pm-in" onchange="pmSetVisit('${sid}',{team:this.value||null})">${teamOpts(v&&v.team)}</select></td>
+        <td>${v&&v.job_id?`<div class="pm-pr">${j?`<button type="button" class="link-btn" onclick="openDet('${esc(j.id).replace(/'/g,'&#39;')}')">${esc(v.job_id)}</button>`:`<span class="mono">${esc(v.job_id)}</span> <span class="tm" style="font-size:11px">(ไม่พบในคิว)</span>`}<button type="button" class="pm-x" title="ยกเลิกการผูก PR" onclick="pmSetVisit('${sid}',{job_id:null})">×</button></div>`:`<input class="filter-input pm-in pm-prin" placeholder="ใส่ PR" onkeydown="if(event.key==='Enter')this.blur()" onchange="if(this.value.trim())pmSetVisit('${sid}',{job_id:this.value.trim().toUpperCase()})">`}</td>
+        <td><span class="chip pm-st" style="--c:${st.c}">${esc(st.l)}</span></td>
+        <td class="action-cell"><button class="icon-btn" onclick="toggleMenu('pms-${sid}',event)">...</button><div class="action-menu" id="pms-${sid}"><button onclick="pmSetVisit('${sid}',{status:'done'})">✓ ทำเครื่องหมายว่าเสร็จ</button><button onclick="pmSetVisit('${sid}',{status:'skipped'})">ข้ามรอบนี้</button><button onclick="pmSetVisit('${sid}',{status:'planned'})">กลับเป็นแผน</button><button onclick="pmEditSite('${sid}')">แก้ไขสาขา</button><button onclick="pmRemoveSite('${sid}')" style="color:var(--red)">เอาสาขาออกจากสัญญา</button></div></td></tr>`;}).join('')}</tbody></table>`
+    :`<div class="d2-empty">${sites.length?'ไม่มีสาขาที่นัดในเดือนที่เลือก':'ยังไม่มีสาขาในสัญญานี้ — กด "＋ เพิ่มสาขา"'}</div>`;
+  return `<div class="pm-chips">${chips}<button type="button" class="pm-cchip add" onclick="pmEditContract()">＋ สัญญาใหม่</button></div>
+  <div class="pm-grid">
+    <section class="d2-box"><div class="d2-h"><div><div class="t">${esc(c.client)} · ${esc(c.name)}</div><div class="s">ปี ${c.year} · ${c.rounds} รอบ · ${sites.length} สาขา${c.note?' · '+esc(c.note):''}</div></div><button class="btn btn-ghost btn-sm" onclick="pmEditContract('${c.id}')">✏️ แก้ไขสัญญา</button></div>
+      <div class="d2-in d2-pad">${heat}<div class="pm-legend tm"><span><i class="cd"></i>เสร็จแล้ว</span><span><i class="cm"></i>มี PR / กำลังทำ</span><span><i class="cp"></i>แผน (ยังไม่มี PR)</span><span>คลิกตัวเลขเพื่อกรองเดือน</span></div></div>
+      <div class="d2-h" style="margin-top:6px"><div><div class="t">สาขาในรอบที่ ${pmRound}${pmMonth?' · '+PM_TH_MONTHS[+pmMonth.slice(5)-1]:''}</div><div class="s">เสร็จ ${doneN}/${sites.length} · มี PR ${cnt('job')} · รอ PR ${cnt('plan')} · ยังไม่จัด ${cnt('none')}${pmMonth?` · <a href="javascript:void(0)" onclick="pmMonth='';renderPM()">ดูทุกเดือน</a>`:''}</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="pmFindPrFromQueue()">🔎 หา PR จากคิวช่าง</button><button class="btn btn-ghost btn-sm" onclick="pmPastePr()">📋 วางรายการ PR</button><button class="btn btn-ghost btn-sm" onclick="pmBulkPlan()">🗓 จัดวันเป็นชุด</button><button class="btn btn-primary btn-sm" onclick="pmAddSites()">＋ เพิ่มสาขา</button></div>
+      <div class="d2-in pm-scroll">${tbl}</div></section>
+  </div>`;
+}
+async function pmSetVisit(siteId,fields){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const c=pmContract(),s=pm.sites.find(x=>x.id===siteId);if(!c||!s)return;
+  const v=pmVisit(c.id,pmRound,siteId);
+  const row={...(v||{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:siteId,branch:s.branch,status:'planned'}),...fields,updated_at:new Date().toISOString(),updated_by:getActorName()};
+  try{const [saved]=await pmUpsert('pm_visits',[row]);const i=pm.visits.findIndex(x=>x.id===row.id);if(i>=0)pm.visits[i]=saved||row;else pm.visits.push(saved||row);renderPM();}
+  catch(e){pmErr(e);}
+}
+function pmEditContract(id){
+  const c=id?pm.contracts.find(x=>x.id===id):{year:new Date().getFullYear(),rounds:3};
+  const cl=[...new Set([...(clients||[]).map(x=>x.name),...pm.contracts.map(x=>x.client)])].filter(Boolean);
+  pmModal(id?'แก้ไขสัญญา PM':'สร้างสัญญา PM','ลูกค้า + ปี + จำนวนรอบต่อปี',`
+    <div class="form-row"><div class="form-group"><label>ลูกค้า</label><input id="pmc-client" list="pmc-cl" value="${esc(c.client||'')}" placeholder="เช่น Pun Thai"><datalist id="pmc-cl">${cl.map(x=>`<option value="${esc(x)}">`).join('')}</datalist></div><div class="form-group"><label>ชื่อสัญญา</label><input id="pmc-name" value="${esc(c.name||'PM แอร์ / ตู้แช่')}"></div></div>
+    <div class="form-row"><div class="form-group"><label>ปี (ค.ศ.)</label><input id="pmc-year" type="number" value="${esc(c.year)}"></div><div class="form-group"><label>จำนวนรอบต่อปี</label><input id="pmc-rounds" type="number" min="1" max="12" value="${esc(c.rounds)}"></div></div>
+    <div class="form-group"><label>หมายเหตุ</label><input id="pmc-note" value="${esc(c.note||'')}" placeholder="เช่น เงื่อนไขสัญญา / ผู้ประสานงาน"></div>
+    ${id?`<div class="form-group"><label>สถานะ</label><select id="pmc-status"><option value="active"${c.status==='active'?' selected':''}>ใช้งาน</option><option value="closed"${c.status==='closed'?' selected':''}>ปิดสัญญาแล้ว</option></select></div>`:''}`,
+    `<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="pmSaveContract('${id||''}')">✓ บันทึก</button>`);
+}
+async function pmSaveContract(id){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const g=k=>document.getElementById(k)?.value.trim();
+  const row={id:id||pmId('PMC'),client:g('pmc-client'),name:g('pmc-name')||'PM',year:parseInt(g('pmc-year'),10)||new Date().getFullYear(),rounds:Math.min(12,Math.max(1,parseInt(g('pmc-rounds'),10)||1)),note:g('pmc-note')||null,updated_at:new Date().toISOString(),updated_by:getActorName()};
+  if(!row.client){alert('กรุณาใส่ชื่อลูกค้า');return;}
+  if(id)row.status=g('pmc-status')||'active';else{row.status='active';row.created_by=getActorName();}
+  try{const [saved]=await pmUpsert('pm_contracts',[row]);const i=pm.contracts.findIndex(x=>x.id===row.id);if(i>=0)pm.contracts[i]=saved||row;else pm.contracts.unshift(saved||row);pmContractId=row.id;closeM('m-pm');renderPM();}
+  catch(e){pmErr(e);}
+}
+function pmAddSites(){
+  const c=pmContract();if(!c)return;
+  const have=new Set(pmSitesOf(c.id).map(s=>pmNorm(s.branch)));
+  const fromMaster=(branches||[]).filter(b=>pmNorm(b.client)===pmNorm(c.client)&&!have.has(pmNorm(b.name)));
+  const fromAssets=[...new Set(pm.assets.filter(a=>pmNorm(a.client)===pmNorm(c.client)).map(a=>a.branch))].filter(b=>!have.has(pmNorm(b))&&!fromMaster.some(m=>pmNorm(m.name)===pmNorm(b)));
+  const opts=[...fromMaster.map(b=>b.name),...fromAssets];
+  pmModal('เพิ่มสาขาเข้าสัญญา',`${c.client} · ${c.name}`,`
+    ${opts.length?`<div class="form-group"><label>เลือกจากสาขาของ ${esc(c.client)} ที่มีในระบบ (${opts.length})</label><div class="pm-ckl"><label class="pm-ck"><input type="checkbox" onchange="document.querySelectorAll('.pm-site-ck').forEach(x=>x.checked=this.checked)"> <b>เลือกทั้งหมด</b></label>${opts.map(o=>`<label class="pm-ck"><input type="checkbox" class="pm-site-ck" value="${esc(o)}"> ${esc(o)}</label>`).join('')}</div></div>`:''}
+    <div class="form-group"><label>หรือพิมพ์/วางชื่อสาขา (บรรทัดละ 1 สาขา)</label><textarea id="pm-site-txt" rows="6" placeholder="Pun Thai บางนา&#10;Pun Thai รังสิต"></textarea></div>`,
+    `<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="pmSaveSites()">✓ เพิ่มสาขา</button>`);
+}
+async function pmSaveSites(){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const c=pmContract();const have=new Set(pmSitesOf(c.id).map(s=>pmNorm(s.branch)));
+  const names=[...[...document.querySelectorAll('.pm-site-ck:checked')].map(x=>x.value),...(document.getElementById('pm-site-txt')?.value||'').split(/\n/).map(x=>x.trim()).filter(Boolean)];
+  const uniq=[];names.forEach(n=>{const k=pmNorm(n);if(k&&!have.has(k)&&!uniq.some(u=>pmNorm(u)===k))uniq.push(n);});
+  if(!uniq.length){alert('ไม่มีสาขาใหม่ให้เพิ่ม');return;}
+  const base=pmSitesOf(c.id).length;
+  const rows=uniq.map((b,i)=>({id:pmId('PMS'),contract_id:c.id,branch:b,sort_no:base+i,status:'active'}));
+  try{const saved=await pmInsert('pm_sites',rows);pm.sites.push(...(saved||rows));closeM('m-pm');renderPM();}catch(e){pmErr(e);}
+}
+function pmEditSite(id){const s=pm.sites.find(x=>x.id===id);if(!s)return;
+  pmModal('แก้ไขสาขา',s.branch,`<div class="form-group"><label>ชื่อสาขา</label><input id="pms-branch" value="${esc(s.branch)}"></div><div class="form-group"><label>ที่อยู่</label><input id="pms-addr" value="${esc(s.address||'')}"></div><div class="form-group"><label>หมายเหตุ</label><input id="pms-note" value="${esc(s.note||'')}" placeholder="เช่น เข้าได้หลัง 22.00 น."></div>`,
+  `<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="pmSaveSite('${id}')">✓ บันทึก</button>`);}
+async function pmSaveSite(id){if(typeof guardEdit==='function'&&!guardEdit())return;const g=k=>document.getElementById(k)?.value.trim();
+  try{const [saved]=await pmPatch('pm_sites',id,{branch:g('pms-branch'),address:g('pms-addr')||null,note:g('pms-note')||null,updated_at:new Date().toISOString()});const i=pm.sites.findIndex(x=>x.id===id);if(i>=0&&saved)pm.sites[i]=saved;closeM('m-pm');renderPM();}catch(e){pmErr(e);}}
+async function pmRemoveSite(id){const s=pm.sites.find(x=>x.id===id);if(!s||!confirm(`เอา "${s.branch}" ออกจากสัญญานี้?\n(แผนเข้าของสาขานี้จะไม่แสดง · ทะเบียนเครื่องยังอยู่)`))return;
+  try{await pmPatch('pm_sites',id,{status:'removed',updated_at:new Date().toISOString()});pm.sites=pm.sites.filter(x=>x.id!==id);renderPM();}catch(e){pmErr(e);}}
+// จัดวัน/ทีมเป็นชุด: เลือกสาขาที่ยังไม่มีวันนัด แล้วกระจายวันละ N สาขา
+function pmBulkPlan(){
+  const c=pmContract();const sites=pmSitesOf(c.id).filter(s=>!(pmVisit(c.id,pmRound,s.id)||{}).planned_date);
+  if(!sites.length){alert('ทุกสาขาในรอบนี้มีวันนัดแล้ว');return;}
+  pmModal(`จัดวันนัดรอบที่ ${pmRound} เป็นชุด`,`${sites.length} สาขาที่ยังไม่มีวันนัด`,`
+    <div class="form-row"><div class="form-group"><label>เริ่มวันที่</label><input type="date" id="pmb-start" value="${todayISO()}"></div><div class="form-group"><label>วันละกี่สาขา</label><input type="number" id="pmb-per" min="1" value="2"></div></div>
+    <div class="form-row"><div class="form-group"><label>ทีม</label><select id="pmb-team"><option value="">— ไม่ระบุ —</option>${(teams||[]).map(t=>`<option>${esc(t.name)}</option>`).join('')}</select></div><div class="form-group"><label>ข้ามวันอาทิตย์</label><select id="pmb-sun"><option value="1">ข้าม</option><option value="0">ไม่ข้าม</option></select></div></div>
+    <div class="tm" style="font-size:12.5px">เรียงตามลำดับสาขาในสัญญา · แก้วัน/ทีมรายสาขาได้ภายหลัง</div>`,
+    `<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="pmBulkPlanSave()">✓ จัดวัน</button>`);
+}
+async function pmBulkPlanSave(){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const c=pmContract(),start=document.getElementById('pmb-start').value,per=Math.max(1,+document.getElementById('pmb-per').value||1),team=document.getElementById('pmb-team').value,skipSun=document.getElementById('pmb-sun').value==='1';
+  if(!start){alert('กรุณาเลือกวันเริ่ม');return;}
+  const sites=pmSitesOf(c.id).filter(s=>!(pmVisit(c.id,pmRound,s.id)||{}).planned_date);
+  let d=calDate(start),n=0;const rows=[];
+  sites.forEach(s=>{while(skipSun&&d.getDay()===0)d.setDate(d.getDate()+1);
+    const v=pmVisit(c.id,pmRound,s.id);rows.push({...(v||{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:s.id,branch:s.branch,status:'planned'}),planned_date:dateLocalISO(d),team:team||(v&&v.team)||null,updated_at:new Date().toISOString(),updated_by:getActorName()});
+    if(++n%per===0)d.setDate(d.getDate()+1);});
+  try{const saved=await pmUpsert('pm_visits',rows);(saved||rows).forEach(r=>{const i=pm.visits.findIndex(x=>x.id===r.id);if(i>=0)pm.visits[i]=r;else pm.visits.push(r);});closeM('m-pm');renderPM();}catch(e){pmErr(e);}
+}
+// ผูก PR: วางข้อความ/Excel จากลูกค้า → จับคู่สาขาอัตโนมัติ
+function pmMatchSite(text,sites){const t=pmNorm(text);if(!t)return null;let best=null,bl=0;sites.forEach(s=>{const b=pmNorm(s.branch);if(b&&(t.includes(b)||b.includes(t))&&b.length>bl){best=s;bl=b.length;}});
+  if(!best){const short=s=>pmNorm(String(s.branch).replace(new RegExp('^'+String(pmContract().client||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'),''));sites.forEach(s=>{const b=short(s);if(b.length>=2&&t.includes(b)&&b.length>bl){best=s;bl=b.length;}});}return best;}
+function pmPastePr(){
+  pmModal(`วางรายการ PR — รอบที่ ${pmRound}`,'คัดลอกจากอีเมล/Excel ของลูกค้า บรรทัดละ 1 PR + ชื่อสาขา',`
+    <div class="form-group"><textarea id="pm-pr-txt" rows="8" placeholder="PR432010  Pun Thai บางนา&#10;PR432033  Pun Thai รังสิต"></textarea></div>
+    <button class="btn btn-ghost btn-sm" onclick="pmPastePreview()">ตรวจการจับคู่</button><div id="pm-pr-prev" style="margin-top:12px"></div>`,
+    `<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="pmPasteApply()">✓ ผูก PR ที่ตรวจแล้ว</button>`,true);
+}
+var pmPrPairs=[];
+function pmPastePreview(){
+  const c=pmContract(),sites=pmSitesOf(c.id);
+  pmPrPairs=(document.getElementById('pm-pr-txt').value||'').split(/\n/).map(l=>l.trim()).filter(Boolean).map(l=>{const m=l.match(/PR\s*-?\s*\d{5,}|\b\d{6,}\b/i);const pr=m?m[0].replace(/[\s-]/g,'').toUpperCase().replace(/^(\d)/,'PR$1'):'';const s=pmMatchSite(l.replace(m?m[0]:'',''),sites);return {line:l,pr,site:s?s.id:''};}).filter(x=>x.pr);
+  const opt=id=>`<option value="">— ไม่ผูก —</option>${sites.map(s=>`<option value="${s.id}"${s.id===id?' selected':''}>${esc(s.branch)}</option>`).join('')}`;
+  document.getElementById('pm-pr-prev').innerHTML=pmPrPairs.length?`<table class="pm-tbl"><thead><tr><th>PR</th><th>ข้อความ</th><th>สาขาที่จับคู่</th></tr></thead><tbody>${pmPrPairs.map((p,i)=>`<tr><td class="mono"><b>${esc(p.pr)}</b>${pmJob(p.pr)?'':' <span class="tm" style="font-size:11px">(ยังไม่อยู่ในคิว)</span>'}</td><td class="tm" style="font-size:12px">${esc(p.line)}</td><td><select class="filter-select" onchange="pmPrPairs[${i}].site=this.value">${opt(p.site)}</select></td></tr>`).join('')}</tbody></table>`:'<div class="tm">ไม่พบเลข PR ในข้อความ</div>';
+}
+async function pmPasteApply(){
+  if(!pmPrPairs.length)pmPastePreview();
+  const ok=pmPrPairs.filter(p=>p.pr&&p.site);if(!ok.length){alert('ยังไม่มีคู่ PR-สาขาที่จับคู่ได้');return;}
+  await pmLinkPairs(ok);
+}
+async function pmLinkPairs(pairs){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const c=pmContract();
+  const rows=pairs.map(p=>{const s=pm.sites.find(x=>x.id===p.site),v=pmVisit(c.id,pmRound,s.id);return {...(v||{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:s.id,branch:s.branch,status:'planned'}),job_id:p.pr,updated_at:new Date().toISOString(),updated_by:getActorName()};});
+  try{const saved=await pmUpsert('pm_visits',rows);(saved||rows).forEach(r=>{const i=pm.visits.findIndex(x=>x.id===r.id);if(i>=0)pm.visits[i]=r;else pm.visits.push(r);});closeM('m-pm');renderPM();alert(`ผูก PR แล้ว ${rows.length} สาขา`);}catch(e){pmErr(e);}
+}
+// หา PR จากคิวช่าง: งานของลูกค้านี้ ที่สาขาตรง + เป็นงาน PM (+ "รอบที่ N" ถ้ามี) และยังไม่ถูกผูก
+function pmFindPrFromQueue(){
+  const c=pmContract(),sites=pmSitesOf(c.id).filter(s=>!(pmVisit(c.id,pmRound,s.id)||{}).job_id);
+  const used=new Set(pm.visits.map(v=>String(v.job_id||'').toUpperCase()).filter(Boolean));
+  const cand=liveJobs().filter(j=>!used.has(String(j.id).toUpperCase())&&String(j.date||j.assignedAt||'').slice(0,4)===String(c.year)&&/PM|บำรุง/i.test([j.type,j.note,j.detail].join(' ')));
+  pmPrPairs=[];
+  sites.forEach(s=>{const js=cand.filter(j=>{const b=pmNorm(j.branch);const sb=pmNorm(s.branch);if(!(b&&(b===sb||b.includes(sb)||sb.includes(b))))return false;const m=String([j.note,j.type,j.detail].join(' ')).match(/รอบที่\s*(\d+)/);return !m||+m[1]===pmRound;});
+    if(js.length)pmPrPairs.push({pr:js[0].id,site:s.id,line:`${js[0].branch||''} · ${js[0].type||''} · ${js[0].status||''}`});});
+  pmModal(`หา PR จากคิวช่าง — รอบที่ ${pmRound}`,`งาน PM ของ ${c.client} ปี ${c.year} ที่สาขาตรงกับสัญญา และยังไม่ถูกผูก`,
+    pmPrPairs.length?`<table class="pm-tbl"><thead><tr><th></th><th>PR</th><th>งานในคิว</th><th>สาขาในสัญญา</th></tr></thead><tbody>${pmPrPairs.map((p,i)=>`<tr><td><input type="checkbox" checked onchange="pmPrPairs[${i}].off=!this.checked"></td><td class="mono"><b>${esc(p.pr)}</b></td><td class="tm" style="font-size:12px">${esc(p.line)}</td><td>${esc((pm.sites.find(s=>s.id===p.site)||{}).branch||'')}</td></tr>`).join('')}</tbody></table>`:'<div class="d2-empty">ไม่พบงานในคิวที่น่าจะตรง — ใช้ "📋 วางรายการ PR" แทน</div>',
+    `<button class="btn btn-ghost" onclick="closeM('m-pm')">ปิด</button>${pmPrPairs.length?`<button class="btn btn-primary" onclick="pmLinkPairs(pmPrPairs.filter(p=>!p.off))">✓ ผูกที่เลือก</button>`:''}`,true);
+}
+
+// ---------- ทะเบียนเครื่อง ----------
+function pmAssetLast(a){return pm.logs.find(l=>l.asset_id===a.id);}
+function pmCondChip(cond){if(!cond)return '<span class="tm">—</span>';const c=/ปกติ/.test(cond)?'#16a34a':/เปลี่ยน/.test(cond)?'#dc2626':'#d97706';return `<span class="chip pm-st" style="--c:${c}">${esc(cond)}</span>`;}
+function pmAssetsHtml(){
+  const clientsAll=[...new Set([...pm.assets.map(a=>a.client),...pm.contracts.map(c=>c.client)])].filter(Boolean).sort();
+  const branchesAll=[...new Set(pm.assets.filter(a=>!pmAsset.client||a.client===pmAsset.client).map(a=>a.branch))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'th'));
+  const q=pmNorm(pmAsset.q);
+  const list=pm.assets.filter(a=>(!pmAsset.client||a.client===pmAsset.client)&&(!pmAsset.branch||a.branch===pmAsset.branch)&&(!q||pmNorm([a.id,a.qr_code,a.brand,a.model,a.serial_no,a.location,a.branch,a.asset_type,a.capacity].join(' ')).includes(q)));
+  const rows=list.map(a=>{const l=pmAssetLast(a),aid=esc(a.id);
+    return `<tr class="pm-arow${a.status==='retired'?' off':''}" onclick="pmOpenAsset('${aid}')"><td><div class="pm-code"><span class="pm-qrmini"></span><div><b>${aid}</b>${a.qr_code?`<small>สติกเกอร์ ${esc(a.qr_code)}</small>`:''}</div></div></td>
+      <td><div class="jq-two"><b>${esc(a.asset_type)}${a.brand?' '+esc(a.brand):''}${a.capacity?' · '+esc(a.capacity):''}</b><small>${esc(a.model||'')}</small></div></td>
+      <td><div class="jq-two"><b>${esc(a.branch)}</b><small>${esc(a.client)}</small></div></td><td>${esc(a.location||'-')}</td><td class="tm mono" style="font-size:12px">${esc(a.serial_no||'—')}</td>
+      <td>${l?esc(jqThDate(String(l.done_at).slice(0,10))):'<span class="tm">ยังไม่เคยบันทึก</span>'}</td><td>${a.status==='retired'?'<span class="chip pm-st" style="--c:#64748b">เลิกใช้</span>':pmCondChip(l&&l.condition)}</td></tr>`;}).join('');
+  return `<div class="jq-fbar pm-afbar"><div class="at-top"><label class="jq-search" style="flex:1;min-width:240px;"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="pm-aq" value="${esc(pmAsset.q)}" autocomplete="off" placeholder="ค้นหารหัส / Serial / ยี่ห้อ / ตำแหน่ง / สาขา" oninput="clearTimeout(this._t);this._t=setTimeout(()=>{pmAsset.q=this.value;renderPM();const i=document.getElementById('pm-aq');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},250)"></label>
+      <select class="filter-select ${pmAsset.client?'jq-set':''}" onchange="pmAsset.client=this.value;pmAsset.branch='';renderPM()"><option value="">ลูกค้า: ทั้งหมด</option>${clientsAll.map(x=>`<option${x===pmAsset.client?' selected':''}>${esc(x)}</option>`).join('')}</select>
+      <select class="filter-select ${pmAsset.branch?'jq-set':''}" onchange="pmAsset.branch=this.value;renderPM()"><option value="">สาขา: ทั้งหมด</option>${branchesAll.map(x=>`<option${x===pmAsset.branch?' selected':''}>${esc(x)}</option>`).join('')}</select></div></div>
+    <section class="d2-box"><div class="d2-h"><div><div class="t">${list.length} เครื่อง</div><div class="s">คลิกแถวเพื่อดูประวัติเครื่อง</div></div><button class="btn btn-ghost btn-sm" onclick="pmTemplateXlsx()">⬇ แม่แบบ Excel</button><label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ นำเข้า Excel<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="pmImportXlsx(this.files[0]);this.value=''"></label><button class="btn btn-primary btn-sm" onclick="pmEditAsset()">＋ เพิ่มเครื่อง</button></div>
+      <div class="d2-in pm-scroll">${list.length?`<table class="pm-tbl"><thead><tr><th>รหัส</th><th>เครื่อง</th><th>สาขา</th><th>ตำแหน่ง</th><th>Serial</th><th>บันทึกล่าสุด</th><th>สภาพ</th></tr></thead><tbody>${rows}</tbody></table>`:`<div class="d2-empty">${pm.assets.length?'ไม่พบเครื่องตามตัวกรอง':'ยังไม่มีเครื่องในทะเบียน — เพิ่มทีละเครื่อง หรือนำเข้าจาก Excel (ดาวน์โหลดแม่แบบก่อน)'}</div>`}</div></section>`;
+}
+function pmEditAsset(id,preset){
+  const a=id?pm.assets.find(x=>x.id===id):{asset_type:'แอร์',...(preset||{}),client:pmAsset.client||(preset&&preset.client)||'',branch:pmAsset.branch||(preset&&preset.branch)||''};
+  const cl=[...new Set([...pm.contracts.map(c=>c.client),...pm.assets.map(x=>x.client),...(clients||[]).map(x=>x.name)])].filter(Boolean);
+  const br=[...new Set([...pm.sites.map(s=>s.branch),...pm.assets.map(x=>x.branch)])].filter(Boolean);
+  const f=(k,l,v,t='text',ph='')=>`<div class="form-group"><label>${l}</label><input id="pma-${k}" type="${t}" value="${esc(v||'')}" placeholder="${ph}"${k==='client'?' list="pma-cl"':k==='branch'?' list="pma-br"':''}></div>`;
+  pmModal(id?'แก้ไขข้อมูลเครื่อง '+id:'เพิ่มเครื่อง',id?'':'ระบบออกรหัสเครื่อง (PFA-xxxxx) ให้อัตโนมัติ',`
+    <datalist id="pma-cl">${cl.map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="pma-br">${br.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+    <div class="form-row">${f('client','ลูกค้า',a.client)}${f('branch','สาขา',a.branch)}</div>
+    <div class="form-row"><div class="form-group"><label>ประเภท</label><select id="pma-type">${PM_ASSET_TYPES.map(t=>`<option${t===a.asset_type?' selected':''}>${t}</option>`).join('')}</select></div>${f('location','ตำแหน่งในสาขา',a.location,'text','เช่น หน้าร้าน / ห้องเก็บของ')}</div>
+    <div class="form-row">${f('brand','ยี่ห้อ',a.brand)}${f('model','รุ่น',a.model)}</div>
+    <div class="form-row">${f('capacity','ขนาด / BTU',a.capacity,'text','เช่น 18,000 BTU / 2 ประตู')}${f('serial','Serial (ของยี่ห้อ)',a.serial_no)}</div>
+    <div class="form-row">${f('installed','วันติดตั้ง',a.installed_at,'date')}${f('warranty','ประกันถึง',a.warranty_until,'date')}</div>
+    <div class="form-row">${f('qr','สติกเกอร์ QR ที่ติดอยู่ (ถ้ามี)',a.qr_code,'text','เช่น PFQ-00012')}${f('note','หมายเหตุ',a.note)}</div>
+    ${id?`<div class="form-group"><label>สถานะ</label><select id="pma-status"><option value="active"${a.status!=='retired'?' selected':''}>ใช้งาน</option><option value="retired"${a.status==='retired'?' selected':''}>เลิกใช้ / ถอดออกแล้ว</option></select></div>`:''}`,
+    `<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="pmSaveAsset('${id||''}')">✓ บันทึก</button>`);
+}
+async function pmSaveAsset(id){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const g=k=>{const v=document.getElementById('pma-'+k)?.value.trim();return v||null;};
+  const row={client:g('client'),branch:g('branch'),asset_type:g('type')||'แอร์',location:g('location'),brand:g('brand'),model:g('model'),capacity:g('capacity'),serial_no:g('serial'),installed_at:g('installed'),warranty_until:g('warranty'),qr_code:(g('qr')||'').toUpperCase()||null,note:g('note'),updated_at:new Date().toISOString(),updated_by:getActorName()};
+  if(!row.client||!row.branch){alert('กรุณาใส่ลูกค้าและสาขา');return;}
+  if(row.qr_code&&pm.assets.some(a=>a.qr_code===row.qr_code&&a.id!==id)){alert('สติกเกอร์ '+row.qr_code+' ผูกกับเครื่องอื่นอยู่แล้ว');return;}
+  try{
+    if(id){row.status=g('status')||'active';const [saved]=await pmPatch('pm_assets',id,row);const i=pm.assets.findIndex(x=>x.id===id);if(i>=0)pm.assets[i]=saved||{...pm.assets[i],...row};closeM('m-pm');renderPM();pmOpenAsset(id);}
+    else{row.created_by=getActorName();const [saved]=await pmInsert('pm_assets',[row]);pm.assets.push(saved);closeM('m-pm');renderPM();if(saved)pmOpenAsset(saved.id);}
+  }catch(e){pmErr(e);}
+}
+function pmThDateY(d){try{return calDate(d).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});}catch(e){return d;}}
+function pmOpenAsset(id){
+  const a=pm.assets.find(x=>x.id===id);if(!a)return;
+  const logs=pm.logs.filter(l=>l.asset_id===id);
+  const jobsHere=liveJobs().filter(j=>pmNorm(j.branch)===pmNorm(a.branch)).sort((x,y)=>String(y.date||'').localeCompare(String(x.date||''))).slice(0,6);
+  const info=[['ประเภท',a.asset_type],['ยี่ห้อ / รุ่น',[a.brand,a.model].filter(Boolean).join(' ')||'-'],['ขนาด',a.capacity||'-'],['Serial',a.serial_no||'-'],['ลูกค้า / สาขา',`${a.client} · ${a.branch}`],['ตำแหน่ง',a.location||'-'],['ติดตั้ง',a.installed_at?pmThDateY(a.installed_at):'-'],['ประกันถึง',a.warranty_until?pmThDateY(a.warranty_until):'-'],['สติกเกอร์',a.qr_code||'ใช้รหัสเครื่อง']];
+  const feed=logs.length?logs.map(l=>`<div class="pm-ev"><span class="d2-evdot" style="background:${l.kind==='repair'?'#dc2626':l.kind==='pm'?'#16a34a':'#175fff'}"></span><div style="flex:1;min-width:0"><b>${esc({pm:'PM',repair:'ซ่อม',note:'บันทึก',bind_qr:'ผูก QR'}[l.kind]||l.kind)}${l.condition?' — '+esc(l.condition):''}</b> <span class="tm">· ${esc(jqThDate(String(l.done_at).slice(0,10)))}${l.team?' · '+esc(l.team):''}${l.job_id?' · '+esc(l.job_id):''}${l.created_by?' · โดย '+esc(l.created_by):''}</span>${l.recommendation?`<div style="font-size:13px;margin-top:2px">${esc(l.recommendation)}</div>`:''}${l.readings&&Object.keys(l.readings).length?`<div class="tm" style="font-size:12px">${Object.entries(l.readings).map(([k,v])=>esc(k)+' '+esc(v)).join(' · ')}</div>`:''}</div></div>`).join(''):'<div class="tm" style="padding:6px 0">ยังไม่มีบันทึก — ช่วงที่ 2 ช่างจะบันทึกผ่านฟอร์ม PM ได้ · ตอนนี้แอดมินเพิ่มบันทึกเองได้</div>';
+  pmModal(a.id,`${a.asset_type} ${a.brand||''} · ${a.client} · ${a.branch}`,`
+    <div class="pm-ahead"><div class="pm-qrbox" id="pm-qrbox"></div><div style="flex:1;min-width:0"><div class="pm-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${esc(v)}</b></div>`).join('')}</div>${a.note?`<div class="tm" style="margin-top:8px">${esc(a.note)}</div>`:''}</div></div>
+    <div class="pm-sec"><div class="pm-sech"><b>ประวัติเครื่อง</b><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pmAddLog('${esc(id)}')">＋ เพิ่มบันทึก</button></div>${feed}</div>
+    ${jobsHere.length?`<div class="pm-sec"><div class="pm-sech"><b>งานล่าสุดที่สาขานี้</b><span class="tm" style="font-size:12px">(จากคิวช่าง)</span></div>${jobsHere.map(j=>`<div class="pm-ev"><span class="d2-evdot" style="background:${pfStatusColor(j.status)}"></span><div><button type="button" class="link-btn" onclick="closeM('m-pm');openDet('${esc(j.id).replace(/'/g,'&#39;')}')">${esc(j.id)}</button> <span class="tm">· ${esc(j.type||'')} · ${esc(j.date?jqThDate(j.date):'')} · ${esc(j.status||'')}</span></div></div>`).join('')}</div>`:''}`,
+    `<button class="btn btn-ghost" onclick="pmPrintStickers(['${esc(id)}'])">🖨 พิมพ์ QR</button><button class="btn btn-ghost" onclick="pmEditAsset('${esc(id)}')">✏️ แก้ไขข้อมูล</button><button class="btn btn-primary" onclick="closeM('m-pm')">ปิด</button>`,true);
+  pmQrSvg(PM_QR_BASE+encodeURIComponent(a.id),132).then(svg=>{const b=document.getElementById('pm-qrbox');if(b)b.innerHTML=svg+`<div class="mono" style="font-weight:700;margin-top:4px">${esc(a.id)}</div>`;}).catch(()=>{});
+}
+function pmAddLog(assetId){
+  pmModal('เพิ่มบันทึกเครื่อง '+assetId,'',`
+    <div class="form-row"><div class="form-group"><label>ประเภท</label><select id="pml-kind"><option value="pm">PM</option><option value="repair">ซ่อม</option><option value="note">บันทึกทั่วไป</option></select></div><div class="form-group"><label>วันที่</label><input type="date" id="pml-date" value="${todayISO()}"></div></div>
+    <div class="form-row"><div class="form-group"><label>ทีม</label><select id="pml-team"><option value="">—</option>${(teams||[]).map(t=>`<option>${esc(t.name)}</option>`).join('')}</select></div><div class="form-group"><label>PR (ถ้ามี)</label><input id="pml-job" placeholder="PR..."></div></div>
+    <div class="form-group"><label>สภาพเครื่อง</label><select id="pml-cond"><option value="">—</option><option>ปกติ</option><option>ต้องซ่อม/เติม</option><option>ต้องเปลี่ยนอะไหล่</option></select></div>
+    <div class="form-group"><label>รายละเอียด / ข้อเสนอแนะ</label><textarea id="pml-rec" rows="3"></textarea></div>`,
+    `<button class="btn btn-ghost" onclick="pmOpenAsset('${esc(assetId)}')">ยกเลิก</button><button class="btn btn-primary" onclick="pmSaveLog('${esc(assetId)}')">✓ บันทึก</button>`);
+}
+async function pmSaveLog(assetId){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const g=k=>document.getElementById('pml-'+k)?.value.trim()||null;
+  const row={id:pmId('PML'),asset_id:assetId,kind:g('kind')||'note',done_at:new Date((g('date')||todayISO())+'T12:00:00').toISOString(),team:g('team'),job_id:(g('job')||'').toUpperCase()||null,condition:g('cond'),recommendation:g('rec'),created_by:getActorName()};
+  try{const [saved]=await pmInsert('pm_asset_logs',[row]);pm.logs.unshift(saved||row);pm.logs.sort((a,b)=>String(b.done_at).localeCompare(String(a.done_at)));renderPM();pmOpenAsset(assetId);}catch(e){pmErr(e);}
+}
+// ----- Excel -----
+var PM_XLS_COLS=[['client','ลูกค้า'],['branch','สาขา'],['asset_type','ประเภท'],['brand','ยี่ห้อ'],['model','รุ่น'],['capacity','ขนาด/BTU'],['serial_no','Serial'],['location','ตำแหน่ง'],['installed_at','วันติดตั้ง'],['warranty_until','ประกันถึง'],['qr_code','สติกเกอร์ QR'],['note','หมายเหตุ']];
+function pmTemplateXlsx(){
+  const ws=XLSX.utils.aoa_to_sheet([PM_XLS_COLS.map(c=>c[1]),['Pun Thai','Pun Thai บางนา','แอร์','Daikin','FTKM18NV2S','18,000 BTU','FTKM18NV2S-0091','หน้าร้าน','2024-03-12','2027-03-12','',''],['Pun Thai','Pun Thai บางนา','ตู้แช่','Sanden','SPB-0802','2 ประตู','','หน้าเคาน์เตอร์','','','','']]);
+  ws['!cols']=PM_XLS_COLS.map(()=>({wch:18}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'เครื่อง');XLSX.writeFile(wb,'แม่แบบ-ทะเบียนเครื่อง-PM.xlsx');
+}
+function pmXlsDate(v){if(v==null||v==='')return null;if(typeof v==='number'){const d=new Date(Math.round((v-25569)*864e5));return d.toISOString().slice(0,10);}const s=String(v).trim();let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);if(m){let y=+m[3];if(y<100)y+=2000;if(y>2400)y-=543;return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;}return null;}
+async function pmImportXlsx(file){
+  if(!file)return;if(typeof guardEdit==='function'&&!guardEdit())return;
+  try{
+    const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+    if(rows.length<2){alert('ไม่พบข้อมูลในไฟล์');return;}
+    const head=rows[0].map(h=>pmNorm(h));
+    const syn={client:['ลูกค้า','client','customer'],branch:['สาขา','branch','site'],asset_type:['ประเภท','type','ชนิด'],brand:['ยี่ห้อ','brand'],model:['รุ่น','model'],capacity:['ขนาด/btu','ขนาด','btu','capacity'],serial_no:['serial','serialno','sn','ซีเรียล'],location:['ตำแหน่ง','location','จุดติดตั้ง'],installed_at:['วันติดตั้ง','installed'],warranty_until:['ประกันถึง','warranty'],qr_code:['สติกเกอร์qr','qr','qrcode'],note:['หมายเหตุ','note']};
+    const idx={};Object.entries(syn).forEach(([k,ns])=>{const i=head.findIndex(h=>ns.some(n=>h===pmNorm(n)||h.includes(pmNorm(n))));if(i>=0)idx[k]=i;});
+    if(idx.branch==null){alert('ไม่พบคอลัมน์ "สาขา" — ใช้แม่แบบ Excel จากปุ่ม ⬇ แม่แบบ Excel');return;}
+    const data=rows.slice(1).filter(r=>r.some(x=>String(x).trim())).map(r=>{const o={};Object.entries(idx).forEach(([k,i])=>{const v=r[i];o[k]=['installed_at','warranty_until'].includes(k)?pmXlsDate(v):(String(v).trim()||null);});
+      o.client=o.client||pmAsset.client||(pmContract()||{}).client||null;o.asset_type=o.asset_type?(/ตู้|fridge|freez|chill/i.test(o.asset_type)?'ตู้แช่':/แอร์|air|ac/i.test(o.asset_type)?'แอร์':'อื่น ๆ'):'แอร์';if(o.qr_code)o.qr_code=o.qr_code.toUpperCase();o.created_by=getActorName();return o;}).filter(o=>o.branch&&o.client);
+    if(!data.length){alert('ไม่พบแถวที่มีทั้ง ลูกค้า และ สาขา');return;}
+    const br=[...new Set(data.map(d=>d.branch))];
+    if(!confirm(`นำเข้า ${data.length} เครื่อง จาก ${br.length} สาขา?\n\nตัวอย่าง: ${data.slice(0,3).map(d=>`${d.branch} · ${d.asset_type} ${d.brand||''}`).join('\n')}`))return;
+    const saved=[];for(let i=0;i<data.length;i+=200){const part=await pmInsert('pm_assets',data.slice(i,i+200));saved.push(...(part||[]));}
+    pm.assets.push(...saved);renderPM();alert(`นำเข้าแล้ว ${saved.length} เครื่อง`);
+  }catch(e){pmErr(e);}
+}
+
+// ---------- สติกเกอร์ QR ----------
+async function pmQrSvg(text,size){await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js');const q=qrcode(0,'M');q.addData(text);q.make();const cell=Math.max(2,Math.floor(size/(q.getModuleCount()+2)));return q.createSvgTag({cellSize:cell,margin:cell,scalable:true});}
+function pmQrHtml(){
+  const clientsAll=[...new Set(pm.assets.map(a=>a.client))].filter(Boolean).sort();
+  const list=pm.assets.filter(a=>a.status!=='retired'&&(!pmAsset.client||a.client===pmAsset.client)&&(!pmAsset.branch||a.branch===pmAsset.branch));
+  const brs=[...new Set(pm.assets.filter(a=>!pmAsset.client||a.client===pmAsset.client).map(a=>a.branch))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'th'));
+  return `<div class="pm-grid2">
+    <section class="d2-box"><div class="d2-h"><div><div class="t">พิมพ์ QR ของเครื่องที่มีในทะเบียน</div><div class="s">เลือกเครื่องแล้วพิมพ์ลงกระดาษสติกเกอร์ A4 (3 × 8 = 24 ดวง/แผ่น)</div></div></div>
+      <div class="d2-in d2-pad"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><select class="filter-select" onchange="pmAsset.client=this.value;pmAsset.branch='';pmQrPick.clear();renderPM()"><option value="">ลูกค้า: ทั้งหมด</option>${clientsAll.map(x=>`<option${x===pmAsset.client?' selected':''}>${esc(x)}</option>`).join('')}</select><select class="filter-select" onchange="pmAsset.branch=this.value;pmQrPick.clear();renderPM()"><option value="">สาขา: ทั้งหมด</option>${brs.map(x=>`<option${x===pmAsset.branch?' selected':''}>${esc(x)}</option>`).join('')}</select><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pmQrPickAll()">เลือกทั้งหมด (${list.length})</button><button class="btn btn-ghost btn-sm" onclick="pmQrPick.clear();renderPM()">ล้าง</button></div>
+      <div class="pm-qrlist">${list.length?list.map(a=>`<label class="pm-ck"><input type="checkbox" ${pmQrPick.has(a.id)?'checked':''} onchange="this.checked?pmQrPick.add('${esc(a.id)}'):pmQrPick.delete('${esc(a.id)}');document.getElementById('pm-qr-n').textContent=pmQrPick.size"> <b class="mono">${esc(a.id)}</b> <span class="tm">${esc(a.branch)} · ${esc(a.asset_type)} ${esc(a.brand||'')} · ${esc(a.location||'')}</span></label>`).join(''):'<div class="tm">ยังไม่มีเครื่องในทะเบียน</div>'}</div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="pmPrintStickers([...pmQrPick])">🖨 พิมพ์ที่เลือก (<span id="pm-qr-n">${pmQrPick.size}</span> ดวง)</button></div></section>
+    <section class="d2-box"><div class="d2-h"><div><div class="t">สติกเกอร์เปล่า</div><div class="s">พิมพ์เตรียมไว้ให้ช่าง ไปติดแล้วผูกกับเครื่องตอนเข้า PM</div></div></div>
+      <div class="d2-in d2-pad"><div class="form-group"><label>จำนวน</label><select id="pm-blank-n" class="filter-select"><option>24</option><option selected>48</option><option>96</option><option>144</option></select></div>
+      <button class="btn btn-primary" onclick="pmPrintBlank()">🖨 จองเลขและพิมพ์สติกเกอร์เปล่า</button>
+      <div class="tm" style="font-size:12.5px;line-height:1.7;margin-top:12px">• เลขเรียงต่อกัน PFQ-00001, 00002, ... ไม่ซ้ำแม้พิมพ์จากหลายเครื่อง<br>• ช่วงทดลอง: ติดสติกเกอร์แล้วใส่เลขสติกเกอร์ในช่อง "สติกเกอร์ QR" ของเครื่องได้เลย<br>• ช่วงที่ 2: ช่างสแกนสติกเกอร์เปล่าแล้วผูกกับเครื่องในฟอร์มได้เอง</div></div></section>
+  </div>`;
+}
+function pmQrPickAll(){pm.assets.filter(a=>a.status!=='retired'&&(!pmAsset.client||a.client===pmAsset.client)&&(!pmAsset.branch||a.branch===pmAsset.branch)).forEach(a=>pmQrPick.add(a.id));renderPM();}
+async function pmPrintStickers(ids){
+  const list=ids.map(id=>pm.assets.find(a=>a.id===id)).filter(Boolean);if(!list.length){alert('ยังไม่ได้เลือกเครื่อง');return;}
+  const w=window.open('','_blank');if(!w){alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+  w.document.write('<p style="font-family:sans-serif;padding:20px">กำลังสร้าง QR...</p>');
+  try{const labels=[];for(const a of list){labels.push({code:a.id,svg:await pmQrSvg(PM_QR_BASE+encodeURIComponent(a.id),120),l1:`${a.asset_type} ${a.brand||''} ${a.capacity||''}`.trim(),l2:`${a.branch}${a.location?' · '+a.location:''}`});}
+    pmWriteSheet(w,labels);
+  }catch(e){w.document.body.innerHTML='สร้าง QR ไม่สำเร็จ: '+esc(e.message||e);}
+}
+async function pmPrintBlank(){
+  const n=+document.getElementById('pm-blank-n').value||48;
+  if(!confirm(`จองเลขสติกเกอร์เปล่า ${n} ดวง แล้วพิมพ์?`))return;
+  const w=window.open('','_blank');if(!w){alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+  w.document.write('<p style="font-family:sans-serif;padding:20px">กำลังจองเลขและสร้าง QR...</p>');
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/pm_reserve_qr`,{method:'POST',headers:sbHeaders(),body:JSON.stringify({p_count:n})});if(!r.ok)throw new Error(await r.text());
+    const codes=(await r.json()).map(x=>typeof x==='string'?x:Object.values(x)[0]);
+    const labels=[];for(const c of codes)labels.push({code:c,svg:await pmQrSvg(PM_QR_BASE+encodeURIComponent(c),120),l1:'สติกเกอร์ ProFix',l2:'ผูกเครื่องตอนสแกนครั้งแรก'});
+    pmWriteSheet(w,labels);
+  }catch(e){w.document.body.innerHTML='ไม่สำเร็จ: '+esc(e.message||e);}
+}
+function pmWriteSheet(w,labels){
+  const html=`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>สติกเกอร์ QR ${labels.length} ดวง</title><link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;600;700&display=swap" rel="stylesheet"><style>
+  @page{size:A4;margin:8mm 6mm}body{margin:0;font-family:Anuphan,sans-serif;color:#0b1220}
+  .bar{position:sticky;top:0;background:#0b1220;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;font-size:14px}.bar button{border:0;border-radius:999px;padding:8px 16px;font:inherit;cursor:pointer}.bar .p{background:#175fff;color:#fff}
+  .sheet{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:35.5mm;gap:0 2mm;padding:2mm 0}
+  .lb{display:flex;align-items:center;gap:2.5mm;padding:2mm 3mm;border:.2mm dashed #cbd5e1;border-radius:2mm;overflow:hidden;break-inside:avoid}
+  .lb svg{width:27mm;height:27mm;flex:none}.lb b{display:block;font-size:12pt;letter-spacing:.3px}.lb small{display:block;font-size:7.5pt;color:#475569;line-height:1.3}.lb .br{font-size:6.5pt;color:#64748b;margin-top:1mm}
+  @media print{.bar{display:none}.lb{border-color:transparent}}</style></head><body>
+  <div class="bar"><b>สติกเกอร์ QR ${labels.length} ดวง</b><span style="flex:1"></span><button onclick="window.close()">ปิด</button><button class="p" onclick="window.print()">พิมพ์</button></div>
+  <div class="sheet">${labels.map(l=>`<div class="lb">${l.svg}<div><b>${esc(l.code)}</b><small>${esc(l.l1)}</small><small>${esc(l.l2)}</small><div class="br">ProFix Solution · สแกนดูประวัติเครื่อง</div></div></div>`).join('')}</div></body></html>`;
+  w.document.open();w.document.write(html);w.document.close();
+}
+// เปิดจากลิงก์ QR: /?asset=PFA-00012 → หน้า PM + เปิดเครื่อง
+(function(){const code=new URLSearchParams(location.search).get('asset');if(!code)return;let n=0;const t=setInterval(async()=>{if(++n>120){clearInterval(t);return;}
+  if(!(typeof AUTH!=='undefined'&&AUTH&&AUTH.role)||typeof isHydrated==='undefined'||!isHydrated)return;clearInterval(t);
+  if(AUTH.role!=='admin')return;pmView='assets';goTo('pm');await pmLoad();const c=code.toUpperCase();const a=pm.assets.find(x=>x.id===c||x.qr_code===c);if(a)pmOpenAsset(a.id);else alert('ไม่พบเครื่อง/สติกเกอร์ '+c+' ในทะเบียน');},500);})();
 
 function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){} initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }
 // ===== Startup gate: ต้องล็อกอินก่อน (เว้นแต่ปิด AUTH_ENABLED) =====
