@@ -14125,7 +14125,7 @@ function pmAddSites(){
       <div class="form-group"><label>พิมพ์/วางชื่อสาขา (บรรทัดละ 1 สาขา)</label><textarea id="pm-site-txt" rows="7" placeholder="Pun Thai บางนา&#10;Pun Thai รังสิต"></textarea></div>
     </div>
     <div id="pm-add-xlsx" style="display:none">
-      <label class="pm-drop"><input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="pmXRead(this.files[0]);this.value=''"><span id="pm-x-file">📄 <b>เลือกไฟล์ Excel</b> รายชื่อสาขา</span><br><span style="font-size:12px">คอลัมน์: <b>สาขา</b> (ต้องมี) · ที่อยู่ · หมายเหตุ · PR รอบนี้ · วันนัด · ทีม — มีแค่ไหนใส่แค่นั้น</span></label>
+      <label class="pm-drop"><input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="pmXRead(this.files[0]);this.value=''"><span id="pm-x-file">📄 <b>เลือกไฟล์ Excel</b> รายชื่อสาขา</span><br><span style="font-size:12px">คอลัมน์: <b>สาขา</b> (ต้องมี) · ศูนย์ (มีแล้วจะรวมหน้าชื่อสาขา เช่น Punthai แปลงยาว3) · ที่อยู่ · หมายเหตุ · PR รอบนี้ · วันนัด · ทีม — มีแค่ไหนใส่แค่นั้น</span></label>
       <div style="margin-top:8px"><button type="button" class="btn btn-ghost btn-sm" onclick="pmXTemplate()">⬇ ดาวน์โหลดแบบฟอร์ม</button> <span class="tm" style="font-size:12px">PR / วันนัด / ทีม จะใส่ให้รอบที่ ${pmRound} · ชื่อสาขาเทียบแบบไม่สนช่องว่าง/วงเล็บ กันเพิ่มซ้ำ</span></div>
       <div id="pm-x-prev"></div>
     </div>`,
@@ -14138,8 +14138,8 @@ function pmAddTab(t){
 }
 async function pmXTemplate(){
   try{await ensureXlsxLib();}catch(e){alert('โหลดไลบรารี xlsx ไม่สำเร็จ');return;}
-  const ws=XLSX.utils.aoa_to_sheet([['สาขา','ที่อยู่','หมายเหตุ','PR','วันนัด','ทีม'],['Pun Thai บางนา','123 ถนนบางนา-ตราด แขวงบางนา เขตบางนา กรุงเทพมหานคร','เข้าได้หลัง 22.00 น.','PR432010','2026-10-14','ทีม1 - อำนวย'],['Pun Thai รังสิต คลอง 3','','','','','']]);
-  ws['!cols']=[{wch:30},{wch:50},{wch:24},{wch:12},{wch:12},{wch:16}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'สาขา');XLSX.writeFile(wb,'แบบฟอร์ม-สาขา-PM.xlsx');
+  const ws=XLSX.utils.aoa_to_sheet([['ศูนย์','สาขา','ที่อยู่','หมายเหตุ','PR','วันนัด','ทีม'],['Pun Thai','บางนา','123 ถนนบางนา-ตราด แขวงบางนา เขตบางนา กรุงเทพมหานคร','เข้าได้หลัง 22.00 น.','PR432010','2026-10-14','ทีม1 - อำนวย'],['Pun Thai','รังสิต คลอง 3','','','','','']]);
+  ws['!cols']=[{wch:14},{wch:30},{wch:50},{wch:24},{wch:12},{wch:12},{wch:16}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'สาขา');XLSX.writeFile(wb,'แบบฟอร์ม-สาขา-PM.xlsx');
 }
 async function pmXRead(file){
   if(!file)return;
@@ -14149,7 +14149,7 @@ async function pmXRead(file){
     const hi=raw.findIndex(r=>r.some(h=>/สาขา|branch|site|store/i.test(String(h))));if(hi<0){alert('ไม่พบคอลัมน์ "สาขา" — ใช้แบบฟอร์มจากปุ่ม ⬇ ดาวน์โหลดแบบฟอร์ม');return;}
     const head=raw[hi].map(h=>pmNorm(h));
     const find=f=>head.findIndex(f);
-    const idx={branch:find(h=>/^(ชื่อ)?สาขา|branch|^site|store|ชื่อร้าน/.test(h)),address:find(h=>/ที่อยู่|address/.test(h)),note:find(h=>/หมายเหตุ|note|remark/.test(h)),
+    const idx={branch:find(h=>/^(ชื่อ)?สาขา|branch|^site|store|ชื่อร้าน/.test(h)),center:find(h=>/^ศูนย์|^center|^dc$/.test(h)),address:find(h=>/ที่อยู่|address/.test(h)),note:find(h=>/หมายเหตุ|note|remark/.test(h)),
       pr:find(h=>h==='pr'||/^(เลข)?(ที่)?pr(no|number)?$/.test(h)||h.includes('เลขpr')||h==='เลขงาน'),date:find(h=>/วันนัด|วันที่|^date|planned/.test(h)),team:find(h=>/^ทีม|team|ช่าง/.test(h))};
     const c=pmContract(),sites=pmSitesOf(c.id),byName=new Map(sites.map(s=>[pmNorm(s.branch),s]));
     const usedBy=new Map();pmLiveVisits().forEach(v=>{if(v.job_id)usedBy.set(String(v.job_id).toUpperCase(),v);});
@@ -14158,7 +14158,9 @@ async function pmXRead(file){
     const teamOf=t=>{if(!t)return '';const n=pmNorm(t);const m=(teams||[]).find(x=>pmNorm(x.name)===n)||(teams||[]).find(x=>pmNorm(x.name).includes(n)||n.includes(pmNorm(x.name)));return m?m.name:t;};
     const rows=[];
     raw.slice(hi+1).forEach(r=>{
-      const branch=cell(r,'branch');if(!branch)return;const k=pmNorm(branch);
+      // มีคอลัมน์ศูนย์ → "ศูนย์ สาขา" (ถ้าชื่อสาขาขึ้นต้นด้วยชื่อศูนย์อยู่แล้ว ไม่เติมซ้ำ)
+      const b0=cell(r,'branch');if(!b0)return;const ctr=cell(r,'center');
+      const branch=ctr&&!pmNorm(b0).startsWith(pmNorm(ctr))?`${ctr} ${b0}`:b0;const k=pmNorm(branch);
       if(seenName.has(k)){rows.push({branch,k,res:'dupname'});return;}seenName.add(k);
       const ex=byName.get(k),pr=pmPrOf(cell(r,'pr')),date=idx.date>=0?pmXlsDate(r[idx.date]):null,team=teamOf(cell(r,'team'));
       const o={branch,k,site:ex||null,address:cell(r,'address'),note:cell(r,'note'),pr,date,team,res:ex?'exist':'new',prRes:''};
@@ -14168,7 +14170,7 @@ async function pmXRead(file){
         else seenPr.set(pr,branch);}
       rows.push(o);
     });
-    pmX={file:file.name,rows};
+    pmX={file:file.name,rows,center:idx.center>=0};
     document.getElementById('pm-x-file').innerHTML=`📄 <b>${esc(file.name)}</b> · ${rows.length} แถว <span style="font-size:12px">(กดเพื่อเปลี่ยนไฟล์)</span>`;
     pmXRender();
   }catch(e){console.error(e);alert('อ่านไฟล์ไม่สำเร็จ: '+(e.message||e));}
@@ -14180,6 +14182,7 @@ function pmXRender(){
   const tag=(c,l)=>`<span class="pm-tag" style="--c:${c}">${esc(l)}</span>`;
   const show=pmX.rows.slice(0,300);
   el.innerHTML=`<div class="pm-kpi"><div><b style="color:#16a34a">${t.nw}</b>สาขาใหม่</div><div><b>${t.ex}</b>มีอยู่แล้ว (ไม่เพิ่มซ้ำ)</div><div><b style="color:#175fff">${t.pr}</b>มี PR → ผูกรอบ ${pmRound}</div>${t.bad?`<div><b style="color:#dc2626">${t.bad}</b>PR ซ้ำ (ไม่ผูก)</div>`:''}${t.dn?`<div><b style="color:#d97706">${t.dn}</b>ชื่อซ้ำในไฟล์</div>`:''}</div>
+  ${pmX.center?`<div class="tm" style="font-size:12px;margin:-4px 0 8px">ชื่อสาขา = <b>ศูนย์ + สาขา</b> จากไฟล์ (เช่น Punthai แปลงยาว3)</div>`:''}
   <div class="pm-xtbl"><table class="pm-tbl"><thead><tr><th>สาขา</th><th>PR</th><th>วันนัด</th><th>ทีม</th><th>ผล</th></tr></thead><tbody>${show.map(x=>`<tr><td>${esc(x.branch)}${x.address?`<div class="tm" style="font-size:11px">${esc(x.address)}</div>`:''}</td><td class="mono">${esc(x.pr||'')}</td><td>${x.date?esc(pmThDateY(x.date)):''}</td><td>${esc(x.team||'')}</td><td>${x.res==='dupname'?tag('#d97706','ชื่อซ้ำในไฟล์ — ข้าม'):x.res==='new'?tag('#16a34a',x.pr?'ใหม่ + ผูก PR':'ใหม่'):tag('#64748b',x.pr||x.date||x.team?'มีอยู่แล้ว · อัปเดตรอบนี้':'มีอยู่แล้ว')}${x.prRes?' '+tag('#dc2626',x.prRes):''}</td></tr>`).join('')}</tbody></table></div>
   ${pmX.rows.length>300?`<div class="tm" style="font-size:12px;margin-top:6px">แสดง 300 แถวแรก จาก ${pmX.rows.length}</div>`:''}`;
   const ok=document.getElementById('pm-add-ok');if(ok)ok.textContent=pmXBtnText();
