@@ -14151,19 +14151,31 @@ async function pmXRead(file){
     const find=f=>head.findIndex(f);
     const idx={branch:find(h=>/^(ชื่อ)?สาขา|branch|^site|store|ชื่อร้าน/.test(h)),center:find(h=>/^ศูนย์|^center|^dc$/.test(h)),address:find(h=>/ที่อยู่|address/.test(h)),note:find(h=>/หมายเหตุ|note|remark/.test(h)),
       pr:find(h=>h==='pr'||/^(เลข)?(ที่)?pr(no|number)?$/.test(h)||h.includes('เลขpr')||h==='เลขงาน'),date:find(h=>/วันนัด|วันที่|^date|planned/.test(h)),team:find(h=>/^ทีม|team|ช่าง/.test(h))};
+    // ที่อยู่ = รวมทุกคอลัมน์ที่อยู่ (ที่อยู่ · ที่ตั้ง · ตำบล · อำเภอ · จังหวัด ...)
+    const addrIdx=head.map((h,i)=>/ที่อยู่|ที่ตั้ง|address|location|^ต(ำบล|\.)|^แขวง|^อ(ำเภอ|\.)|^เขต$|จังหวัด|province/.test(h)&&i!==idx.branch&&i!==idx.center?i:-1).filter(i=>i>=0);
     const c=pmContract(),sites=pmSitesOf(c.id),byName=new Map(sites.map(s=>[pmNorm(s.branch),s]));
     const usedBy=new Map();pmLiveVisits().forEach(v=>{if(v.job_id)usedBy.set(String(v.job_id).toUpperCase(),v);});
     const seenName=new Set(),seenPr=new Map();
     const cell=(r,k)=>idx[k]>=0?String(r[idx[k]]==null?'':r[idx[k]]).trim():'';
+    const addrOf=r=>addrIdx.map(i=>String(r[i]==null?'':r[i]).trim()).filter(Boolean).join(' ');
+    const seenAddr=new Map(),taken=new Set([...byName.keys()]);
+    // ชื่อซ้ำแต่คนละที่อยู่ → เสนอชื่อใหม่ (ต่อท้ายด้วย ต./แขวง หรือ อ./เขต จากที่อยู่) — DB ห้ามชื่อซ้ำในสัญญาเดียวกัน
+    const sugName=(b,a)=>{const m=a.match(/(?:ต\.|ตำบล|แขวง)\s*([^\s,]+)/)||a.match(/(?:อ\.|อำเภอ|เขต)\s*([^\s,]+)/);
+      let n=m?`${b} (${m[0].replace(/\s+/g,'')})`:`${b} แห่งที่ 2`,i=2;while(taken.has(pmNorm(n)))n=m?`${b} (${m[0].replace(/\s+/g,'')}) ${++i}`:`${b} แห่งที่ ${++i}`;return n;};
     const teamOf=t=>{if(!t)return '';const n=pmNorm(t);const m=(teams||[]).find(x=>pmNorm(x.name)===n)||(teams||[]).find(x=>pmNorm(x.name).includes(n)||n.includes(pmNorm(x.name)));return m?m.name:t;};
     const rows=[];
     raw.slice(hi+1).forEach(r=>{
       // มีคอลัมน์ศูนย์ → "ศูนย์ สาขา" (ถ้าชื่อสาขาขึ้นต้นด้วยชื่อศูนย์อยู่แล้ว ไม่เติมซ้ำ)
       const b0=cell(r,'branch');if(!b0)return;const ctr=cell(r,'center');
-      const branch=ctr&&!pmNorm(b0).startsWith(pmNorm(ctr))?`${ctr} ${b0}`:b0;const k=pmNorm(branch);
-      if(seenName.has(k)){rows.push({branch,k,res:'dupname'});return;}seenName.add(k);
-      const ex=byName.get(k),pr=pmPrOf(cell(r,'pr')),date=idx.date>=0?pmXlsDate(r[idx.date]):null,team=teamOf(cell(r,'team'));
-      const o={branch,k,site:ex||null,address:cell(r,'address'),note:cell(r,'note'),pr,date,team,res:ex?'exist':'new',prRes:''};
+      let branch=ctr&&!pmNorm(b0).startsWith(pmNorm(ctr))?`${ctr} ${b0}`:b0,k=pmNorm(branch);
+      const address=addrOf(r),ak=pmNorm(address);let ex=byName.get(k),ren='';
+      const diff=a=>!!(ak&&a&&pmNorm(a)!==ak);
+      if(seenName.has(k)){if(!diff(seenAddr.get(k))){rows.push({branch,k,address,res:'dupname'});return;}ren=`ชื่อซ้ำในไฟล์ แต่คนละที่อยู่`;}
+      else if(ex&&diff(ex.address))ren=`ชื่อซ้ำกับสาขาเดิม (${ex.address}) แต่คนละที่อยู่`;
+      if(ren){const orig=branch;branch=sugName(branch,address);k=pmNorm(branch);ex=null;ren={why:ren,orig};}
+      seenName.add(k);taken.add(k);if(!seenAddr.has(k))seenAddr.set(k,address);
+      const pr=pmPrOf(cell(r,'pr')),date=idx.date>=0?pmXlsDate(r[idx.date]):null,team=teamOf(cell(r,'team'));
+      const o={branch,k,site:ex||null,address,note:cell(r,'note'),pr,date,team,res:ex?'exist':'new',prRes:'',ren:ren||null};
       if(pr){const u=usedBy.get(pr);
         if(u&&!(ex&&u.site_id===ex.id&&u.contract_id===c.id&&+u.round_no===+pmRound)){const us=pm.sites.find(x=>x.id===u.site_id);o.prRes=`ซ้ำ: ผูกกับ ${us?us.branch:'สาขาอื่น'} รอบ ${u.round_no} แล้ว`;o.pr='';}
         else if(seenPr.has(pr)){o.prRes=`ซ้ำในไฟล์กับ ${seenPr.get(pr)}`;o.pr='';}
@@ -14175,15 +14187,19 @@ async function pmXRead(file){
     pmXRender();
   }catch(e){console.error(e);alert('อ่านไฟล์ไม่สำเร็จ: '+(e.message||e));}
 }
-function pmXStats(){const r=pmX?pmX.rows:[];return {nw:r.filter(x=>x.res==='new').length,ex:r.filter(x=>x.res==='exist').length,dn:r.filter(x=>x.res==='dupname').length,pr:r.filter(x=>x.pr).length,bad:r.filter(x=>x.prRes).length,plan:r.filter(x=>x.res!=='dupname'&&(x.pr||x.date||x.team)).length};}
+function pmXStats(){const r=pmX?pmX.rows:[];return {nw:r.filter(x=>x.res==='new').length,ex:r.filter(x=>x.res==='exist').length,dn:r.filter(x=>x.res==='dupname').length,pr:r.filter(x=>x.pr&&x.res!=='skip').length,bad:r.filter(x=>x.prRes).length,ren:r.filter(x=>x.ren).length,plan:r.filter(x=>x.res!=='dupname'&&x.res!=='skip'&&(x.pr||x.date||x.team)).length};}
+function pmXRen(i,v){const x=pmX&&pmX.rows[i];if(!x)return;x.branch=v.trim();x.k=pmNorm(x.branch);}
+function pmXUse(i,on){const x=pmX&&pmX.rows[i];if(!x)return;x.res=on?'new':'skip';pmXRender();}
 function pmXBtnText(){if(!pmX)return '✓ เพิ่มสาขา';const t=pmXStats();return `✓ เพิ่ม ${t.nw} สาขา${t.pr?` · ผูก ${t.pr} PR`:''}`;}
 function pmXRender(){
   const el=document.getElementById('pm-x-prev');if(!el||!pmX)return;const t=pmXStats();
   const tag=(c,l)=>`<span class="pm-tag" style="--c:${c}">${esc(l)}</span>`;
   const show=pmX.rows.slice(0,300);
-  el.innerHTML=`<div class="pm-kpi"><div><b style="color:#16a34a">${t.nw}</b>สาขาใหม่</div><div><b>${t.ex}</b>มีอยู่แล้ว (ไม่เพิ่มซ้ำ)</div><div><b style="color:#175fff">${t.pr}</b>มี PR → ผูกรอบ ${pmRound}</div>${t.bad?`<div><b style="color:#dc2626">${t.bad}</b>PR ซ้ำ (ไม่ผูก)</div>`:''}${t.dn?`<div><b style="color:#d97706">${t.dn}</b>ชื่อซ้ำในไฟล์</div>`:''}</div>
+  const nameCell=(x,i)=>x.ren?`<input value="${esc(x.branch)}" onchange="pmXRen(${i},this.value)" ${x.res==='skip'?'disabled':''} style="width:100%;min-width:180px;font:inherit;padding:4px 6px;border:1px solid #c4b5fd;border-radius:6px"><div class="tm" style="font-size:11px">เดิมในไฟล์: ${esc(x.ren.orig)}</div>`:esc(x.branch);
+  const resCell=x=>x.ren?`${tag('#7c3aed',x.ren.why)}<label style="display:block;font-size:12px;margin-top:4px;white-space:nowrap"><input type="checkbox" ${x.res!=='skip'?'checked':''} onchange="pmXUse(${pmX.rows.indexOf(x)},this.checked)"> เพิ่มเป็นสาขาใหม่</label>`:'';
+  el.innerHTML=`<div class="pm-kpi"><div><b style="color:#16a34a">${t.nw}</b>สาขาใหม่</div><div><b>${t.ex}</b>มีอยู่แล้ว (ไม่เพิ่มซ้ำ)</div><div><b style="color:#175fff">${t.pr}</b>มี PR → ผูกรอบ ${pmRound}</div>${t.bad?`<div><b style="color:#dc2626">${t.bad}</b>PR ซ้ำ (ไม่ผูก)</div>`:''}${t.ren?`<div><b style="color:#7c3aed">${t.ren}</b>ชื่อซ้ำ คนละที่อยู่ (ตั้งชื่อใหม่)</div>`:''}${t.dn?`<div><b style="color:#d97706">${t.dn}</b>ชื่อซ้ำในไฟล์</div>`:''}</div>
   ${pmX.center?`<div class="tm" style="font-size:12px;margin:-4px 0 8px">ชื่อสาขา = <b>ศูนย์ + สาขา</b> จากไฟล์ (เช่น Punthai แปลงยาว3)</div>`:''}
-  <div class="pm-xtbl"><table class="pm-tbl"><thead><tr><th>สาขา</th><th>PR</th><th>วันนัด</th><th>ทีม</th><th>ผล</th></tr></thead><tbody>${show.map(x=>`<tr><td>${esc(x.branch)}${x.address?`<div class="tm" style="font-size:11px">${esc(x.address)}</div>`:''}</td><td class="mono">${esc(x.pr||'')}</td><td>${x.date?esc(pmThDateY(x.date)):''}</td><td>${esc(x.team||'')}</td><td>${x.res==='dupname'?tag('#d97706','ชื่อซ้ำในไฟล์ — ข้าม'):x.res==='new'?tag('#16a34a',x.pr?'ใหม่ + ผูก PR':'ใหม่'):tag('#64748b',x.pr||x.date||x.team?'มีอยู่แล้ว · อัปเดตรอบนี้':'มีอยู่แล้ว')}${x.prRes?' '+tag('#dc2626',x.prRes):''}</td></tr>`).join('')}</tbody></table></div>
+  <div class="pm-xtbl"><table class="pm-tbl"><thead><tr><th>สาขา</th><th>PR</th><th>วันนัด</th><th>ทีม</th><th>ผล</th></tr></thead><tbody>${show.map((x,i)=>`<tr${x.ren?' style="background:#f5f3ff"':''}><td>${nameCell(x,i)}${x.address?`<div class="tm" style="font-size:11px">${esc(x.address)}</div>`:''}</td><td class="mono">${esc(x.pr||'')}</td><td>${x.date?esc(pmThDateY(x.date)):''}</td><td>${esc(x.team||'')}</td><td>${x.ren?resCell(x):x.res==='dupname'?tag('#d97706','ชื่อซ้ำในไฟล์ ที่อยู่เดียวกัน — ข้าม'):x.res==='new'?tag('#16a34a',x.pr?'ใหม่ + ผูก PR':'ใหม่'):tag('#64748b',x.pr||x.date||x.team?'มีอยู่แล้ว · อัปเดตรอบนี้':'มีอยู่แล้ว')}${x.prRes?' '+tag('#dc2626',x.prRes):''}</td></tr>`).join('')}</tbody></table></div>
   ${pmX.rows.length>300?`<div class="tm" style="font-size:12px;margin-top:6px">แสดง 300 แถวแรก จาก ${pmX.rows.length}</div>`:''}`;
   const ok=document.getElementById('pm-add-ok');if(ok)ok.textContent=pmXBtnText();
 }
@@ -14193,6 +14209,8 @@ async function pmXSave(){
   const c=pmContract(),now=new Date().toISOString(),btn=document.getElementById('pm-add-ok');
   const base=pmSitesOf(c.id).length;
   const fresh=pmX.rows.filter(x=>x.res==='new');
+  {const seen=new Set(pmSitesOf(c.id).map(s=>pmNorm(s.branch)));const bad=fresh.filter(x=>{const k=pmNorm(x.branch);if(!k||seen.has(k))return true;seen.add(k);return false;});
+   if(bad.length){alert(`ชื่อสาขาซ้ำ/ว่าง ${bad.length} แถว — แก้ชื่อในช่องสีม่วงก่อน:\n`+bad.slice(0,8).map(x=>'• '+(x.branch||'(ว่าง)')).join('\n'));return;}}
   try{
     if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
     const newRows=fresh.map((x,i)=>({id:pmId('PMS'),contract_id:c.id,branch:x.branch,address:x.address||null,note:x.note||null,sort_no:base+i,status:'active'}));
