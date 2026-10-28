@@ -1348,6 +1348,21 @@ body.pfpv-lock{overflow:hidden;}
 .pm-tmk .jq-av,.pm-tmk img{flex:none;}
 .pm-bprev{background:var(--surface2);border-radius:12px;padding:10px 14px;font-size:13px;line-height:1.6;}
 .pm-bprev:empty{display:none;}
+.rpm{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:0 0 14px;background:var(--surface,transparent);}
+.rpm-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;font-size:14px;}
+.rpm-sum{font-size:13px;background:rgba(23,95,255,.07);border-radius:8px;padding:6px 10px;margin-bottom:8px;}
+.rpm-it{border-top:1px dashed var(--border);padding:9px 0 8px;display:flex;flex-direction:column;gap:3px;}
+.rpm-it.fu{background:linear-gradient(90deg,rgba(234,88,12,.07),transparent 60%);}
+.rpm-ih{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13.5px;}
+.rpm-rd{font-size:12.5px;}
+.rpm-fu{font-size:12.5px;color:#c2410c;background:rgba(234,88,12,.1);border-radius:7px;padding:4px 8px;margin-top:2px;}
+.rpm-fu.done{color:var(--text2);background:transparent;padding-left:0;text-decoration:line-through;text-decoration-color:rgba(0,0,0,.25);}
+.rpm-th{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;}
+.rpm-th a{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border);display:block;background:#eef0f4;}
+.rpm-th img{width:100%;height:100%;object-fit:cover;display:block;}
+.rpm-th i{position:absolute;left:0;right:0;bottom:0;font-style:normal;font-size:10px;color:#fff;background:rgba(0,0,0,.5);text-align:center;}
+.pm-lbl{display:block;margin-top:8px;width:132px;border-radius:8px;overflow:hidden;border:1px solid var(--border);text-decoration:none;}
+.pm-lbl img{width:100%;height:80px;object-fit:cover;display:block;}.pm-lbl span{display:block;font-size:11px;text-align:center;color:var(--text2);padding:2px 0;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -11841,12 +11856,12 @@ function openReportModal(id){
   document.getElementById('mrpt-note2').value=j.note2||tr.note||'';
   document.getElementById('mrpt-review-note').value=j.reviewNote||tr.reviewNote||'';
   try{mrptSetNoteColor(j.reviewNoteColor||tr.reviewNoteColor||'');}catch(e){}
-  document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+(reportImages(j).length||reportDocumentImages(j).length?renderReportImages(j):'<div class="text-box">กำลังโหลดรูปจากรายงานช่าง...</div>');
+  document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+renderReportPM(j)+(reportImages(j).length||reportDocumentImages(j).length?renderReportImages(j):'<div class="text-box">กำลังโหลดรูปจากรายงานช่าง...</div>');
   ensureJobImages(id,0).then(()=>{
     if(document.getElementById('mrpt-jobid')?.value!==id)return;
     const jj=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||j;
-    document.getElementById('mrpt-images').innerHTML=renderReportRounds(jj)+renderReportImages(jj);
-  }).catch(e=>{console.warn('โหลดรูปรายงานช่างไม่สำเร็จ',e);if(document.getElementById('mrpt-jobid')?.value===id)document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+'<div class="text-box">โหลดรูปไม่สำเร็จ — ปิดแล้วเปิดใหม่อีกครั้ง</div>';});
+    document.getElementById('mrpt-images').innerHTML=renderReportRounds(jj)+renderReportPM(jj)+renderReportImages(jj);
+  }).catch(e=>{console.warn('โหลดรูปรายงานช่างไม่สำเร็จ',e);if(document.getElementById('mrpt-jobid')?.value===id)document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+renderReportPM(j)+'<div class="text-box">โหลดรูปไม่สำเร็จ — ปิดแล้วเปิดใหม่อีกครั้ง</div>';});
   const picSel=document.getElementById('mrpt-pic');
   picSel.innerHTML=['— ไม่ระบุ —',...(adminNames||[])].map(a=>`<option${a===j.pic?' selected':''}>${a}</option>`).join('');
   openM('m-report');
@@ -13879,7 +13894,9 @@ function pfmRefresh(){try{pfmBuildTabs();pfmEnhanceFilters();}catch(e){console.w
 // =====================================================================
 var pm={loaded:false,loading:null,missing:false,contracts:[],sites:[],visits:[],assets:[],logs:[]};
 var pmView='plan',pmContractId='',pmRound=1,pmMonth='',pmAsset={client:'',branch:'',q:''},pmQrPick=new Set();
-var PM_ASSET_TYPES=['แอร์','ตู้แช่','อื่น ๆ'];
+var PM_ASSET_TYPES=['แอร์ผนัง','แอร์แขวน','แอร์ 4 ทิศทาง','ตู้แช่','ไส้กรองน้ำ','แอร์','อื่น ๆ'];
+// แปลงข้อความประเภทเครื่องจาก Excel → ประเภทในระบบ (แอร์ที่ไม่ระบุชนิด = 'แอร์' ให้ช่างเลือกชนิดตอนเข้า PM)
+function pmTypeFromText(t){t=String(t||'').trim();if(!t)return 'แอร์';if(PM_ASSET_TYPES.includes(t))return t;if(/ไส้กรอง|กรองน้ำ|filter/i.test(t))return 'ไส้กรองน้ำ';if(/ตู้|fridge|freez|chill/i.test(t))return 'ตู้แช่';if(/4\s*ทิศ|สี่ทิศ|cassette/i.test(t))return 'แอร์ 4 ทิศทาง';if(/แขวน|ceiling|ใต้ฝ้า|ตั้งพื้น/i.test(t))return 'แอร์แขวน';if(/ผนัง|wall/i.test(t))return 'แอร์ผนัง';if(/แอร์|air|\bac\b/i.test(t))return 'แอร์';return 'อื่น ๆ';}
 var PM_QR_BASE='https://console.profixsolution-service.com/asset.html?c=';
 var PM_TH_MONTHS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 function pmId(p){return p+'-'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,6).toUpperCase();}
@@ -13982,6 +13999,7 @@ function pmPlanHtml(){
       <div class="d2-h" style="margin-top:6px"><div><div class="t">สาขาในรอบที่ ${pmRound}${pmMonth?' · '+PM_TH_MONTHS[+pmMonth.slice(5)-1]:''}</div><div class="s">เสร็จ ${doneN}/${sites.length} · มี PR ${cnt('job')} · รอ PR ${cnt('plan')} · ยังไม่จัด ${cnt('none')}${pmMonth?` · <a href="javascript:void(0)" onclick="pmMonth='';renderPM()">ดูทุกเดือน</a>`:''}</div></div>
         <button class="btn btn-ghost btn-sm" onclick="pmFindPrFromQueue()">🔎 หา PR จากคิวช่าง</button><button class="btn btn-ghost btn-sm" onclick="pmPastePr()">📋 วางรายการ PR</button><button class="btn btn-ghost btn-sm" onclick="pmBulkPlan()">🗓 จัดวันเป็นชุด</button><button class="btn btn-primary btn-sm" onclick="pmAddSites()">＋ เพิ่มสาขา</button></div>
       ${rows.length?pmSelBarHtml():''}<div class="d2-in pm-scroll">${tbl}</div></section>
+    ${pmFollowHtml(c)}
   </div>`;
 }
 async function pmSetVisit(siteId,fields){
@@ -14125,8 +14143,8 @@ function pmFindPrFromQueue(){
 }
 
 // ---------- ทะเบียนเครื่อง ----------
-function pmAssetLast(a){return pm.logs.find(l=>l.asset_id===a.id);}
-function pmCondChip(cond){if(!cond)return '<span class="tm">—</span>';const c=/ปกติ/.test(cond)?'#16a34a':/เปลี่ยน/.test(cond)?'#dc2626':'#d97706';return `<span class="chip pm-st" style="--c:${c}">${esc(cond)}</span>`;}
+function pmAssetLast(a){return pm.logs.find(l=>l.asset_id===a.id&&l.kind!=='bind_qr');}
+function pmCondChip(cond){if(!cond)return '<span class="tm">—</span>';const c=/ปกติ/.test(cond)?'#16a34a':/เสีย/.test(cond)?'#dc2626':/ซ่อม|เปลี่ยน/.test(cond)?'#ea580c':'#d97706';return `<span class="chip pm-st" style="--c:${c}">${esc(cond)}</span>`;}
 function pmAssetsHtml(){
   const clientsAll=[...new Set([...pm.assets.map(a=>a.client),...pm.contracts.map(c=>c.client)])].filter(Boolean).sort();
   const branchesAll=[...new Set(pm.assets.filter(a=>!pmAsset.client||a.client===pmAsset.client).map(a=>a.branch))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'th'));
@@ -14176,9 +14194,9 @@ function pmOpenAsset(id){
   const logs=pm.logs.filter(l=>l.asset_id===id);
   const jobsHere=liveJobs().filter(j=>pmNorm(j.branch)===pmNorm(a.branch)).sort((x,y)=>String(y.date||'').localeCompare(String(x.date||''))).slice(0,6);
   const info=[['ประเภท',a.asset_type],['ยี่ห้อ / รุ่น',[a.brand,a.model].filter(Boolean).join(' ')||'-'],['ขนาด',a.capacity||'-'],['Serial',a.serial_no||'-'],['ลูกค้า / สาขา',`${a.client} · ${a.branch}`],['ตำแหน่ง',a.location||'-'],['ติดตั้ง',a.installed_at?pmThDateY(a.installed_at):'-'],['ประกันถึง',a.warranty_until?pmThDateY(a.warranty_until):'-'],['สติกเกอร์',a.qr_code||'ใช้รหัสเครื่อง']];
-  const feed=logs.length?logs.map(l=>`<div class="pm-ev"><span class="d2-evdot" style="background:${l.kind==='repair'?'#dc2626':l.kind==='pm'?'#16a34a':'#175fff'}"></span><div style="flex:1;min-width:0"><b>${esc({pm:'PM',repair:'ซ่อม',note:'บันทึก',bind_qr:'ผูก QR'}[l.kind]||l.kind)}${l.condition?' — '+esc(l.condition):''}</b> <span class="tm">· ${esc(jqThDate(String(l.done_at).slice(0,10)))}${l.team?' · '+esc(l.team):''}${l.job_id?' · '+esc(l.job_id):''}${l.created_by?' · โดย '+esc(l.created_by):''}</span>${l.recommendation?`<div style="font-size:13px;margin-top:2px">${esc(l.recommendation)}</div>`:''}${l.readings&&Object.keys(l.readings).length?`<div class="tm" style="font-size:12px">${Object.entries(l.readings).map(([k,v])=>esc(k)+' '+esc(v)).join(' · ')}</div>`:''}</div></div>`).join(''):'<div class="tm" style="padding:6px 0">ยังไม่มีบันทึก — ช่วงที่ 2 ช่างจะบันทึกผ่านฟอร์ม PM ได้ · ตอนนี้แอดมินเพิ่มบันทึกเองได้</div>';
+  const feed=logs.length?logs.map(l=>`<div class="pm-ev"><span class="d2-evdot" style="background:${l.kind==='repair'?'#dc2626':l.kind==='pm'?'#16a34a':'#175fff'}"></span><div style="flex:1;min-width:0"><b>${esc({pm:'PM',repair:'ซ่อม',note:'บันทึก',bind_qr:'ผูก QR'}[l.kind]||l.kind)}${l.condition?' — '+esc(l.condition):''}</b> <span class="tm">· ${esc(jqThDate(String(l.done_at).slice(0,10)))}${l.team?' · '+esc(l.team):''}${l.job_id?' · '+esc(l.job_id):''}${l.created_by?' · โดย '+esc(l.created_by):''}</span>${l.recommendation?`<div style="font-size:13px;margin-top:2px">${esc(l.recommendation)}</div>`:''}${pmLogDetail(l)}</div></div>`).join(''):'<div class="tm" style="padding:6px 0">ยังไม่มีบันทึก — ช่วงที่ 2 ช่างจะบันทึกผ่านฟอร์ม PM ได้ · ตอนนี้แอดมินเพิ่มบันทึกเองได้</div>';
   pmModal(a.id,`${a.asset_type} ${a.brand||''} · ${a.client} · ${a.branch}`,`
-    <div class="pm-ahead"><div class="pm-qrbox" id="pm-qrbox"></div><div style="flex:1;min-width:0"><div class="pm-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${esc(v)}</b></div>`).join('')}</div>${a.note?`<div class="tm" style="margin-top:8px">${esc(a.note)}</div>`:''}</div></div>
+    <div class="pm-ahead"><div><div class="pm-qrbox" id="pm-qrbox"></div>${a.label_photo_url?`<a class="pm-lbl" href="${esc(a.label_photo_url)}" target="_blank" rel="noopener" title="รูปฉลากเครื่อง"><img src="${esc(a.label_photo_url)}" alt="ฉลาก"><span>ฉลากเครื่อง</span></a>`:''}</div><div style="flex:1;min-width:0"><div class="pm-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${esc(v)}</b></div>`).join('')}</div>${a.note?`<div class="tm" style="margin-top:8px">${esc(a.note)}</div>`:''}</div></div>
     <div class="pm-sec"><div class="pm-sech"><b>ประวัติเครื่อง</b><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pmAddLog('${esc(id)}')">＋ เพิ่มบันทึก</button></div>${feed}</div>
     ${jobsHere.length?`<div class="pm-sec"><div class="pm-sech"><b>งานล่าสุดที่สาขานี้</b><span class="tm" style="font-size:12px">(จากคิวช่าง)</span></div>${jobsHere.map(j=>`<div class="pm-ev"><span class="d2-evdot" style="background:${pfStatusColor(j.status)}"></span><div><button type="button" class="link-btn" onclick="closeM('m-pm');openDet('${esc(j.id).replace(/'/g,'&#39;')}')">${esc(j.id)}</button> <span class="tm">· ${esc(j.type||'')} · ${esc(j.date?jqThDate(j.date):'')} · ${esc(j.status||'')}</span></div></div>`).join('')}</div>`:''}`,
     `<button class="btn btn-ghost" onclick="pmPrintStickers(['${esc(id)}'])">🖨 พิมพ์ QR</button><button class="btn btn-ghost" onclick="pmEditAsset('${esc(id)}')">✏️ แก้ไขข้อมูล</button><button class="btn btn-primary" onclick="closeM('m-pm')">ปิด</button>`,true);
@@ -14215,7 +14233,7 @@ async function pmImportXlsx(file){
     const idx={};Object.entries(syn).forEach(([k,ns])=>{const i=head.findIndex(h=>ns.some(n=>h===pmNorm(n)||h.includes(pmNorm(n))));if(i>=0)idx[k]=i;});
     if(idx.branch==null){alert('ไม่พบคอลัมน์ "สาขา" — ใช้แม่แบบ Excel จากปุ่ม ⬇ แม่แบบ Excel');return;}
     const data=rows.slice(1).filter(r=>r.some(x=>String(x).trim())).map(r=>{const o={};Object.entries(idx).forEach(([k,i])=>{const v=r[i];o[k]=['installed_at','warranty_until'].includes(k)?pmXlsDate(v):(String(v).trim()||null);});
-      o.client=o.client||pmAsset.client||(pmContract()||{}).client||null;o.asset_type=o.asset_type?(/ตู้|fridge|freez|chill/i.test(o.asset_type)?'ตู้แช่':/แอร์|air|ac/i.test(o.asset_type)?'แอร์':'อื่น ๆ'):'แอร์';if(o.qr_code)o.qr_code=o.qr_code.toUpperCase();o.created_by=getActorName();return o;}).filter(o=>o.branch&&o.client);
+      o.client=o.client||pmAsset.client||(pmContract()||{}).client||null;o.asset_type=pmTypeFromText(o.asset_type);if(o.qr_code)o.qr_code=o.qr_code.toUpperCase();o.created_by=getActorName();return o;}).filter(o=>o.branch&&o.client);
     if(!data.length){alert('ไม่พบแถวที่มีทั้ง ลูกค้า และ สาขา');return;}
     const br=[...new Set(data.map(d=>d.branch))];
     if(!confirm(`นำเข้า ${data.length} เครื่อง จาก ${br.length} สาขา?\n\nตัวอย่าง: ${data.slice(0,3).map(d=>`${d.branch} · ${d.asset_type} ${d.brand||''}`).join('\n')}`))return;
@@ -14474,6 +14492,48 @@ async function pmBulkDeleteSave(kind){
     }
     closeM('m-pm');pmSel.clear();renderPM();
   }catch(e){pmErr(e);}
+}
+
+// ===== PM ช่วงที่ 2: ผลจากฟอร์มช่าง (รายเครื่อง) =====
+var PM_RD_LABEL={amp:['กระแส','A'],psi:['น้ำยา','psi'],supply:['ลมจ่าย','°C'],return:['ลมกลับ','°C'],volt:['ไฟเข้า','V'],temp:['อุณหภูมิตู้','°C'],cartridges:['ไส้ที่เปลี่ยน','ไส้'],tds:['TDS','ppm'],bar:['แรงดันน้ำ','bar']};
+function pmThumbs(list){list=(list||[]).filter(p=>p&&p.url);return list.length?`<div class="rpm-th">${list.map(p=>`<a href="${esc(p.url)}" target="_blank" rel="noopener" title="${esc(p.label||'')}"><img src="${esc(p.url)}" loading="lazy" alt=""><i>${esc(p.label||'')}</i></a>`).join('')}</div>`:'';}
+// บันทึกในประวัติเครื่อง (pm_asset_logs) — เช็กลิสต์/ค่าที่วัด/สาเหตุ/การแก้ไข/งานต่อเนื่อง/รูป
+function pmLogDetail(l){
+  const ck=Array.isArray(l.checklist)?l.checklist:[],ckDone=ck.filter(x=>x&&x.done);
+  const rd=l.readings&&typeof l.readings==='object'?Object.entries(l.readings):[];
+  const ph=(Array.isArray(l.photos)?l.photos:[]).map(p=>({url:p.url,label:p.cat==='after'?'หลัง':'ก่อน'}));
+  return `${rd.length?`<div class="tm" style="font-size:12px">📏 ${rd.map(([k,v])=>esc(k)+' '+esc(v)).join(' · ')}</div>`:''}${ck.length?`<div class="tm" style="font-size:12px">✅ ตรวจเช็ก ${ckDone.length}/${ck.length}${ckDone.length?': '+ckDone.map(x=>esc(x.item)).join(', '):''}</div>`:''}${l.cause?`<div style="font-size:12.5px"><span class="tm">สาเหตุ:</span> ${esc(l.cause)}</div>`:''}${l.fix?`<div style="font-size:12.5px"><span class="tm">การแก้ไข:</span> ${esc(l.fix)}</div>`:''}${l.follow_up?`<div class="rpm-fu${l.follow_up_done_at?' done':''}">🔧 งานต่อเนื่อง: ${esc(l.follow_up_note||'-')}${l.follow_up_done_at?` <span class="tm">· จัดการแล้ว ${esc(jqThDate(String(l.follow_up_done_at).slice(0,10)))}${l.follow_up_done_by?' โดย '+esc(l.follow_up_done_by):''}</span>`:''}</div>`:''}${pmThumbs(ph)}`;
+}
+// หน้ารายงานช่าง: งาน PM แสดงผลรายเครื่องที่ช่างกรอก (จาก technicianReport.pm)
+function renderReportPM(j){
+  const p=j&&j.technicianReport&&j.technicianReport.pm;if(!p||!Array.isArray(p.items)||!p.items.length)return '';
+  const sum=(p.summary||[]).filter(r=>+r.qty>0).map(r=>`${esc(r.type)} <b>${esc(r.qty)}</b> ${esc(r.unit)}`).join(' · ');
+  const fu=p.items.filter(it=>it.follow_up).length;
+  return `<div class="rpm"><div class="rpm-h"><b>🧾 งาน PM รอบที่ ${esc(p.round_no||'')}</b>${p.contract?` <span class="tm">· ${esc(p.contract)}</span>`:''}<span style="flex:1"></span><span class="tm">${p.items.length} เครื่อง${fu?` · <span style="color:#ea580c;font-weight:700">งานต่อเนื่อง ${fu}</span>`:''}</span></div>${sum?`<div class="rpm-sum">${sum}</div>`:''}
+  ${p.items.map(it=>{
+    const rd=Object.entries(it.readings||{}).filter(([k,v])=>v!==''&&v!=null).map(([k,v])=>{const L=PM_RD_LABEL[k]||[k,''];return `${esc(L[0])} <b>${esc(v)}</b> ${esc(L[1])}`;});
+    const s=parseFloat(it.readings&&it.readings.supply),r=parseFloat(it.readings&&it.readings.return);if(isFinite(s)&&isFinite(r))rd.push(`ผลต่าง <b>${Math.round((r-s)*10)/10}</b> °C`);
+    const ck=Object.keys(it.checklist||{}).filter(k=>it.checklist[k]);
+    const ph=[...(it.label_photo&&it.label_photo.url?[{url:it.label_photo.url,label:'ฉลาก'}]:[]),...((it.photos&&it.photos.before)||[]).map(x=>({url:x.url,label:'ก่อน'})),...((it.photos&&it.photos.after)||[]).map(x=>({url:x.url,label:'หลัง'}))];
+    const code=it.asset_id||'เครื่องใหม่',canOpen=!!it.asset_id&&typeof AUTH!=='undefined'&&AUTH.role==='admin';
+    return `<div class="rpm-it${it.follow_up?' fu':''}"><div class="rpm-ih">${canOpen?`<button type="button" class="link-btn mono" onclick="pmGoAsset('${esc(it.asset_id)}')">${esc(code)}</button>`:`<span class="mono" style="font-weight:700">${esc(code)}</span>`} <b>${esc(it.asset_type||'')}</b>${it.location?` <span class="tm">· ${esc(it.location)}</span>`:''}${it.qr_code?` <span class="tm">· ผูก ${esc(it.qr_code)}</span>`:''}<span style="flex:1"></span>${pmCondChip(it.condition)}</div>
+      <div class="tm" style="font-size:12px">${[it.brand,it.model,it.capacity?(it.capacity+(/^\d+$/.test(String(it.capacity))?' BTU':'')):''].filter(Boolean).map(esc).join(' · ')}${it.no_label?' · ไม่มีฉลาก':it.serial_no?` · SN <span class="mono">${esc(it.serial_no)}</span>`:''}</div>
+      ${rd.length?`<div class="rpm-rd">📏 ${rd.join(' · ')}</div>`:''}${ck.length?`<div class="tm" style="font-size:12px">✅ ${ck.map(esc).join(', ')}</div>`:''}
+      ${it.cause?`<div style="font-size:12.5px"><span class="tm">สาเหตุ:</span> ${esc(it.cause)}</div>`:''}${it.fix?`<div style="font-size:12.5px"><span class="tm">การแก้ไข:</span> ${esc(it.fix)}</div>`:''}
+      ${it.follow_up?`<div class="rpm-fu">🔧 งานต่อเนื่อง: ${esc(it.follow_up_note||'-')}</div>`:''}${pmThumbs(ph)}</div>`;}).join('')}</div>`;
+}
+function pmGoAsset(id){closeM('m-report');pmView='assets';goTo('pm');pmLoad().then(()=>pmOpenAsset(id));}
+// แผน PM: รายการงานต่อเนื่องที่ช่างแจ้ง (ยังไม่จัดการ) ของลูกค้าในสัญญานี้
+function pmFollowHtml(c){
+  const open=pm.logs.filter(l=>l.follow_up&&!l.follow_up_done_at).map(l=>({l,a:pm.assets.find(x=>x.id===l.asset_id)})).filter(x=>x.a&&pmNorm(x.a.client)===pmNorm(c.client));
+  if(!open.length)return '';
+  return `<section class="d2-box" style="margin-top:14px"><div class="d2-h"><div><div class="t">🔧 งานต่อเนื่องจาก PM (${open.length})</div><div class="s">ช่างแจ้งว่าต้องซ่อม / เปลี่ยนอะไหล่ต่อ — เสนอราคาหรือเปิดงานซ่อม แล้วกด "จัดการแล้ว"</div></div></div><div class="d2-in d2-pad">${open.map(({l,a})=>`<div class="pm-ev"><span class="d2-evdot" style="background:#ea580c"></span><div style="flex:1;min-width:0"><b>${esc(a.branch)}</b> · <button type="button" class="link-btn mono" onclick="pmOpenAsset('${esc(a.id)}')">${esc(a.id)}</button> <span class="tm">${esc(a.asset_type)} ${esc(a.brand||'')}${a.location?' · '+esc(a.location):''} · ${esc(jqThDate(String(l.done_at).slice(0,10)))}${l.job_id?' · '+esc(l.job_id):''}${l.team?' · '+esc(l.team):''}</span><div style="font-size:13px;margin-top:2px">${esc(l.follow_up_note||'')}</div></div><button class="btn btn-ghost btn-sm" onclick="pmFollowDone('${esc(l.id)}')">✓ จัดการแล้ว</button></div>`).join('')}</div></section>`;
+}
+async function pmFollowDone(id){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const l=pm.logs.find(x=>x.id===id);if(!l)return;
+  const f={follow_up_done_at:new Date().toISOString(),follow_up_done_by:getActorName()};
+  try{await pmPatch('pm_asset_logs',id,f);Object.assign(l,f);renderPM();}catch(e){pmErr(e);}
 }
 
 function startApp(){ try{document.body.dataset.sheetpos=PF_SHEET_POS;}catch(e){} initApp(); pfLoadUiSettings().then(()=>{try{renderJobs();}catch(e){}}); }

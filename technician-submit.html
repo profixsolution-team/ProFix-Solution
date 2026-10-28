@@ -82,6 +82,75 @@ textarea{resize:vertical;min-height:80px;}
 .part-dd-empty{padding:11px;font-size:12px;color:var(--text3);text-align:center;line-height:1.5;}
 .part-custom-tag{display:inline-block;font-size:10px;color:var(--yellow);background:var(--yellow-dim);border-radius:4px;padding:1px 7px;margin-top:5px;}
 .part-add.alt{background:var(--yellow-dim);color:var(--yellow);border-color:var(--yellow);}
+/* PM (งานที่ผูกแผน PM) */
+.pm-chip{display:inline-block;background:#2a1f4a;color:#c4b5fd;border:1px solid #5b4b9a;border-radius:20px;font-size:11px;font-weight:700;padding:2px 9px;margin-left:8px;vertical-align:4px;font-family:var(--sans);}
+.pm-qt{width:100%;border-collapse:collapse;font-size:13.5px;}
+.pm-qt td{padding:6px 4px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.pm-qt tr.g td{color:var(--text2);font-weight:700;font-size:12.5px;padding-top:4px;border-bottom:0;}
+.pm-qt td.sub{padding-left:14px;}.pm-qt td small{color:var(--text3);font-size:11px;}
+.pm-qt td.n{width:76px;text-align:right;}.pm-qt td.n input{padding:6px 8px;text-align:center;font-family:var(--mono);font-weight:700;font-size:14px;}
+.pm-qt td.u{width:56px;color:var(--text2);font-size:12.5px;}.pm-auto{font-size:10px;color:var(--yellow);}
+.pm-prog{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:12.5px;color:var(--text2);}
+.pm-bar{flex:1;height:7px;background:var(--surface3);border-radius:9px;overflow:hidden;}.pm-bar i{display:block;height:100%;background:var(--green);}
+.pm-two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.pm-btn2{margin:0;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--surface3);border:1px solid var(--border2);border-radius:10px;padding:11px 8px;font-weight:700;font-size:13.5px;color:var(--text);cursor:pointer;font-family:var(--sans);text-align:center;}
+.pm-list{margin-top:10px;}
+.pm-mi{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--border);cursor:pointer;}
+.pm-mi:last-child{border-bottom:0;}.pm-mi:active{background:var(--surface2);}
+.pm-ic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;background:var(--surface3);flex:none;}
+.pm-nm{font-weight:700;font-size:14px;}.pm-sb{font-size:11.5px;color:var(--text3);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pm-r{font-size:11px;font-weight:700;border-radius:20px;padding:3px 9px;white-space:nowrap;flex:none;}
+.pm-r.ok{background:var(--green-dim);color:var(--green);}.pm-r.wr{background:#3b2210;color:#f0883e;}.pm-r.part{background:var(--yellow-dim);color:var(--yellow);}.pm-r.td{background:var(--surface3);color:var(--text2);}
+.pm-empty{font-size:13px;color:var(--text2);padding:12px 0;text-align:center;line-height:1.6;}
+body.pm-lock{overflow:hidden;}
+.pm-sheet{position:fixed;inset:0;z-index:150;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:40px;}
+.pm-scan{z-index:160;}
+.pm-sh-top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 12px;display:flex;align-items:center;gap:10px;}
+.pm-back{width:36px;height:36px;border-radius:9px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-size:22px;line-height:1;cursor:pointer;flex:none;}
+.pm-sh-t{font-weight:800;font-size:15px;color:var(--accent);}.pm-sh-s{font-size:11.5px;color:var(--text3);font-family:var(--mono);}
+.pm-sh-body .card{margin-top:12px;}
+.pm-mh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}.pm-code{font:700 18px var(--mono);color:var(--accent);}
+.pm-okb{font-size:11px;font-weight:700;color:var(--green);background:var(--green-dim);border-radius:20px;padding:2px 9px;}
+.pm-last{font-size:12px;color:var(--text2);margin-top:4px;}
+.pm-warn{font-size:12px;color:#f0883e;background:#3b2210;border-radius:8px;padding:6px 9px;margin-top:8px;}
+.pm-chips{display:flex;flex-wrap:wrap;gap:7px;}
+.pm-cp{border:1px solid var(--border2);border-radius:20px;padding:7px 12px;font-size:13px;color:var(--text2);background:var(--bg);cursor:pointer;font-family:var(--sans);}
+.pm-cp small{color:var(--text3);font-size:10.5px;}
+.pm-cp.on{background:var(--accent-dim);border-color:var(--accent);color:#cfe5ff;font-weight:700;}
+.pm-cp.c-ok.on{background:var(--green-dim);border-color:var(--green);color:#b4f0be;}
+.pm-cp.c-fair.on{background:var(--yellow-dim);border-color:var(--yellow);color:#f5d68a;}
+.pm-cp.c-warn.on{background:#3b2210;border-color:#f0883e;color:#ffd2ad;}
+.pm-cp.c-bad.on{background:var(--red-dim);border-color:var(--red);color:#ffb3ae;}
+.pm-lab{display:grid;grid-template-columns:104px 1fr;gap:10px;align-items:start;margin-bottom:10px;}
+.pm-plate{position:relative;height:104px;border-radius:10px;border:1.5px dashed var(--border2);background:var(--bg);display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;color:var(--text2);overflow:hidden;cursor:pointer;margin:0;font-weight:600;}
+.pm-plate img{width:100%;height:100%;object-fit:cover;}
+.pm-inl{display:flex!important;align-items:center;gap:8px;font-weight:500!important;color:var(--text)!important;font-size:13px!important;margin:8px 0 0!important;cursor:pointer;}
+.pm-inl input{width:18px;height:18px;flex:none;}.pm-inl.big{font-size:15px!important;font-weight:700!important;margin:0!important;}
+.pm-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}.pm-g3 input{padding:9px 10px;font-size:14px;}
+.pm-ck{display:flex!important;align-items:center;gap:10px;padding:8px 0;margin:0!important;font-size:14px!important;font-weight:500!important;color:var(--text)!important;border-bottom:1px solid var(--border);cursor:pointer;}
+.pm-ck:last-child{border-bottom:0;}.pm-ck input{width:20px;height:20px;flex:none;}
+.pm-rd{display:grid;grid-template-columns:1fr 92px 36px;gap:8px;align-items:center;padding:5px 0;}
+.pm-rdn{font-size:13px;}.pm-rd input{padding:8px 10px;text-align:right;font-family:var(--mono);font-weight:700;}.pm-un{font-size:12px;color:var(--text2);}
+.pm-calc{font-size:12.5px;color:var(--green);background:var(--green-dim);border-radius:8px;padding:7px 10px;margin-top:8px;}
+.pm-calc.bad{color:#f0883e;background:#3b2210;}
+.pm-ph2{display:grid;grid-template-columns:1fr;gap:12px;}
+.pm-ph-h{font-size:13px;font-weight:700;margin-bottom:6px;}
+.pm-tb{display:flex;flex-wrap:wrap;gap:7px;}
+.pm-th{position:relative;width:72px;height:72px;border-radius:9px;overflow:hidden;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;margin:0;}
+.pm-th img{width:100%;height:100%;object-fit:cover;}
+.pm-th b{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.7);color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.pm-th.add{border:1.5px dashed var(--border2);background:none;color:var(--text3);font-size:24px;cursor:pointer;}
+.pm-pct{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:18px;}
+.pm-pct.err{background:rgba(120,20,20,.7);cursor:pointer;}
+.pm-fu{border-color:#f0883e;background:#2a1a0e;}
+.pm-note{font-size:11.5px;color:var(--text3);margin-top:6px;line-height:1.5;}
+.pm-miss{font-size:12.5px;color:var(--yellow);text-align:center;margin:14px 0 0;}
+.pm-foot{display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin-top:12px;}
+.pm-del{display:block;margin:14px auto 0;background:none;border:0;color:var(--red);font-size:13px;text-decoration:underline;cursor:pointer;font-family:var(--sans);}
+.pm-cam{position:relative;height:min(62vh,460px);background:#000;overflow:hidden;}
+.pm-cam video{width:100%;height:100%;object-fit:cover;}
+.pm-frame{position:absolute;left:50%;top:50%;width:220px;height:220px;transform:translate(-50%,-50%);border-radius:16px;box-shadow:0 0 0 2000px rgba(0,0,0,.35);border:3px solid var(--accent);}
+.pm-camtip{position:absolute;left:0;right:0;bottom:14px;text-align:center;color:#e6edf3;font-size:13px;text-shadow:0 1px 3px #000;padding:0 16px;}
 </style>
 </head>
 <body>
@@ -259,6 +328,11 @@ textarea{resize:vertical;min-height:80px;}
         <div class="thumbs" id="th-documents"></div>
       </div>
     </div>
+
+    <!-- PM (แสดงเฉพาะงานที่ PR ผูกแผน PM) -->
+    <div id="pm-wrap" class="hidden"></div>
+    <div id="pm-sheet" class="pm-sheet hidden"></div>
+    <div id="pm-scan" class="pm-sheet pm-scan hidden"></div>
 
     <!-- SUBMIT -->
     <div class="card">
@@ -952,6 +1026,7 @@ async function saveLocalDraftNow(){
     const local=[];
     for(const cat of Object.keys(photos)) for(const p of photos[cat]) if(!p.existing && p.status==='ready' && (p.compressed||p.file)) local.push({cat,p});
     const draft={ v:1, savedAt:new Date().toISOString(), fields:{}, checks:{}, parts:techPartRows, photoIds:local.map(x=>x.p.id) };
+    draft.pm=pmSnapshot();
     LOCAL_DRAFT_FIELDS.forEach(id=>{ const el=document.getElementById(id); if(el) draft.fields[id]=el.value; });
     LOCAL_DRAFT_CHECKS.forEach(id=>{ const el=document.getElementById(id); if(el) draft.checks[id]=!!el.checked; });
     localStorage.setItem(localDraftKey(), JSON.stringify(draft));
@@ -980,6 +1055,7 @@ async function restoreLocalDraft(){
       Object.entries(draft.fields||{}).forEach(([id,v])=>{ const el=document.getElementById(id); if(el&&v!=null&&v!=='') el.value=v; });
       Object.entries(draft.checks||{}).forEach(([id,v])=>{ const el=document.getElementById(id); if(el) el.checked=!!v; });
       if(Array.isArray(draft.parts)&&draft.parts.length) setTechPartRows(draft.parts);
+      if(draft.pm&&pmCtx&&draft.pm.visit_id===pmCtx.visit.id){ pmApplySnapshot(draft.pm); pmRender(); }
       try{ toggleNoParts(); }catch(e){}
       let restored=0;
       try{
@@ -1052,6 +1128,7 @@ async function showForm(){
   await loadCheckinSurveyPhotos(jobData.id || JOB_ID); // ดึงรูปสำรวจจากหน้าแจ้งเข้าซ่อม → รูปก่อนดำเนินการ
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
   renderThumbs('documents');
+  await pmInit(); // งาน PM → แสดงส่วนเครื่องในสาขา (งานปกติไม่เปลี่ยน)
   await restoreLocalDraft(); // ร่างในเครื่อง (ถ้าใหม่กว่าข้อมูลบนระบบ) — ต้องทำก่อน toggle เพื่อให้ช่อง/โหมดตรงกับที่กรอกค้างไว้
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
   renderThumbs('documents');
@@ -1254,7 +1331,8 @@ function collectReportDraft(){
     noParts,
     note: document.getElementById('f-note').value.trim(),
     needQuote: document.getElementById('f-need-quote').checked,
-    noPhoto: { ...noPhoto }
+    noPhoto: { ...noPhoto },
+    pm: pmSnapshot()
   };
 }
 
@@ -1428,6 +1506,11 @@ async function saveDraft(){
 async function submitJob(){
   // validate text fields
   const report = collectReportDraft();
+  if(pmCtx && !report.needQuote){
+    if(!pmValidateForSubmit()) return;
+    if(!report.cause) report.cause = 'ตรวจเช็ค/บำรุงรักษาตามรอบ PM';
+    if(!report.fix) report.fix = pmSummaryText();
+  }
   if(!report.dateIn){ alert('กรุณาเลือกวันที่เข้าจริง'); document.getElementById('f-date-in').focus(); return; }
   if(!report.timeIn){ alert('กรุณาเลือกเวลาเข้าจริง'); document.getElementById('f-time-in').focus(); return; }
   if(!report.needQuote && !report.dateDone){ alert('กรุณาเลือกวันที่เสร็จงาน'); document.getElementById('f-date-done').focus(); return; }
@@ -1460,6 +1543,8 @@ async function submitJob(){
     // 1. upload photos (ผ่าน Cloudflare Worker → R2)
     const uploadedImages = await collectUploadedImages(report);
     const uploadedDocumentImages = await collectUploadedImages(report, ['documents']);
+    // 1.5 งาน PM: บันทึกผลรายเครื่องลงทะเบียนเครื่อง (ส่งซ้ำได้ — แทนที่ผลเดิมของรอบนี้)
+    if(pmCtx && !report.needQuote){ document.getElementById('upload-status').textContent = 'กำลังบันทึกผล PM รายเครื่อง...'; await pmSaveServer(); report.pm = pmSnapshot(); }
 
     // 2. save report + image metadata to Supabase
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
@@ -1580,6 +1665,423 @@ async function notifyLine(report, counts){
       })
     });
   }catch(e){ console.warn('Line notify failed (non-critical)', e); }
+}
+
+// ============================================================
+// PM — แสดงเฉพาะงานที่ PR ผูกอยู่กับแผน PM (ระบบ PM ช่วงที่ 2)
+// งานปกติ: pmCtx = null → ฟอร์มเหมือนเดิมทุกอย่าง
+// ============================================================
+const PM_TYPES=[
+  {k:'แอร์ผนัง',en:'Wall type',g:'air',unit:'เครื่อง',ic:'❄️'},
+  {k:'แอร์แขวน',en:'Split / Ceiling',g:'air',unit:'เครื่อง',ic:'❄️'},
+  {k:'แอร์ 4 ทิศทาง',en:'Cassette',g:'air',unit:'เครื่อง',ic:'❄️'},
+  {k:'ตู้แช่',en:'',g:'fridge',unit:'ตู้',ic:'🧊'},
+  {k:'ไส้กรองน้ำ',en:'',g:'filter',unit:'ไส้',ic:'💧'},
+  {k:'อื่น ๆ',en:'',g:'other',unit:'เครื่อง',ic:'🔧'}
+];
+const PM_CHECK={
+  air:['ล้างแผ่นกรองอากาศ (ฟิลเตอร์)','ล้างคอยล์เย็น / ถาดน้ำทิ้ง','ล้างคอยล์ร้อน','ตรวจท่อน้ำทิ้ง / ปั๊มเดรน','ตรวจเช็คน้ำยา','ตรวจระบบไฟ / ขันขั้วสาย'],
+  fridge:['ล้างคอยล์ร้อน','ตรวจยางขอบประตู','ตรวจระบบละลายน้ำแข็ง','ตรวจพัดลม','ทำความสะอาดท่อน้ำทิ้ง','ตรวจระบบไฟ / ขันขั้วสาย'],
+  filter:['เปลี่ยนไส้กรอง','ทำความสะอาดกระบอกกรอง','ตรวจรอยรั่วข้อต่อ','ตรวจแรงดันน้ำ / ไล่อากาศ'],
+  other:['ทำความสะอาด','ตรวจระบบไฟ / ขันขั้วสาย','ทดสอบการทำงาน']
+};
+const PM_READ={
+  air:[['amp','กระแสไฟคอมเพรสเซอร์','A'],['psi','แรงดันน้ำยาด้านดูด','psi'],['supply','อุณหภูมิลมจ่าย','°C'],['return','อุณหภูมิลมกลับ','°C'],['volt','แรงดันไฟเข้า (ถ้าวัด)','V']],
+  fridge:[['temp','อุณหภูมิในตู้','°C'],['amp','กระแสไฟคอมเพรสเซอร์','A'],['volt','แรงดันไฟเข้า (ถ้าวัด)','V']],
+  filter:[['cartridges','จำนวนไส้ที่เปลี่ยน','ไส้'],['tds','ค่า TDS น้ำหลังกรอง (ถ้ามีเครื่องวัด)','ppm'],['bar','แรงดันน้ำ (ถ้าวัด)','bar']],
+  other:[['amp','กระแสไฟ','A'],['volt','แรงดันไฟ','V']]
+};
+const PM_COND=[['ดี ใช้งานปกติ','ok'],['พอใช้','fair'],['ควรซ่อม / เปลี่ยนอะไหล่','warn'],['เสีย ใช้งานไม่ได้','bad']];
+let pmCtx=null, pmItems=[], pmQty={}, pmCur=null, pmExtraAssets=[];
+
+function pmType(k){ return PM_TYPES.find(t=>t.k===k) || (/แอร์/.test(k||'')?{k,en:'',g:'air',unit:'เครื่อง',ic:'❄️',legacy:true}:/ตู้/.test(k||'')?PM_TYPES[3]:PM_TYPES[5]); }
+async function pmRpc(fn, body){
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, { method:'POST', headers:sbHeaders(), body:JSON.stringify(body) });
+  const t = await r.text();
+  if(!r.ok){ let m=t; try{ m=JSON.parse(t).message||t; }catch(e){} throw new Error(m); }
+  return t ? JSON.parse(t) : null;
+}
+async function pmInit(){
+  pmCtx=null;
+  try{ pmCtx = await pmRpc('pm_tech_context', { p_job: (jobData&&jobData.id)||JOB_ID }); }
+  catch(e){ console.warn('pm context', e); pmCtx=null; } // ยังไม่ได้รัน SQL / ไม่ใช่งาน PM → ฟอร์มปกติ
+  if(!pmCtx || !pmCtx.visit) { pmCtx=null; return; }
+  const saved = jobData?.technicianReport?.pm;
+  if(saved && saved.visit_id===pmCtx.visit.id) pmApplySnapshot(saved);
+  const head=document.getElementById('j-id');
+  if(head && !document.getElementById('pm-chip')) head.insertAdjacentHTML('beforeend', `<span class="pm-chip" id="pm-chip">PM รอบที่ ${esc(pmCtx.visit.round_no)}</span>`);
+  ['f-cause','f-fix'].forEach(id=>{ const el=document.getElementById(id); if(!el) return; el.placeholder='งาน PM: ไม่บังคับ — กรอกสาเหตุ/การแก้ไขรายเครื่องในส่วน "เครื่องในสาขานี้" แทนได้'; const st=el.closest('.form-group')?.querySelector('.req-star'); if(st) st.style.display='none'; });
+  document.getElementById('pm-wrap').classList.remove('hidden');
+  pmRender();
+}
+function pmSnapshot(){
+  if(!pmCtx) return null;
+  return {
+    visit_id: pmCtx.visit.id, round_no: pmCtx.visit.round_no, contract: pmCtx.contract?.name||'',
+    qty: { ...pmQty }, summary: pmQtyRows().map(r=>({ type:r.t.k, unit:r.t.unit, qty:r.qty })),
+    items: pmItems.map(it=>({ ...it,
+      label_photo: it.label_photo&&it.label_photo.url ? { url:it.label_photo.url } : null,
+      photos: { before:(it.photos?.before||[]).filter(p=>p.url).map(p=>({id:p.id,url:p.url})), after:(it.photos?.after||[]).filter(p=>p.url).map(p=>({id:p.id,url:p.url})) }
+    }))
+  };
+}
+function pmApplySnapshot(s){
+  if(!s || !Array.isArray(s.items)) return;
+  pmQty = { ...(s.qty||{}) };
+  pmItems = s.items.map(it=>({ ...it,
+    label_photo: it.label_photo&&it.label_photo.url ? { url:it.label_photo.url, status:'ready' } : null,
+    photos: { before:(it.photos?.before||[]).map(p=>({ ...p, status:'ready' })), after:(it.photos?.after||[]).map(p=>({ ...p, status:'ready' })) }
+  }));
+}
+function pmAllAssets(){ const seen=new Set(); return [...(pmCtx?.assets||[]), ...pmExtraAssets].filter(a=>!seen.has(a.id)&&seen.add(a.id)); }
+function pmItemOf(key){ return pmItems.find(it=>it.key===key); }
+function pmNewItem(a){
+  return { key:a?a.id:('new-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)), asset_id:a?a.id:'', has_qr:!!(a&&a.qr_code), qr_code:'', scanned:false,
+    asset_type:a?a.asset_type:'', brand:a?.brand||'', model:a?.model||'', capacity:a?.capacity||'', serial_no:a?.serial_no||'', no_label:false, location:a?.location||'',
+    label_photo:a?.label_photo_url?{url:a.label_photo_url,status:'ready'}:null, last:a?.last||null, other_branch:a&&a.branch&&pmCtx&&a._other?a.branch:'',
+    checklist:{}, readings:{}, photos:{before:[],after:[]}, condition:'', cause:'', fix:'', follow_up:false, follow_up_note:'' };
+}
+function pmMissing(it){
+  const m=[]; const t=pmType(it.asset_type);
+  if(!it.asset_type || t.legacy) m.push('ประเภทเครื่อง');
+  if(!it.no_label && !String(it.serial_no||'').trim()) m.push('Serial No.');
+  if(!(it.photos?.before||[]).length) m.push('รูปก่อนทำ');
+  if(!(it.photos?.after||[]).length) m.push('รูปหลังทำ');
+  if(!it.condition) m.push('สภาพเครื่อง');
+  if(it.follow_up && !String(it.follow_up_note||'').trim()) m.push('รายละเอียดงานต่อเนื่อง');
+  return m;
+}
+function pmUploading(it){ return [it.label_photo, ...(it.photos?.before||[]), ...(it.photos?.after||[])].filter(Boolean).filter(p=>p.status==='uploading'||p.status==='compressing'); }
+function pmFailed(it){ return [it.label_photo, ...(it.photos?.before||[]), ...(it.photos?.after||[])].filter(Boolean).filter(p=>p.status==='error'); }
+function pmQtyRows(){
+  return PM_TYPES.filter(t=>t.g!=='other'||pmItems.some(it=>pmType(it.asset_type).k===t.k)).map(t=>{
+    const its=pmItems.filter(it=>pmType(it.asset_type).k===t.k && !pmMissing(it).length);
+    const auto = t.g==='filter' ? its.reduce((s,it)=>s+(parseFloat(it.readings?.cartridges)||1),0) : its.length;
+    const ov = pmQty[t.k];
+    return { t, auto, qty: ov!=null&&ov!=='' ? +ov : auto, overridden: ov!=null&&ov!=='' };
+  });
+}
+function pmSetQty(k,v){ v=String(v).trim(); if(v==='') delete pmQty[k]; else pmQty[k]=Math.max(0,parseFloat(v)||0); scheduleLocalDraftSave(); }
+function pmSummaryText(){
+  return 'บำรุงรักษาตามรอบ PM: '+pmQtyRows().filter(r=>r.qty>0).map(r=>`${r.t.k} ${r.qty} ${r.t.unit}`).join(', ');
+}
+function pmRender(){
+  const el=document.getElementById('pm-wrap'); if(!el||!pmCtx) return;
+  const assets=pmAllAssets();
+  const rows=[...assets.map(a=>({a,it:pmItemOf(a.id)})), ...pmItems.filter(it=>!it.asset_id||!assets.some(a=>a.id===it.asset_id)).map(it=>({a:null,it}))];
+  const done=rows.filter(r=>r.it&&!pmMissing(r.it).length).length;
+  const qrows=pmQtyRows();
+  const grp=(g)=>qrows.filter(r=>r.t.g===g);
+  const qline=r=>`<tr><td class="${r.t.g==='air'?'sub':''}">${r.t.g==='air'?esc(r.t.k)+` <small>${esc(r.t.en)}</small>`:(r.t.g==='fridge'?'2. ':r.t.g==='filter'?'3. ':'')+esc(r.t.k)}</td><td class="n"><input type="number" inputmode="decimal" min="0" value="${r.qty}" onchange="pmSetQty('${esc(r.t.k)}',this.value);pmRender()"></td><td class="u">${esc(r.t.unit)}${r.overridden&&r.qty!==r.auto?`<div class="pm-auto">นับได้ ${r.auto}</div>`:''}</td></tr>`;
+  el.innerHTML=`
+  <div class="card">
+    <div class="step-pill">งาน PM · ${esc(pmCtx.contract?.name||'')}</div>
+    <div class="sec-title">🧾 รายการงานซ่อมบำรุง PM</div>
+    <div class="sec-sub">นับให้อัตโนมัติจากเครื่องที่บันทึกครบด้านล่าง · แก้ตัวเลขเองได้</div>
+    <table class="pm-qt">
+      <tr class="g"><td colspan="3">1. เครื่องปรับอากาศ</td></tr>
+      ${grp('air').map(qline).join('')}${grp('fridge').map(qline).join('')}${grp('filter').map(qline).join('')}${grp('other').map(qline).join('')}
+    </table>
+  </div>
+  <div class="card">
+    <div class="sec-title">🔧 เครื่องในสาขานี้ <span class="req-star">*</span></div>
+    <div class="sec-sub">สแกน QR บนเครื่อง หรือแตะเครื่องในรายการ แล้วบันทึกให้ครบทีละเครื่อง</div>
+    <div class="pm-prog"><div class="pm-bar"><i style="width:${rows.length?Math.round(done*100/rows.length):0}%"></i></div>${done} / ${rows.length} เครื่อง</div>
+    <button type="button" class="btn btn-primary" onclick="pmScanOpen('find')">📷 สแกน QR เครื่อง</button>
+    <div class="pm-two"><button type="button" class="pm-btn2" onclick="pmOpen('')">＋ เพิ่มเครื่องใหม่</button><button type="button" class="pm-btn2" onclick="pmTypeCode('find')">⌨ พิมพ์รหัสเอง</button></div>
+    <div class="pm-list">${rows.length?rows.map(({a,it})=>{
+      const t=pmType((it&&it.asset_type)||(a&&a.asset_type));
+      const miss=it?pmMissing(it):null;
+      const badge=!it?'<span class="pm-r td">ยังไม่ทำ</span>':miss.length?'<span class="pm-r part">ยังไม่ครบ</span>':it.follow_up?'<span class="pm-r wr">⚠ มีงานต่อ</span>':'<span class="pm-r ok">✓ เสร็จ</span>';
+      const key=it?it.key:a.id;
+      return `<div class="pm-mi" onclick="pmOpen('${esc(key)}')"><div class="pm-ic">${t.ic}</div><div style="min-width:0;flex:1"><div class="pm-nm">${esc((it&&it.asset_type)||(a&&a.asset_type)||'ยังไม่ระบุประเภท')}${(it?.location||a?.location)?' · '+esc(it?.location||a?.location):''}</div><div class="pm-sb">${esc((it&&it.asset_id)||(a&&a.id)||'เครื่องใหม่')}${(it?.brand||a?.brand)?' · '+esc(it?.brand||a?.brand):''}${it&&it.other_branch?' · ย้ายมาจาก '+esc(it.other_branch):''}</div></div>${badge}</div>`;
+    }).join(''):'<div class="pm-empty">ยังไม่มีเครื่องในทะเบียนของสาขานี้ — กด "สแกน QR" ถ้าติดสติกเกอร์ไว้แล้ว หรือ "เพิ่มเครื่องใหม่"</div>'}</div>
+  </div>`;
+}
+// ---------- แผ่นบันทึกรายเครื่อง ----------
+function pmCore(it){ const { scanned, _fresh, last, has_qr, other_branch, ...core }=it; return JSON.stringify(core); }
+function pmDropIfUntouched(it){ if(it && it._fresh && pmCore(it)===it._fresh) pmItems=pmItems.filter(x=>x!==it); } // เปิดดูเฉย ๆ ไม่ได้กรอก → ไม่นับเป็นรายการ
+function pmOpen(key){
+  let it = key ? pmItemOf(key) : null;
+  if(!it){
+    const a = key ? pmAllAssets().find(x=>x.id===key) : null;
+    it = pmNewItem(a); it._fresh=pmCore(it); pmItems.push(it);
+  }
+  pmCur = it; pmSheetRender(true);
+}
+function pmSheetRender(scrollTop){
+  const it=pmCur, sh=document.getElementById('pm-sheet'); if(!it||!sh) return;
+  const keep=scrollTop?0:sh.scrollTop;
+  const ae=document.activeElement, fk=ae&&sh.contains(ae)&&ae.dataset?ae.dataset.k:'', fs=fk&&ae.selectionStart!=null?[ae.selectionStart,ae.selectionEnd]:null;
+  const t=pmType(it.asset_type), g=it.asset_type?t.g:'';
+  const list=pmAllAssets();
+  const idx=pmItems.indexOf(it);
+  const photoRow=(slot,label,cls)=>`<div><div class="pm-ph-h ${cls}">${label}</div><div class="pm-tb">${(it.photos[slot]||[]).map(p=>`<span class="pm-th">${p.dataUrl||p.url?`<img src="${esc(p.dataUrl||p.url)}">`:''}${p.status==='uploading'||p.status==='compressing'?'<i class="pm-pct">…</i>':p.status==='error'?`<i class="pm-pct err" onclick="pmRetry('${slot}','${p.id}')">⟳</i>`:''}<b onclick="pmDelPhoto('${slot}','${p.id}')">×</b></span>`).join('')}<label class="pm-th add">＋<input type="file" accept="image/*" multiple class="hidden" onchange="pmAddPhotos('${slot}',this.files);this.value=''"></label></div></div>`;
+  const dT=(g==='air')?pmDeltaT(it):'';
+  sh.innerHTML=`
+  <div class="pm-sh-top"><button type="button" class="pm-back" onclick="pmClose()">‹</button><div style="min-width:0"><div class="pm-sh-t">บันทึก PM รายเครื่อง</div><div class="pm-sh-s">${esc(it.asset_id||'เครื่องใหม่')}${it.asset_type?' · '+esc(it.asset_type):''}</div></div></div>
+  <div class="wrap pm-sh-body">
+    <div class="card">
+      <div class="pm-mh"><span class="pm-code">${esc(it.asset_id||'เครื่องใหม่')}</span>${it.scanned?'<span class="pm-okb">สแกน QR ✓</span>':''}${it.qr_code?`<span class="pm-okb">ผูกสติกเกอร์ ${esc(it.qr_code)}</span>`:''}</div>
+      ${it.last?`<div class="pm-last">PM ครั้งก่อน ${esc(pmThDate(it.last.done_at))}${it.last.condition?' · สภาพ: '+esc(it.last.condition):''}</div>`:''}
+      ${it.other_branch?`<div class="pm-warn">⚠ เครื่องนี้ลงทะเบียนไว้ที่สาขา "${esc(it.other_branch)}"</div>`:''}
+      ${!it.has_qr&&!it.qr_code?`<button type="button" class="pm-btn2" style="margin-top:10px;width:100%" onclick="pmScanOpen('bind')">🏷 ติดสติกเกอร์เปล่า → สแกนเพื่อผูกกับเครื่องนี้</button>`:''}
+      <label style="margin-top:12px">ประเภทเครื่อง <span class="req-star">*</span></label>
+      <div class="pm-chips">${PM_TYPES.map(x=>`<button type="button" class="pm-cp${it.asset_type===x.k?' on':''}" onclick="pmSetType('${esc(x.k)}')">${esc(x.k)}${x.en?` <small>${esc(x.en)}</small>`:''}</button>`).join('')}</div>
+      ${t.legacy&&it.asset_type?`<div class="pm-warn">ทะเบียนเดิมระบุแค่ "${esc(it.asset_type)}" — กรุณาเลือกชนิดให้ชัด</div>`:''}
+      <label style="margin-top:12px">ตำแหน่งในสาขา</label>
+      <input data-k="location" value="${esc(it.location)}" placeholder="เช่น หน้าร้าน / ห้องเก็บของ / หลังร้าน" oninput="pmF('location',this.value)">
+    </div>
+    <div class="card">
+      <div class="sec-title">🏷 ฉลากเครื่อง / Serial No.</div>
+      <div class="sec-sub">ถ่ายหรืออัพรูปป้ายฉลากข้างเครื่อง แล้วกรอก SN</div>
+      <div class="pm-lab">
+        <label class="pm-plate">${it.label_photo&&(it.label_photo.url||it.label_photo.dataUrl)?`<img src="${esc(it.label_photo.dataUrl||it.label_photo.url)}">`:'<span>📷<br>ถ่ายรูปฉลาก</span>'}${it.label_photo&&(it.label_photo.status==='uploading'||it.label_photo.status==='compressing')?'<i class="pm-pct">…</i>':''}${it.label_photo&&it.label_photo.status==='error'?'<i class="pm-pct err">⟳</i>':''}<input type="file" accept="image/*" class="hidden" onchange="pmAddPhotos('label',this.files);this.value=''"></label>
+        <div style="min-width:0">
+          <label>Serial No. ${it.no_label?'':'<span class="req-star">*</span>'}</label>
+          <input data-k="serial_no" class="mono" value="${esc(it.serial_no)}" ${it.no_label?'disabled':''} placeholder="S/N บนฉลาก" oninput="pmF('serial_no',this.value)">
+          <label class="pm-inl"><input type="checkbox" ${it.no_label?'checked':''} onchange="pmF('no_label',this.checked);pmSheetRender()"> ไม่มีฉลาก / อ่านไม่ได้</label>
+        </div>
+      </div>
+      <div class="pm-g3"><div><label>ยี่ห้อ</label><input data-k="brand" value="${esc(it.brand)}" oninput="pmF('brand',this.value)"></div><div><label>รุ่น</label><input data-k="model" value="${esc(it.model)}" oninput="pmF('model',this.value)"></div><div><label>${g==='fridge'?'ขนาด':g==='filter'?'ขนาด/รุ่นไส้':'BTU'}</label><input data-k="capacity" value="${esc(it.capacity)}" inputmode="${g==='air'?'numeric':'text'}" oninput="pmF('capacity',this.value)"></div></div>
+    </div>
+    ${g?`<div class="card">
+      <div class="sec-title">✅ รายการตรวจเช็ก</div>
+      ${(PM_CHECK[g]||[]).map(c=>`<label class="pm-ck"><input type="checkbox" ${it.checklist[c]?'checked':''} onchange="pmCheck(this.dataset.c,this.checked)" data-c="${esc(c)}"> ${esc(c)}</label>`).join('')}
+    </div>
+    <div class="card">
+      <div class="sec-title">📏 ค่าที่วัด</div>
+      <div class="sec-sub">กรอกเป็นตัวเลข · ช่องที่ไม่ได้วัดเว้นว่างได้</div>
+      ${(PM_READ[g]||[]).map(([k,l,u])=>`<div class="pm-rd"><div class="pm-rdn">${esc(l)}</div><input data-k="r-${k}" type="number" inputmode="decimal" step="any" value="${esc(it.readings[k]??'')}" oninput="pmRead('${k}',this.value)"><div class="pm-un">${esc(u)}</div></div>`).join('')}
+      <div id="pm-dt">${dT}</div>
+    </div>`:'<div class="card"><div class="sec-sub" style="margin:0">เลือกประเภทเครื่องก่อน แล้วจะมีรายการตรวจเช็กและช่องค่าที่วัดให้กรอก</div></div>'}
+    <div class="card">
+      <div class="sec-title">📸 รูปของเครื่องนี้ <span class="req-star">*</span></div>
+      <div class="sec-sub">ก่อนทำ และ หลังทำ อย่างน้อยอย่างละ 1 รูป</div>
+      <div class="pm-ph2">${photoRow('before','ก่อนทำ','color-before')}${photoRow('after','หลังทำ','color-after')}</div>
+    </div>
+    <div class="card">
+      <label>สาเหตุ</label><textarea data-k="cause" oninput="pmF('cause',this.value)" placeholder="เช่น คอมเพรสเซอร์กินกระแสสูง / ฟิลเตอร์ตัน">${esc(it.cause)}</textarea>
+      <label style="margin-top:12px">การแก้ไข</label><textarea data-k="fix" oninput="pmF('fix',this.value)" placeholder="เช่น ล้างทำความสะอาดทั้งชุด ขันขั้วสายใหม่">${esc(it.fix)}</textarea>
+    </div>
+    <div class="card">
+      <div class="sec-title">🩺 สภาพเครื่อง <span class="req-star">*</span></div>
+      <div class="pm-chips">${PM_COND.map(([c,k])=>`<button type="button" class="pm-cp c-${k}${it.condition===c?' on':''}" onclick="pmF('condition','${esc(c)}');pmSheetRender()">${esc(c)}</button>`).join('')}</div>
+    </div>
+    <div class="card${it.follow_up?' pm-fu':''}">
+      <label class="pm-inl big"><input type="checkbox" ${it.follow_up?'checked':''} onchange="pmF('follow_up',this.checked);pmSheetRender()"> มีงานต่อเนื่อง</label>
+      ${it.follow_up?`<textarea data-k="fu" style="margin-top:8px" oninput="pmF('follow_up_note',this.value)" placeholder="เช่น ต้องเปลี่ยนคาปาซิเตอร์ 45 µF · ต้องเสนอราคาลูกค้า">${esc(it.follow_up_note)}</textarea><div class="pm-note">แอดมินจะเห็นในรายการ "งานต่อเนื่อง" เพื่อเสนอราคา / เปิดงานซ่อมต่อ</div>`:''}
+    </div>
+    <div id="pm-miss" class="pm-miss"></div>
+    <div class="pm-foot">
+      <button type="button" class="pm-btn2" onclick="pmClose()">บันทึก</button>
+      <button type="button" class="btn btn-primary" onclick="pmNext()">บันทึก + เครื่องถัดไป ›</button>
+    </div>
+    <button type="button" class="pm-del" onclick="pmRemoveItem()">${it.asset_id?'ล้างข้อมูลที่บันทึกของเครื่องนี้':'ลบเครื่องใหม่นี้ออก'}</button>
+  </div>`;
+  sh.classList.remove('hidden'); document.body.classList.add('pm-lock');
+  sh.scrollTop=keep; pmMissRender();
+  if(fk){ const el=sh.querySelector(`[data-k="${fk}"]`); if(el){ el.focus({preventScroll:true}); if(fs) try{ el.setSelectionRange(fs[0],fs[1]); }catch(e){} } }
+}
+function pmThDate(d){ try{ return new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}); }catch(e){ return d||''; } }
+function pmDeltaT(it){
+  const s=parseFloat(it.readings?.supply), r=parseFloat(it.readings?.return);
+  if(!isFinite(s)||!isFinite(r)) return '';
+  const d=Math.round((r-s)*10)/10, ok=d>=8&&d<=14;
+  return `<div class="pm-calc ${ok?'':'bad'}">ผลต่างอุณหภูมิ ${d} °C ${ok?'✓ อยู่ในเกณฑ์ (8–14 °C)':'⚠ นอกเกณฑ์ 8–14 °C — ควรตรวจสอบ'}</div>`;
+}
+function pmMissRender(){ const el=document.getElementById('pm-miss'); if(!el||!pmCur) return; const m=pmMissing(pmCur); el.innerHTML=m.length?'ยังขาด: '+m.map(esc).join(' · '):'<span style="color:var(--green)">✓ ข้อมูลเครื่องนี้ครบแล้ว</span>'; }
+function pmF(k,v){ if(!pmCur) return; pmCur[k]=v; pmMissRender(); scheduleLocalDraftSave(); }
+function pmRead(k,v){ if(!pmCur) return; if(v===''||v==null) delete pmCur.readings[k]; else pmCur.readings[k]=v; const el=document.getElementById('pm-dt'); if(el) el.innerHTML=pmDeltaT(pmCur); scheduleLocalDraftSave(); }
+function pmCheck(c,on){ if(!pmCur) return; if(on) pmCur.checklist[c]=true; else delete pmCur.checklist[c]; scheduleLocalDraftSave(); }
+function pmSetType(k){ if(!pmCur) return; pmCur.asset_type=k; pmSheetRender(); scheduleLocalDraftSave(); }
+function pmClose(){
+  const sh=document.getElementById('pm-sheet'); if(sh){ sh.classList.add('hidden'); sh.innerHTML=''; }
+  document.body.classList.remove('pm-lock');
+  pmDropIfUntouched(pmCur); pmCur=null; pmRender(); scheduleLocalDraftSave();
+}
+function pmNext(){
+  const cur=pmCur;
+  if(cur && cur._fresh && pmCore(cur)===cur._fresh){ pmDropIfUntouched(cur); }
+  else if(cur && pmMissing(cur).length && !confirm('เครื่องนี้ยังกรอกไม่ครบ ('+pmMissing(cur).join(', ')+')\nไปเครื่องถัดไปก่อนแล้วค่อยกลับมากรอกต่อ?')) return;
+  const next=pmAllAssets().find(a=>{ const it=pmItemOf(a.id); return it!==cur && (!it || pmMissing(it).length); });
+  if(next){ pmOpen(next.id); scheduleLocalDraftSave(); }
+  else { pmClose(); alert('บันทึกครบทุกเครื่องในรายการแล้ว\nถ้ามีเครื่องที่ยังไม่อยู่ในรายการ กด "สแกน QR" หรือ "เพิ่มเครื่องใหม่"'); }
+}
+function pmRemoveItem(){
+  if(!pmCur) return;
+  if(!confirm(pmCur.asset_id?'ล้างข้อมูลที่บันทึกของเครื่องนี้ในงานนี้?':'ลบเครื่องใหม่นี้ออกจากรายงาน?')) return;
+  pmItems=pmItems.filter(x=>x!==pmCur); pmClose();
+}
+// ---------- รูปรายเครื่อง: บีบอัดแล้วอัปโหลดทันที (เก็บแค่ URL ในร่าง) ----------
+async function pmUploadEntry(entry, cat){
+  entry.status='uploading'; pmRefreshPhotos();
+  try{
+    const up=await uploadPhoto(entry.blob, cat, 'pm-'+entry.id, entry);
+    entry.url=up.url; entry.status='ready'; delete entry.blob;
+  }catch(e){ console.warn('pm photo upload', e); entry.status='error'; }
+  pmRefreshPhotos(); scheduleLocalDraftSave();
+}
+function pmRefreshPhotos(){ if(pmCur && !document.getElementById('pm-sheet').classList.contains('hidden')) pmSheetRender(); else pmRender(); }
+async function pmAddPhotos(slot, files){
+  const it=pmCur; if(!it) return;
+  for(const file of Array.from(files||[])){
+    if(!file.type.startsWith('image/')) continue;
+    const entry={ id:Date.now()+'-'+Math.random().toString(36).slice(2,7), status:'compressing' };
+    if(slot==='label') it.label_photo=entry; else it.photos[slot].push(entry);
+    pmSheetRender();
+    try{
+      const c=await compressImage(file, slot==='label'?1600:1100, slot==='label'?0.8:0.68); // ฉลากต้องอ่าน SN ได้ → ละเอียดกว่า
+      entry.blob=c.blob; entry.dataUrl=c.dataUrl;
+    }catch(e){ entry.status='error'; pmRefreshPhotos(); continue; }
+    pmUploadEntry(entry, slot==='after'?'after':'before');
+    if(slot==='label') break;
+  }
+}
+function pmRetry(slot,id){ const it=pmCur; if(!it) return; const p=(it.photos[slot]||[]).find(x=>x.id===id); if(p&&p.blob) pmUploadEntry(p, slot==='after'?'after':'before'); }
+function pmDelPhoto(slot,id){ const it=pmCur; if(!it) return; it.photos[slot]=(it.photos[slot]||[]).filter(p=>p.id!==id); pmSheetRender(); scheduleLocalDraftSave(); }
+// ---------- สแกน QR ----------
+let pmScanMode='find', pmScanStream=null, pmScanTimer=null, pmDetector=null;
+function pmCodeFromText(txt){
+  const s=String(txt||'').trim();
+  try{ const u=new URL(s); const c=u.searchParams.get('c'); if(c) return c.trim().toUpperCase(); }catch(e){}
+  const m=s.toUpperCase().match(/PF[AQ]-\d{5}/); return m?m[0]:s.toUpperCase();
+}
+async function pmLoadJsQR(){
+  if(window.jsQR) return;
+  await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js'; s.onload=res; s.onerror=()=>rej(new Error('โหลดตัวอ่าน QR ไม่สำเร็จ')); document.head.appendChild(s); });
+}
+async function pmDecodeCanvas(cv){
+  if(pmDetector){ try{ const r=await pmDetector.detect(cv); if(r&&r[0]) return r[0].rawValue; }catch(e){} }
+  if(window.jsQR){ const ctx=cv.getContext('2d'); const d=ctx.getImageData(0,0,cv.width,cv.height); const r=jsQR(d.data,d.width,d.height,{inversionAttempts:'dontInvert'}); if(r) return r.data; }
+  return '';
+}
+async function pmScanOpen(mode){
+  pmScanMode=mode||'find';
+  const box=document.getElementById('pm-scan');
+  box.innerHTML=`<div class="pm-sh-top"><button type="button" class="pm-back" onclick="pmScanClose()">‹</button><div><div class="pm-sh-t">${pmScanMode==='bind'?'สแกนสติกเกอร์เปล่าเพื่อผูกเครื่อง':'สแกน QR เครื่อง'}</div><div class="pm-sh-s">${esc((jobData&&jobData.id)||JOB_ID)} · PM รอบที่ ${esc(pmCtx?.visit?.round_no||'')}</div></div></div>
+    <div class="pm-cam"><video id="pm-video" playsinline muted></video><div class="pm-frame"></div><div class="pm-camtip" id="pm-camtip">เล็งกล้องไปที่สติกเกอร์ QR บนเครื่อง</div></div>
+    <div class="wrap" style="padding-top:12px">
+      <div class="pm-two"><label class="pm-btn2">📷 ถ่ายรูป QR แทน<input type="file" accept="image/*" capture="environment" class="hidden" onchange="pmScanFile(this.files[0]);this.value=''"></label><button type="button" class="pm-btn2" onclick="pmScanClose();pmTypeCode('${pmScanMode}')">⌨ พิมพ์รหัสเอง</button></div>
+      <div class="pm-note" style="text-align:center;margin-top:10px">ถ้ากล้องไม่เปิด (เช่นเปิดใน LINE) ใช้ "ถ่ายรูป QR แทน" ได้</div>
+    </div>`;
+  box.classList.remove('hidden'); document.body.classList.add('pm-lock');
+  try{ if('BarcodeDetector' in window){ const f=await BarcodeDetector.getSupportedFormats(); if(f.includes('qr_code')) pmDetector=new BarcodeDetector({formats:['qr_code']}); } }catch(e){ pmDetector=null; }
+  try{
+    if(!pmDetector) await pmLoadJsQR();
+    if(!navigator.mediaDevices?.getUserMedia) throw new Error('no camera api');
+    pmScanStream=await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'} }, audio:false });
+    const v=document.getElementById('pm-video'); if(!v){ pmScanStop(); return; }
+    v.srcObject=pmScanStream; await v.play();
+    const cv=document.createElement('canvas');
+    const tick=async()=>{
+      if(!pmScanStream) return;
+      if(v.videoWidth){ const sc=Math.min(1,640/v.videoWidth); cv.width=Math.round(v.videoWidth*sc); cv.height=Math.round(v.videoHeight*sc); cv.getContext('2d').drawImage(v,0,0,cv.width,cv.height); const txt=await pmDecodeCanvas(cv); if(txt){ pmScanClose(); pmHandleCode(pmCodeFromText(txt)); return; } }
+      pmScanTimer=setTimeout(tick,200);
+    };
+    tick();
+  }catch(e){
+    console.warn('camera', e);
+    const tip=document.getElementById('pm-camtip'); if(tip) tip.innerHTML='เปิดกล้องไม่ได้ — กด "ถ่ายรูป QR แทน" ด้านล่าง';
+  }
+}
+function pmScanStop(){ clearTimeout(pmScanTimer); if(pmScanStream){ pmScanStream.getTracks().forEach(t=>t.stop()); pmScanStream=null; } }
+function pmScanClose(){ pmScanStop(); const box=document.getElementById('pm-scan'); box.classList.add('hidden'); box.innerHTML=''; if(!pmCur) document.body.classList.remove('pm-lock'); }
+async function pmScanFile(file){
+  if(!file) return;
+  try{
+    if(!pmDetector) await pmLoadJsQR();
+    const img=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); });
+    let txt='';
+    for(const max of [1200,800,1800]){ const sc=Math.min(1,max/Math.max(img.width,img.height)); const cv=document.createElement('canvas'); cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc); cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height); txt=await pmDecodeCanvas(cv); if(txt) break; }
+    if(!txt){ alert('อ่าน QR จากรูปไม่ได้ — ลองถ่ายใหม่ให้ QR ชัดและเต็มกรอบ หรือพิมพ์รหัสเอง'); return; }
+    pmScanClose(); pmHandleCode(pmCodeFromText(txt));
+  }catch(e){ alert('อ่าน QR ไม่สำเร็จ: '+e.message); }
+}
+function pmTypeCode(mode){
+  pmScanMode=mode||'find';
+  const c=prompt('พิมพ์รหัสบนสติกเกอร์ (เช่น PFA-00012 หรือ PFQ-00031)');
+  if(c&&c.trim()) pmHandleCode(pmCodeFromText(c));
+}
+async function pmHandleCode(code){
+  let r;
+  try{ r=await pmRpc('pm_tech_lookup',{ p_job:(jobData&&jobData.id)||JOB_ID, p_code:code }); }
+  catch(e){ alert('ตรวจรหัสไม่สำเร็จ: '+e.message+'\nเช็กอินเทอร์เน็ตแล้วลองใหม่'); return; }
+  r=r||{};
+  if(pmScanMode==='bind'){
+    if(!pmCur) return;
+    if(r.kind==='blank'){
+      if(pmItems.some(x=>x!==pmCur&&x.qr_code===r.code)){ alert(`สติกเกอร์ ${r.code} ใช้กับเครื่องอื่นในงานนี้แล้ว`); return; }
+      pmCur.qr_code=r.code; pmCur.scanned=true; pmSheetRender(); scheduleLocalDraftSave(); return;
+    }
+    if(r.kind==='asset'){ alert(`QR นี้ผูกกับเครื่อง ${r.asset.id} (${r.asset.branch}) อยู่แล้ว — ใช้สติกเกอร์เปล่าดวงอื่น`); return; }
+    alert(`ไม่รู้จักรหัส ${code} — ต้องเป็นสติกเกอร์เปล่า PFQ-xxxxx`); return;
+  }
+  if(r.kind==='asset'){
+    const a=r.asset;
+    if(!r.same_branch){
+      if(!confirm(`เครื่อง ${a.id} ลงทะเบียนไว้ที่ "${a.client} · ${a.branch}"\nไม่ใช่สาขานี้ — เครื่องถูกย้ายมา หรือสแกนผิดเครื่อง?\n\nกด OK เพื่อบันทึกเครื่องนี้ในงานนี้ต่อ`)) return;
+      a._other=true; if(!pmExtraAssets.some(x=>x.id===a.id)) pmExtraAssets.push(a);
+    }
+    let it=pmItemOf(a.id); if(!it){ it=pmNewItem(a); it._fresh=pmCore(it); pmItems.push(it); }
+    it.scanned=true; pmCur=it; pmSheetRender(true); scheduleLocalDraftSave(); return;
+  }
+  if(r.kind==='blank'){ pmBlankPick(r.code); return; }
+  if(r.kind==='missing'){ alert(`ไม่พบเครื่อง ${code} ในทะเบียน (อาจถูกลบไปแล้ว) — แจ้งแอดมิน หรือเพิ่มเป็นเครื่องใหม่`); return; }
+  alert(`ไม่รู้จักรหัส "${code}" — ไม่ใช่สติกเกอร์ของ ProFix`);
+}
+function pmBlankPick(code){
+  if(pmItems.some(x=>x.qr_code===code)){ const it=pmItems.find(x=>x.qr_code===code); pmCur=it; pmSheetRender(true); return; }
+  const cands=pmAllAssets().filter(a=>!a.qr_code && !(pmItemOf(a.id)?.qr_code));
+  const box=document.getElementById('pm-scan');
+  box.innerHTML=`<div class="pm-sh-top"><button type="button" class="pm-back" onclick="pmScanClose()">‹</button><div><div class="pm-sh-t">สติกเกอร์เปล่า ${esc(code)}</div><div class="pm-sh-s">เลือกเครื่องที่จะติดสติกเกอร์นี้</div></div></div>
+  <div class="wrap"><div class="card"><div class="sec-sub" style="margin:0 0 8px">สติกเกอร์นี้ยังไม่ได้ผูกกับเครื่องไหน — เลือกเครื่องที่ติดสติกเกอร์ดวงนี้</div>
+   ${cands.map(a=>`<div class="pm-mi" onclick="pmBindPick('${esc(code)}','${esc(a.id)}')"><div class="pm-ic">${pmType(a.asset_type).ic}</div><div style="flex:1;min-width:0"><div class="pm-nm">${esc(a.asset_type)}${a.location?' · '+esc(a.location):''}</div><div class="pm-sb">${esc(a.id)}${a.brand?' · '+esc(a.brand):''}${a.serial_no?' · SN '+esc(a.serial_no):''}</div></div><span class="pm-r td">เลือก</span></div>`).join('')||'<div class="pm-empty">ทุกเครื่องในทะเบียนสาขานี้มี QR แล้ว</div>'}
+   <button type="button" class="btn btn-primary" style="margin-top:12px" onclick="pmBindPick('${esc(code)}','')">＋ เป็นเครื่องใหม่ (ยังไม่อยู่ในทะเบียน)</button></div></div>`;
+  box.classList.remove('hidden'); document.body.classList.add('pm-lock');
+}
+function pmBindPick(code, assetId){
+  const box=document.getElementById('pm-scan'); box.classList.add('hidden'); box.innerHTML='';
+  let it = assetId ? pmItemOf(assetId) : null;
+  if(!it){ const a=assetId?pmAllAssets().find(x=>x.id===assetId):null; it=pmNewItem(a); pmItems.push(it); }
+  it.qr_code=code; it.scanned=true; pmCur=it; pmSheetRender(true); scheduleLocalDraftSave();
+}
+// ---------- ตอนส่งงาน ----------
+function pmValidateForSubmit(){
+  if(!pmCtx) return true;
+  const ups=pmItems.flatMap(pmUploading);
+  if(ups.length){ alert(`รูปของเครื่อง PM กำลังอัปโหลด ${ups.length} รูป — รอสักครู่แล้วกดส่งอีกครั้ง`); return false; }
+  const bad=pmItems.map(it=>({it,m:pmMissing(it)})).filter(x=>x.m.length);
+  if(bad.length){ alert('ข้อมูลเครื่อง PM ยังไม่ครบ:\n'+bad.map(x=>`• ${x.it.asset_id||'เครื่องใหม่'} ${x.it.asset_type||''} — ขาด ${x.m.join(', ')}`).join('\n')); pmCur=bad[0].it; pmSheetRender(true); return false; }
+  if(!pmItems.length){ alert('งาน PM ต้องบันทึกอย่างน้อย 1 เครื่อง (ส่วน "เครื่องในสาขานี้")'); document.getElementById('pm-wrap').scrollIntoView({behavior:'smooth'}); return false; }
+  const left=pmAllAssets().filter(a=>!pmItemOf(a.id));
+  if(left.length && !confirm(`ยังไม่ได้บันทึก ${left.length} เครื่องในสาขานี้:\n${left.slice(0,8).map(a=>'• '+a.id+' '+a.asset_type+(a.location?' · '+a.location:'')).join('\n')}${left.length>8?'\n…':''}\n\nส่งงานเลยไหม? (เช่น เครื่องเสีย/เข้าไม่ได้ ให้ระบุในหมายเหตุ)`)) return false;
+  return true;
+}
+async function pmRetryFailedUploads(){
+  for(const it of pmItems){
+    for(const p of pmFailed(it)){ if(p.blob){ const cat=(it.photos.after||[]).includes(p)?'after':'before'; await pmUploadEntry(p,cat); } }
+    if(pmFailed(it).length) throw new Error(`อัปโหลดรูปของเครื่อง ${it.asset_id||'เครื่องใหม่'} ไม่สำเร็จ — เช็กอินเทอร์เน็ตแล้วลองใหม่`);
+  }
+}
+async function pmSaveServer(){
+  if(!pmCtx || !pmItems.length) return;
+  await pmRetryFailedUploads();
+  const items=pmItems.map(it=>{
+    const g=pmType(it.asset_type).g, readings={};
+    (PM_READ[g]||[]).forEach(([k,l,u])=>{ const v=it.readings?.[k]; if(v!==''&&v!=null) readings[l]=`${v} ${u}`; });
+    if(g==='air'){ const s=parseFloat(it.readings?.supply), r=parseFloat(it.readings?.return); if(isFinite(s)&&isFinite(r)) readings['ผลต่างอุณหภูมิ']=`${Math.round((r-s)*10)/10} °C`; }
+    return {
+      key:it.key, asset_id:it.asset_id||null, qr_code:it.qr_code||null, asset_type:it.asset_type, brand:it.brand, model:it.model, capacity:it.capacity,
+      serial_no:it.no_label?'':it.serial_no, location:it.location, label_photo_url:it.label_photo?.url||'',
+      checklist:(PM_CHECK[g]||[]).map(c=>({item:c,done:!!it.checklist?.[c]})), readings,
+      photos:[...(it.photos.before||[]).filter(p=>p.url).map(p=>({cat:'before',url:p.url})), ...(it.photos.after||[]).filter(p=>p.url).map(p=>({cat:'after',url:p.url}))],
+      condition:it.condition, cause:it.cause, fix:it.fix, follow_up:!!it.follow_up, follow_up_note:it.follow_up?it.follow_up_note:''
+    };
+  });
+  const map=await pmRpc('pm_tech_save',{ p_job:(jobData&&jobData.id)||JOB_ID, p_team:jobData?.team||'', p_items:items });
+  Object.entries(map||{}).forEach(([key,id])=>{ const it=pmItemOf(key); if(it&&!it.asset_id){ it.asset_id=id; it.has_qr=it.has_qr||!!it.qr_code; } });
+  saveLocalDraftNow();
 }
 
 // START
