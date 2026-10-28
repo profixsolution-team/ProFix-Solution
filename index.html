@@ -13968,6 +13968,14 @@ async function pmLoad(force){
 function pmContract(){return pm.contracts.find(c=>c.id===pmContractId)||pm.contracts.find(c=>c.status==='active')||pm.contracts[0];}
 function pmSitesOf(cid){return pm.sites.filter(s=>s.contract_id===cid);}
 function pmVisit(cid,round,siteId){return pm.visits.find(v=>v.contract_id===cid&&+v.round_no===+round&&v.site_id===siteId);}
+// แผนของสาขาที่ถูกเอาออกจากสัญญาแล้ว (pm_sites.status=removed) ไม่นับ — pm.sites โหลดเฉพาะสาขาที่ยังอยู่
+function pmLiveVisits(){const ids=new Set(pm.sites.map(s=>s.id));return pm.visits.filter(v=>ids.has(v.site_id));}
+// รอบที่บริษัทเราทำในสัญญานี้ (round_nos) — ไม่ได้กำหนด = รอบ 1..rounds
+function pmRoundsOf(c){if(!c)return [1];const a=Array.isArray(c.round_nos)?c.round_nos.map(Number).filter(n=>n>=1&&n<=12):[];return a.length?[...new Set(a)].sort((x,y)=>x-y):Array.from({length:Math.max(1,+c.rounds||1)},(_,i)=>i+1);}
+// ล้างแผนที่ยังไม่เสร็จของสาขาที่เอาออก (ที่เสร็จแล้วเก็บไว้เป็นประวัติ แต่ไม่แสดง)
+async function pmDropVisitsOfSites(ids){const vids=pm.visits.filter(v=>ids.includes(v.site_id)&&pmVisitState(v).k!=='done').map(v=>v.id);if(!vids.length)return;
+  for(let i=0;i<vids.length;i+=150){const part=vids.slice(i,i+150);await pmReq('pm_visits','?id='+encodeURIComponent('in.('+part.map(x=>'"'+String(x).replace(/"/g,'')+'"').join(',')+')'),{method:'DELETE'});}
+  pm.visits=pm.visits.filter(v=>!vids.includes(v.id));}
 function pmAssetsAt(client,branch){const b=pmNorm(branch),c=pmNorm(client);return pm.assets.filter(a=>a.status!=='retired'&&pmNorm(a.branch)===b&&(!c||pmNorm(a.client)===c));}
 function pmJob(pr){return pr?liveJobs().find(j=>sameJob(j.id,pr)):null;}
 function pmVisitState(v){
@@ -14004,15 +14012,15 @@ async function renderPM(){
 function pmPlanHtml(){
   if(!pm.contracts.length)return `<div class="d2-box"><div class="d2-in d2-pad pm-empty"><div style="font-size:40px">🗓</div><b>ยังไม่มีสัญญา PM</b><div class="tm">เริ่มจากสร้างสัญญา: ลูกค้า + ปี + จำนวนรอบ แล้วเพิ่มสาขา</div><button class="btn btn-primary" onclick="pmEditContract()">＋ สร้างสัญญา PM</button></div></div>`;
   const c=pmContract();pmContractId=c.id;
-  if(pmRound>c.rounds)pmRound=1;
+  const rnds=pmRoundsOf(c);if(!rnds.includes(+pmRound))pmRound=rnds[0];
   pmSelCheck(c);
   const sites=pmSitesOf(c.id);
-  const vis=pm.visits.filter(v=>v.contract_id===c.id);
+  const vis=pmLiveVisits().filter(v=>v.contract_id===c.id);
   const chips=pm.contracts.map(x=>`<button type="button" class="pm-cchip${x.id===c.id?' on':''}" onclick="pmContractId='${x.id}';pmRound=1;pmMonth='';renderPM()">${esc(x.client)} · ${esc(x.name)}${x.status!=='active'?' <span class="tm">(ปิด)</span>':''}</button>`).join('');
   // heatmap รอบ × เดือน
   const yr=+c.year;
   let heat=`<div class="pm-heat" style="grid-template-columns:110px repeat(12,minmax(0,1fr));"><div></div>${PM_TH_MONTHS.map(m=>`<div class="tm" style="text-align:center;font-size:11.5px">${m}</div>`).join('')}`;
-  for(let r=1;r<=c.rounds;r++){
+  for(const r of rnds){
     const rv=vis.filter(v=>+v.round_no===r&&v.status!=='cancelled');
     const done=sites.filter(s=>pmVisitState(pmVisit(c.id,r,s.id)).k==='done').length;
     heat+=`<button type="button" class="pm-rh${pmRound===r?' on':''}" onclick="pmRound=${r};pmMonth='';renderPM()"><b>รอบที่ ${r}</b><small>${done}/${sites.length} เสร็จ</small></button>`;
@@ -14043,7 +14051,7 @@ function pmPlanHtml(){
     :`<div class="d2-empty">${sites.length?'ไม่มีสาขาที่นัดในเดือนที่เลือก':'ยังไม่มีสาขาในสัญญานี้ — กด "＋ เพิ่มสาขา"'}</div>`;
   return `<div class="pm-chips">${chips}<button type="button" class="pm-cchip add" onclick="pmEditContract()">＋ สัญญาใหม่</button></div>
   <div class="pm-grid">
-    <section class="d2-box"><div class="d2-h"><div><div class="t">${esc(c.client)} · ${esc(c.name)}</div><div class="s">ปี ${c.year} · ${c.rounds} รอบ · ${sites.length} สาขา${c.note?' · '+esc(c.note):''}</div></div><button class="btn btn-ghost btn-sm" onclick="pmEditContract('${c.id}')">✏️ แก้ไขสัญญา</button></div>
+    <section class="d2-box"><div class="d2-h"><div><div class="t">${esc(c.client)} · ${esc(c.name)}</div><div class="s">ปี ${c.year} · ${rnds.length<+c.rounds?`ทำรอบที่ ${rnds.join(', ')} จาก ${c.rounds} รอบ`:`${c.rounds} รอบ`} · ${sites.length} สาขา${c.note?' · '+esc(c.note):''}</div></div><button class="btn btn-ghost btn-sm" onclick="pmEditContract('${c.id}')">✏️ แก้ไขสัญญา</button></div>
       <div class="d2-in d2-pad">${heat}<div class="pm-legend tm"><span><i class="cd"></i>เสร็จแล้ว</span><span><i class="cm"></i>มี PR / กำลังทำ</span><span><i class="cp"></i>แผน (ยังไม่มี PR)</span><span>คลิกตัวเลขเพื่อกรองเดือน</span></div></div>
       <div class="d2-h" style="margin-top:6px"><div><div class="t">สาขาในรอบที่ ${pmRound}${pmMonth?' · '+PM_TH_MONTHS[+pmMonth.slice(5)-1]:''}</div><div class="s">เสร็จ ${doneN}/${sites.length} · มี PR ${cnt('job')} · รอ PR ${cnt('plan')} · ยังไม่จัด ${cnt('none')}${pmMonth?` · <a href="javascript:void(0)" onclick="pmMonth='';renderPM()">ดูทุกเดือน</a>`:''}</div></div>
         <button class="btn btn-ghost btn-sm" onclick="pmLinkOpen()">🔗 ผูกงานจากคิว / แอดมิน</button><button class="btn btn-ghost btn-sm" onclick="pmBulkPlan()">🗓 จัดวันเป็นชุด</button><button class="btn btn-primary btn-sm" onclick="pmAddSites()">＋ เพิ่มสาขา</button></div>
@@ -14065,10 +14073,21 @@ function pmEditContract(id){
   const cl=[...new Set([...(clients||[]).map(x=>x.name),...pm.contracts.map(x=>x.client)])].filter(Boolean);
   pmModal(id?'แก้ไขสัญญา PM':'สร้างสัญญา PM','ลูกค้า + ปี + จำนวนรอบต่อปี',`
     <div class="form-row"><div class="form-group"><label>ลูกค้า</label><input id="pmc-client" list="pmc-cl" value="${esc(c.client||'')}" placeholder="เช่น Pun Thai"><datalist id="pmc-cl">${cl.map(x=>`<option value="${esc(x)}">`).join('')}</datalist></div><div class="form-group"><label>ชื่อสัญญา</label><input id="pmc-name" value="${esc(c.name||'PM แอร์ / ตู้แช่')}"></div></div>
-    <div class="form-row"><div class="form-group"><label>ปี (ค.ศ.)</label><input id="pmc-year" type="number" value="${esc(c.year)}"></div><div class="form-group"><label>จำนวนรอบต่อปี</label><input id="pmc-rounds" type="number" min="1" max="12" value="${esc(c.rounds)}"></div></div>
+    <div class="form-row"><div class="form-group"><label>ปี (ค.ศ.)</label><input id="pmc-year" type="number" value="${esc(c.year)}"></div><div class="form-group"><label>จำนวนรอบต่อปี (ตามสัญญาลูกค้า)</label><input id="pmc-rounds" type="number" min="1" max="12" value="${esc(c.rounds)}" oninput="pmRndChips()"></div></div>
+    <div class="form-group"><label>รอบที่บริษัทเราได้ทำ <span class="tm" style="font-weight:400">— กดเลือก (เช่น ได้แค่รอบ 2)</span></label><div class="pm-dw" id="pmc-rnds" data-sel="${esc(pmRoundsOf(c).join(','))}"></div></div>
     <div class="form-group"><label>หมายเหตุ</label><input id="pmc-note" value="${esc(c.note||'')}" placeholder="เช่น เงื่อนไขสัญญา / ผู้ประสานงาน"></div>
     ${id?`<div class="form-group"><label>สถานะ</label><select id="pmc-status"><option value="active"${c.status==='active'?' selected':''}>ใช้งาน</option><option value="closed"${c.status==='closed'?' selected':''}>ปิดสัญญาแล้ว</option></select></div>`:''}`,
     `<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="pmSaveContract('${id||''}')">✓ บันทึก</button>`);
+  pmRndChips();
+}
+function pmRndChips(toggle){
+  const el=document.getElementById('pmc-rnds');if(!el)return;
+  const n=Math.min(12,Math.max(1,parseInt(document.getElementById('pmc-rounds')?.value,10)||1));
+  let sel=String(el.dataset.sel||'').split(',').map(Number).filter(x=>x>=1);
+  if(toggle){sel=sel.includes(toggle)?sel.filter(x=>x!==toggle):[...sel,toggle];}
+  sel=sel.filter(x=>x<=n);if(!sel.length)sel=Array.from({length:n},(_,i)=>i+1);
+  el.dataset.sel=sel.sort((a,b)=>a-b).join(',');
+  el.innerHTML=Array.from({length:n},(_,i)=>i+1).map(r=>`<button type="button" class="${sel.includes(r)?'on':'off'}" style="width:auto;padding:0 12px" onclick="pmRndChips(${r})">รอบ ${r}</button>`).join('');
 }
 async function pmSaveContract(id){
   if(typeof guardEdit==='function'&&!guardEdit())return;
@@ -14076,8 +14095,11 @@ async function pmSaveContract(id){
   const row={id:id||pmId('PMC'),client:g('pmc-client'),name:g('pmc-name')||'PM',year:parseInt(g('pmc-year'),10)||new Date().getFullYear(),rounds:Math.min(12,Math.max(1,parseInt(g('pmc-rounds'),10)||1)),note:g('pmc-note')||null,updated_at:new Date().toISOString(),updated_by:getActorName()};
   if(!row.client){alert('กรุณาใส่ชื่อลูกค้า');return;}
   if(id)row.status=g('pmc-status')||'active';else{row.status='active';row.created_by=getActorName();}
+  const sel=String(document.getElementById('pmc-rnds')?.dataset.sel||'').split(',').map(Number).filter(x=>x>=1&&x<=row.rounds);
+  const cur=id&&pm.contracts.find(x=>x.id===id);
+  if(sel.length&&sel.length<row.rounds)row.round_nos=sel;else if(cur&&Array.isArray(cur.round_nos)&&cur.round_nos.length)row.round_nos=null; // ทำครบทุกรอบ = ไม่ต้องเก็บ
   try{const [saved]=await pmUpsert('pm_contracts',[row]);const i=pm.contracts.findIndex(x=>x.id===row.id);if(i>=0)pm.contracts[i]=saved||row;else pm.contracts.unshift(saved||row);pmContractId=row.id;closeM('m-pm');renderPM();}
-  catch(e){pmErr(e);}
+  catch(e){if(/round_nos/.test(String(e&&e.message||e)))alert('ต้องรันไฟล์ console_pm_phase3b.sql ใน Supabase ก่อน ถึงจะเลือกรอบได้');else pmErr(e);}
 }
 // ค้นหา/กรองแถวในตารางสาขา (กรองบนหน้าจอ ไม่ render ใหม่ → พิมพ์ต่อเนื่องได้)
 function pmApplyFilter(){
@@ -14130,7 +14152,7 @@ async function pmXRead(file){
     const idx={branch:find(h=>/^(ชื่อ)?สาขา|branch|^site|store|ชื่อร้าน/.test(h)),address:find(h=>/ที่อยู่|address/.test(h)),note:find(h=>/หมายเหตุ|note|remark/.test(h)),
       pr:find(h=>h==='pr'||/^(เลข)?(ที่)?pr(no|number)?$/.test(h)||h.includes('เลขpr')||h==='เลขงาน'),date:find(h=>/วันนัด|วันที่|^date|planned/.test(h)),team:find(h=>/^ทีม|team|ช่าง/.test(h))};
     const c=pmContract(),sites=pmSitesOf(c.id),byName=new Map(sites.map(s=>[pmNorm(s.branch),s]));
-    const usedBy=new Map();pm.visits.forEach(v=>{if(v.job_id)usedBy.set(String(v.job_id).toUpperCase(),v);});
+    const usedBy=new Map();pmLiveVisits().forEach(v=>{if(v.job_id)usedBy.set(String(v.job_id).toUpperCase(),v);});
     const seenName=new Set(),seenPr=new Map();
     const cell=(r,k)=>idx[k]>=0?String(r[idx[k]]==null?'':r[idx[k]]).trim():'';
     const teamOf=t=>{if(!t)return '';const n=pmNorm(t);const m=(teams||[]).find(x=>pmNorm(x.name)===n)||(teams||[]).find(x=>pmNorm(x.name).includes(n)||n.includes(pmNorm(x.name)));return m?m.name:t;};
@@ -14200,7 +14222,7 @@ function pmEditSite(id){const s=pm.sites.find(x=>x.id===id);if(!s)return;
 async function pmSaveSite(id){if(typeof guardEdit==='function'&&!guardEdit())return;const g=k=>document.getElementById(k)?.value.trim();
   try{const [saved]=await pmPatch('pm_sites',id,{branch:g('pms-branch'),address:g('pms-addr')||null,note:g('pms-note')||null,updated_at:new Date().toISOString()});const i=pm.sites.findIndex(x=>x.id===id);if(i>=0&&saved)pm.sites[i]=saved;closeM('m-pm');renderPM();}catch(e){pmErr(e);}}
 async function pmRemoveSite(id){const s=pm.sites.find(x=>x.id===id);if(!s||!confirm(`เอา "${s.branch}" ออกจากสัญญานี้?\n(แผนเข้าของสาขานี้จะไม่แสดง · ทะเบียนเครื่องยังอยู่)`))return;
-  try{await pmPatch('pm_sites',id,{status:'removed',updated_at:new Date().toISOString()});pm.sites=pm.sites.filter(x=>x.id!==id);renderPM();}catch(e){pmErr(e);}}
+  try{await pmPatch('pm_sites',id,{status:'removed',updated_at:new Date().toISOString()});await pmDropVisitsOfSites([id]);pm.sites=pm.sites.filter(x=>x.id!==id);renderPM();}catch(e){pmErr(e);}}
 // จัดวัน/ทีมเป็นชุด: สาขาที่ยังไม่มีวันนัด (หรือที่เลือกไว้) → กระจายวันละ N สาขา ต่อทีม · เลือกหลายทีม = ทุกทีมวิ่งพร้อมกันในวันเดียวกัน
 function pmBulkSites(scope){const c=pmContract();const all=pmSitesOf(c.id).slice().sort((a,b)=>a.sort_no-b.sort_no);
   return scope==='sel'?all.filter(s=>pmSel.has(s.id)):all.filter(s=>!(pmVisit(c.id,pmRound,s.id)||{}).planned_date);}
@@ -14290,7 +14312,7 @@ var pmLk=null;
 function pmCoName(x){return pmNorm(String(x||'').replace(/บริษัท|จำกัด|\(มหาชน\)|มหาชน|co\.?,?\s*ltd\.?|ltd\.?|inc\.?/gi,''));}
 function pmLinkOpen(siteId){
   const c=pmContract();if(!c)return;const sites=pmSitesOf(c.id);
-  const usedBy=new Map();pm.visits.forEach(v=>{if(v.job_id)usedBy.set(String(v.job_id).toUpperCase(),v);});
+  const usedBy=new Map();pmLiveVisits().forEach(v=>{if(v.job_id)usedBy.set(String(v.job_id).toUpperCase(),v);});
   const map=new Map();
   liveJobs().forEach(j=>{const pr=String(j.id||'').toUpperCase();if(!pr)return;map.set(pr,{pr,branch:j.branch||'',client:j.client||'',type:j.type||'',text:[j.type,j.note,j.detail].join(' '),date:String(j.date||j.assignedAt||'').slice(0,10),status:j.status||'',team:j.team||'',src:'คิวช่าง',q:true});});
   (typeof adminTasks!=='undefined'&&adminTasks||[]).forEach(t=>{if(isDeletedRecord(t))return;const pr=pmPrOf(t.jobId);if(!pr)return;const m=map.get(pr);if(m){m.src='คิวช่าง · Admin';m.a=true;if(!m.text.includes(t.type||''))m.text+=' '+(t.type||'')+' '+(t.detail||'');return;}
@@ -14371,7 +14393,7 @@ async function pmLkSave(){
   }catch(e){pmErr(e);if(btn){btn.disabled=false;pmLkCount();}}
 }
 // ป้าย "PM รอบ N" บนงานในคิวช่าง / Admin Tracker (โหลดข้อมูล PM เบื้องหลังครั้งแรก — แอดมินเท่านั้น)
-function pmVisitOfJob(pr){pr=String(pr||'').toUpperCase().trim();if(!pr||!pm.loaded)return null;return pm.visits.find(v=>String(v.job_id||'').toUpperCase()===pr&&v.status!=='cancelled')||null;}
+function pmVisitOfJob(pr){pr=String(pr||'').toUpperCase().trim();if(!pr||!pm.loaded)return null;return pmLiveVisits().find(v=>String(v.job_id||'').toUpperCase()===pr&&v.status!=='cancelled')||null;}
 function pmJobChip(pr){
   if(!pm.loaded){if(!pm.loading&&typeof AUTH!=='undefined'&&AUTH&&AUTH.role==='admin'&&!pmJobChip._t){pmJobChip._t=1;pmLoad().then(()=>{try{renderJobs();}catch(e){}try{renderAdmin();}catch(e){}});}return '';}
   const v=pmVisitOfJob(pr);if(!v)return '';
@@ -14710,7 +14732,7 @@ function pmBulkDelete(){
   const ids=[...pmSel],nv=ids.filter(id=>pmVisit(c.id,pmRound,id)).length;
   pmModal(`ลบ ${ids.length} สาขาที่เลือก`,`รอบที่ ${pmRound} · ${c.client}`,`
     <div class="pm-delopt"><b>ล้างแผนรอบที่ ${pmRound}</b><div class="tm">ลบวันนัด / ทีม / PR / สถานะ ของรอบนี้ (${nv} รายการที่มีแผน) — สาขายังอยู่ในสัญญา รอบอื่นไม่ถูกแตะ</div><button class="btn btn-ghost btn-sm" ${nv?'':'disabled'} onclick="pmBulkDeleteSave('visits')">ล้างแผนรอบนี้</button></div>
-    <div class="pm-delopt"><b>เอาสาขาออกจากสัญญา</b><div class="tm">สาขาจะหายจากทุกรอบของสัญญานี้ · ทะเบียนเครื่องยังอยู่</div><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="pmBulkDeleteSave('sites')">เอา ${ids.length} สาขาออกจากสัญญา</button></div>`,
+    <div class="pm-delopt"><b>เอาสาขาออกจากสัญญา</b><div class="tm">สาขาจะหายจากทุกรอบของสัญญานี้ · แผน/PR ที่ยังไม่เสร็จของสาขานี้ถูกล้างด้วย · ทะเบียนเครื่องยังอยู่</div><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="pmBulkDeleteSave('sites')">เอา ${ids.length} สาขาออกจากสัญญา</button></div>`,
     `<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button>`);
 }
 async function pmBulkDeleteSave(kind){
@@ -14726,7 +14748,8 @@ async function pmBulkDeleteSave(kind){
       pm.visits=pm.visits.filter(v=>!vids.includes(v.id));
     }else{
       if(!confirm(`เอา ${ids.length} สาขาออกจากสัญญา ${c.name}?`))return;
-      await pmReq('pm_sites','?id='+encodeURIComponent(inList(ids)),{method:'PATCH',prefer:'return=minimal',body:JSON.stringify({status:'removed',updated_at:new Date().toISOString()})});
+      for(let i=0;i<ids.length;i+=150)await pmReq('pm_sites','?id='+encodeURIComponent(inList(ids.slice(i,i+150))),{method:'PATCH',prefer:'return=minimal',body:JSON.stringify({status:'removed',updated_at:new Date().toISOString()})});
+      await pmDropVisitsOfSites(ids);
       pm.sites=pm.sites.filter(s=>!ids.includes(s.id));
     }
     closeM('m-pm');pmSel.clear();renderPM();
