@@ -1361,6 +1361,9 @@ body.pfpv-lock{overflow:hidden;}
 .rpm-th a{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border);display:block;background:#eef0f4;}
 .rpm-th img{width:100%;height:100%;object-fit:cover;display:block;}
 .rpm-th i{position:absolute;left:0;right:0;bottom:0;font-style:normal;font-size:10px;color:#fff;background:rgba(0,0,0,.5);text-align:center;}
+.rpm-ng{font-size:12.5px;color:#b91c1c;background:rgba(220,38,38,.07);border-radius:7px;padding:4px 8px;margin-top:2px;}
+.rpm-ok{font-size:12px;color:#15803d;}
+.rpm-sign{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-top:8px;}.rpm-sign img{height:38px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:2px 6px;}
 .pm-lbl{display:block;margin-top:8px;width:132px;border-radius:8px;overflow:hidden;border:1px solid var(--border);text-decoration:none;}
 .pm-lbl img{width:100%;height:80px;object-fit:cover;display:block;}.pm-lbl span{display:block;font-size:11px;text-align:center;color:var(--text2);padding:2px 0;}
 </style>
@@ -14172,6 +14175,7 @@ function pmEditAsset(id,preset){
     <div class="form-row"><div class="form-group"><label>ประเภท</label><select id="pma-type">${PM_ASSET_TYPES.map(t=>`<option${t===a.asset_type?' selected':''}>${t}</option>`).join('')}</select></div>${f('location','ตำแหน่งในสาขา',a.location,'text','เช่น หน้าร้าน / ห้องเก็บของ')}</div>
     <div class="form-row">${f('brand','ยี่ห้อ',a.brand)}${f('model','รุ่น',a.model)}</div>
     <div class="form-row">${f('capacity','ขนาด / BTU',a.capacity,'text','เช่น 18,000 BTU / 2 ประตู')}${f('serial','Serial (ของยี่ห้อ)',a.serial_no)}</div>
+    <div class="form-row"><div class="form-group"><label>ชนิดน้ำยา (แอร์)</label><select id="pma-refrigerant"><option value="">— ไม่ระบุ —</option>${['R22','R410A','R32'].map(r=>`<option${r===a.refrigerant?' selected':''}>${r}</option>`).join('')}</select></div><div class="form-group"></div></div>
     <div class="form-row">${f('installed','วันติดตั้ง',a.installed_at,'date')}${f('warranty','ประกันถึง',a.warranty_until,'date')}</div>
     <div class="form-row">${f('qr','สติกเกอร์ QR ที่ติดอยู่ (ถ้ามี)',a.qr_code,'text','เช่น PFQ-00012')}${f('note','หมายเหตุ',a.note)}</div>
     ${id?`<div class="form-group"><label>สถานะ</label><select id="pma-status"><option value="active"${a.status!=='retired'?' selected':''}>ใช้งาน</option><option value="retired"${a.status==='retired'?' selected':''}>เลิกใช้ / ถอดออกแล้ว</option></select></div>`:''}`,
@@ -14182,6 +14186,7 @@ async function pmSaveAsset(id){
   const g=k=>{const v=document.getElementById('pma-'+k)?.value.trim();return v||null;};
   const row={client:g('client'),branch:g('branch'),asset_type:g('type')||'แอร์',location:g('location'),brand:g('brand'),model:g('model'),capacity:g('capacity'),serial_no:g('serial'),installed_at:g('installed'),warranty_until:g('warranty'),qr_code:(g('qr')||'').toUpperCase()||null,note:g('note'),updated_at:new Date().toISOString(),updated_by:getActorName()};
   if(!row.client||!row.branch){alert('กรุณาใส่ลูกค้าและสาขา');return;}
+  {const rf=g('refrigerant'),cur=id&&pm.assets.find(x=>x.id===id);if(rf)row.refrigerant=rf;else if(cur&&cur.refrigerant)row.refrigerant=null;}
   if(row.qr_code&&pm.assets.some(a=>a.qr_code===row.qr_code&&a.id!==id)){alert('สติกเกอร์ '+row.qr_code+' ผูกกับเครื่องอื่นอยู่แล้ว');return;}
   try{
     if(id){row.status=g('status')||'active';const [saved]=await pmPatch('pm_assets',id,row);const i=pm.assets.findIndex(x=>x.id===id);if(i>=0)pm.assets[i]=saved||{...pm.assets[i],...row};closeM('m-pm');renderPM();pmOpenAsset(id);}
@@ -14193,7 +14198,7 @@ function pmOpenAsset(id){
   const a=pm.assets.find(x=>x.id===id);if(!a)return;
   const logs=pm.logs.filter(l=>l.asset_id===id);
   const jobsHere=liveJobs().filter(j=>pmNorm(j.branch)===pmNorm(a.branch)).sort((x,y)=>String(y.date||'').localeCompare(String(x.date||''))).slice(0,6);
-  const info=[['ประเภท',a.asset_type],['ยี่ห้อ / รุ่น',[a.brand,a.model].filter(Boolean).join(' ')||'-'],['ขนาด',a.capacity||'-'],['Serial',a.serial_no||'-'],['ลูกค้า / สาขา',`${a.client} · ${a.branch}`],['ตำแหน่ง',a.location||'-'],['ติดตั้ง',a.installed_at?pmThDateY(a.installed_at):'-'],['ประกันถึง',a.warranty_until?pmThDateY(a.warranty_until):'-'],['สติกเกอร์',a.qr_code||'ใช้รหัสเครื่อง']];
+  const info=[['ประเภท',a.asset_type],['ยี่ห้อ / รุ่น',[a.brand,a.model].filter(Boolean).join(' ')||'-'],['ขนาด',a.capacity||'-'],['Serial',a.serial_no||'-'],...(a.refrigerant?[['น้ำยา',a.refrigerant]]:[]),['ลูกค้า / สาขา',`${a.client} · ${a.branch}`],['ตำแหน่ง',a.location||'-'],['ติดตั้ง',a.installed_at?pmThDateY(a.installed_at):'-'],['ประกันถึง',a.warranty_until?pmThDateY(a.warranty_until):'-'],['สติกเกอร์',a.qr_code||'ใช้รหัสเครื่อง']];
   const feed=logs.length?logs.map(l=>`<div class="pm-ev"><span class="d2-evdot" style="background:${l.kind==='repair'?'#dc2626':l.kind==='pm'?'#16a34a':'#175fff'}"></span><div style="flex:1;min-width:0"><b>${esc({pm:'PM',repair:'ซ่อม',note:'บันทึก',bind_qr:'ผูก QR'}[l.kind]||l.kind)}${l.condition?' — '+esc(l.condition):''}</b> <span class="tm">· ${esc(jqThDate(String(l.done_at).slice(0,10)))}${l.team?' · '+esc(l.team):''}${l.job_id?' · '+esc(l.job_id):''}${l.created_by?' · โดย '+esc(l.created_by):''}</span>${l.recommendation?`<div style="font-size:13px;margin-top:2px">${esc(l.recommendation)}</div>`:''}${pmLogDetail(l)}</div></div>`).join(''):'<div class="tm" style="padding:6px 0">ยังไม่มีบันทึก — ช่วงที่ 2 ช่างจะบันทึกผ่านฟอร์ม PM ได้ · ตอนนี้แอดมินเพิ่มบันทึกเองได้</div>';
   pmModal(a.id,`${a.asset_type} ${a.brand||''} · ${a.client} · ${a.branch}`,`
     <div class="pm-ahead"><div><div class="pm-qrbox" id="pm-qrbox"></div>${a.label_photo_url?`<a class="pm-lbl" href="${esc(a.label_photo_url)}" target="_blank" rel="noopener" title="รูปฉลากเครื่อง"><img src="${esc(a.label_photo_url)}" alt="ฉลาก"><span>ฉลากเครื่อง</span></a>`:''}</div><div style="flex:1;min-width:0"><div class="pm-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${esc(v)}</b></div>`).join('')}</div>${a.note?`<div class="tm" style="margin-top:8px">${esc(a.note)}</div>`:''}</div></div>
@@ -14500,27 +14505,240 @@ function pmThumbs(list){list=(list||[]).filter(p=>p&&p.url);return list.length?`
 // บันทึกในประวัติเครื่อง (pm_asset_logs) — เช็กลิสต์/ค่าที่วัด/สาเหตุ/การแก้ไข/งานต่อเนื่อง/รูป
 function pmLogDetail(l){
   const ck=Array.isArray(l.checklist)?l.checklist:[],ckDone=ck.filter(x=>x&&x.done);
+  if(ck.some(x=>x&&x.result!=null))return pmSheetSummaryHtml(ck,l.readings)+`${l.cause?`<div style="font-size:12.5px"><span class="tm">สาเหตุ:</span> ${esc(l.cause)}</div>`:''}${l.fix?`<div style="font-size:12.5px"><span class="tm">การแก้ไข:</span> ${esc(l.fix)}</div>`:''}${l.follow_up?`<div class="rpm-fu${l.follow_up_done_at?' done':''}">🔧 งานต่อเนื่อง: ${esc(l.follow_up_note||'-')}${l.follow_up_done_at?` <span class="tm">· จัดการแล้ว ${esc(jqThDate(String(l.follow_up_done_at).slice(0,10)))}${l.follow_up_done_by?' โดย '+esc(l.follow_up_done_by):''}</span>`:''}</div>`:''}${pmThumbs((Array.isArray(l.photos)?l.photos:[]).map(p=>({url:p.url,label:p.cat==='after'?'หลัง':'ก่อน'})))}`;
   const rd=l.readings&&typeof l.readings==='object'?Object.entries(l.readings):[];
   const ph=(Array.isArray(l.photos)?l.photos:[]).map(p=>({url:p.url,label:p.cat==='after'?'หลัง':'ก่อน'}));
   return `${rd.length?`<div class="tm" style="font-size:12px">📏 ${rd.map(([k,v])=>esc(k)+' '+esc(v)).join(' · ')}</div>`:''}${ck.length?`<div class="tm" style="font-size:12px">✅ ตรวจเช็ก ${ckDone.length}/${ck.length}${ckDone.length?': '+ckDone.map(x=>esc(x.item)).join(', '):''}</div>`:''}${l.cause?`<div style="font-size:12.5px"><span class="tm">สาเหตุ:</span> ${esc(l.cause)}</div>`:''}${l.fix?`<div style="font-size:12.5px"><span class="tm">การแก้ไข:</span> ${esc(l.fix)}</div>`:''}${l.follow_up?`<div class="rpm-fu${l.follow_up_done_at?' done':''}">🔧 งานต่อเนื่อง: ${esc(l.follow_up_note||'-')}${l.follow_up_done_at?` <span class="tm">· จัดการแล้ว ${esc(jqThDate(String(l.follow_up_done_at).slice(0,10)))}${l.follow_up_done_by?' โดย '+esc(l.follow_up_done_by):''}</span>`:''}</div>`:''}${pmThumbs(ph)}`;
+}
+// PM Check Sheet แอร์ (15 ข้อ): สรุป ปกติ/ไม่ปกติ + ค่าที่วัด + ข้อที่ไม่ปกติพร้อมหมายเหตุ
+function pmSheetSummaryHtml(rows,readings){
+  rows=(rows||[]).filter(Boolean);const ok=rows.filter(r=>r.result==='ปกติ').length,ng=rows.filter(r=>r.result==='ไม่ปกติ');
+  const rd=Object.entries(readings||{}).filter(([k,v])=>v!==''&&v!=null);
+  return `<div class="rpm-ok">✅ PM Check Sheet: ปกติ ${ok}/${rows.length}${ng.length?` · <b style="color:#b91c1c">ไม่ปกติ ${ng.length}</b>`:''}</div>${rd.length?`<div class="rpm-rd">📏 ${rd.map(([k,v])=>`${esc(k)} <b>${esc(v)}</b>`).join(' · ')}</div>`:''}${ng.map(r=>`<div class="rpm-ng">✕ ข้อ ${esc(r.no)} ${esc(r.item)}${r.data?` (${esc(r.data)})`:''}${r.remark?` — ${esc(r.remark)}`:''}</div>`).join('')}`;
 }
 // หน้ารายงานช่าง: งาน PM แสดงผลรายเครื่องที่ช่างกรอก (จาก technicianReport.pm)
 function renderReportPM(j){
   const p=j&&j.technicianReport&&j.technicianReport.pm;if(!p||!Array.isArray(p.items)||!p.items.length)return '';
   const sum=(p.summary||[]).filter(r=>+r.qty>0).map(r=>`${esc(r.type)} <b>${esc(r.qty)}</b> ${esc(r.unit)}`).join(' · ');
   const fu=p.items.filter(it=>it.follow_up).length;
-  return `<div class="rpm"><div class="rpm-h"><b>🧾 งาน PM รอบที่ ${esc(p.round_no||'')}</b>${p.contract?` <span class="tm">· ${esc(p.contract)}</span>`:''}<span style="flex:1"></span><span class="tm">${p.items.length} เครื่อง${fu?` · <span style="color:#ea580c;font-weight:700">งานต่อเนื่อง ${fu}</span>`:''}</span></div>${sum?`<div class="rpm-sum">${sum}</div>`:''}
+  return `<div class="rpm"><div class="rpm-h"><b>🧾 งาน PM รอบที่ ${esc(p.round_no||'')}</b>${p.contract?` <span class="tm">· ${esc(p.contract)}</span>`:''}<span style="flex:1"></span><span class="tm">${p.items.length} เครื่อง${fu?` · <span style="color:#ea580c;font-weight:700">งานต่อเนื่อง ${fu}</span>`:''}</span><button type="button" class="btn btn-ghost btn-sm" onclick="pmPrintCheckSheet('${esc(j.id).replace(/'/g,'&#39;')}')">🖨 PM Check Sheet</button></div>${sum?`<div class="rpm-sum">${sum}</div>`:''}
   ${p.items.map(it=>{
+    if(Array.isArray(it.sheet_rows))return pmReportItemHtml(it,pmSheetSummaryHtml(it.sheet_rows,Object.assign(it.refrigerant?{'น้ำยา':it.refrigerant}:{},Object.fromEntries(it.sheet_rows.filter(r=>r&&r.data).map(r=>['ข้อ '+r.no,r.data])))));
     const rd=Object.entries(it.readings||{}).filter(([k,v])=>v!==''&&v!=null).map(([k,v])=>{const L=PM_RD_LABEL[k]||[k,''];return `${esc(L[0])} <b>${esc(v)}</b> ${esc(L[1])}`;});
     const s=parseFloat(it.readings&&it.readings.supply),r=parseFloat(it.readings&&it.readings.return);if(isFinite(s)&&isFinite(r))rd.push(`ผลต่าง <b>${Math.round((r-s)*10)/10}</b> °C`);
     const ck=Object.keys(it.checklist||{}).filter(k=>it.checklist[k]);
-    const ph=[...(it.label_photo&&it.label_photo.url?[{url:it.label_photo.url,label:'ฉลาก'}]:[]),...((it.photos&&it.photos.before)||[]).map(x=>({url:x.url,label:'ก่อน'})),...((it.photos&&it.photos.after)||[]).map(x=>({url:x.url,label:'หลัง'}))];
-    const code=it.asset_id||'เครื่องใหม่',canOpen=!!it.asset_id&&typeof AUTH!=='undefined'&&AUTH.role==='admin';
-    return `<div class="rpm-it${it.follow_up?' fu':''}"><div class="rpm-ih">${canOpen?`<button type="button" class="link-btn mono" onclick="pmGoAsset('${esc(it.asset_id)}')">${esc(code)}</button>`:`<span class="mono" style="font-weight:700">${esc(code)}</span>`} <b>${esc(it.asset_type||'')}</b>${it.location?` <span class="tm">· ${esc(it.location)}</span>`:''}${it.qr_code?` <span class="tm">· ผูก ${esc(it.qr_code)}</span>`:''}<span style="flex:1"></span>${pmCondChip(it.condition)}</div>
-      <div class="tm" style="font-size:12px">${[it.brand,it.model,it.capacity?(it.capacity+(/^\d+$/.test(String(it.capacity))?' BTU':'')):''].filter(Boolean).map(esc).join(' · ')}${it.no_label?' · ไม่มีฉลาก':it.serial_no?` · SN <span class="mono">${esc(it.serial_no)}</span>`:''}</div>
-      ${rd.length?`<div class="rpm-rd">📏 ${rd.join(' · ')}</div>`:''}${ck.length?`<div class="tm" style="font-size:12px">✅ ${ck.map(esc).join(', ')}</div>`:''}
-      ${it.cause?`<div style="font-size:12.5px"><span class="tm">สาเหตุ:</span> ${esc(it.cause)}</div>`:''}${it.fix?`<div style="font-size:12.5px"><span class="tm">การแก้ไข:</span> ${esc(it.fix)}</div>`:''}
-      ${it.follow_up?`<div class="rpm-fu">🔧 งานต่อเนื่อง: ${esc(it.follow_up_note||'-')}</div>`:''}${pmThumbs(ph)}</div>`;}).join('')}</div>`;
+    return pmReportItemHtml(it,`${rd.length?`<div class="rpm-rd">📏 ${rd.join(' · ')}</div>`:''}${ck.length?`<div class="tm" style="font-size:12px">✅ ${ck.map(esc).join(', ')}</div>`:''}`);}).join('')}
+  ${p.sign&&(p.sign.url||p.sign.name)?`<div class="rpm-sign"><span class="tm">ผู้รับบริการ:</span>${p.sign.url?`<a href="${esc(p.sign.url)}" target="_blank" rel="noopener"><img src="${esc(p.sign.url)}" alt="ลายเซ็น"></a>`:''}<b>${esc(p.sign.name||'')}</b></div>`:''}</div>`;
+}
+function pmReportItemHtml(it,mid){
+  const ph=[...(it.label_photo&&it.label_photo.url?[{url:it.label_photo.url,label:'ฉลาก'}]:[]),...((it.photos&&it.photos.before)||[]).map(x=>({url:x.url,label:'ก่อน'})),...((it.photos&&it.photos.after)||[]).map(x=>({url:x.url,label:'หลัง'}))];
+  const code=it.asset_id||'เครื่องใหม่',canOpen=!!it.asset_id&&typeof AUTH!=='undefined'&&AUTH.role==='admin';
+  return `<div class="rpm-it${it.follow_up?' fu':''}"><div class="rpm-ih">${canOpen?`<button type="button" class="link-btn mono" onclick="pmGoAsset('${esc(it.asset_id)}')">${esc(code)}</button>`:`<span class="mono" style="font-weight:700">${esc(code)}</span>`} <b>${esc(it.asset_type||'')}</b>${it.location?` <span class="tm">· ${esc(it.location)}</span>`:''}${it.qr_code?` <span class="tm">· ผูก ${esc(it.qr_code)}</span>`:''}<span style="flex:1"></span>${pmCondChip(it.condition)}</div>
+    <div class="tm" style="font-size:12px">${[it.brand,it.model,it.capacity?(it.capacity+(/^\d+$/.test(String(it.capacity))?' BTU':'')):''].filter(Boolean).map(esc).join(' · ')}${it.no_label?' · ไม่มีฉลาก':it.serial_no?` · SN <span class="mono">${esc(it.serial_no)}</span>`:''}</div>
+    ${mid}
+    ${it.cause?`<div style="font-size:12.5px"><span class="tm">สาเหตุ:</span> ${esc(it.cause)}</div>`:''}${it.fix?`<div style="font-size:12.5px"><span class="tm">การแก้ไข:</span> ${esc(it.fix)}</div>`:''}
+    ${it.follow_up?`<div class="rpm-fu">🔧 งานต่อเนื่อง: ${esc(it.follow_up_note||'-')}</div>`:''}${pmThumbs(ph)}</div>`;
+}
+// ===== PM Check Sheet Air — หน้าตาตามแบบฟอร์มบริษัท "PM Check Sheet Air.pdf" =====
+// ตำแหน่งเส้น/ช่อง/ตัวอักษรวัดจากไฟล์จริง (หน่วย pt บนกระดาษ A4) · ต้นฉบับใช้ Angsana New 6.8pt
+// → ใช้ Sarabun (ไทย) + Tinos (อังกฤษ แบบ Times) ที่ขนาด ×0.67 ซึ่งกว้างเท่าต้นฉบับ
+// โค้ดชุดนี้มีเหมือนกันทั้งใน index.html (PDF ส่งลูกค้า) และ technician-submit.html (พรีวิว + ลูกค้าเซ็น) — แก้ที่หนึ่งต้องแก้อีกที่
+const PMS_ITEMS=[
+  [1,'ตรวจสอบสภาพพื้นที่การทำงาน','สภาพพื้นที่มีความปลอดภัยในการทำงาน'],
+  [2,'ตรวจสอบอุณหภูมิพื้นที่ / การปรับตั้งอุณหภูมิ Thermostal','อุณหภูมิ ปกติ 25 องศา'],
+  [3,'เสียงการทำงานของอุปกรณ์','เสียงปกติไม่ดังเป็นที่รบกวน'],
+  [4,'ตรวจสอบสภาพอุปกรณ์โครงสร้าง','อุปกรณ์ไม่ชำรุด ฉีกขาด แตกหัก และประกอบแนบสนิท'],
+  [5,'ตรวจสอบแนวท่อน้ำยาสภาพฉนวน','สภาพฉวนไม่ฉีกขาดและมีคราบน้ำ'],
+  [6,'ตรวจวัดอุณหภูมิหน้าชุดคอยล์เย็น ก่อน-หลังล้าง','อุณหภูมิ ปกติ 18 - 23 องศา'],
+  [7,'ตรวจวัดความเร็วลมหน้าคอยล์เย็น','ความเร็วลม > 2.5- 3 M/S'],
+  [8,'ทำความสะอาดฟิลเตอร์กรองอากาศและหน้ากากคอยล์เย็น','หลังทำความสะอาดไม่มีฝุ่นตกค้าง'],
+  [9,'ทำความสะอาดถาดน้ำทิ้งและท่อน้ำทิ้ง','ถาดน้ำทิ้งสะอาดและท่อน้ำทิ้งสามารถระบายน้ำจากถาดได้'],
+  [10,'ทำความสะอาดมอเตอร์คอยล์เย็นและใบพัด','ถอดแยกส่วนชุดเพื่อล้างทำความสะอาด'],
+  [11,'ตรวจสอบการทำงานชุดคอยล์ร้อน ก่อน-หลังล้าง','ไม่มีเสียงและกลิ่นที่ผิดปกติ'],
+  [12,'ทำความสะอาดคอยล์ร้อน','ไม่มีคราบฝุ่นและสิ่งสกปรก'],
+  [13,'วัดค่าแรงกระแสคอมเพลสเซอร์ ทั้ง 3 เฟส','อ้างอิงตามป้ายระบุสเปค'],
+  [14,'วัดค่าแรงดันน้ำยาในระบบ',''],
+  [15,'การทำงาน Thermostal และ Remote Control (เปิด-ปิด)','สามารถทำงานตามฟังก์ชั่นได้']
+];
+const PMS_REF=[['R22','R22 : L(60-80)H(245-295)'],['R410A','R410A : L(100-150)H(330-477)'],['R32','R32  : L(100-150)H(330-477)']];
+const PMS_SIGN_BOX={x:86,y:628,w:92,h:46};   // ช่องลายเซ็นผู้รับบริการ (pt) — เส้นเซ็นอยู่ที่ y 670.6
+const PMS_SIGN_VIEW={x:50,y:600,w:134,h:124}; // ส่วนของกระดาษที่ขยายให้ลูกค้าเซ็นบนมือถือ
+const PMS_K=0.675;                            // Angsana → Sarabun/Tinos
+const PMS_CSS=`@font-face{font-family:PMSThai;font-weight:400;src:url(https://fonts.gstatic.com/s/sarabun/v17/DtVjJx26TKEr37c9aAFJn3YO5gjupg.woff2) format('woff2');unicode-range:U+0E01-0E5B}
+@font-face{font-family:PMSThai;font-weight:700;src:url(https://fonts.gstatic.com/s/sarabun/v17/DtVmJx26TKEr37c9YK5sik8s6yLUrwB0lw.woff2) format('woff2');unicode-range:U+0E01-0E5B}
+@font-face{font-family:PMSLat;font-weight:400;src:local('Times New Roman'),local('TimesNewRomanPSMT'),url(https://fonts.gstatic.com/s/tinos/v26/buE4poGnedXvwjX7fmRD8iI_.woff2) format('woff2')}
+@font-face{font-family:PMSLat;font-weight:700;src:local('Times New Roman Bold'),local('TimesNewRomanPS-BoldMT'),url(https://fonts.gstatic.com/s/tinos/v26/buE1poGnedXvwj1AW3Fu0C8V-txK.woff2) format('woff2')}
+.pms{position:relative;width:595.25pt;height:841.85pt;background:#fff;color:#000;font-family:PMSLat,PMSThai,serif;overflow:hidden;text-align:left}
+.pms div,.pms img{position:absolute;box-sizing:border-box;margin:0;padding:0}
+.pms .r{background:#000}
+.pms .t{white-space:nowrap;line-height:1;font-weight:400}
+.pms .t.b{font-weight:700}
+.pms .t.c{text-align:center}
+.pms .v{white-space:nowrap;line-height:1;color:#1a3fb0;font-size:5pt;overflow:hidden;text-overflow:ellipsis}
+.pms .v.w{background:#fff}
+.pms .cl{display:flex;align-items:center;line-height:1.08;color:#1a3fb0;font-size:4.6pt;overflow:hidden;padding:0 1.3pt;word-break:break-word}
+.pms .cl.bad{color:#c81e1e}
+.pms .ck{line-height:1;font-size:7pt;font-weight:700;color:#1a3fb0;text-align:center;font-family:PMSLat,'Segoe UI Symbol','Apple Symbols',sans-serif}
+.pms .ck.x{color:#c81e1e}
+.pms .lg{object-fit:contain;object-position:center}
+.pms .sg{object-fit:contain;object-position:center bottom}
+.pms .pmsft{white-space:nowrap;line-height:1;font-size:4.6pt;color:#8a8f98}`;
+function pmsEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// แยกที่อยู่ข้อความเดียว → เลขที่ / ซอย / ถนน / ตำบล(แขวง) / อำเภอ(เขต) / จังหวัด
+function pmsAddr(s){
+  s=String(s||'').replace(/\s+/g,' ').trim(); const o={no:'',soi:'',road:'',tambon:'',amphoe:'',province:'',raw:''}; if(!s) return o;
+  const keys=[['soi',/(?:ซอย|ซ\.)\s*/],['road',/(?:ถนน|ถ\.)\s*/],['tambon',/(?:ตำบล|ต\.|แขวง)\s*/],['amphoe',/(?:อำเภอ|อ\.|เขต)\s*/],['province',/(?:จังหวัด|จ\.)\s*/]];
+  const hits=[]; keys.forEach(([k,re])=>{ const m=re.exec(s); if(m) hits.push({k,i:m.index,j:m.index+m[0].length}); });
+  hits.sort((a,b)=>a.i-b.i);
+  if(!hits.length && !/กรุงเทพ/.test(s)){ o.raw=s; return o; }
+  o.no=s.slice(0,hits.length?hits[0].i:s.length).replace(/^(?:เลขที่)\s*/,'').trim();
+  hits.forEach((h,n)=>{ o[h.k]=s.slice(h.j,n+1<hits.length?hits[n+1].i:s.length).trim(); });
+  if(!o.province){ const m=/กรุงเทพ(?:มหานคร|ฯ)?/.exec(s); if(m){ o.province=m[0]; ['no','soi','road','tambon','amphoe'].forEach(k=>{ o[k]=o[k].replace(m[0],'').trim(); }); } }
+  ['no','soi','road','tambon','amphoe'].forEach(k=>{ const z=/\s*(\d{5})\s*$/.exec(o[k]); if(z&&!/\d{5}/.test(o.province)){ o.province=(o.province+' '+z[1]).trim(); o[k]=o[k].slice(0,z.index).trim(); } });
+  return o;
+}
+// 1 หน้า = 1 เครื่อง · c = ข้อมูลร่วมของงาน, it = เครื่อง (ต้องมี sheet_rows)
+function pmsPage(c, it){
+  const E=pmsEsc, K=PMS_K, H=[];
+  const R=(x0,y0,x1,y1,bg)=>H.push(`<div class="r" style="left:${x0}pt;top:${y0}pt;width:${(x1-x0).toFixed(2)}pt;height:${(y1-y0).toFixed(2)}pt${bg?';background:'+bg:''}"></div>`);
+  const T=(x,bl,sz,txt,cls,w)=>{ const f=+(sz*K).toFixed(2); H.push(`<div class="t ${cls||''}" style="left:${x}pt;top:${(bl-0.835*f).toFixed(2)}pt;font-size:${f}pt${w?`;width:${w}pt`:''}">${E(txt)}</div>`); };
+  const V=(x,bl,w,txt,cls)=>{ if(txt==null||txt==='') return; H.push(`<div class="v ${cls||''}" style="left:${x}pt;top:${(bl-0.835*5).toFixed(2)}pt;width:${w}pt">${E(txt)}</div>`); };
+  const UL=(bl,x0,x1)=>R(x0,bl+1.45,x1,bl+1.8);
+  // กรอบ + เส้นแบ่ง
+  R(31.1,117.6,563.3,118.3); R(31.1,163.2,563.3,163.9); R(31.7,282.5,563.3,299.9,'#95b3d7'); R(31.1,281.9,563.3,282.6); R(31.1,299.2,563.3,299.9); R(31.1,722.9,563.3,723.6);
+  R(31.1,117.6,31.9,723.6); R(562.6,117.6,563.3,723.6);
+  // หัวกระดาษ
+  if(c.logo) H.push(`<img class="lg" src="${E(c.logo)}" alt="" style="left:53.8pt;top:118.6pt;width:53.1pt;height:44.4pt">`);
+  T(237.3,144.97,15.2,'PM Check Sheet Air Conditioners','b');
+  // ข้อมูลลูกค้า / เครื่อง (ป้ายตัวหนา + เส้นช่องกรอก)
+  const L=(x,bl,txt)=>T(x,bl,6.84,txt,'b');
+  const F=(bl,x0,x1,val,cls)=>{ UL(bl,x0,x1); V(x0+2,bl-0.4,x1-x0-3,val,cls); };
+  L(37.6,185.06,'ลูกค้า'); F(185.06,51.1,169.6,c.client); L(169.6,185.06,'ชื่อร้านค้า'); F(185.06,187.1,308,c.shop); L(308,185.06,'รหัสร้านค้า'); F(185.06,328.5,424.2,c.shopCode||'');
+  const a=pmsAddr(c.address);
+  L(37.6,199.22,'ที่อยู่'); L(48.4,199.22,'เลขที่'); F(199.22,61.6,98.1,a.no); L(98.1,199.22,'ซอย'); F(199.22,106.1,160.8,a.soi); L(160.9,199.22,'ถนน'); F(199.22,169.9,224.6,a.road);
+  L(224.6,199.22,'ตำบล(แขวง)'); F(199.22,247.8,293.4,a.tambon); L(293.5,199.22,'อำเภอ(เขต)'); F(199.22,314.3,359.9,a.amphoe); L(359.8,199.22,'จังหวัด'); F(199.22,372.8,420.6,a.province);
+  if(a.raw) V(61.6,198.8,358,a.raw,'w');
+  L(37.6,213.37,'ชื่อผู้ติดต่อ'); F(213.37,58.4,199.7,c.contact); L(199.7,213.37,'เบอร์โทรศัพท์'); F(213.37,225.5,316.7,c.contactPhone);
+  L(37.6,227.55,'ชื่อผู้ปฏิบัติงาน'); F(227.55,66.4,207.7,c.tech); L(207.8,227.55,'เบอร์โทรศัพท์'); F(227.55,233.7,318,c.techPhone);
+  L(37.6,248.77,'ยี่ห้ออุปกรณ์'); F(248.77,62,137.2,it.brand); L(137.2,248.77,'รุ่น'); F(248.77,142.7,202,it.model); L(202,248.77,'S/N'); F(248.77,209,288.8,it.no_label?'ไม่มีฉลาก':it.serial_no); L(288.8,248.77,'หมายเลขทรัพย์สิน'); F(248.77,322.7,418.5,it.asset_id||'');
+  L(37.6,267.26,'วันที่เข้าปฏิบัติงาน'); F(267.26,75,145.2,c.dateIn); L(148.3,267.26,'เวลาเข้า'); F(267.26,166.5,228,c.timeIn);
+  // ตาราง
+  T(248.1,293.06,7.5,'MONTHLY CHECKING (ประจำรอบ 3 เดือน)','b');
+  [[39.3,'ลำดับ'],[113.9,'รายการ'],[245.6,'มาตรฐาน'],[333.2,'ปกติ'],[355,'ไม่ปกติ'],[434,'ข้อมูล'],[514.5,'หมายเหตุ (Remark)']].forEach(([x,s])=>T(x,309.74,7.2,s,'b'));
+  const RB=k=>315.7+12.6*k;                       // เส้นใต้แถวที่ k (k=0 = หัวตาราง)
+  for(let k=0;k<=17;k++){ const y=RB(k); if(k===14||k===15){ R(31.9,y,57.9,y+0.4); R(183.9,y,562.6,y+0.4); } else R(31.9,y,562.6,y+0.4); }
+  [57.5,183.9,325,349.6,374.2,504.7].forEach(x=>R(x,299.9,x+0.4,530.3));
+  const rows={}; (it.sheet_rows||[]).forEach(r=>{ if(r) rows[+r.no]=r; });
+  const ri=Math.max(0,PMS_REF.findIndex(([k])=>k===it.refrigerant));
+  const cellRow=(k,r)=>{ if(!r) return; const top=RB(k-1)+0.4, h=12.2;
+    if(r.result==='ปกติ') H.push(`<div class="ck" style="left:325.4pt;top:${(top+2.4).toFixed(2)}pt;width:24.2pt">✓</div>`);
+    if(r.result==='ไม่ปกติ') H.push(`<div class="ck x" style="left:350pt;top:${(top+2.4).toFixed(2)}pt;width:24.2pt">✓</div>`);
+    if(r.data) H.push(`<div class="cl${r.result==='ไม่ปกติ'?' bad':''}" style="left:374.6pt;top:${top.toFixed(2)}pt;width:130.1pt;height:${h}pt">${E(r.data)}</div>`);
+    if(r.remark) H.push(`<div class="cl${r.result==='ไม่ปกติ'?' bad':''}" style="left:505pt;top:${top.toFixed(2)}pt;width:57.6pt;height:${h}pt">${E(r.remark)}</div>`);
+  };
+  PMS_ITEMS.forEach(([no,item,std])=>{
+    const k=no<=14?no:17, bl=RB(k)-4.4;
+    T(31.9,bl,6.84,String(no),'c',25.6);
+    if(no===14){ T(58.6,486.44,6.84,item); PMS_REF.forEach(([,s],i)=>T(185,RB(14+i)-4.3,6.84,s)); cellRow(14+ri,rows[14]); }
+    else { T(58.6,bl,6.84,item); T(185,bl,6.84,std); cellRow(k,rows[no]); }
+  });
+  // หมายเหตุ
+  T(58.6,550.59,6.84,'หมายเหตุ :','b');
+  [[58.2,569.4,522.8],[58.2,585.6,522.8],[57.6,601.8,522.4],[58.2,617.1,522.8]].forEach(([x0,y,x1],i)=>{ R(x0,y,x1,y+0.6); V(x0+2,y-1.3,x1-x0-3,(c.notes||[])[i]||''); });
+  // ลงชื่อ
+  [['ผู้รับบริการ',58.6],['ผู้บริการ',196.4],['ผู้ตรวจสอบ',350.7]].forEach(([h,x])=>[h,'บริษัท','วันที่','เวลา'].forEach((s,i)=>T(x,[668.65,681.63,694.59,707.54][i],6.84,s)));
+  [[93.8,670.6,173.1],[93.8,683.5,173.1],[93.8,696.5,173.1],[94.3,709.5,183.9],[222.5,671.2,331.3],[223,684.2,331.8],[222.5,697.2,331.3],[223,710.1,331.8],[379.6,671.2,458.9],[380.1,684.2,459.4],[380.1,697.2,459.4],[380.1,710.1,459.4]].forEach(([x0,y,x1])=>R(x0,y,x1,y+0.6));
+  const sg=c.sign||{}, pv=c.provider||{};
+  if(sg.img) H.push(`<img class="sg" src="${E(sg.img)}" alt="" style="left:${PMS_SIGN_BOX.x}pt;top:${PMS_SIGN_BOX.y}pt;width:${PMS_SIGN_BOX.w}pt;height:${PMS_SIGN_BOX.h}pt">`);
+  else V(95.8,669.2,76,sg.name||'');
+  V(95.8,682.1,76,[sg.img?sg.name:'',sg.company].filter(Boolean).join(' / ')); V(95.8,695.1,76,sg.date||''); V(96.3,708.1,86,sg.time||'');
+  V(224.5,669.8,106,pv.name||''); V(225,682.8,106,pv.company||''); V(224.5,695.8,106,pv.date||''); V(225,708.7,106,pv.time||'');
+  // ท้ายกระดาษ (นอกกรอบ)
+  if(c.footL) H.push(`<div class="pmsft" style="left:31.1pt;top:729pt">${E(c.footL)}</div>`);
+  if(c.footR) H.push(`<div class="pmsft" style="left:auto;right:32pt;top:729pt">${E(c.footR)}</div>`);
+  return `<div class="pms">${H.join('')}</div>`;
+}
+// หมายเหตุท้ายแผ่น: สภาพ / สาเหตุ / การแก้ไข / งานต่อเนื่อง
+function pmsNotes(it){ return [it.condition?'สภาพเครื่อง: '+it.condition:'', it.cause?'สาเหตุ: '+it.cause:'', it.fix?'การแก้ไข: '+it.fix:'', it.follow_up?'งานต่อเนื่อง: '+(it.follow_up_note||'-'):''].filter(Boolean); }
+function pmsThaiDate(d){ const m=String(d||'').match(/^(\d{4})-(\d{2})-(\d{2})/); return m?`${m[3]}/${m[2]}/${+m[1]+543}`:''; }
+function pmsIsoDate(iso){ const d=new Date(iso); return isNaN(d)?'':`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()+543}`; }
+function pmsIsoTime(iso){ const d=new Date(iso); return isNaN(d)?'':`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+// ===== /PM Check Sheet Air =====
+function pmsEnsureCss(){ if(document.getElementById('pms-css')) return; const st=document.createElement('style'); st.id='pms-css'; st.textContent=PMS_CSS; document.head.appendChild(st); }
+// ---------- PDF ส่งลูกค้า: PM Check Sheet (แอร์ 1 เครื่อง = 1 แผ่น ตามแบบฟอร์มบริษัท) + หน้ารูปของแต่ละเครื่อง ----------
+function pmThaiDate(d){const m=String(d||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}/${m[2]}/${+m[1]+543}`:'';}
+function pmTimeOf(iso){try{const d=new Date(iso);return isNaN(d)?'':d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',hour12:false});}catch(e){return '';}}
+function pmDateOfIso(iso){try{const d=new Date(iso);if(isNaN(d))return '';return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()+543}`;}catch(e){return '';}}
+async function pmPrintCheckSheet(jobId){
+  const j=liveJobs().find(x=>sameJob(x.id,jobId));const p=j&&j.technicianReport&&j.technicianReport.pm;
+  if(!p||!Array.isArray(p.items)||!p.items.length){alert('งานนี้ยังไม่มีผล PM รายเครื่องจากช่าง');return;}
+  const w=window.open('','_blank');if(!w){alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+  w.document.write('<p style="font-family:sans-serif;padding:20px">กำลังสร้าง PM Check Sheet...</p>');
+  try{await pmLoad();}catch(e){}
+  const tr=j.technicianReport||{};
+  const v=pm.visits.find(x=>x.id===p.visit_id),site=v&&pm.sites.find(x=>x.id===v.site_id),c=v&&pm.contracts.find(x=>x.id===v.contract_id);
+  const client=(c&&c.client)||j.client||'';
+  // โลโก้หัวกระดาษ = โลโก้ของลูกค้าเจ้านั้น (ตั้งที่ทะเบียนลูกค้า) — ไม่ได้ตั้งไว้ก็ใช้โลโก้ ProFix
+  const logo=clientLogoUrl(client)||clientLogoUrl(j.client)||new URL('assets/profix-logo-dark.svg',location.href).href;
+  const team=(typeof technicians!=='undefined'&&technicians||[]).filter(t=>t&&t.status==='active'&&(t.team_names||[]).includes(j.team));
+  const lead=team.find(t=>t.is_leader)||team[0];
+  const techName=lead?`${j.team||''}${lead.display_name&&lead.display_name!==j.team?' ('+lead.display_name+')':''}`:(j.team||'');
+  const company=(c&&c.company_id&&typeof companyNameFromId==='function'&&companyNameFromId(c.company_id))||'บริษัท โปรฟิกซ์ โซลูชั่น จำกัด';
+  const sign=p.sign||{};const signDate=sign.at?pmDateOfIso(sign.at):pmThaiDate(tr.dateDone),signTime=sign.at?pmTimeOf(sign.at):(tr.timeDone||'');
+  const doneDate=pmThaiDate(tr.dateDone)||pmThaiDate(tr.dateIn),doneTime=tr.timeDone||'';
+  const pages=[];
+  const photoPages=(it,title)=>{
+    const ph=[...((it.photos&&it.photos.before)||[]).map(x=>({url:x.url,l:'ก่อนทำ'})),...((it.photos&&it.photos.after)||[]).map(x=>({url:x.url,l:'หลังทำ'}))].filter(x=>x.url);
+    const lbl=it.label_photo&&it.label_photo.url;
+    const ng=(it.sheet_rows||[]).filter(r=>r.result==='ไม่ปกติ');
+    const notes=[...ng.map(r=>`ข้อ ${r.no} ไม่ปกติ: ${r.item}${r.data?' ('+r.data+')':''}${r.remark?' — '+r.remark:''}`),it.condition?'สภาพเครื่อง: '+it.condition:'',it.readings&&it.readings.cartridges?`จำนวนไส้ที่เปลี่ยน: ${it.readings.cartridges} ไส้`:'',it.cause?'สาเหตุ: '+it.cause:'',it.fix?'การแก้ไข: '+it.fix:'',it.follow_up?'งานต่อเนื่อง: '+(it.follow_up_note||'-'):''].filter(Boolean);
+    const head=`<div class="ph-h"><div><b>${esc(title)}</b> <span class="badge">${esc(it.asset_id||'เครื่องใหม่')}</span><br><small>${esc([it.brand,it.model].filter(Boolean).join(' '))}${it.serial_no?' · S/N '+esc(it.serial_no):''} · ${esc(j.branch||'')} · ${esc(pmThaiDate(tr.dateIn))}</small></div><img src="${esc(logo)}" alt=""></div>`;
+    const chunks=[];const first=lbl?2:4;chunks.push(ph.slice(0,first));for(let i=first;i<ph.length;i+=6)chunks.push(ph.slice(i,i+6));
+    chunks.forEach((ch,ci)=>{
+      if(ci>0&&!ch.length)return;
+      pages.push({code:it.asset_id,html:`<div class="frame">${head}${ci===0?`<div class="grp"><div class="gr">${lbl?`<div><h4>ฉลากเครื่อง</h4><div class="im"><img src="${esc(lbl)}" alt=""></div></div>`:''}<div class="nt">${notes.length?notes.map(x=>`<div>${esc(x)}</div>`).join(''):'<div class="tm">—</div>'}</div></div></div>`:''}<div class="grp"><div class="gr">${ch.map(x=>`<div><h4>${x.l}</h4><div class="im"><img src="${esc(x.url)}" alt=""></div></div>`).join('')||'<div class="tm">ไม่มีรูป</div>'}</div></div></div>`});
+    });
+  };
+  p.items.forEach(it=>{
+    const rows=Array.isArray(it.sheet_rows)?it.sheet_rows:null;
+    if(rows){
+      const ci={logo,client,shop:j.branch||(v&&v.branch)||'',address:site&&site.address||'',contact:sign.name||'',contactPhone:'',tech:techName,techPhone:lead&&lead.phone||'',
+        dateIn:pmThaiDate(tr.dateIn),timeIn:tr.timeIn||'',notes:pmsNotes(it),
+        sign:{img:sign.url||sign.dataUrl||'',name:sign.name||'',date:sign.url||sign.dataUrl||sign.name?signDate:'',time:sign.url||sign.dataUrl||sign.name?signTime:''},
+        provider:{name:lead&&lead.display_name||j.team||'',company,date:doneDate,time:doneTime},
+        footL:`${j.id} · ${it.asset_id||'เครื่องใหม่'}${p.round_no?' · PM รอบที่ '+p.round_no:''}`};
+      pages.push({code:it.asset_id,sheet:(i,N)=>pmsPage({...ci,footR:`หน้า ${i+1} / ${N}`},it)});
+      photoPages(it,'รูปประกอบ · '+[it.asset_type,it.location].filter(Boolean).join(' '));
+    }else photoPages(it,'รูปประกอบ PM · '+[it.asset_type,it.location].filter(Boolean).join(' '));
+  });
+  const N=pages.length;
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>PM Check Sheet ${esc(j.id)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Noto+Serif:wght@700&display=swap" rel="stylesheet">
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{background:#d9dde3;font-family:Sarabun,"Noto Sans Thai",Tahoma,sans-serif;color:#111;font-size:11.5px}
+  .toolbar{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#111820;color:#fff;font-family:sans-serif}.toolbar button{border:0;border-radius:8px;padding:10px 14px;font-weight:800;background:#175fff;color:#fff;cursor:pointer;margin-left:6px}.toolbar .g{background:#374151}
+  .page{position:relative;width:210mm;height:297mm;margin:16px auto;padding:9mm 9mm 8mm;background:#fff;box-shadow:0 10px 30px rgba(0,0,0,.18);page-break-after:always;overflow:hidden}
+  .frame{border:1.4px solid #222;height:100%;display:flex;flex-direction:column}
+  .th{display:flex;align-items:center;border-bottom:1.4px solid #222;height:19mm;padding:0 5mm}.th img{height:12mm;width:38mm;object-fit:contain;object-position:left}.th .title{flex:1;text-align:center;font:700 19px "Noto Serif",serif;margin-right:38mm}
+  .info{padding:2mm 4mm 2mm;line-height:1.95}.info .r{display:flex;gap:6px;align-items:baseline}.info b{font-weight:700;white-space:nowrap}.info .v{flex:1;border-bottom:1px solid #555;font-size:12px;color:#0b3fb3;padding-left:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;min-height:18px}
+  .band{background:#9db3d4;border-top:1.4px solid #222;border-bottom:1.4px solid #222;text-align:center;font-weight:700;padding:3px 0}
+  table{width:100%;border-collapse:collapse}td,th{border:1px solid #333;padding:2px 4px;font-size:10.5px;line-height:1.2;height:6mm;vertical-align:middle}th{font-weight:700}td.c{text-align:center}
+  .no{width:9mm}.itc{width:61mm}.sd{width:52mm}.ok{width:9mm}.ng{width:11mm}.rm{width:27mm}.it14{vertical-align:top}
+  .ck{color:#0b3fb3;font-weight:800;font-size:13px}.ck.x{color:#c81e1e}.dv{color:#0b3fb3;font-weight:600}.dv.bad{color:#c81e1e}.rmk{color:#c81e1e;font-size:10px}.dim td{color:#999}.dim td.it14,.dim td:first-child{color:#111}
+  .notes{padding:2mm 8mm 0;flex:1}.ln{border-bottom:1px solid #444;min-height:6mm;color:#0b3fb3;font-size:11.5px;padding:2px 0 0 5px}
+  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6mm;padding:1mm 8mm 4mm;align-items:end}.sig .r{display:flex;gap:6px;align-items:flex-end;margin-top:4px}.sig .r span{width:16mm;white-space:nowrap}.sig .r i{flex:1;border-bottom:1px solid #444;font-style:normal;color:#0b3fb3;text-align:center;min-height:15px;font-size:11px}.sig .r i img{height:11mm;max-width:40mm;object-fit:contain;display:block;margin:0 auto -2px}
+  .ft{position:absolute;left:9mm;right:9mm;bottom:2.5mm;display:flex;justify-content:space-between;font-size:9px;color:#777}
+  .ph-h{border-bottom:1.4px solid #222;padding:3mm 4mm;display:flex;justify-content:space-between;align-items:center;gap:8px}.ph-h b{font-size:14px}.ph-h small{font-size:11px;color:#444}.ph-h img{height:9mm;max-width:34mm;object-fit:contain}
+  .badge{display:inline-block;background:#fde68a;color:#7c4a03;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700}
+  .grp{padding:3mm 4mm 0}.gr{display:grid;grid-template-columns:1fr 1fr;gap:3mm}.grp h4{font-size:11.5px;margin-bottom:1.5mm}
+  .im{height:76mm;background:#eef0f4;border-radius:2px;overflow:hidden;display:flex;align-items:center;justify-content:center}.im img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+  .nt{font-size:11.5px;line-height:1.6;padding-top:5mm}.tm{color:#888}
+  .page.pmsp{padding:0;width:595.25pt;height:841.85pt}
+  ${PMS_CSS}
+  @media print{body{background:#fff}.toolbar{display:none}.page{margin:0;box-shadow:none}}@page{size:A4 portrait;margin:0}</style></head><body>
+  <div class="toolbar"><div><b>PM Check Sheet ${esc(j.id)}</b> · ${esc(j.branch||'')} · ${N} หน้า</div><div><button class="g" onclick="window.close()">ปิด</button><button onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
+  ${pages.map((pg,i)=>pg.sheet?`<div class="page pmsp">${pg.sheet(i,N)}</div>`:`<div class="page">${pg.html}<div class="ft"><span>${esc(j.id)}${pg.code?' · '+esc(pg.code):''}</span><span>หน้า ${i+1} / ${N}</span></div></div>`).join('')}
+  </body></html>`;
+  w.document.open();w.document.write(html);w.document.close();
 }
 function pmGoAsset(id){closeM('m-report');pmView='assets';goTo('pm');pmLoad().then(()=>pmOpenAsset(id));}
 // แผน PM: รายการงานต่อเนื่องที่ช่างแจ้ง (ยังไม่จัดการ) ของลูกค้าในสัญญานี้
