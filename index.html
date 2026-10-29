@@ -7149,7 +7149,7 @@ function renderSalesTax(){
     const card=docMobileCard({no:inv.doc_no||inv.sales_invoice_no,type:dmeta.title,total:inv.total_amount,pay:docPayBadge(inv,'sale'),party:salesInvoiceBranchText(inv)||inv.customer_name||'-',
       sub:inv.customer_name&&salesInvoiceBranchText(inv)!==inv.customer_name?esc(inv.customer_name):'',chips:`<div class="pr-chips" onclick="event.stopPropagation()">${prBtns}</div>`,editor:docEditorHtml(inv),date:inv.invoice_date,
       actions:`<button class="btn btn-ghost btn-sm" onclick="openSalesInNewTab('${esc(inv.id)}')">✏️ แก้ไข</button><button class="btn btn-ghost btn-sm" onclick="printSalesDoc('${esc(inv.id)}')">🖨️ พิมพ์</button><label class="btn btn-ghost btn-sm dc-pick"><input type="checkbox" ${salesPicked.has(inv.id)?'checked':''} onchange="toggleSalesDocPick('${esc(inv.id)}',this.checked);renderSalesTax();"> เลือก</label><button class="btn btn-ghost btn-sm" onclick="toggleMenu('sale-${esc(inv.id)}',event)">⋯</button>`});
-    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td class="m-card-cell">${card}</td><td onclick="event.stopPropagation()"><input type="checkbox" class="sale-pick" value="${esc(inv.id)}" ${salesPicked.has(inv.id)?'checked':''} onchange="toggleSalesDocPick('${esc(inv.id)}',this.checked)"></td><td><div class="sl-no">${esc(inv.doc_no||inv.sales_invoice_no)}</div><span class="sl-type sl-${esc(dt)}">${esc(dmeta.title)}</span></td><td onclick="event.stopPropagation()"><div class="pr-chips">${prBtns}</div></td><td><div class="jq-two"><b>${esc(salesInvoiceBranchText(inv)||inv.customer_name||'-')}</b>${inv.customer_name&&salesInvoiceBranchText(inv)!==inv.customer_name?`<small>${esc(inv.customer_name)}</small>`:''}</div></td><td><span class="sl-date">${esc(inv.invoice_date?jqThDate(inv.invoice_date):'-')}</span></td><td class="sl-amt">฿${money(saleDocTotal(inv))}</td><td>${docPayBadge(inv,'sale')}</td><td>${docEditorHtml(inv)}</td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesInNewTab('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
+    return `<tr style="cursor:pointer;" onclick="openSalesDocPreview('${esc(inv.id)}')"><td class="m-card-cell">${card}</td><td onclick="event.stopPropagation()"><input type="checkbox" class="sale-pick" value="${esc(inv.id)}" ${salesPicked.has(inv.id)?'checked':''} onchange="toggleSalesDocPick('${esc(inv.id)}',this.checked)"></td><td><div class="sl-no">${esc(inv.doc_no||inv.sales_invoice_no)}</div><span class="sl-type sl-${esc(dt)}">${esc(dmeta.title)}</span></td><td onclick="event.stopPropagation()"><div class="pr-chips">${prBtns}</div></td><td><div class="jq-two"><b>${esc(salesInvoiceBranchText(inv)||inv.customer_name||'-')}</b>${inv.customer_name&&salesInvoiceBranchText(inv)!==inv.customer_name?`<small>${esc(inv.customer_name)}</small>`:''}</div></td><td><span class="sl-date">${esc(inv.invoice_date?jqThDate(inv.invoice_date):'-')}</span></td><td class="sl-amt">฿${money(saleDocTotal(inv))}</td><td>${docPayBadge(inv,'sale')}</td><td>${docEditorHtml(inv)}</td><td class="action-cell" onclick="event.stopPropagation()"><button class="icon-btn" onclick="toggleMenu('sale-${esc(inv.id)}',event)">...</button><div class="action-menu" id="sale-${esc(inv.id)}"><button onclick="openSalesInNewTab('${esc(inv.id)}')">แก้ไขเอกสาร</button><button onclick="printSalesDoc('${esc(inv.id)}')">พิมพ์ / Save PDF</button>${dt==='quotation'?`<button onclick="openSalesDupInNewTab('${esc(inv.id)}')">➕ ทำสำเนาเป็นใบเสนอราคาเพิ่มของงานนี้</button>`:''}${nextMeta?`<button onclick="convertSalesDoc('${esc(inv.id)}','${nextType}')">แปลงเป็น${esc(nextMeta.title)}</button>`:''}${inv.file_url?`<button onclick="window.open('${esc(inv.file_url)}','_blank')">เปิดไฟล์แนบ</button>`:''}<button onclick="deleteSalesInvoice('${esc(inv.id)}')" style="color:var(--red);">ลบเอกสาร</button></div></td></tr>`;
   }).join('');
 }
 // ลบ (ยกเลิก) บิลขาย — soft cancel ทั้งเอกสารและรายการ
@@ -7207,6 +7207,11 @@ async function maybeAutoOpenSalesFromUrl(){
     await SALES_BUILD_MODES[mode]();
     loadDeferredDocModeReports();return;
   }
+  const dupId=sp.get('dup')||'';
+  if(sid==='new'&&dupId){
+    if(!(salesInvoices||[]).some(x=>x.id===dupId)){try{await ensureAccountingLoaded(true);}catch(e){}}
+    openSalesDupModal(dupId);loadDeferredDocModeReports();return;
+  }
   if(sid==='new'){openSalesModal('',pr,dtype);loadDeferredDocModeReports();return;}
   // แก้ไขเอกสารเดิม: ถ้ายังหาไม่เจอ (โหลดแรกอาจยังไม่เสร็จ) ลองโหลดซ้ำอีกครั้งก่อนเปิดฟอร์ม
   if(!(salesInvoices||[]).some(x=>x.id===sid)){try{await ensureAccountingLoaded(true);}catch(e){}}
@@ -7219,6 +7224,12 @@ function openSalesInNewTab(id='',prefJobId='',docType=''){
   p.set('sales',id||'new');
   if(docType)p.set('doctype',docType);
   if(prefJobId)p.set('pr',prefJobId);
+  window.open(location.pathname+'?'+p.toString(),'_blank');
+}
+// ทำสำเนาใบเสนอราคาเดิม → ใบเสนอราคาเพิ่มของ PR เดิม (qt_extra) ในแท็บใหม่ — เลขใหม่ วันนี้ รายการ/ลูกค้า/ราคาเหมือนเดิม แก้ต่อได้ก่อนบันทึก
+function openSalesDupInNewTab(id){
+  const p=new URLSearchParams();
+  p.set('sales','new');p.set('dup',id);
   window.open(location.pathname+'?'+p.toString(),'_blank');
 }
 async function openSalesForJob(jobId){
@@ -8590,6 +8601,32 @@ function renderSalesJobChips(){
 }
 // ใบเสนอราคาเพิ่มของงานเดียวกัน (ลูกค้าให้แยกใบ) — ไม่ใช่ใบแก้ไขแทนใบเดิม → ใบกำกับภาษี/การเงินนับรวมทุกใบ
 var salesOrigJobs=[];
+// เปิดฟอร์มจากใบเสนอราคาเดิม แล้วเปลี่ยนเป็น "ใบใหม่" = ใบเสนอราคาเพิ่มของงานเดิม (ไม่แตะใบเดิม)
+function openSalesDupModal(srcId){
+  const src=salesInvoices.find(x=>x.id===srcId);
+  if(!src){alert('ไม่พบใบเสนอราคาต้นฉบับ (อาจถูกลบไปแล้ว)');return;}
+  if((src.doc_type||'tax_invoice')!=='quotation'){alert('ทำสำเนาเป็นใบเพิ่มได้เฉพาะใบเสนอราคา');return;}
+  openSalesModal(srcId);
+  const srcNo=src.doc_no||src.sales_invoice_no||'';
+  document.getElementById('sale-id').value='';
+  salesConvertSourceId='';
+  salesOrigJobs=[];
+  const noEl=document.getElementById('sale-no');noEl.dataset.orig='';
+  document.getElementById('sale-date').value=todayISO();
+  document.getElementById('sale-payment').value='unpaid';
+  document.getElementById('sale-payment-date').value='';
+  document.getElementById('sale-file').value='';
+  document.getElementById('sale-customer-signature').value='';
+  document.getElementById('sale-customer-signer-name').value='';
+  updateSalesSignaturePreview('customer');
+  noEl.value=nextSalesDocNo('quotation',todayISO(),document.getElementById('sale-company-name').value||quoteCompanyDefaults().name);
+  salesDraftItems=salesDraftItems.map(x=>{const y={...x};delete y.id;delete y.sales_invoice_id;delete y.created_at;delete y.updated_at;return y;});
+  document.getElementById('sales-modal-title').textContent='เพิ่มใบเสนอราคา (สำเนาจาก '+srcNo+')';
+  document.getElementById('sale-qt-extra').value='1';
+  renderSalesJobChips();
+  renderSalesItemEditor();
+  setAccountingStatus('sales',`สำเนาจาก ${srcNo} — เป็นใบเสนอราคาเพิ่มของงานเดิม (ใบเดิมไม่เปลี่ยน) แก้รายการ/ราคาได้ แล้วกดบันทึก`,'warn');
+}
 // ใบเสนอราคา: ห้ามออกซ้ำ — PR ที่มีใบเสนอราคาแล้ว ต้องแก้ใบเดิม หรือกด ➕ เพิ่มเป็นอีกใบของงานนี้
 function salesQtBlockedJobs(curId){if((document.getElementById('sale-doc-type')?.value||'')!=='quotation'||salesIsQtExtra())return [];
   return salesDraftJobs.filter(pr=>!salesOrigJobs.some(x=>sameJob(x,pr))&&existingSalesBillsForJob(pr,curId,'quotation').length);}
