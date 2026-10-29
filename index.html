@@ -2416,7 +2416,7 @@ body.pfpv-lock{overflow:hidden;}
             <div id="sales-items-editor"></div>
           </div>
           <div class="form-group" style="margin-top:16px;"><label>หมายเหตุ</label><textarea id="sale-note"></textarea></div>
-          <input id="sale-sub" type="hidden"><input id="sale-vat-input" type="hidden"><input id="sale-total-input" type="hidden"><input id="sale-summary-flag" type="hidden">
+          <input id="sale-sub" type="hidden"><input id="sale-vat-input" type="hidden"><input id="sale-total-input" type="hidden"><input id="sale-summary-flag" type="hidden"><input id="sale-qt-extra" type="hidden">
         </div>
         <aside class="accounting-panel accounting-summary">
           <div class="accounting-panel-title">สรุปบิลขาย</div>
@@ -6296,6 +6296,10 @@ function computeFinanceFromSales(jobId){
   if(!inv)return null;
   let items=(salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===inv.id&&x.status!=='cancelled');
   let sharedDoc=salesInvoiceJobs(inv).length>1;
+  // ยอดล่าสุดเป็นใบเสนอราคา และงานนี้มีใบเสนอราคาแยกหลายใบ → รวมรายการ/ยอดของทุกใบ
+  const qset=inv.doc_type==='quotation'?quotationSetForJob(jobId):[];
+  let qSub=null,qTravel=null;
+  if(qset.length>1){const ids=new Set(qset.map(q=>q.id));items=(salesInvoiceItems||[]).filter(x=>ids.has(x.sales_invoice_id)&&x.status!=='cancelled');qSub=qset.reduce((s,q)=>s+Number(q.subtotal||0),0);qTravel=qset.reduce((s,q)=>s+Number(q.travel_amount||0),0);}
   // ถ้าเป็นใบกำกับที่รวมหลายใบมา: หยิบเฉพาะรายการที่มาจาก "ใบเสนอราคาของงานนี้"
   if(sharedDoc){
     const srcIds=new Set((salesInvoices||[]).filter(d=>d.id!==inv.id&&d.status!=='cancelled'&&salesInvoiceMatchesJob(d,jobId)).map(d=>d.id));
@@ -6308,7 +6312,7 @@ function computeFinanceFromSales(jobId){
   const hasSplit=items.some(it=>num(it,'labor_price')||num(it,'parts_price')||num(it,'labor_cost')||num(it,'parts_cost'));
   // ค่าเดินทาง: ถ้าแยกตามใบต้นทางได้ ให้ใช้ค่าเดินทางของใบต้นทางนั้น
   const srcDoc=(items[0]&&items[0].source_doc_id)?(salesInvoices||[]).find(d=>d.id===items[0].source_doc_id):null;
-  const travel=Number((srcDoc||inv).travel_amount||0);
+  const travel=qTravel!=null?qTravel:Number((srcDoc||inv).travel_amount||0);
   const fuel=travel;
   let pc,partR,pt,partC,ptSrc,partCSrc;
   if(hasSplit){
@@ -6319,7 +6323,7 @@ function computeFinanceFromSales(jobId){
     // เอกสารเก่าที่ยังไม่มี 4 ช่อง — ใช้ตรรกะเดิมทั้งหมด
     const partsRevenue=items.filter(it=>!SALES_LABOR_RE.test(String(it.category||'')+' '+String(it.description||''))).reduce((s,it)=>s+Number(it.subtotal||0),0);
     partR=partsRevenue;
-    pc=Math.max(0,Number(inv.subtotal||0)-partsRevenue-travel);
+    pc=Math.max(0,Number(qSub!=null?qSub:inv.subtotal||0)-partsRevenue-travel);
     const costSum=jobCosts(jobId).reduce((s,c)=>s+Number(c.cost_amount||0),0);
     partC=costSum>0?costSum:Number(j.partC||0);
     partCSrc=costSum>0?' (ต้นทุนจริง)':' (คงค่าเดิม)';
@@ -8430,11 +8434,14 @@ function salesAddJobDetailLines(pr){
   const j=jobs.find(x=>sameJob(x.id,pr)&&!isDeletedRecord(x));
   const custEl=document.getElementById('sale-customer');
   if(custEl&&!custEl.value&&j)applySalesCustomerProfile(String(j.client||'').trim(),String(j.branch||'').trim());
-  const q=latestQuotationForJob(pr);
-  if(!q){setAccountingStatus('sales',`งาน ${pr} ยังไม่มีใบเสนอราคา — เพิ่มรายการเองได้`,'warn');return;}
-  if((salesDraftItems||[]).some(it=>String(it.source_doc_id||'')===String(q.id)))return; // ใบเสนอราคานี้อยู่ในรายการแล้ว
-  const srcNo=q.doc_no||q.sales_invoice_no||q.id;
-  const lines=(salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===q.id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0)).map(it=>salesDetailLineFromItem(it,q.id,srcNo));
+  const qs=quotationSetForJob(pr);
+  if(!qs.length){setAccountingStatus('sales',`งาน ${pr} ยังไม่มีใบเสนอราคา — เพิ่มรายการเองได้`,'warn');return;}
+  const lines=[];
+  qs.forEach(q=>{
+    if((salesDraftItems||[]).some(it=>String(it.source_doc_id||'')===String(q.id)))return; // ใบเสนอราคานี้อยู่ในรายการแล้ว
+    const srcNo=q.doc_no||q.sales_invoice_no||q.id;
+    lines.push(...(salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===q.id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0)).map(it=>salesDetailLineFromItem(it,q.id,srcNo)));
+  });
   if(!lines.length)return;
   salesDraftItems=(salesDraftItems||[]).filter(it=>String(it.description||'').trim()||Number(it.unit_price||0)).concat(lines);
   renderSalesItemEditor();updateSalesSummary&&updateSalesSummary();
@@ -8465,11 +8472,13 @@ function openSalesModal(id='',prefJobId='',docType=''){
   // รูปแบบสรุป: เอกสารเดิม = ตามที่บันทึกไว้ · สร้างใหม่ = ใบกำกับภาษี/ใบแจ้งหนี้ใช้แบบสรุปเป็นค่าเริ่มต้น (ทุกทางเข้าได้หน้าตาเดียวกัน)
   const sumFlagEl=document.getElementById('sale-summary-flag');
   if(sumFlagEl){sumFlagEl.value=inv?((inv.doc_template==='summary')?'1':''):((dt==='tax_invoice'||dt==='invoice')?'1':'');sumFlagEl.dataset.orig=sumFlagEl.value;}
+  const qxEl=document.getElementById('sale-qt-extra');if(qxEl)qxEl.value=inv&&inv.qt_extra?'1':'';
   const rcptOpt=document.getElementById('sale-doc-type-receipt');if(rcptOpt)rcptOpt.hidden=dt!=='receipt'; // ใบเสร็จแยกใบเลิกใช้ — เปิดได้เฉพาะใบเก่า
   const bpEl=document.getElementById('sale-branch-province');if(bpEl)bpEl.innerHTML=provinceOptionsHtml(inv?.branch_province||'');
   const cpEl=document.getElementById('sale-customer-province');if(cpEl)cpEl.innerHTML=provinceOptionsHtml(inv?.customer_province||'');
   updateSalesFormatRows(dt);
   salesDraftJobs=inv?(inv.job_ids?String(inv.job_ids).split(',').map(s=>s.trim()).filter(Boolean):(inv.job_id?[inv.job_id]:[])):(prefJobId?[prefJobId]:[]);
+  salesOrigJobs=inv?salesDraftJobs.slice():[]; // PR เดิมของเอกสารที่เปิดแก้ไข (กันออกใบเสนอราคาซ้ำ เช็กเฉพาะ PR ที่เพิ่มเข้ามาใหม่)
   document.getElementById('sale-job-input').value='';
   renderSalesJobChips();
   document.getElementById('sale-customer').value=inv?.customer_name||'';
@@ -8559,17 +8568,33 @@ function renderSalesJobChips(){
   const curId=document.getElementById('sale-id')?.value||'';
   const curType=document.getElementById('sale-doc-type')?.value||'';
   const curTypeLabel=(SALES_DOC_META[curType]||{}).title||'เอกสาร';
-  let anyDup=false;
+  const extra=salesIsQtExtra();
+  let anyDup=false;const dupNos=[],dupDocs=[];
   el.innerHTML=salesDraftJobs.length?salesDraftJobs.map((pr,i)=>{
     const dups=existingSalesBillsForJob(pr,curId,curType);
-    const warn=dups.length?(anyDup=true,`<span title="มี${esc(curTypeLabel)}ของ PR นี้แล้ว: ${esc(dups.map(d=>d.doc_no||d.sales_invoice_no).filter(Boolean).join(', '))}" style="color:var(--yellow);font-weight:700;">⚠</span>`):'';
-    const bg=dups.length?'background:rgba(210,153,34,.18);border:1px solid var(--yellow);':'';
+    if(dups.length)dups.forEach(d=>{const n=d.doc_no||d.sales_invoice_no;if(n&&!dupNos.includes(n))dupNos.push(n);if(!dupDocs.includes(d))dupDocs.push(d);});
+    const warn=dups.length?(anyDup=true,extra?`<span title="ใบเสนอราคาเพิ่มของงานนี้ (แยกใบ) — มีอยู่แล้ว: ${esc(dups.map(d=>d.doc_no||d.sales_invoice_no).filter(Boolean).join(', '))}" style="color:#175fff;font-weight:700;">＋</span>`:`<span title="มี${esc(curTypeLabel)}ของ PR นี้แล้ว: ${esc(dups.map(d=>d.doc_no||d.sales_invoice_no).filter(Boolean).join(', '))}" style="color:var(--yellow);font-weight:700;">⚠</span>`):'';
+    const blk=dups.length&&curType==='quotation'&&!extra&&!salesOrigJobs.some(x=>sameJob(x,pr));
+    const bg=dups.length?(extra?'background:rgba(23,95,255,.10);border:1px solid #175fff;':blk?'background:rgba(220,38,38,.10);border:1px solid #dc2626;':'background:rgba(210,153,34,.18);border:1px solid var(--yellow);'):'';
     return `<span class="chip" style="display:inline-flex;align-items:center;gap:4px;${bg}">${warn}${esc(pr)}<button type="button" class="icon-btn" style="padding:0 2px;" onclick="removeSalesJob(${i})">×</button></span>`;
   }).join(''):'<span class="tm" style="font-size:11px;">ยังไม่ได้เลือก PR</span>';
   const note=document.getElementById('sale-dup-note');
-  if(note)note.innerHTML=anyDup?`⚠ มีบางงานที่ออก${esc(curTypeLabel)}ไปแล้ว — ตรวจสอบก่อนบันทึกซ้ำ`:'';
+  if(note){
+    const isQt=curType==='quotation';
+    if(anyDup&&isQt&&extra)note.innerHTML=`<span style="color:#175fff">✓ ออกเป็น <b>ใบเสนอราคาเพิ่มของงานนี้ (แยกใบ)</b> — ไม่แทนที่ใบเดิม (${esc(dupNos.join(', '))}) · ใบกำกับภาษี/การเงินของ PR นี้จะรวมยอดทุกใบที่แยก</span> <button type="button" class="btn btn-ghost btn-sm" style="margin-left:4px" onclick="salesSetQtExtra(false)">ยกเลิก</button>`;
+    else if(anyDup&&isQt&&salesQtBlockedJobs(curId).length)note.innerHTML=`<span style="color:#dc2626">🚫 งานนี้มีใบเสนอราคาแล้ว (${dupDocs.map(d=>`<a href="#" onclick="event.preventDefault();openSalesDocPreview('${esc(d.id)}')" style="color:#dc2626;text-decoration:underline">${esc(d.doc_no||d.sales_invoice_no||d.id)}</a>`).join(', ')}) — ออกซ้ำไม่ได้ ถ้าจะแก้ราคา ให้เปิดแก้ใบเดิม</span><div style="margin-top:6px;color:var(--text2,#475569)">ถ้าลูกค้าให้แยกใบเสนอราคาของงานเดียวกัน: <button type="button" class="btn btn-sm" style="background:#175fff;color:#fff;border-color:#175fff" onclick="salesSetQtExtra(true)">➕ เพิ่มเป็นใบเสนอราคาอีกใบของงานนี้</button></div>`;
+    else if(anyDup&&isQt)note.innerHTML=`⚠ งานนี้มีใบเสนอราคาอื่นอยู่แล้ว (${esc(dupNos.join(', '))})`;
+    else note.innerHTML=anyDup?`⚠ มีบางงานที่ออก${esc(curTypeLabel)}ไปแล้ว — ตรวจสอบก่อนบันทึกซ้ำ`:'';
+  }
   document.getElementById('sale-job').value=salesDraftJobs.join(',');
 }
+// ใบเสนอราคาเพิ่มของงานเดียวกัน (ลูกค้าให้แยกใบ) — ไม่ใช่ใบแก้ไขแทนใบเดิม → ใบกำกับภาษี/การเงินนับรวมทุกใบ
+var salesOrigJobs=[];
+// ใบเสนอราคา: ห้ามออกซ้ำ — PR ที่มีใบเสนอราคาแล้ว ต้องแก้ใบเดิม หรือกด ➕ เพิ่มเป็นอีกใบของงานนี้
+function salesQtBlockedJobs(curId){if((document.getElementById('sale-doc-type')?.value||'')!=='quotation'||salesIsQtExtra())return [];
+  return salesDraftJobs.filter(pr=>!salesOrigJobs.some(x=>sameJob(x,pr))&&existingSalesBillsForJob(pr,curId,'quotation').length);}
+function salesIsQtExtra(){return (document.getElementById('sale-doc-type')?.value||'')==='quotation'&&document.getElementById('sale-qt-extra')?.value==='1';}
+function salesSetQtExtra(on){const el=document.getElementById('sale-qt-extra');if(el)el.value=on?'1':'';renderSalesJobChips();}
 function addSalesJob(){
   const inp=document.getElementById('sale-job-input');
   const v=(inp?.value||'').trim();
@@ -8711,8 +8736,15 @@ function salesRemoveBillingLinesForJob(pr){
   if(salesDraftItems.length!==before){if(!salesDraftItems.length)salesDraftItems=[blankSalesItem()];renderSalesItemEditor();updateSalesSummary&&updateSalesSummary();}
 }
 function latestQuotationForJob(pr){
-  return (salesInvoices||[]).filter(inv=>inv.status!=='cancelled'&&(inv.doc_type==='quotation')&&salesInvoiceMatchesJob(inv,pr))
-    .sort((a,b)=>String(b.invoice_date||'').localeCompare(String(a.invoice_date||''))||String(b.doc_no||'').localeCompare(String(a.doc_no||'')))[0]||null;
+  const all=(salesInvoices||[]).filter(inv=>inv.status!=='cancelled'&&(inv.doc_type==='quotation')&&salesInvoiceMatchesJob(inv,pr))
+    .sort((a,b)=>String(b.invoice_date||'').localeCompare(String(a.invoice_date||''))||String(b.doc_no||'').localeCompare(String(a.doc_no||'')));
+  return all.find(q=>!q.qt_extra)||all[0]||null;
+}
+// ใบเสนอราคาที่ใช้อยู่ของงาน: ใบหลักล่าสุด (ใบเก่าที่ออกซ้ำ = ฉบับแก้ไข ไม่นับ) + ใบเพิ่มแยกใบทุกใบ
+function quotationSetForJob(pr){
+  const base=latestQuotationForJob(pr);
+  const extras=(salesInvoices||[]).filter(inv=>inv.status!=='cancelled'&&inv.doc_type==='quotation'&&inv.qt_extra&&salesInvoiceMatchesJob(inv,pr)&&(!base||inv.id!==base.id));
+  return (base?[base]:[]).concat(extras.sort((a,b)=>String(a.doc_no||'').localeCompare(String(b.doc_no||''))));
 }
 // ลิงค์สด: ยอดของแต่ละบรรทัดในใบกำกับแบบสรุป = ยอดก่อน VAT "ปัจจุบัน" ของใบเสนอราคาต้นทาง
 // (ใช้ source_doc_id ก่อน ถ้าไม่มีค่อยใช้ใบเสนอราคาล่าสุดของ PR) → แก้ราคาใบเสนอราคาแล้วใบกำกับอัปเดตตามทันทีตอนแสดง/พิมพ์
@@ -8835,18 +8867,24 @@ function salesAddJobLine(pr){
   const client=j?String(j.client||'').trim():'';
   const custEl=document.getElementById('sale-customer');
   if(custEl&&!custEl.value&&j)applySalesCustomerProfile(client,branch);
-  // กันซ้ำ: ถ้ามีบรรทัดของ PR นี้อยู่แล้ว ไม่เพิ่มซ้ำ
-  if(salesDraftItems.some(it=>sameJob(it.item_code,pr)))return;
-  const q=latestQuotationForJob(pr);
-  const amount=q?Number(q.subtotal||0):0;
-  const line={...blankSalesItem(),item_code:pr,category:'',description:branch||client||pr,quantity:1,unit:'JOB',unit_price:amount,discount:0,source_type:'manual',source_ref_id:'',source_doc_id:q?q.id:''};
-  const last=salesDraftItems[salesDraftItems.length-1];
-  if(last&&!String(last.description||'').trim()&&!Number(last.unit_price||0))salesDraftItems[salesDraftItems.length-1]=line;
-  else salesDraftItems.push(line);
+  // งานเดียวมีใบเสนอราคาแยกหลายใบ → 1 บรรทัดต่อใบ (กันซ้ำตามใบเสนอราคา)
+  const qs=quotationSetForJob(pr);
+  if(!qs.length&&salesDraftItems.some(it=>sameJob(it.item_code,pr)))return;
+  const add=qs.length?qs.filter(q=>!salesDraftItems.some(it=>String(it.source_doc_id||'')===String(q.id))):[null];
+  if(!add.length)return;
+  add.forEach(q=>{
+    const amount=q?Number(q.subtotal||0):0;
+    const desc=(branch||client||pr)+(qs.length>1&&q?` (${q.doc_no||q.sales_invoice_no||''})`:'');
+    const line={...blankSalesItem(),item_code:pr,category:'',description:desc,quantity:1,unit:'JOB',unit_price:amount,discount:0,source_type:'manual',source_ref_id:'',source_doc_id:q?q.id:''};
+    const last=salesDraftItems[salesDraftItems.length-1];
+    if(last&&!String(last.description||'').trim()&&!Number(last.unit_price||0))salesDraftItems[salesDraftItems.length-1]=line;
+    else salesDraftItems.push(line);
+  });
+  const amount=qs.length?1:0;
   const sf=document.getElementById('sale-summary-flag');if(sf)sf.value='1'; // ทำเองก็ให้พิมพ์เป็นฟอร์มสรุป
   renderSalesItemEditor();updateSalesSummary&&updateSalesSummary();
   // ถ้าราคากลาง/ใบเสนอราคายังไม่โหลด → โหลดแล้วเติมยอดให้ทีหลัง
-  if(amount===0&&!accountingLoaded){ensureAccountingLoaded().then(()=>{const q2=latestQuotationForJob(pr);const it=salesDraftItems.find(x=>sameJob(x.item_code,pr));if(q2&&it&&!Number(it.unit_price||0)){it.unit_price=Number(q2.subtotal||0);it.source_doc_id=q2.id;renderSalesItemEditor();updateSalesSummary&&updateSalesSummary();}}).catch(()=>{});}
+  if(amount===0&&!accountingLoaded){ensureAccountingLoaded().then(()=>{if(!quotationSetForJob(pr).length)return;salesDraftItems=salesDraftItems.filter(x=>!(sameJob(x.item_code,pr)&&!x.source_doc_id&&!Number(x.unit_price||0)));if(!salesDraftItems.length)salesDraftItems=[blankSalesItem()];salesAddJobLine(pr);}).catch(()=>{});}
 }
 function salesRemoveJobLine(pr){
   pr=String(pr||'').trim();if(!pr)return;
@@ -9212,7 +9250,10 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     const saveDocType=document.getElementById('sale-doc-type')?.value||'tax_invoice';
     const saveDocLabel=(SALES_DOC_META[saveDocType]||{}).title||'เอกสาร';
     const dupWarn=jobList.map(pr=>{const d=existingSalesBillsForJob(pr,id,saveDocType);return d.length?`${pr}: ${d.map(x=>x.doc_no||x.sales_invoice_no).filter(Boolean).join(', ')}`:'';}).filter(Boolean);
-    if(dupWarn.length&&!confirm(`งานต่อไปนี้มี${saveDocLabel}อยู่แล้ว:\n`+dupWarn.join('\n')+`\n\nต้องการออก${saveDocLabel}ซ้ำหรือไม่?`)){setAccountingStatus('sales',`ยกเลิกการบันทึก (มี${saveDocLabel}ซ้ำ)`,'warn');return;}
+    const qtExtra=saveDocType==='quotation'&&salesIsQtExtra();
+    const qtBlocked=salesQtBlockedJobs(id);
+    if(qtBlocked.length){const m=`ออกใบเสนอราคาซ้ำไม่ได้ — ${qtBlocked.join(', ')} มีใบเสนอราคาแล้ว\n\n• ถ้าจะแก้ราคา/รายการ: เปิดแก้ใบเดิม\n• ถ้าลูกค้าให้แยกใบ: กดปุ่ม "➕ เพิ่มเป็นใบเสนอราคาอีกใบของงานนี้" ใต้ช่อง PR`;setAccountingStatus('sales','ออกใบเสนอราคาซ้ำไม่ได้ — แก้ใบเดิม หรือกด ➕ เพิ่มเป็นอีกใบของงานนี้','err');alert(m);return;}
+    if(dupWarn.length&&!qtExtra&&saveDocType!=='quotation'&&!confirm(`งานต่อไปนี้มี${saveDocLabel}อยู่แล้ว:\n`+dupWarn.join('\n')+`\n\nต้องการออก${saveDocLabel}ซ้ำหรือไม่?`)){setAccountingStatus('sales',`ยกเลิกการบันทึก (มี${saveDocLabel}ซ้ำ)`,'warn');return;}
     const jobId=jobList[0];
     const rows=salesDraftItems.filter(x=>String(x.description||'').trim()).map((x,idx)=>{
       const quantity=Number(x.quantity||0),unitPrice=Number(x.unit_price||0),discount=Number(x.discount||0),subtotal=Math.max(0,quantity*unitPrice-discount);
@@ -9239,6 +9280,7 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     doc_type:docType,
     doc_no:docNo,
     source_doc_id:salesConvertSourceId||null,
+    qt_extra:qtExtra,
     job_id:jobId,
     job_ids:jobList.join(','),
     customer_id:document.getElementById('sale-customer').value.trim(),
@@ -13950,8 +13992,11 @@ var PM_TH_MONTHS=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','
 function pmId(p){return p+'-'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).slice(2,6).toUpperCase();}
 function pmNorm(s){return String(s||'').toLowerCase().replace(/\s+/g,'').replace(/[()\-_.,/]/g,'');}
 async function pmReq(table,query,opt){const r=await fetch(splitUrl(table,query),{...opt,headers:sbHeaders(opt&&opt.prefer?{'Prefer':opt.prefer}:{})});if(!r.ok)throw new Error(await r.text());const t=await r.text();return t?JSON.parse(t):null;}
-function pmUpsert(table,rows){return pmReq(table,'?on_conflict=id',{method:'POST',prefer:'resolution=merge-duplicates,return=representation',body:JSON.stringify(rows)});}
-function pmInsert(table,rows){return pmReq(table,'',{method:'POST',prefer:'return=representation',body:JSON.stringify(rows)});}
+// PostgREST ส่งหลายแถวครั้งเดียว ทุกแถวต้องมีคอลัมน์ชุดเดียวกัน (PGRST102) → แยกส่งตามชุดคอลัมน์
+async function pmBulk(table,rows,query,prefer){if(!Array.isArray(rows))rows=[rows];const g=new Map();rows.forEach(r=>{const k=Object.keys(r).sort().join(',');if(!g.has(k))g.set(k,[]);g.get(k).push(r);});
+  const out=[];for(const part of g.values()){const res=await pmReq(table,query,{method:'POST',prefer,body:JSON.stringify(part)});if(Array.isArray(res))out.push(...res);}return out;}
+function pmUpsert(table,rows){return pmBulk(table,rows,'?on_conflict=id','resolution=merge-duplicates,return=representation');}
+function pmInsert(table,rows){return pmBulk(table,rows,'','return=representation');}
 function pmPatch(table,id,fields){return pmReq(table,`?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',prefer:'return=representation',body:JSON.stringify(fields)});}
 async function pmLoad(force){
   if(pm.loaded&&!force)return;
