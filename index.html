@@ -1285,6 +1285,8 @@ button.pm-hc{cursor:pointer;}
 .pm-drop:hover{border-color:var(--accent);}
 .pm-xtbl{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:10px;}
 .pm-xtbl .pm-tbl th{position:sticky;top:0;background:var(--surface);z-index:1;}
+.pm-stb{border:0;cursor:pointer;font-family:inherit;}.pm-stb:hover{filter:brightness(.92);}
+.pm-hks{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-bottom:14px;}.pm-hk{background:var(--surface2,rgba(127,127,127,.08));border-radius:12px;padding:8px 10px;}.pm-hk small{display:block;font-size:11.5px;color:var(--text2);}.pm-hk b{font-size:14px;}.pm-hk.bad{background:color-mix(in srgb,#dc2626 9%,transparent);}.pm-hist .pm-ev{padding:8px 0;border-bottom:1px solid var(--border);}
 .pm-tag{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:600;white-space:nowrap;background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c);}
 .pm-lkbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
 .pm-lkbar .pm-q{flex:1;min-width:200px;}
@@ -1314,7 +1316,7 @@ button.pm-hc{cursor:pointer;}
 .btn.pm-exbtn:hover{background:#15803d;}
 .btn.pm-exbtn:disabled{opacity:.5;}
 .pm-nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
-.pm-ov-k{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px;}
+.pm-ov-k{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px;}
 .pm-ov-k .k{background:var(--surface);border-radius:16px;box-shadow:var(--shadow-1);padding:14px 16px;border:1px solid transparent;text-align:left;font-family:inherit;color:var(--text);cursor:pointer;min-width:0;}
 .pm-ov-k .k small{display:block;font-size:12px;color:var(--text2);}
 .pm-ov-k .k b{display:block;font-size:28px;line-height:1.25;}
@@ -1378,7 +1380,7 @@ button.pm-hc{cursor:pointer;}
 .pmx-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
 .pmx-tabs span{font-size:12px;padding:4px 10px;border-radius:8px;background:var(--surface2);color:var(--text2);}
 .pmx-tabs span.on{background:color-mix(in srgb,#16a34a 14%,var(--surface));color:#166534;font-weight:600;}
-@media(max-width:768px){.pm-ov-k{grid-template-columns:repeat(2,minmax(0,1fr));}.pm-ov-k .k b{font-size:22px;}.pm-cal .dc{min-height:58px;padding:2px 3px;}.pm-cal .pm-chip,.pm-cal .pm-more{display:none;}.pm-dotn{display:block;text-align:center;font-weight:700;font-size:13px;color:var(--accent);margin-top:4px;}.pm-mp{grid-template-columns:90px 1fr 48px;}.pm-frow > .pm-ms,.pm-frow > select{flex:1 1 calc(50% - 4px);width:auto;min-width:0;max-width:none;}.pm-ms .jq-ms-btn{max-width:none;width:100%;}.pm-ms .jq-ms-pop{position:fixed;left:12px;right:12px;top:auto;bottom:84px;width:auto;max-height:62vh;}}
+@media(max-width:768px){.pm-ov-k{grid-template-columns:repeat(2,minmax(0,1fr));}.pm-ov-k .k:last-child:nth-child(odd){grid-column:span 2;}.pm-ov-k .k b{font-size:22px;}.pm-cal .dc{min-height:58px;padding:2px 3px;}.pm-cal .pm-chip,.pm-cal .pm-more{display:none;}.pm-dotn{display:block;text-align:center;font-weight:700;font-size:13px;color:var(--accent);margin-top:4px;}.pm-mp{grid-template-columns:90px 1fr 48px;}.pm-frow > .pm-ms,.pm-frow > select{flex:1 1 calc(50% - 4px);width:auto;min-width:0;max-width:none;}.pm-ms .jq-ms-btn{max-width:none;width:100%;}.pm-ms .jq-ms-pop{position:fixed;left:12px;right:12px;top:auto;bottom:84px;width:auto;max-height:62vh;}}
 .pm-bp .two{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;}
 .pm-stp{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
 .pm-stp button{border:0;background:none;width:36px;height:36px;font-size:17px;font-weight:700;color:var(--text);cursor:pointer;}
@@ -14170,7 +14172,7 @@ function pfmRefresh(){try{pfmBuildTabs();pfmEnhanceFilters();}catch(e){console.w
 // PM (ทดลอง) ช่วงที่ 1 — สัญญา + แผนทั้งปี + ผูก PR · ทะเบียนเครื่อง + นำเข้า Excel · สติกเกอร์ QR
 // ตารางใหม่ล้วน (console_pm_phase1.sql) · admin เท่านั้น · ไม่แตะ jobs/เอกสาร/การเงิน
 // =====================================================================
-var pm={loaded:false,loading:null,missing:false,contracts:[],sites:[],visits:[],assets:[],logs:[]};
+var pm={loaded:false,loading:null,missing:false,contracts:[],sites:[],visits:[],assets:[],logs:[],vlogs:[],vlogOk:false,at:0};
 var pmQ='',pmFilt='',pmView='ov',pmContractId='',pmRound=1,pmMonth='',pmAsset={client:'',branch:'',q:''},pmQrPick=new Set();
 var PM_ASSET_TYPES=['แอร์ผนัง','แอร์แขวน','แอร์ 4 ทิศทาง','ตู้แช่','ไส้กรองน้ำ','แอร์','อื่น ๆ'];
 // แปลงข้อความประเภทเครื่องจาก Excel → ประเภทในระบบ (แอร์ที่ไม่ระบุชนิด = 'แอร์' ให้ช่างเลือกชนิดตอนเข้า PM)
@@ -14192,7 +14194,10 @@ async function pmLoad(force){
   pm.loading=(async()=>{
     try{
       const [c,s,v,a,l]=await Promise.all([sbFetchAll('pm_contracts','?select=*&order=year.desc'),sbFetchAll('pm_sites','?select=*&status=eq.active&order=sort_no.asc'),sbFetchAll('pm_visits','?select=*'),sbFetchAll('pm_assets','?select=*&order=id.asc'),sbFetchAll('pm_asset_logs','?select=*&order=done_at.desc')]);
-      Object.assign(pm,{contracts:c,sites:s,visits:v,assets:a,logs:l,loaded:true,missing:false});
+      Object.assign(pm,{contracts:c,sites:s,visits:v,assets:a,logs:l,loaded:true,missing:false,at:Date.now()});
+      // ประวัติการเปลี่ยนแผน (console_pm_status_history.sql) — ยังไม่รัน SQL ก็ใช้งานส่วนอื่นได้ตามปกติ
+      try{pm.vlogs=await sbFetchAll('pm_visit_logs','?select=visit_id,at,by,action,changes&order=at.asc');pm.vlogOk=true;}catch(e){pm.vlogs=[];pm.vlogOk=false;}
+      pmVLogMemo=null;
     }catch(e){console.warn('pm load',e);pm.missing=/PGRST205|does not exist|schema cache|relation/i.test(String(e&&e.message||e));pm.loaded=true;pm.error=String(e&&e.message||e);}
     finally{pm.loading=null;}
   })();
@@ -14216,8 +14221,88 @@ function pmVisitState(v){
   if(v.status==='skipped')return {k:'skip',l:'ข้าม',c:'#64748b'};
   const j=pmJob(v.job_id);
   if(v.status==='done'||(j&&['ปิดงาน','ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รอออกใบกำกับภาษี','รอวางบิล'].includes(j.status)))return {k:'done',l:j?j.status:'เสร็จแล้ว',c:'#16a34a'};
-  if(v.job_id)return {k:'job',l:j?j.status:'มี PR',c:'#175fff'};
+  if(v.job_id){if(j&&(pmStartOf(j)||PM_WORK_ST.includes(j.status)))return {k:'work',l:j.status,c:'#7c3aed'};return {k:'job',l:j?j.status:'มี PR',c:'#175fff'};}
   return {k:'plan',l:'รอ PR',c:'#d97706'};
+}
+// ---------- สถานะแผน ↔ คิวช่าง · งานเลท · ประวัติการเปลี่ยนแผน ----------
+// ช่างกด "เริ่มงาน" ใน LINE → งานมี techStartedAt (หรือแอดมินกรอกวันเข้างานจริง dateIn) → แผน PM เป็น "กำลังทำ"
+// เลท = วันที่เริ่มจริง ช้ากว่าวันแผน "ล่าสุด ณ ตอนกดเริ่ม" · แสดงคู่กับ "เทียบแผนแรก" (แผนโยกได้ — ดูประวัติได้)
+var PM_WORK_ST=['ช่างกำลังเข้าซ่อม','ช่างออกงาน','ช่างบันทึกร่าง','รอช่างส่งงาน'];
+var pmVLogMemo=null;
+function pmBkkDay(iso){const d=new Date(iso);return isNaN(d)?'':new Date(d.getTime()+7*3600e3).toISOString().slice(0,10);}
+function pmStartOf(j){if(!j)return null;
+  if(j.techStartedAt){const day=pmBkkDay(j.techStartedAt);if(day)return {day,at:new Date(j.techStartedAt).toISOString(),by:j.techStartedBy||'',src:'tech'};}
+  const d=String(j.dateIn||'').slice(0,10);if(/^\d{4}-\d{2}-\d{2}$/.test(d))return {day:d,at:new Date(d+'T'+(/^\d{2}:\d{2}/.test(j.timeIn||'')?j.timeIn.slice(0,5):'00:00')+':00+07:00').toISOString(),by:'',src:'dateIn'};
+  return null;}
+function pmDDiff(a,b){return Math.round((calDate(a)-calDate(b))/864e5);}
+function pmVLogsOf(vid){if(!pmVLogMemo){pmVLogMemo=new Map();(pm.vlogs||[]).forEach(l=>{if(!pmVLogMemo.has(l.visit_id))pmVLogMemo.set(l.visit_id,[]);pmVLogMemo.get(l.visit_id).push(l);});}return pmVLogMemo.get(vid)||[];}
+// ลำดับวันแผนตามเวลา [{at, old, val}]
+function pmPlanSeq(vid,logs){return (logs||pmVLogsOf(vid)).filter(l=>l.changes&&l.changes.planned_date).map(l=>({at:new Date(l.at).toISOString(),old:String(l.changes.planned_date[0]||'').slice(0,10),val:String(l.changes.planned_date[1]||'').slice(0,10)}));}
+function pmLate(v,j,logs){
+  if(!v||v.status==='skipped'||v.status==='cancelled')return null;
+  const plan=String(v.planned_date||'').slice(0,10),seq=pmPlanSeq(v.id,logs),s=pmStartOf(j),today=pmToday();
+  const first=String(v.first_planned_date||'').slice(0,10)||(seq.find(x=>x.val)||{}).val||plan;
+  let atStart=plan;
+  if(s&&seq.length){const before=seq.filter(x=>x.at<=s.at);atStart=before.length?before[before.length-1].val:(seq[0].old||seq[0].val);}
+  const o={plan,first,atStart,start:s,late:0,vsFirst:0,overdue:0,moved:first&&plan?pmDDiff(plan,first):0};
+  if(s){if(atStart)o.late=Math.max(0,pmDDiff(s.day,atStart));if(first)o.vsFirst=pmDDiff(s.day,first);}
+  else if(plan&&plan<today&&pmVisitState(v).k!=='done')o.overdue=pmDDiff(today,plan);
+  return o;}
+function pmLateBadge(v,j){const x=pmLate(v,j);if(!x)return '';
+  const firstTxt=x.first&&x.first!==x.atStart?` · แผนแรก ${pmDShort(x.first)} (${x.vsFirst>0?'ช้ากว่า '+x.vsFirst+' วัน':x.vsFirst<0?'เร็วกว่า '+(-x.vsFirst)+' วัน':'ตรง'})`:'';
+  if(x.start){const tip=`เริ่มจริง ${pmDShort(x.start.day)}${x.start.by?' โดย '+x.start.by:''} · แผนตอนเริ่ม ${x.atStart?pmDShort(x.atStart):'—'}${firstTxt}`;
+    return x.late>0?` <span class="pm-tag" style="--c:#dc2626" title="${esc(tip)}">⏰ เลท ${x.late} วัน</span>`:x.atStart?` <span class="pm-tag" style="--c:#16a34a" title="${esc(tip)}">ตรงแผน</span>`:'';}
+  if(x.overdue>0)return ` <span class="pm-tag" style="--c:#dc2626" title="วันแผน ${esc(pmDShort(x.plan))} ผ่านไปแล้ว ช่างยังไม่กดเริ่ม">เลยกำหนด ${x.overdue} วัน</span>`;
+  if(x.moved)return ` <span class="pm-tag" style="--c:#64748b" title="แผนแรก ${esc(pmDShort(x.first))}">เลื่อน ${x.moved>0?'+':''}${x.moved} วัน</span>`;
+  return '';}
+// กดที่สถานะ → เลือกสถานะใหม่ (สถานะงานในคิวช่าง / สถานะแผน) — เหมือนหน้าคิวช่าง
+function pmStPick(vid,el){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const v=pm.visits.find(x=>x.id===vid);if(!v||!el)return;const j=pmJob(v.job_id);
+  const sel=document.createElement('select');sel.className='filter-select';sel.style.cssText='font-size:12px;padding:3px 6px;max-width:210px;';
+  const jo=j?`<optgroup label="สถานะงาน ${esc(j.id)} (คิวช่าง)">${[...new Set([j.status,...J_ST].filter(Boolean))].map(x=>`<option value="j:${esc(x)}"${x===j.status?' selected':''}>${esc(x)}</option>`).join('')}</optgroup>`:'';
+  const vo=`<optgroup label="สถานะแผน PM">${[['planned','แผน (ยังไม่เสร็จ)'],['done','✓ เสร็จ — ปิดรอบนี้'],['skipped','ข้ามรอบนี้']].map(([k,l])=>`<option value="v:${k}"${!j&&v.status===k?' selected':''}>${l}</option>`).join('')}</optgroup>`;
+  sel.innerHTML=jo+vo+'<option value="h">🕘 ดูประวัติการเปลี่ยนแผน</option>';
+  sel.onclick=e=>e.stopPropagation();
+  let done=false;
+  sel.onchange=async()=>{done=true;sel.disabled=true;const x=sel.value;
+    if(x==='h'){renderPM();pmHistOpen(vid);return;}
+    if(x.startsWith('j:')){const st=x.slice(2);if(!j||st===j.status){renderPM();return;}try{await setJobStatusEverywhere(j.id,st);}catch(e){alert('เปลี่ยนสถานะไม่สำเร็จ: '+(e.message||e));}renderPM();return;}
+    if(x.startsWith('v:')){await pmVisitPatch(vid,{status:x.slice(2)});return;}
+    renderPM();};
+  sel.onblur=()=>{if(!done)setTimeout(()=>renderPM(),150);};
+  el.replaceWith(sel);sel.focus();
+}
+function pmStChip(v,st){return v?`<button type="button" class="chip pm-st pm-stb" style="--c:${st.c}" title="กดเพื่อเปลี่ยนสถานะ" onclick="event.stopPropagation();pmStPick('${esc(v.id)}',this)">${esc(st.l)} ▾</button>`:`<span class="chip pm-st" style="--c:${st.c}">${esc(st.l)}</span>`;}
+async function pmVisitPatch(vid,fields){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const v=pm.visits.find(x=>x.id===vid);if(!v)return;
+  const row={...v,...fields,updated_at:new Date().toISOString(),updated_by:getActorName()};
+  try{const [saved]=await pmUpsert('pm_visits',[row]);const i=pm.visits.findIndex(x=>x.id===vid);if(i>=0)pm.visits[i]=saved||row;renderPM();pmVLogsReload(vid);}
+  catch(e){pmErr(e);}
+}
+async function pmVLogsReload(vid){if(!pm.vlogOk)return;try{const rows=await sbFetchAll('pm_visit_logs',`?select=visit_id,at,by,action,changes&visit_id=eq.${encodeURIComponent(vid)}&order=at.asc`);pm.vlogs=(pm.vlogs||[]).filter(l=>l.visit_id!==vid).concat(rows||[]);pmVLogMemo=null;}catch(e){}}
+var PM_VF={planned_date:'วันนัด',team:'ทีม',job_id:'PR',status:'สถานะแผน',note:'หมายเหตุ'};
+function pmVVal(f,x){if(x==null||x==='')return '—';if(f==='planned_date')return pmDShort(String(x).slice(0,10))+' '+pmYY(String(x).slice(0,10));if(f==='status')return {planned:'แผน',done:'เสร็จ',skipped:'ข้าม',cancelled:'ยกเลิก'}[x]||x;if(f==='team')return pmTeamLabel(x);return String(x);}
+function pmFmtAt(iso){const d=new Date(iso);return isNaN(d)?'':d.toLocaleString('th-TH',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});}
+async function pmHistOpen(vid){
+  const v=pm.visits.find(x=>x.id===vid);if(!v)return;const s=pm.sites.find(x=>x.id===v.site_id),c=pm.contracts.find(x=>x.id===v.contract_id),j=pmJob(v.job_id);
+  const title=`ประวัติแผน · ${s?s.branch:''}`,sub=`${c?c.client+' · '+c.name+' · ':''}รอบที่ ${v.round_no}${v.job_id?' · '+v.job_id:''}`;
+  pmModal(title,sub,'<div class="d2-empty">กำลังโหลดประวัติ...</div>');
+  let logs=null,err='';
+  try{logs=await sbFetchAll('pm_visit_logs',`?select=*&visit_id=eq.${encodeURIComponent(vid)}&order=at.asc`);pm.vlogs=(pm.vlogs||[]).filter(l=>l.visit_id!==vid).concat(logs.map(({visit_id,at,by,action,changes})=>({visit_id,at,by,action,changes})));pm.vlogOk=true;pmVLogMemo=null;}
+  catch(e){err=/PGRST205|does not exist|schema cache|relation/i.test(String(e&&e.message||e))?'ยังไม่ได้เปิดเก็บประวัติ — รันไฟล์ console_pm_status_history.sql ใน Supabase ก่อน':'โหลดประวัติไม่สำเร็จ: '+(e.message||e);}
+  const x=pmLate(v,j,logs||undefined)||{};
+  const cell=(l,val,cls)=>`<div class="pm-hk${cls?' '+cls:''}"><small>${l}</small><b>${val}</b></div>`;
+  const res=x.start?(x.late>0?`<span style="color:#dc2626">เลท ${x.late} วัน</span>`:'ตรงแผน'):x.overdue>0?`<span style="color:#dc2626">เลยกำหนด ${x.overdue} วัน</span>`:pmVisitState(v).k==='done'?'เสร็จแล้ว':'ยังไม่เริ่ม';
+  const head=`<div class="pm-hks">${cell('แผนแรก',x.first?esc(pmDShort(x.first)+' '+pmYY(x.first)):'—')}${cell('แผนปัจจุบัน',x.plan?esc(pmDShort(x.plan)+' '+pmYY(x.plan)):'—')}${cell('แผน ณ ตอนช่างเริ่ม',x.start&&x.atStart?esc(pmDShort(x.atStart)):'—')}${cell('เริ่มงานจริง',x.start?esc(pmDShort(x.start.day))+(x.start.by?`<small style="display:block;font-weight:400">${esc(x.start.by)}</small>`:''):'—')}${cell('ผล',res,x.late>0||x.overdue>0?'bad':'')}${x.start&&x.first?cell('เทียบแผนแรก',x.vsFirst>0?`ช้า ${x.vsFirst} วัน`:x.vsFirst<0?`เร็ว ${-x.vsFirst} วัน`:'ตรง'):''}</div>`;
+  const ev=(logs||[]).map(l=>{const ch=l.changes||{};const lines=Object.keys(PM_VF).filter(f=>ch[f]).map(f=>l.action==='snapshot'||l.action==='create'?`${PM_VF[f]} <b>${esc(pmVVal(f,ch[f][1]))}</b>`:`${PM_VF[f]} <s>${esc(pmVVal(f,ch[f][0]))}</s> → <b>${esc(pmVVal(f,ch[f][1]))}</b>`);
+    const what={snapshot:'ข้อมูลตั้งต้น (ก่อนเริ่มเก็บประวัติ)',create:'สร้างแผน',update:'แก้แผน',delete:'ลบแผน'}[l.action]||l.action;
+    return {at:new Date(l.at).toISOString(),html:`<div class="pm-ev"><span class="d2-evdot" style="background:${ch.planned_date&&l.action==='update'?'#d97706':l.action==='delete'?'#dc2626':'#175fff'}"></span><div style="flex:1;min-width:0"><b>${esc(what)}</b> <span class="tm" style="font-size:12px">· ${esc(l.by||'-')} · ${esc(pmFmtAt(l.at))}</span><div style="font-size:13px;line-height:1.7">${lines.join('<br>')||'<span class="tm">—</span>'}</div></div></div>`};});
+  if(x.start)ev.push({at:x.start.at,html:`<div class="pm-ev"><span class="d2-evdot" style="background:#7c3aed"></span><div style="flex:1;min-width:0"><b>${x.start.src==='tech'?'▶️ ช่างกดเริ่มงาน':'▶️ วันเข้างานจริง (จากใบงาน)'}</b> <span class="tm" style="font-size:12px">· ${esc(x.start.by||(j&&j.team)||'-')} · ${esc(x.start.src==='tech'?pmFmtAt(x.start.at):pmDLong(x.start.day))}</span>${x.late>0?`<div style="font-size:13px;color:#dc2626">ช้ากว่าแผน ${x.late} วัน</div>`:''}</div></div>`});
+  ev.sort((a,b)=>a.at.localeCompare(b.at));
+  const body=head+(err?`<div class="d2-empty">${esc(err)}</div>`:ev.length?`<div class="pm-hist">${ev.map(e=>e.html).join('')}</div>`:'<div class="d2-empty">ยังไม่มีการเปลี่ยนแปลง</div>');
+  pmModal(title,sub,body,`<button class="btn btn-ghost" onclick="closeM('m-pm')">ปิด</button>${j?`<button class="btn btn-ghost" onclick="closeM('m-pm');openDet('${esc(j.id).replace(/'/g,'&#39;')}')">เปิดงาน ${esc(j.id)}</button>`:''}`);
 }
 function pmEnsureModal(){
   if(document.getElementById('m-pm'))return;
@@ -14300,7 +14385,7 @@ function pmFMatch(x,o){const f=pmF;o=o||{};
   return true;}
 function pmFActive(withDate){const f=pmF;return !!(f.teams.length||f.st.length||f.co||f.regions.length||f.provs.length||f.contract||pmQ||(withDate&&(f.from||f.to)));}
 function pmCount(rows,fn){const m=new Map();rows.forEach(r=>{const k=fn(r);m.set(k,(m.get(k)||0)+1);});return m;}
-const PM_ST_OPTS=[['none','ยังไม่จัด','#94a3b8'],['plan','รอ PR','#d97706'],['job','มี PR / กำลังทำ','#175fff'],['done','เสร็จ','#16a34a'],['skip','ข้าม','#64748b']];
+const PM_ST_OPTS=[['none','ยังไม่จัด','#94a3b8'],['plan','รอ PR','#d97706'],['job','มี PR / รอเริ่ม','#175fff'],['work','กำลังทำ','#7c3aed'],['done','เสร็จ','#16a34a'],['skip','ข้าม','#64748b']];
 var pmMsOpenKey='';
 function pmMsToggle(btn,e){e.stopPropagation();const w=btn.parentElement,was=w.classList.contains('open');document.querySelectorAll('.pm-ms.open').forEach(x=>x.classList.remove('open'));if(!was){w.classList.add('open');pmMsOpenKey=w.dataset.ms;}else pmMsOpenKey='';}
 document.addEventListener('click',e=>{if(!pmMsOpenKey||(e.target.closest&&e.target.closest('.pm-ms')))return;pmMsOpenKey='';document.querySelectorAll('.pm-ms.open').forEach(x=>x.classList.remove('open'));});
@@ -14362,14 +14447,17 @@ function pmFBarHtml(){
 // เปิดงานในคิว (มี PR) หรือพาไปที่แถวในแผน PM
 function pmOpenRow(vid){const v=pm.visits.find(x=>x.id===vid);if(!v)return;const j=pmJob(v.job_id);closeM('m-pm');if(j){openDet(j.id);return;}pmShowInPlan(vid);}
 function pmShowInPlan(vid){const v=pm.visits.find(x=>x.id===vid);if(!v)return;const s=pm.sites.find(x=>x.id===v.site_id);closeM('m-pm');pmView='plan';pmContractId=v.contract_id;pmRound=+v.round_no;pmMonth='';pmF=pmFBlank();pmFSave();pmQ=v.job_id||(s?s.branch:'');renderPM();}
+// งานที่ช่างเริ่มช้ากว่าแผน (นับตามวันเริ่มจริงในช่วงที่เลือก)
+function pmLateRows(rows,a,b){return rows.map(r=>{const x=pmLate(r.v,pmJob(r.v.job_id));return x&&x.start&&x.late>0&&x.start.day>=a&&x.start.day<=b?Object.assign(r,{lt:x.late}):null;}).filter(Boolean);}
 // รายการแผนเข้าของวัน/ช่วง/ทีม (กดจากการ์ด · ตารางสัปดาห์ · ปฏิทิน)
 function pmDayList(a,b,team){
   let rows=pmRows().filter(r=>pmFMatch(r,{noDate:true})),title;const today=pmToday();
-  if(a==='overdue'){rows=rows.filter(r=>r.date&&r.date<today&&(r.k==='plan'||r.k==='job'));title='เลยกำหนด ยังไม่เสร็จ';}
+  if(a==='overdue'){rows=rows.filter(r=>r.date&&r.date<today&&(r.k==='plan'||r.k==='job'));title='เลยกำหนด ยังไม่เริ่ม';}
+  else if(a==='late'){rows=pmLateRows(rows,b,team);title=`เริ่มช้ากว่าแผน · ${pmDShort(b)} – ${pmDShort(team)} ${pmYY(team)}`;team='';}
   else{rows=rows.filter(r=>r.date&&r.date>=a&&r.date<=b);title=a===b?pmDLong(a):`${pmDShort(a)} – ${pmDShort(b)} ${pmYY(b)}`;}
   if(team)rows=rows.filter(r=>(r.team||'__none')===team);
   rows.sort((x,y)=>x.date.localeCompare(y.date)||pmTeamSort(x.team,y.team)||x.s.branch.localeCompare(y.s.branch,'th'));
-  const body=rows.length?`<div class="pm-xtbl" style="max-height:60vh"><table class="pm-tbl"><thead><tr><th>วันนัด</th><th>สาขา</th><th>ทีม</th><th>PR</th><th>สถานะ</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td style="white-space:nowrap">${esc(pmDShort(r.date))}${r.date<today&&(r.k==='plan'||r.k==='job')?' <span class="pm-tag" style="--c:#dc2626">เลย</span>':''}</td><td><b>${esc(r.s.branch)}</b><div class="tm" style="font-size:11.5px">${esc([r.prov,r.c.client].filter(Boolean).join(' · '))}</div></td><td><span class="jq-dot" style="background:${pmTeamColor(r.team)};display:inline-block;margin-right:5px"></span>${esc(pmTeamLabel(r.team))}</td><td class="mono">${esc(r.v.job_id||'—')}</td><td><span class="chip pm-st" style="--c:${r.st.c}">${esc(r.st.l)}</span></td><td style="white-space:nowrap">${pmJob(r.v.job_id)?`<button class="btn btn-ghost btn-sm" onclick="pmOpenRow('${esc(r.v.id)}')">เปิดงาน</button>`:''}<button class="btn btn-ghost btn-sm" onclick="pmShowInPlan('${esc(r.v.id)}')">ดูในแผน</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="d2-empty">ไม่มีแผนเข้า</div>';
+  const body=rows.length?`<div class="pm-xtbl" style="max-height:60vh"><table class="pm-tbl"><thead><tr><th>วันนัด</th><th>สาขา</th><th>ทีม</th><th>PR</th><th>สถานะ</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td style="white-space:nowrap">${esc(pmDShort(r.date))}</td><td><b>${esc(r.s.branch)}</b><div class="tm" style="font-size:11.5px">${esc([r.prov,r.c.client].filter(Boolean).join(' · '))}</div></td><td><span class="jq-dot" style="background:${pmTeamColor(r.team)};display:inline-block;margin-right:5px"></span>${esc(pmTeamLabel(r.team))}</td><td class="mono">${esc(r.v.job_id||'—')}</td><td>${pmStChip(r.v,r.st)}${pmLateBadge(r.v,pmJob(r.v.job_id))}</td><td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" title="ประวัติการเปลี่ยนแผน" onclick="pmHistOpen('${esc(r.v.id)}')">🕘</button>${pmJob(r.v.job_id)?`<button class="btn btn-ghost btn-sm" onclick="pmOpenRow('${esc(r.v.id)}')">เปิดงาน</button>`:''}<button class="btn btn-ghost btn-sm" onclick="pmShowInPlan('${esc(r.v.id)}')">ดูในแผน</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="d2-empty">ไม่มีแผนเข้า</div>';
   pmModal('แผน PM · '+title,`${rows.length} สาขา${team?' · '+pmTeamLabel(team):''}${pmFActive(false)?' · ตามตัวกรองที่เลือก':''}`,body,null,true);
 }
 
@@ -14383,14 +14471,16 @@ function pmOvHtml(){
   const ws=pmWeekStart(day),we=pmAddDays(ws,6),ms=day.slice(0,7)+'-01',me=pmMonthEnd(day);
   const inR=(a,b)=>rows.filter(r=>r.date>=a&&r.date<=b);const dR=inR(day,day),wR=inR(ws,we),mR=inR(ms,me);
   const over=rows.filter(r=>r.date<today&&(r.k==='plan'||r.k==='job'));
+  const lateM=pmLateRows(pmRows().filter(r=>pmFMatch(r,{noDate:true})),ms,me);
   const nk=(a,k)=>a.filter(r=>r.k===k).length;
-  const bar=(a,h)=>{const t=a.length||1;return `<div class="pm-bar2"${h?` style="height:${h}px;margin:0"`:''}><i style="width:${nk(a,'done')/t*100}%;background:#16a34a"></i><i style="width:${nk(a,'job')/t*100}%;background:#175fff"></i><i style="width:${nk(a,'skip')/t*100}%;background:#cbd5e1"></i></div>`;};
+  const bar=(a,h)=>{const t=a.length||1;return `<div class="pm-bar2"${h?` style="height:${h}px;margin:0"`:''}><i style="width:${nk(a,'done')/t*100}%;background:#16a34a"></i><i style="width:${nk(a,'work')/t*100}%;background:#7c3aed"></i><i style="width:${nk(a,'job')/t*100}%;background:#175fff"></i><i style="width:${nk(a,'skip')/t*100}%;background:#cbd5e1"></i></div>`;};
   const left=a=>a.length-nk(a,'done')-nk(a,'skip');
   const kpi=`<div class="pm-ov-k">
     <button type="button" class="k" onclick="pmDayList('${day}','${day}')"><small>${isT?'วันนี้':'วันที่เลือก'} (${esc(pmDLong(day))})</small><b>${dR.length}</b><div class="s">สาขา · ${new Set(dR.map(r=>r.team||'__none')).size} ทีม · เสร็จแล้ว ${nk(dR,'done')}</div>${bar(dR)}</button>
     <button type="button" class="k" onclick="pmDayList('${ws}','${we}')"><small>สัปดาห์${ws<=today&&today<=we?'นี้':''} (${esc(pmDShort(ws))} – ${esc(pmDShort(we))})</small><b>${wR.length}</b><div class="s">เสร็จ ${nk(wR,'done')} · เหลือ ${left(wR)}</div>${bar(wR)}</button>
     <button type="button" class="k" onclick="pmDayList('${ms}','${me}')"><small>เดือน${day.slice(0,7)===today.slice(0,7)?'นี้':''} (${esc(pmMon(day))})</small><b>${mR.length}</b><div class="s">เสร็จ ${nk(mR,'done')}${mR.length?` (${Math.round(nk(mR,'done')/mR.length*100)}%)`:''} · เหลือ ${left(mR)}</div>${bar(mR)}</button>
-    <button type="button" class="k${over.length?' warn':''}" onclick="pmDayList('overdue')"><small>⚠ เลยกำหนด ยังไม่เสร็จ</small><b>${over.length}</b><div class="s">${over.length?'กดเพื่อดูรายการ':'ไม่มีงานค้าง'}</div></button></div>`;
+    <button type="button" class="k${over.length?' warn':''}" onclick="pmDayList('overdue')"><small>⚠ เลยกำหนด ยังไม่เสร็จ</small><b>${over.length}</b><div class="s">${over.length?'ช่างยังไม่กดเริ่ม · กดดูรายการ':'ไม่มีงานค้าง'}</div></button>
+    <button type="button" class="k${lateM.length?' warn':''}" onclick="pmDayList('late','${ms}','${me}')"><small>⏰ เริ่มช้ากว่าแผน (${esc(pmMon(day))})</small><b>${lateM.length}</b><div class="s">${lateM.length?`เฉลี่ยช้า ${(lateM.reduce((t,r)=>t+r.lt,0)/lateM.length).toFixed(1)} วัน`:'เริ่มตรงแผนทุกงาน'}</div></button></div>`;
   const tset=[...new Set(wR.map(r=>r.team||'__none'))].sort(pmTeamSort);
   const item=r=>`<button type="button" class="it${r.k==='done'?' dn':''}" onclick="pmOpenRow('${esc(r.v.id)}')"><b>${esc(r.s.branch)}</b><small>${esc(r.v.job_id||'ยังไม่มี PR')}${r.prov?' · '+esc(r.prov):''}</small> <span class="chip pm-st" style="--c:${r.st.c}">${esc(r.st.l)}</span></button>`;
   const cards=tset.length?`<div class="pm-ov-teams">${tset.map(t=>{const a=dR.filter(r=>(r.team||'__none')===t).sort((x,y)=>x.s.branch.localeCompare(y.s.branch,'th'));return `<div class="pm-tc" style="--c:${pmTeamColor(t)}"><div class="h">${esc(pmTeamLabel(t))}<span>${a.length} สาขา</span></div>${a.length?a.map(item).join(''):`<div class="tm" style="padding:16px 12px;text-align:center;font-size:12.5px">ไม่มี PM ${isT?'วันนี้':'วันนั้น'}</div>`}</div>`;}).join('')}</div>`:`<div class="d2-empty">ไม่มีแผน PM ในสัปดาห์นี้${pmFActive(false)?' (ตามตัวกรอง)':''}</div>`;
@@ -14438,11 +14528,11 @@ function pmCalHtml(){
 // ---------- Export (.xlsx ฟอร์มเดียวกับ "Form Update plane" · เปิดใน Google Sheet ได้) ----------
 const PM_EX_COLS=['No.','Work','ชื่อสาขา','จังหวัด','ภาค','ที่อยู่','พิกัด','แพลน','สถานะงาน','หมายเหตุ'];
 var pmEx=null;
-function pmExStatus(k){return k==='done'?'ดำเนินการเสร็จสิ้น':k==='job'?'อยู่ระหว่างดำเนินการ':k==='skip'?'ยกเลิก/ข้ามรอบ':'รอดำเนินการ';}
+function pmExStatus(k){return k==='done'?'ดำเนินการเสร็จสิ้น':k==='job'||k==='work'?'อยู่ระหว่างดำเนินการ':k==='skip'?'ยกเลิก/ข้ามรอบ':'รอดำเนินการ';}
 function pmExDate(iso){const m=String(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}/${m[2]}/${m[1]}`:'';}
 function pmExNote(r){const g=new Map();pmAssetsAt(r.c.client,r.s.branch).forEach(x=>{const t=x.asset_type||'อื่น ๆ';g.set(t,(g.get(t)||0)+1);});
   const unit=t=>/ตู้/.test(t)?'ตู้':/กรอง/.test(t)?'ชุด':'ตัว';return [...[...g].map(([t,n])=>`${t} ${n} ${unit(t)}`),r.s.note,r.v.note].filter(Boolean).join(' · ');}
-function pmExRow(r,i){return [i+1,r.v.job_id||'ยังไม่มีใบงาน',r.s.branch,r.prov||'',r.region||'',r.s.address||'',r.s.geo||'',pmExDate(r.date),pmExStatus(r.k),pmExNote(r)];}
+function pmExRow(r,i){return [i+1,r.v.job_id||'ยังไม่มีใบงาน',r.s.branch,r.prov||'',r.region||'',r.s.address||'',r.s.geo||'',pmExDate(r.date),pmExStatus(r.k)+((x=>x&&x.late>0?` (เลท ${x.late} วัน)`:x&&x.overdue>0?` (เลยกำหนด ${x.overdue} วัน)`:'')(r.v.id?pmLate(r.v,pmJob(r.v.job_id)):null)),pmExNote(r)];}
 // ทุกแผน: แผนเข้าที่มีอยู่ + สาขาในสัญญาที่ยังไม่ได้จัด (ยังไม่มีแถวแผน) ของรอบที่มีแผนแล้ว
 function pmPlanRowsAll(){const rows=pmRows(),have=new Set(rows.map(r=>r.cid+'|'+(+r.v.round_no)+'|'+r.s.id));
   pm.contracts.forEach(c=>{const rs=[...new Set(rows.filter(r=>r.cid===c.id).map(r=>+r.v.round_no))];const rounds=rs.length?rs:[pmRoundsOf(c)[0]];
@@ -14505,9 +14595,17 @@ async function pmExportDo(){
 }
 
 // ===================== หน้า PM =====================
+// ข้อมูล PM เก่ากว่า 1 นาที → โหลดใหม่เบื้องหลัง (เครื่อง/สติกเกอร์ที่ช่างลงทะเบียน · แผนที่แอดมินคนอื่นแก้) แล้ววาดใหม่ถ้ามีอะไรเปลี่ยน
+function pmSig(){const mx=(a,k)=>a.reduce((m,x)=>String(x[k]||'')>m?String(x[k]||''):m,'');return [pm.visits.length,pm.assets.length,pm.logs.length,(pm.vlogs||[]).length,pm.sites.length,mx(pm.visits,'updated_at'),mx(pm.assets,'updated_at'),mx(pm.sites,'updated_at')].join('|');}
+function pmAutoReload(){if(pm.loading||!pm.at||Date.now()-pm.at<60000)return;const before=pmSig();
+  pmLoad(true).then(()=>{if(pmSig()===before||!document.getElementById('page-pm')?.classList.contains('active'))return;
+    const a=document.activeElement,root=document.getElementById('pm-root');if(a&&root&&root.contains(a)&&/^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName)&&a.id!=='pm-q')return;
+    if(document.getElementById('m-pm')?.classList.contains('open'))return;pmRerender();}).catch(()=>{});}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&pm.loaded&&document.getElementById('page-pm')?.classList.contains('active'))pmAutoReload();});
 async function renderPM(){
   const root=document.getElementById('pm-root');if(!root)return;
   if(!pm.loaded){root.innerHTML='<div class="d2-empty">กำลังโหลดข้อมูล PM...</div>';await pmLoad();}
+  else pmAutoReload();
   if(pm.missing){root.innerHTML=`<div class="d2-box"><div class="d2-in d2-pad" style="line-height:1.8"><b>ยังไม่ได้สร้างตาราง PM</b><br>รันไฟล์ <code>console_pm_phase1.sql</code> ใน Supabase SQL Editor ก่อน แล้วกดรีเฟรชหน้านี้</div></div>`;return;}
   if(pm.error&&!pm.contracts.length&&!pm.assets.length){root.innerHTML=`<div class="d2-empty">โหลดข้อมูล PM ไม่สำเร็จ: ${esc(pm.error)}</div>`;}
   const tabs=[['ov','ภาพรวม'],['cal','ปฏิทิน'],['plan','แผน PM'],['assets','ทะเบียนเครื่อง'],['qr','สติกเกอร์ QR']];
@@ -14560,14 +14658,14 @@ function pmPlanHtml(){
         <td><input type="date" class="filter-input pm-in" value="${esc(v&&v.planned_date||'')}" onchange="pmSetVisit('${sid}',{planned_date:this.value||null})"></td>
         <td><select class="filter-select pm-in" onchange="pmSetVisit('${sid}',{team:this.value||null})">${teamOpts(v&&v.team)}</select></td>
         <td>${v&&v.job_id?`<div class="pm-pr">${j?`<button type="button" class="link-btn" onclick="openDet('${esc(j.id).replace(/'/g,'&#39;')}')">${esc(v.job_id)}</button>`:`<span class="mono">${esc(v.job_id)}</span> <span class="tm" style="font-size:11px">(ไม่พบในคิว)</span>`}<button type="button" class="pm-x" title="ยกเลิกการผูก PR" onclick="pmSetVisit('${sid}',{job_id:null})">×</button></div>`:`<button type="button" class="jq-link" onclick="pmLinkOpen('${sid}')">＋ ผูกงาน</button>`}</td>
-        <td><span class="chip pm-st" style="--c:${st.c}">${esc(st.l)}</span></td>
-        <td class="action-cell"><button class="icon-btn" onclick="toggleMenu('pms-${sid}',event)">...</button><div class="action-menu" id="pms-${sid}"><button onclick="pmSetVisit('${sid}',{status:'done'})">✓ ทำเครื่องหมายว่าเสร็จ</button><button onclick="pmSetVisit('${sid}',{status:'skipped'})">ข้ามรอบนี้</button><button onclick="pmSetVisit('${sid}',{status:'planned'})">กลับเป็นแผน</button><button onclick="pmEditSite('${sid}')">แก้ไขสาขา</button><button onclick="pmRemoveSite('${sid}')" style="color:var(--red)">เอาสาขาออกจากสัญญา</button></div></td></tr>`;}).join('')}</tbody></table>`
+        <td style="white-space:nowrap">${pmStChip(v,st)}${v?pmLateBadge(v,j):''}</td>
+        <td class="action-cell"><button class="icon-btn" onclick="toggleMenu('pms-${sid}',event)">...</button><div class="action-menu" id="pms-${sid}">${v?`<button onclick="pmHistOpen('${esc(v.id)}')">🕘 ประวัติการเปลี่ยนแผน</button>`:''}<button onclick="pmSetVisit('${sid}',{status:'done'})">✓ ทำเครื่องหมายว่าเสร็จ</button><button onclick="pmSetVisit('${sid}',{status:'skipped'})">ข้ามรอบนี้</button><button onclick="pmSetVisit('${sid}',{status:'planned'})">กลับเป็นแผน</button><button onclick="pmEditSite('${sid}')">แก้ไขสาขา</button><button onclick="pmRemoveSite('${sid}')" style="color:var(--red)">เอาสาขาออกจากสัญญา</button></div></td></tr>`;}).join('')}</tbody></table>`
     :`<div class="d2-empty">${sites.length?'ไม่มีสาขาที่นัดในเดือนที่เลือก':'ยังไม่มีสาขาในสัญญานี้ — กด "＋ เพิ่มสาขา"'}</div>`;
   return `<div class="pm-chips">${chips}<button type="button" class="pm-cchip add" onclick="pmEditContract()">＋ สัญญาใหม่</button></div>
   <div class="pm-grid">
     <section class="d2-box"><div class="d2-h"><div><div class="t">${esc(c.client)} · ${esc(c.name)}</div><div class="s">ปี ${c.year} · ${rnds.length<+c.rounds?`ทำรอบที่ ${rnds.join(', ')} จาก ${c.rounds} รอบ`:`${c.rounds} รอบ`} · ${sites.length} สาขา${c.note?' · '+esc(c.note):''}</div></div><button class="btn btn-ghost btn-sm" onclick="pmEditContract('${c.id}')">✏️ แก้ไขสัญญา</button></div>
       <div class="d2-in d2-pad">${heat}<div class="pm-legend tm"><span><i class="cd"></i>เสร็จแล้ว</span><span><i class="cm"></i>มี PR / กำลังทำ</span><span><i class="cp"></i>แผน (ยังไม่มี PR)</span><span>คลิกตัวเลขเพื่อกรองเดือน</span></div></div>
-      <div class="d2-h" style="margin-top:6px"><div><div class="t">สาขาในรอบที่ ${pmRound}${pmMonth?' · '+PM_TH_MONTHS[+pmMonth.slice(5)-1]:''}</div><div class="s">เสร็จ ${doneN}/${sites.length} · มี PR ${cnt('job')} · รอ PR ${cnt('plan')} · ยังไม่จัด ${cnt('none')}${pmMonth?` · <a href="javascript:void(0)" onclick="pmMonth='';renderPM()">ดูทุกเดือน</a>`:''}</div></div>
+      <div class="d2-h" style="margin-top:6px"><div><div class="t">สาขาในรอบที่ ${pmRound}${pmMonth?' · '+PM_TH_MONTHS[+pmMonth.slice(5)-1]:''}</div><div class="s">เสร็จ ${doneN}/${sites.length} · กำลังทำ ${cnt('work')} · มี PR รอเริ่ม ${cnt('job')} · รอ PR ${cnt('plan')} · ยังไม่จัด ${cnt('none')}${pmMonth?` · <a href="javascript:void(0)" onclick="pmMonth='';renderPM()">ดูทุกเดือน</a>`:''}</div></div>
         <button class="btn btn-ghost btn-sm" onclick="pmLinkOpen()">🔗 ผูกงานจากคิว / แอดมิน</button><button class="btn btn-ghost btn-sm" onclick="pmBulkPlan()">🗓 จัดวันเป็นชุด</button><button class="btn btn-primary btn-sm" onclick="pmAddSites()">＋ เพิ่มสาขา</button></div>
       ${rows.length?pmSelBarHtml():''}<div class="d2-in pm-scroll">${tbl}</div></section>
     ${pmFollowHtml(c)}
@@ -15123,7 +15221,24 @@ function pmWriteSheet(w,labels){
 // เปิดจากลิงก์ QR: /?asset=PFA-00012 → หน้า PM + เปิดเครื่อง
 (function(){const code=new URLSearchParams(location.search).get('asset');if(!code)return;let n=0;const t=setInterval(async()=>{if(++n>120){clearInterval(t);return;}
   if(!(typeof AUTH!=='undefined'&&AUTH&&AUTH.role)||typeof isHydrated==='undefined'||!isHydrated)return;clearInterval(t);
-  if(AUTH.role!=='admin')return;pmView='assets';goTo('pm');await pmLoad();const c=code.toUpperCase();const a=pm.assets.find(x=>x.id===c||x.qr_code===c);if(a)pmOpenAsset(a.id);else alert('ไม่พบเครื่อง/สติกเกอร์ '+c+' ในทะเบียน');},500);})();
+  if(AUTH.role!=='admin')return;pmView='assets';goTo('pm');await pmLoad();const c=code.toUpperCase();let a=pm.assets.find(x=>x.id===c||x.qr_code===c);if(!a){await pmLoad(true);a=pm.assets.find(x=>x.id===c||x.qr_code===c);}if(a)pmOpenAsset(a.id);else if(/^PFQ-\d{5}$/.test(c))pmBindSticker(c);else alert('ไม่พบเครื่อง/สติกเกอร์ '+c+' ในทะเบียน');},500);})();
+function pmBindSticker(code,q){
+  q=q||'';const n=pmNorm(q);
+  const list=pm.assets.filter(a=>a.status!=='retired'&&!a.qr_code&&(!n||pmNorm([a.id,a.client,a.branch,a.asset_type,a.brand,a.model,a.serial_no,a.location].join(' ')).includes(n))).slice(0,60);
+  const body=`<div class="tm" style="font-size:13px;line-height:1.7;margin-bottom:10px">สติกเกอร์ <b class="mono">${esc(code)}</b> ยังไม่ได้ผูกกับเครื่องไหน — เลือกเครื่องที่ติดสติกเกอร์ดวงนี้ หรือเพิ่มเป็นเครื่องใหม่</div>
+    <input class="filter-input" style="width:100%;margin-bottom:8px" placeholder="ค้นหา สาขา / ยี่ห้อ / Serial / ตำแหน่ง" value="${esc(q)}" oninput="clearTimeout(window._pmbs);window._pmbs=setTimeout(()=>{const p=this.selectionStart;pmBindSticker('${esc(code)}',this.value);const i=document.querySelector('#m-pm-body input');if(i){i.focus();try{i.setSelectionRange(p,p);}catch(e){}}},250)">
+    <div class="pm-xtbl" style="max-height:50vh">${list.length?`<table class="pm-tbl"><tbody>${list.map(a=>`<tr><td><b class="mono">${esc(a.id)}</b><div class="tm" style="font-size:12px">${esc(a.asset_type)} ${esc(a.brand||'')} ${esc(a.capacity||'')}${a.serial_no?' · SN '+esc(a.serial_no):''}</div></td><td>${esc(a.branch)}<div class="tm" style="font-size:12px">${esc(a.client||'')}${a.location?' · '+esc(a.location):''}</div></td><td><button class="btn btn-ghost btn-sm" onclick="pmBindStickerTo('${esc(code)}','${esc(a.id)}')">ผูก</button></td></tr>`).join('')}</tbody></table>`:'<div class="d2-empty">ไม่พบเครื่องที่ยังไม่มีสติกเกอร์</div>'}</div>`;
+  pmModal('ผูกสติกเกอร์ '+code,'ทะเบียนเครื่อง',body,`<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="closeM('m-pm');pmEditAsset(null,{qr_code:'${esc(code)}'})">＋ เพิ่มเป็นเครื่องใหม่</button>`,true);
+}
+async function pmBindStickerTo(code,id){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const a=pm.assets.find(x=>x.id===id);if(!a)return;
+  if(pm.assets.some(x=>x.qr_code===code)){alert('สติกเกอร์ '+code+' ผูกกับเครื่องอื่นอยู่แล้ว');return;}
+  if(!confirm(`ผูกสติกเกอร์ ${code} กับเครื่อง ${a.id} (${a.asset_type} · ${a.branch})?`))return;
+  try{const [saved]=await pmPatch('pm_assets',id,{qr_code:code,updated_at:new Date().toISOString(),updated_by:getActorName()});Object.assign(a,saved||{qr_code:code});
+    try{const [lg]=await pmInsert('pm_asset_logs',[{id:pmId('PML'),asset_id:id,kind:'bind_qr',recommendation:'ผูกสติกเกอร์ '+code,source:'admin',created_by:getActorName()}]);if(lg)pm.logs.unshift(lg);}catch(e){}
+    closeM('m-pm');renderPM();pmOpenAsset(id);}catch(e){pmErr(e);}
+}
 
 // =====================================================================
 // กันตัวอักษรล่องหน NUL (\u0000) — มักติดมาจากการคัดลอกข้อความ/อ่านไฟล์ PDF
