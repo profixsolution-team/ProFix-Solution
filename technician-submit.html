@@ -1511,6 +1511,7 @@ async function saveDraft(){
   try{
     const uploadedImages = await collectUploadedImages(report);
     const uploadedDocumentImages = await collectUploadedImages(report, ['documents']);
+    if(pmCtx){ document.getElementById('upload-status').textContent = 'กำลังบันทึกเครื่องเข้าทะเบียน...'; await pmRegisterServer(); report.pm = pmSnapshot(); }
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
     document.getElementById('upload-detail').textContent = '';
     const job = await loadJobRecord(JOB_ID);
@@ -1609,6 +1610,7 @@ async function submitJob(){
     const uploadedDocumentImages = await collectUploadedImages(report, ['documents']);
     // 1.5 งาน PM: บันทึกผลรายเครื่องลงทะเบียนเครื่อง (ส่งซ้ำได้ — แทนที่ผลเดิมของรอบนี้)
     if(pmCtx && !report.needQuote){ document.getElementById('upload-status').textContent = 'กำลังบันทึกผล PM รายเครื่อง...'; await pmSaveServer(); report.pm = pmSnapshot(); }
+    else if(pmCtx){ document.getElementById('upload-status').textContent = 'กำลังบันทึกเครื่องเข้าทะเบียน...'; await pmRegisterServer(); report.pm = pmSnapshot(); }
 
     // 2. save report + image metadata to Supabase
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
@@ -2397,6 +2399,21 @@ async function pmSaveServer(){
   const map=await pmRpc('pm_tech_save',{ p_job:(jobData&&jobData.id)||JOB_ID, p_team:jobData?.team||'', p_items:items });
   Object.entries(map||{}).forEach(([key,id])=>{ const it=pmItemOf(key); if(it&&!it.asset_id){ it.asset_id=id; it.has_qr=it.has_qr||!!it.qr_code; } });
   saveLocalDraftNow();
+}
+// บันทึกร่าง / ส่งแบบขออนุมัติ → ลงทะเบียนเครื่อง + ผูกสติกเกอร์ QR เข้าระบบทันที (ผล PM รายเครื่องยังบันทึกตอนส่งงานจริง)
+// เดิมเครื่องที่ช่างสแกน/เพิ่มจะเข้าทะเบียนเฉพาะตอนกดส่งงาน → บันทึกแค่ร่างแล้วข้อมูลเครื่องไม่เข้าระบบ
+async function pmRegisterServer(){
+  if(!pmCtx || !pmItems.length) return;
+  const items=pmItems.filter(it=>it.asset_id || it.asset_type).map(it=>({
+    key:it.key, asset_id:it.asset_id||null, qr_code:it.qr_code||null, asset_type:it.asset_type, brand:it.brand, model:it.model, capacity:it.capacity,
+    serial_no:it.no_label?'':it.serial_no, location:it.location, label_photo_url:it.label_photo?.url||'', refrigerant:pmType(it.asset_type).g==='air'?(it.refrigerant||''):''
+  }));
+  if(!items.length) return;
+  try{
+    const map=await pmRpc('pm_tech_register',{ p_job:(jobData&&jobData.id)||JOB_ID, p_team:jobData?.team||'', p_items:items });
+    Object.entries(map||{}).forEach(([key,id])=>{ const it=pmItemOf(key); if(it&&!it.asset_id){ it.asset_id=id; it.has_qr=it.has_qr||!!it.qr_code; } });
+    saveLocalDraftNow();
+  }catch(e){ console.warn('pm register', e); } // ยังไม่ได้รัน SQL / เน็ตหลุด → ไม่ขวางการบันทึกร่าง (ส่งงานจริงยังบันทึกผ่าน pm_tech_save)
 }
 
 // ---------- แท็บ ① รายเครื่อง / ② รูปรวม & ส่งงาน ----------
