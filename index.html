@@ -13504,7 +13504,10 @@ function dpApplyZoom(){
   if(doc&&doc.documentElement)doc.documentElement.style.zoom=z;
   const lab=document.getElementById('dp-zl');if(lab)lab.textContent=dpZoomLevel==='fit'?'พอดีจอ':Math.round(z*100)+'%';
 }
-(function(){const fr=document.getElementById('doc-preview-frame');if(fr)fr.addEventListener('load',()=>{try{dpApplyZoom();}catch(e){}});
+(function(){const fr=document.getElementById('doc-preview-frame');if(fr)fr.addEventListener('load',()=>{
+    // แถบ ปิด/พิมพ์ ของตัวเอกสาร (ไว้ใช้ตอนเปิดในแท็บใหม่) กดไม่ได้ในกรอบพรีวิว → ซ่อน ใช้ปุ่มของหน้าพรีวิวแทน
+    try{const d=fr.contentDocument;if(d&&d.head&&!d.getElementById('dp-hide-tb')){const st=d.createElement('style');st.id='dp-hide-tb';st.textContent='.toolbar,.bbar{display:none!important}';d.head.appendChild(st);}}catch(e){}
+    try{dpApplyZoom();}catch(e){}});
   const bar=document.getElementById('dp-zoom-slot');if(bar)bar.innerHTML=pfZoomBar('dp');})();
 // ปุ่มลัด: + / − / 0 และ Ctrl+ล้อเมาส์
 window.addEventListener('keydown',e=>{
