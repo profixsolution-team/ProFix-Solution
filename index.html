@@ -7282,9 +7282,9 @@ function openSalesDocPreview(id){
     +`</div>`;
   document.getElementById('doc-preview-actions').innerHTML=
     `<button class="btn btn-primary btn-sm" onclick="closeM('m-doc-preview');openSalesInNewTab('${esc(id)}')">✏️ แก้ไขเอกสาร</button>`
-    +`<button class="btn btn-success btn-sm" onclick="printSalesDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`
     +(firstPr?`<button class="btn btn-ghost btn-sm" onclick="matchFinanceFromSales('${esc(firstPr)}')">🔗 ดึงราคาเข้าการเงิน</button>`:'')
-    +(firstPr?`<button class="btn btn-sm" style="margin-left:auto;background:var(--orange);color:#fff;border:0;" onclick="closeM('m-doc-preview');openDocBundle('${esc(firstPr)}')">📑 ดาวน์โหลดชุดเอกสาร</button>`:'');
+    +`<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="printSalesDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`
+    +(firstPr?`<button class="btn btn-sm" style="background:var(--orange);color:#fff;border:0;" onclick="closeM('m-doc-preview');openDocBundle('${esc(firstPr)}')">📑 ดาวน์โหลดชุดเอกสาร</button>`:'');
   document.getElementById('doc-preview-frame').srcdoc=salesDocHtmlFor(inv,items);
   openM('m-doc-preview');
 }
@@ -7295,8 +7295,8 @@ function openPurchaseDocPreview(id){
   document.getElementById('doc-preview-sub').textContent=(inv.supplier_name||inv.supplier_id||'-')+' · ฿'+money(inv.total_amount);
   document.getElementById('doc-preview-actions').innerHTML=
     `<button class="btn btn-primary btn-sm" onclick="closeM('m-doc-preview');openPurchaseModal('${esc(id)}')">✏️ แก้ไข / ดูรายการ</button>`
-    +`<button class="btn btn-success btn-sm" onclick="printPurchaseDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`
-    +(inv.file_url?`<button class="btn btn-ghost btn-sm" onclick="window.open('${esc(inv.file_url)}','_blank')">📎 เปิดไฟล์แนบ</button>`:'');
+    +(inv.file_url?`<button class="btn btn-ghost btn-sm" onclick="window.open('${esc(inv.file_url)}','_blank')">📎 เปิดไฟล์แนบ</button>`:'')
+    +`<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="printPurchaseDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`;
   document.getElementById('doc-preview-frame').srcdoc=purchaseDocHtml(inv,items);
   openM('m-doc-preview');
 }
@@ -13350,12 +13350,14 @@ async function pfOpenJobSheet(pr,taskId,kind){
   try{await ensureWorkOrdersLoaded();}catch(e){}
   const list=appr?pfApprDocs(pr):pfSheetDocs(pr,taskId);
   if(!list.length){if(w)w.close();pfSheetRefresh();if(appr)alert('ยังไม่มีใบอนุมัติของ '+pr);else pfSheetEmpty(pr,taskId);return;}
-  if(mobile){const h=await pfSheetHref(list[0]);if(w&&h){w.location.href=h;}else if(h&&!window.open(h,'_blank'))alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+  if(mobile&&list.length>1){if(w)w.close();} // หลายไฟล์ → ใช้หน้าต่างเลือกไฟล์ (มีปุ่มเปิดแท็บใหม่ทีละไฟล์)
+  else if(mobile){const h=await pfSheetHref(list[0]);if(w&&h){w.location.href=h;}else if(h&&!window.open(h,'_blank'))alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
   const v=pfSheetViewerEl();
-  v._list=list;
-  v.innerHTML=`<div class="pfsv-box"><div class="pfsv-h"><b>${label} ${esc(pr||'')}</b>
+  v._list=list;v._pr=pr;v._task=taskId;
+  const addBtn=!appr&&pr?`<label class="btn btn-ghost btn-sm" style="cursor:pointer;" title="เพิ่มไฟล์ใบงานของ PR นี้ (เลือกได้หลายไฟล์)">⬆ เพิ่มไฟล์<input type="file" accept="application/pdf,.pdf" multiple style="display:none" onchange="pfSheetUpload(this.files)"></label><span class="tm" id="pfsv-status"></span>`:'';
+  v.innerHTML=`<div class="pfsv-box"><div class="pfsv-h"><b>${label} ${esc(pr||'')}${list.length>1?` <span class="tm">(${list.length} ไฟล์)</span>`:''}</b>
     ${list.length>1?`<select class="filter-select" onchange="pfSheetShow(+this.value)">${list.map((d,i)=>`<option value="${i}">${esc(d.fileName||label+' '+(i+1))}${d.savedAt||d.uploadedAt?' · '+esc(String(d.savedAt||d.uploadedAt).slice(0,10)):''}</option>`).join('')}</select>`:`<span class="tm">${esc(list[0].fileName||'')}</span>`}
-    <span style="flex:1"></span>${pfZoomBar('pfsv')}<a class="btn btn-ghost btn-sm" id="pfsv-open" target="_blank" rel="noopener">เปิดแท็บใหม่ ↗</a><button type="button" class="dw-ib" title="ปิด (Esc)" onclick="pfCloseJobSheet()">✕</button></div>
+    <span style="flex:1"></span>${addBtn}${pfZoomBar('pfsv')}<a class="btn btn-ghost btn-sm" id="pfsv-open" target="_blank" rel="noopener">เปิดแท็บใหม่ ↗</a><button type="button" class="dw-ib" title="ปิด (Esc)" onclick="pfCloseJobSheet()">✕</button></div>
     <iframe id="pfsv-frame" title="${label}"></iframe><div id="pfsv-img" class="pfsv-img"></div></div>`;
   v.classList.add('open');v._zoom=1;
   pfSheetShow(0);
@@ -13378,23 +13380,31 @@ function pfSheetEmpty(pr,taskId){
   v.innerHTML=`<div class="pfsv-box pfsv-empty"><div class="pfsv-h"><b>ใบงาน ${esc(pr||taskId||'')}</b><span style="flex:1"></span><button type="button" class="dw-ib" title="ปิด (Esc)" onclick="pfCloseJobSheet()">✕</button></div>
     <div class="pfsv-msg"><div style="font-size:34px;">📄</div><b>ยังไม่มีใบงาน PDF ของ ${esc(pr||taskId||'')} ในระบบ</b>
     <div class="tm">${pr?'เลือกไฟล์ PDF เพื่ออัปโหลดเก็บไว้ (R2) และเข้าแฟ้ม PR นี้':'งานนี้ยังไม่มีเลข PR — ใส่ PR ในงานก่อนจึงจะอัปโหลดใบงานได้'}</div>
-    ${pr?`<label class="btn btn-primary" style="cursor:pointer;">⬆ อัปโหลดใบงาน PDF<input type="file" accept="application/pdf,.pdf" style="display:none" onchange="pfSheetUpload(this.files[0])"></label><div class="tm" id="pfsv-status"></div>`:''}</div></div>`;
+    ${pr?`<label class="btn btn-primary" style="cursor:pointer;">⬆ อัปโหลดใบงาน PDF<input type="file" accept="application/pdf,.pdf" multiple style="display:none" onchange="pfSheetUpload(this.files)"></label><div class="tm">เลือกได้หลายไฟล์พร้อมกัน</div><div class="tm" id="pfsv-status"></div>`:''}</div></div>`;
   v.classList.add('open');
 }
-async function pfSheetUpload(file){
-  const v=document.getElementById('pf-sheet-viewer');if(!v||!file)return;
+// อัปโหลดใบงานได้ทีละหลายไฟล์ — แต่ละไฟล์เป็นแถวแยกในแฟ้ม PR (เลือกดูจาก dropdown ในหน้าต่างใบงาน)
+async function pfSheetUpload(files){
+  const v=document.getElementById('pf-sheet-viewer');files=[...(files||[])];if(!v||!files.length)return;
   const pr=v._pr,taskId=v._task,st=document.getElementById('pfsv-status');
-  if(file.type&&file.type!=='application/pdf'&&!file.name.toLowerCase().endsWith('.pdf')){st.textContent='รองรับเฉพาะไฟล์ PDF';return;}
-  st.textContent='กำลังอัปโหลดไป R2...';
-  try{
-    const src=taskId||'manual-upload';
-    const pdfData=await buildPdfData(file,pr,src);
-    await ensureWorkOrdersReadyForWrite();
-    storeWorkOrderPdfData(pr,pdfData,src);
-    saveState();
-    pfSheetRefresh();
-    pfOpenJobSheet(pr,taskId);
-  }catch(err){console.error(err);st.textContent='อัปโหลดไม่สำเร็จ: '+(err&&err.message||err);}
+  const say=t=>{if(st)st.textContent=t;};
+  if(!pr){say('งานนี้ยังไม่มีเลข PR — ใส่ PR ในงานก่อนจึงจะอัปโหลดใบงานได้');return;}
+  const bad=files.filter(f=>f.type&&f.type!=='application/pdf'&&!String(f.name||'').toLowerCase().endsWith('.pdf'));
+  if(bad.length){say('รองรับเฉพาะไฟล์ PDF: '+bad.map(f=>f.name).join(', '));return;}
+  const src=taskId||'manual-upload';
+  let ok=0;const errs=[];
+  for(const f of files){
+    say(`กำลังอัปโหลดไป R2... ${ok+errs.length+1}/${files.length}`);
+    try{
+      const pdfData=await buildPdfData(f,pr,src);
+      await ensureWorkOrdersReadyForWrite();
+      storeWorkOrderPdfData(pr,pdfData,src);
+      ok++;
+    }catch(err){console.error(err);errs.push((f.name||'ไฟล์')+': '+(err&&err.message||err));}
+  }
+  if(ok){saveState();pfSheetRefresh();}
+  if(errs.length){say('อัปโหลดไม่สำเร็จ '+errs.length+' ไฟล์');alert('อัปโหลดไม่สำเร็จ:\n'+errs.join('\n'));}
+  if(ok)pfOpenJobSheet(pr,taskId);
 }
 function pfCloseJobSheet(){const v=document.getElementById('pf-sheet-viewer');if(!v)return;v.classList.remove('open');v.innerHTML='';}
 window.addEventListener('keydown',e=>{const v=document.getElementById('pf-sheet-viewer');if(e.key==='Escape'&&v&&v.classList.contains('open')){e.stopImmediatePropagation();e.preventDefault();pfCloseJobSheet();}},true);
