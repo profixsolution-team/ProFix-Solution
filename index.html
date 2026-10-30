@@ -5560,11 +5560,14 @@ function addPRValue(){
 }
 function openJobFromAdmin(id){
   const t=adminTasks.find(x=>x.id===id&&!isDeletedRecord(x));if(!t)return;
+  // PR นี้มีในคิวช่างแล้ว → เปิดงานเดิม (ทุกปุ่มทำเหมือนกัน กันเปิดคิวซ้ำ)
+  const linked=t.jobId?liveJobs().find(j=>sameJob(j.id,t.jobId)):null;
+  if(linked){closeM('m-detail');openDet(linked.id);return;}
   pendingJobFromAdminId=id;
   closeM('m-detail');
-  // งานที่แอดมินกรอกครบแล้ว (บริษัทที่รับงาน + บริษัทลูกค้า + ประเภทงานช่าง) → ฟอร์มย่อ เลือกแค่ทีมช่าง + วันนัด
+  // จากงาน Admin เปิดฟอร์มย่อเสมอ (เลือกทีมช่าง + วันนัด) — ข้อมูลที่งาน Admin ยังไม่มี จะโชว์ช่องให้กรอกเฉพาะช่องนั้น
   const fromTask=!!t.customer;
-  openJobModal({id:t.jobId||'',company:t.company||'',client:fromTask?t.customer:t.client,branch:t.client,ref:t.jobId||'',note:t.detail,type:t.jobType||t.type,taskId:t.id,compact:!!(t.company&&t.customer&&t.jobType),date:t.due||t.assignedAt||'',level:parseLevelValue(t.level||t.pri||''),fromAdmin:true});
+  openJobModal({id:t.jobId||'',company:t.company||'',client:fromTask?t.customer:t.client,branch:t.client,ref:t.jobId||'',note:t.detail,type:t.jobType||'',taskId:t.id,compact:true,date:t.due||t.assignedAt||'',level:parseLevelValue(t.level||t.pri||''),fromAdmin:true});
 }
 
 // JOB QUEUE
@@ -6065,13 +6068,21 @@ function setJobModalCompact(pref){
   const box=document.getElementById('fj-admin-summary');
   const f1=document.getElementById('fj-detail-fields'),f2=document.getElementById('fj-detail-fields2');
   if(!box||!f1||!f2)return;
-  if(!pref){box.style.display='none';box.innerHTML='';f1.style.display='';f2.style.display='';return;}
+  const groups=[...f1.querySelectorAll('.form-group')];
+  if(!pref){box.style.display='none';box.innerHTML='';f1.style.display='';f2.style.display='';groups.forEach(g=>g.style.display='');f1.querySelectorAll('.form-row').forEach(r=>r.style.display='');return;}
   const row=(l,v)=>v?`<div style="display:flex;gap:8px;margin:2px 0;"><span class="tm" style="min-width:110px;">${esc(l)}</span><b style="font-weight:600;">${esc(v)}</b></div>`:'';
   box.innerHTML=`<div style="font-weight:700;margin-bottom:6px;">📋 ข้อมูลจากงาน Admin ${esc(pref.taskId||'')}</div>`
     +row('บริษัทที่รับงาน',companyLabel(pref.company))+row('บริษัทลูกค้า',pref.client)+row('สาขา',pref.branch)+row('ประเภทงาน',pref.type)
     +row('PR',pref.ref||pref.id)+row('รายละเอียด',pref.note)
     +`<div style="margin-top:8px;"><button type="button" class="btn btn-ghost btn-sm" onclick="setJobModalCompact(null)">✏️ แก้รายละเอียดเพิ่ม</button></div>`;
-  box.style.display='';f1.style.display='none';f2.style.display='none';
+  // ช่องที่งาน Admin ยังไม่มีข้อมูล (หรือค่าไม่อยู่ในรายการ) → โชว์ให้กรอกเฉพาะช่องนั้น
+  const val=id=>document.getElementById(id)?.value||'';
+  const need={'fj-company':!val('fj-company'),'fj-client':!pref.client||val('fj-client')!==pref.client,'fj-type':!pref.type||val('fj-type')!==pref.type};
+  let any=false;
+  groups.forEach(g=>{const el=g.querySelector('select,input');const show=!!(el&&need[el.id]);g.style.display=show?'':'none';if(show)any=true;});
+  f1.querySelectorAll('.form-row').forEach(r=>{r.style.display=[...r.querySelectorAll('.form-group')].some(g=>g.style.display!=='none')?'':'none';});
+  if(any)box.insertAdjacentHTML('beforeend','<div style="margin-top:8px;color:#b45309;font-weight:600;">⚠ งาน Admin ยังไม่มีข้อมูลบางช่อง — กรอกช่องด้านล่างเพิ่ม</div>');
+  box.style.display='';f1.style.display=any?'':'none';f2.style.display='none';
 }
 // ลูกค้า/สาขาของงาน Admin: แบบใหม่ = บริษัทลูกค้า + สาขา · แบบเดิม = ข้อความเดียว (t.client)
 function taskSiteText(t){if(!t)return '';if(t.customer){const b=String(t.client||'');return b&&b.indexOf(t.customer)<0?t.customer+' · '+b:(b||t.customer);}return t.client||'';}
@@ -6191,7 +6202,7 @@ async function saveJob(){if(!guardEdit())return;
   if(savedJobId&&action!=='update_job')verifyJobPersisted(savedJobId); // ชั้น 4: ยืนยันงานเปิดใหม่ขึ้นเซิร์ฟเวอร์จริง (ไม่บล็อก UI)
   writeAuditLog(action,'job',savedJobId,before,patchFromDiff(before||{},after||{}),after);
 }
-function editJob(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;closeM('m-detail');fillSelects();editJobId=id;editJobRefOrig=canonPR(j.ref);captureEditBaseline('jobs',id,j);document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';const fjl=document.getElementById('fj-level');if(fjl)fjl.value=jobLevel(j)||'';document.getElementById('fj-note').value=j.note;setJobModalCompact(null);const autoCo=salesCompanyByJob()[normalizePR(j.id)]||'';fillCompanySelect('fj-company',j.company||'',autoCo?'อัตโนมัติจากบิลขาย ('+companyLabel(autoCo)+')':'— ยังไม่ระบุ —');document.getElementById('fj-company-hint').textContent=!j.company&&autoCo?'ไม่ได้เลือกเอง → ระบบนับเป็น '+companyLabel(autoCo)+' ตามบิลขาย':'';openM('m-job');}
+function editJob(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;closeM('m-detail');fillSelects();editJobId=id;editJobRefOrig=canonPR(j.ref);captureEditBaseline('jobs',id,j);document.querySelector('#m-job .modal-title').textContent='แก้ไขงานคิวช่าง';document.getElementById('fj-client').value=j.client;document.getElementById('fj-ref').value=j.ref;document.getElementById('fj-branch').value=j.branch;document.getElementById('fj-type').value=j.type;document.getElementById('fj-team').value=j.team;document.getElementById('fj-date').value=j.date;document.getElementById('fj-status').value=j.status||J_ST[0]||'';const fjl=document.getElementById('fj-level');if(fjl)fjl.value=jobLevel(j)||'';document.getElementById('fj-note').value=j.note;setJobModalCompact(null);const autoCo=salesCompanyByJob()[normalizePR(j.id)]||'';fillCompanySelect('fj-company',j.company||'',autoCo?'อัตโนมัติจากบิลขาย ('+companyLabel(autoCo)+')':'— ยังไม่ระบุ —');document.getElementById('fj-company-hint').textContent=!j.company&&autoCo?'ไม่ได้เลือกเอง → ระบบนับเป็น '+companyLabel(autoCo)+' ตามบิลขาย':'';setJobModalCompact(null);openM('m-job');}
 // ===== เปลี่ยนเลขงาน (PR) แล้วย้ายข้อมูลทั้งชุดผ่าน RPC profix_renumber_job (atomic ฝั่ง DB) =====
 async function renumberJob(oldId,presetNew){
   if(!guardEdit())return;
