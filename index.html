@@ -1316,6 +1316,12 @@ button.pm-hc{cursor:pointer;}
 .btn.pm-exbtn:hover{background:#15803d;}
 .btn.pm-exbtn:disabled{opacity:.5;}
 .pm-nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.pm-sw{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:4px 12px 4px 5px;font:inherit;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;}
+.pm-sw i{position:relative;width:34px;height:20px;border-radius:999px;background:#cbd5e1;transition:background .15s;flex:none;}
+.pm-sw i::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s;}
+.pm-sw.on i{background:var(--green);}.pm-sw.on i::after{left:16px;}
+.pm-sw small{font-weight:500;color:var(--text2);}
+.pm-sw.warn{border-color:var(--yellow);background:var(--yellow-dim);color:var(--yellow);cursor:default;}
 .pm-ov-k{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px;}
 .pm-ov-k .k{background:var(--surface);border-radius:16px;box-shadow:var(--shadow-1);padding:14px 16px;border:1px solid transparent;text-align:left;font-family:inherit;color:var(--text);cursor:pointer;min-width:0;}
 .pm-ov-k .k small{display:block;font-size:12px;color:var(--text2);}
@@ -14235,6 +14241,8 @@ async function pmLoad(force){
       Object.assign(pm,{contracts:c,sites:s,visits:v,assets:a,logs:l,loaded:true,missing:false,at:Date.now()});
       // ประวัติการเปลี่ยนแผน (console_pm_status_history.sql) — ยังไม่รัน SQL ก็ใช้งานส่วนอื่นได้ตามปกติ
       try{pm.vlogs=await sbFetchAll('pm_visit_logs','?select=visit_id,at,by,action,changes&order=at.asc');pm.vlogOk=true;}catch(e){pm.vlogs=[];pm.vlogOk=false;}
+      // สวิตช์ฟอร์มช่าง PM (console_pm_tech_switch.sql) — ไม่มีแถว = ยังไม่รัน SQL → ฟอร์มช่างยังแสดงส่วน PM อยู่
+      try{const r=await sbFetchAllOptional('console_ui_settings','?select=key,value&key=eq.pm_tech');pm.tech=r&&r[0]?!!(r[0].value&&r[0].value.enabled):undefined;}catch(e){pm.tech=undefined;}
       pmVLogMemo=null;
     }catch(e){console.warn('pm load',e);pm.missing=/PGRST205|does not exist|schema cache|relation/i.test(String(e&&e.message||e));pm.loaded=true;pm.error=String(e&&e.message||e);}
     finally{pm.loading=null;}
@@ -14650,10 +14658,28 @@ async function renderPM(){
   const seg=`<div class="d2-seg sl-tabs pm-tabs">${tabs.map(([k,l])=>`<button type="button" class="${pmView===k?'on':''}" onclick="pmView='${k}';renderPM()">${l}</button>`).join('')}</div>`;
   const fv=['ov','cal','plan'].includes(pmView)&&pm.contracts.length>0;
   const body=pmView==='assets'?pmAssetsHtml():pmView==='qr'?pmQrHtml():pmView==='ov'?pmOvHtml():pmView==='cal'?pmCalHtml():pmPlanHtml();
-  root.innerHTML=`<div class="pm-bar">${seg}<span style="flex:1"></span>${fv?`<button class="btn btn-sm pm-exbtn" onclick="pmExportOpen()">⬇ Export Excel / Google Sheet</button>`:''}<button class="btn btn-ghost btn-sm" onclick="pm.loaded=false;renderPM()" title="โหลดใหม่">⟳ รีเฟรช</button></div>${fv?pmFBarHtml():''}${body}`;
+  root.innerHTML=`<div class="pm-bar">${seg}<span style="flex:1"></span>${fv?`<button class="btn btn-sm pm-exbtn" onclick="pmExportOpen()">⬇ Export Excel / Google Sheet</button>`:''}${pmTechSwHtml()}<button class="btn btn-ghost btn-sm" onclick="pm.loaded=false;renderPM()" title="โหลดใหม่">⟳ รีเฟรช</button></div>${fv?pmFBarHtml():''}${body}`;
   if(pmView==='plan')pmApplyFilter();
   const live=pm.assets.filter(a=>a.status!=='retired');
   phSet('pm',[['สัญญา',pm.contracts.filter(c=>c.status==='active').length],['เครื่องในทะเบียน',live.length],['สาขาในสัญญา',pm.sites.length]],'PM (ทดลอง)','แผนบำรุงรักษา · ทะเบียนเครื่อง · สติกเกอร์ QR — ช่วงทดลองเห็นเฉพาะแอดมิน');
+}
+
+// ---------- สวิตช์ฟอร์มช่าง PM ----------
+// ปิด = งานที่ผูกแผน PM ช่างยังเห็นฟอร์มช่างแบบเดิม (pm_tech_context คืน null) · เปิด = ฟอร์มช่างแสดงส่วน PM
+function pmTechSwHtml(){
+  if(pm.tech===undefined)return `<span class="pm-sw warn" title="รันไฟล์ console_pm_tech_switch.sql ใน Supabase เพื่อให้ปิดได้">⚠ ฟอร์มช่าง PM เปิดอยู่ <small>· ยังไม่ได้รัน SQL สวิตช์</small></span>`;
+  return `<button type="button" class="pm-sw${pm.tech?' on':''}" onclick="pmTechToggle()" title="${pm.tech?'ช่างเห็นส่วน PM ในฟอร์มช่าง (เครื่อง / ใบ PM / ลายเซ็น / สแกน QR)':'ช่างเห็นฟอร์มช่างแบบเดิม แม้งานจะผูกกับแผน PM'}"><i></i>ฟอร์มช่าง PM <small>${pm.tech?'เปิด':'ปิด'}</small></button>`;
+}
+async function pmTechToggle(){
+  if(!AUTH||AUTH.role!=='admin'){alert('เฉพาะแอดมินเปิด/ปิดได้');return;}
+  const on=!pm.tech;
+  if(!confirm(on?'เปิดฟอร์มช่าง PM?\n\nงานที่ผูกกับแผน PM ช่างจะเห็นส่วน PM ในฟอร์มช่างทันที (รายการเครื่อง · ใบ PM · ลายเซ็นลูกค้า · สแกน QR)'
+    :'ปิดฟอร์มช่าง PM?\n\nช่างจะเห็นฟอร์มช่างแบบเดิม แม้งานจะผูกกับแผน PM\n(ข้อมูลเครื่องที่บันทึกไว้แล้วยังอยู่ครบ · สถานะแผน PM ยังซิงก์จากคิวช่างเหมือนเดิม)'))return;
+  try{
+    const r=await fetch(splitUrl('console_ui_settings','?on_conflict=key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify({key:'pm_tech',value:{enabled:on},updated_at:new Date().toISOString(),updated_by:getActorName()})});
+    if(!r.ok)throw new Error(await r.text());
+    pm.tech=on;broadcastDataChanged('uisettings');renderPM();
+  }catch(e){alert('บันทึกสวิตช์ไม่สำเร็จ: '+(e.message||e));}
 }
 
 // ---------- แผน PM ----------
