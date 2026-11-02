@@ -2441,7 +2441,7 @@ body.pfpv-lock{overflow:hidden;}
         <div>
           <div class="accounting-panel mb16">
             <div class="accounting-panel-title">ข้อมูลลูกค้าและเอกสาร</div>
-            <div class="form-row"><div class="form-group"><label>ประเภทเอกสาร</label><select id="sale-doc-type" onchange="onSalesDocTypeChange(this.value)"><option value="quotation">ใบเสนอราคา / Quotation</option><option value="invoice">ใบแจ้งหนี้ / Invoice</option><option value="tax_invoice">ใบกำกับภาษี / Tax Invoice</option><option value="receipt" id="sale-doc-type-receipt" hidden>ใบเสร็จรับเงิน / Receipt</option></select></div><div class="form-group"><label>เลขที่เอกสาร</label><input id="sale-no" placeholder="เช่น QT-2026-001 / SINV-2026-001"></div></div>
+            <div class="form-row"><div class="form-group"><label>ประเภทเอกสาร</label><select id="sale-doc-type" onchange="onSalesDocTypeChange(this.value)"><option value="quotation">ใบเสนอราคา / Quotation</option><option value="invoice">ใบแจ้งหนี้ / Invoice</option><option value="tax_invoice">ใบกำกับภาษี / Tax Invoice</option><option value="receipt" id="sale-doc-type-receipt" hidden>ใบเสร็จรับเงิน / Receipt</option></select></div><div class="form-group"><label>เลขที่เอกสาร</label><input id="sale-no" placeholder="เช่น QT-2026-001 / SINV-2026-001" oninput="saleNoFormatCheck()"><div id="sale-no-warn" style="display:none;font-size:12px;color:#b45309;margin-top:4px;line-height:1.5"></div></div></div>
             <div class="form-row" id="sale-taxfmt-row" style="display:none;align-items:flex-end;gap:10px;background:linear-gradient(90deg,var(--accent-dim),transparent);border:1px dashed var(--accent);border-radius:10px;padding:10px 12px;margin-top:6px;"><div class="form-group" style="flex:1;"><label style="color:var(--accent);font-weight:800;">🖨️ รูปแบบใบกำกับภาษี</label><select id="sale-tax-format" style="border-color:var(--accent);font-weight:600;" onchange="onSalesTaxFormatChange(this.value)"><option value="summary">📋 แบบสรุป — 1 บรรทัดต่อ PR (เลข PR + สาขา + ยอดก่อน VAT)</option><option value="detail">🧾 แบบแจกแจงรายการ — ทุกบรรทัดจากใบเสนอราคา</option></select></div></div>
             <div class="form-row" id="sale-template-row" style="align-items:flex-end;gap:10px;background:linear-gradient(90deg,var(--accent-dim),transparent);border:1px dashed var(--accent);border-radius:10px;padding:10px 12px;margin-top:6px;"><div class="form-group" style="flex:1.3;"><label style="color:var(--accent);font-weight:800;">🖨️ รูปแบบใบเสนอราคา (ตอนพิมพ์)</label><select id="sale-doc-template" style="border-color:var(--accent);font-weight:600;"><option value="boq">📄 ฟอร์ม BOQ (แนวนอน ตามแบบบริษัท)</option><option value="modern">🧾 แบบเดิม (โมเดิร์น แนวตั้ง)</option></select></div><div class="form-group"><label>จังหวัด (สาขา)</label><select id="sale-branch-province"></select></div><div class="form-group"><label>จังหวัด (ศูนย์/ลูกค้า)</label><select id="sale-customer-province"></select></div></div>
             <div class="form-row"><div class="form-group" style="flex:1;"><label>Job ID / PR (คลิกเลือกได้หลายตัว)</label><div style="position:relative;"><input id="sale-job-input" autocomplete="off" placeholder="ค้นหา PR / ลูกค้า / สาขา แล้วคลิกเลือก" oninput="renderSalesJobPicker(this.value)" onfocus="renderSalesJobPicker(this.value)" onkeydown="handleSalesJobKey(event)"><div id="sale-job-picker" class="job-picker" style="display:none;"></div></div><div id="sale-job-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div><div id="sale-dup-note" style="font-size:11px;color:var(--yellow);margin-top:6px;"></div><input type="hidden" id="sale-job"></div></div>
@@ -2467,7 +2467,7 @@ body.pfpv-lock{overflow:hidden;}
                 <div class="doc-group">
                   <select id="sale-company-profile" onchange="applySalesCompanyProfile(this.value)"></select>
                   <input id="sale-company-display" placeholder="ชื่อแบรนด์ (แสดงบนเอกสาร)">
-                  <input id="sale-company-name" placeholder="ชื่อบริษัท (นิติบุคคล)">
+                  <input id="sale-company-name" placeholder="ชื่อบริษัท (นิติบุคคล)" onchange="refreshSalesDocNo()">
                   <input id="sale-company-branch" placeholder="สำนักงานใหญ่ / สาขา">
                   <input id="sale-company-taxid" placeholder="Tax ID บริษัท">
                   <textarea id="sale-company-address" placeholder="ที่อยู่บริษัท" style="min-height:44px;"></textarea>
@@ -8462,12 +8462,24 @@ function refreshSalesDocNo(){
   const editId=document.getElementById('sale-id')?.value;
   if(editId){
     // แก้ไขของเดิม: ปกติคงเลขเดิม ยกเว้นใบกำกับภาษีที่ "เปลี่ยนเดือน" (เช่น 69/10xx → วันรับเงินเป็นเดือน 11) → รันเลขใหม่ของเดือนนั้น
-    if(dt!=='tax_invoice'||!noEl)return;
+    if(dt!=='tax_invoice'||!noEl)return saleNoFormatCheck();
     const orig=noEl.dataset.orig||noEl.value;
     const curM=parseTaxInvoiceNo(noEl.value.trim());
     const origM=parseTaxInvoiceNo(orig);
     const targetPrefix=taxInvoiceMonthPrefix(due,companyName);
     const target=taxInvoiceCanonMonth(targetPrefix);
+    // เปลี่ยนบริษัทที่ออกบิล (เช่น ProFix → พีพี แอนด์ เอ็มพี) → เลขต้องเป็นลำดับ + รูปแบบปีของบริษัทใหม่
+    // (เดิมคงเลขเดิมไว้ → ใบของ PP&MP ได้เลข 2026/xxxx แบบ ProFix)
+    const cname=String(companyName||'').trim(),origCo=String(noEl.dataset.origCo||'').trim();
+    if(origCo&&cname!==origCo&&(curM||origM)){
+      const key=cname+'|'+target;
+      if(noEl.dataset.autoFor===key)return saleNoFormatCheck();
+      const nv=nextTaxInvoiceNo(due,(salesInvoices||[]).filter(x=>x.id!==editId),companyName);
+      noEl.value=nv;noEl.dataset.autoFor=key;
+      setAccountingStatus('sales',`เปลี่ยนบริษัทที่ออกบิล → เลขที่ใบกำกับเปลี่ยนจาก ${orig} เป็น ${nv} (บันทึกแล้วจึงมีผล)`,'warn');
+      return saleNoFormatCheck();
+    }
+    noEl.dataset.autoFor='';
     if(origM&&taxInvoiceCanonMonth(origM[1])===target){ // กลับมาเดือนเดิม → ใช้เลขเดิม
       if(noEl.value!==orig){noEl.value=orig;setAccountingStatus('sales','กลับมาเดือนเดิม — ใช้เลขเดิม '+orig,'ok');}
       return;
@@ -8478,9 +8490,32 @@ function refreshSalesDocNo(){
     const nv=nextTaxInvoiceNo(due,others,companyName);
     noEl.value=nv;
     setAccountingStatus('sales',`เปลี่ยนเดือน → เลขที่ใบกำกับเปลี่ยนจาก ${orig} เป็น ${nv} (บันทึกแล้วจึงมีผล)`,'warn');
-    return;
+    return saleNoFormatCheck();
   }
   if(noEl)noEl.value=nextSalesDocNo(dt,due,companyName);
+  saleNoFormatCheck();
+}
+// เตือนเมื่อรูปแบบปีของเลขใบกำกับไม่ตรงกับบริษัท (ProFix = 2026/MMNN · บริษัทอื่น = 69/MMNN) + ปุ่มรันเลขใหม่
+function saleNoFormatCheck(){
+  const w=document.getElementById('sale-no-warn');if(!w)return;
+  const dt=document.getElementById('sale-doc-type')?.value||'tax_invoice';
+  const companyName=document.getElementById('sale-company-name')?.value||quoteCompanyDefaults().name;
+  const m=dt==='tax_invoice'?parseTaxInvoiceNo((document.getElementById('sale-no')?.value||'').trim()):null;
+  const bad=m&&((String(m[1]).split('/')[0].length===4)!==isProfixCompany(companyName));
+  w.style.display=bad?'':'none';
+  if(bad)w.innerHTML=`⚠ เลขนี้เป็นรูปแบบของ${isProfixCompany(companyName)?'บริษัทอื่น (ปี พ.ศ. 2 หลัก)':' ProFix (ปี ค.ศ. 4 หลัก)'} แต่บริษัทที่ออกบิลคือ ${esc(companyName)} <button type="button" class="link-btn" onclick="saleRenumberByCompany()">รันเลขใหม่ตามบริษัท</button>`;
+}
+function saleRenumberByCompany(){
+  const noEl=document.getElementById('sale-no');if(!noEl)return;
+  const due=document.getElementById('sale-payment-date')?.value||document.getElementById('sale-date')?.value||todayISO();
+  const companyName=document.getElementById('sale-company-name')?.value||quoteCompanyDefaults().name;
+  const editId=document.getElementById('sale-id')?.value;
+  const old=noEl.value;
+  const nv=nextTaxInvoiceNo(due,(salesInvoices||[]).filter(x=>x.id!==editId),companyName);
+  noEl.value=nv;
+  if(editId&&!noEl.dataset.orig)noEl.dataset.orig=old;
+  setAccountingStatus('sales',`เลขที่ใบกำกับเปลี่ยนจาก ${old} เป็น ${nv} (บันทึกแล้วจึงมีผล)`,'warn');
+  saleNoFormatCheck();
 }
 // เพิ่มเลขท้าย +1 (คงความกว้างเลข) ใช้ตอนเลขเอกสารชนกัน
 function bumpDocNo(no){
@@ -8603,6 +8638,8 @@ function openSalesModal(id='',prefJobId='',docType=''){
   salesConvertSourceId=inv?.source_doc_id||'';
   document.getElementById('sale-no').value=inv?.doc_no||inv?.sales_invoice_no||nextNo;
   document.getElementById('sale-no').dataset.orig=inv?(inv.doc_no||inv.sales_invoice_no||''):''; // เลขเดิมตอนเปิดแก้ไข (ใช้ตอนเปลี่ยนเดือน)
+  document.getElementById('sale-no').dataset.origCo=inv?String(inv.company_name||'').trim():''; // บริษัทเดิมตอนเปิดแก้ไข (ใช้ตอนเปลี่ยนบริษัท)
+  document.getElementById('sale-no').dataset.autoFor='';
   const tplSel=document.getElementById('sale-doc-template');if(tplSel)tplSel.value=(inv?.doc_template&&inv.doc_template!=='summary')?inv.doc_template:'boq';
   // รูปแบบสรุป: เอกสารเดิม = ตามที่บันทึกไว้ · สร้างใหม่ = ใบกำกับภาษี/ใบแจ้งหนี้ใช้แบบสรุปเป็นค่าเริ่มต้น (ทุกทางเข้าได้หน้าตาเดียวกัน)
   const sumFlagEl=document.getElementById('sale-summary-flag');
@@ -8686,6 +8723,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   }
   if(inv&&!salesDraftItems.length)salesDraftItems=[blankSalesItem('ยอดตามบิลเดิม',1,'งาน',Number(inv.subtotal||0))];
   renderSalesItemEditor();
+  saleNoFormatCheck(); // ใบเดิมที่เลขรูปแบบปีไม่ตรงบริษัท → เตือน + ปุ่มรันเลขใหม่
   openM('m-sales');
   // ให้แน่ใจว่าราคากลาง + แคตตาล็อกอะไหล่โหลดครบก่อน — ไม่งั้น datalist ว่าง ราคา/หมวดไม่ลิงค์
   Promise.all([

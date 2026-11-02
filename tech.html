@@ -104,6 +104,12 @@ const SUBMIT_PAGE = 'technician-submit.html';
 const DEMO = new URLSearchParams(location.search).has('demo'); // ?demo=1 = ดูหน้าตาด้วยข้อมูลตัวอย่าง (ไม่ต่อ LINE/DB)
 
 let idToken='', lineProfile={}, me=null, jobs=[];
+// สแกน QR เครื่อง → asset.html → https://liff.line.me/<LIFF_ID>?asset=PFA-00012 → หน้านี้เปิดประวัติเครื่องทันที
+// (LIFF ส่งพารามิเตอร์มาตรง ๆ หรือฝากไว้ใน liff.state ก่อน init — อ่านได้ทั้งสองแบบ)
+function assetParam(){const u=new URLSearchParams(location.search);let c=u.get('asset');
+  if(!c){const st=u.get('liff.state');if(st){try{c=new URLSearchParams(st.replace(/^[^?]*\?/,'')).get('asset');}catch(e){}}}
+  return String(c||'').trim().toUpperCase().replace(/[^A-Z0-9-]/g,'').slice(0,20);}
+const ASSET_CODE=assetParam();
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2200);}
@@ -140,6 +146,7 @@ function route(){
   if(me.status==='pending')return showPending();
   if(me.status==='disabled')return showError('บัญชีนี้ถูกระงับ — ติดต่อแอดมิน');
   showTop();loadJobs();
+  if(ASSET_CODE&&!route.asset){route.asset=1;openAsset(ASSET_CODE);}
 }
 function showTop(){
   $('top').style.display='';
@@ -274,6 +281,33 @@ async function startJob(id,btn){
     if($('detail').classList.contains('open'))openDetail(id);renderJobs();toast('เริ่มงาน '+id+' แล้ว');}
   catch(e){btn.disabled=false;toast(e.message);}
 }
+// ===== ประวัติเครื่อง (สแกน QR) =====
+const KIND_L={pm:'PM',repair:'ซ่อม',note:'บันทึก'};
+function condCls(c){return !c?'':/ปกติ/.test(c)?'green':/เสีย/.test(c)?'red':'yellow';}
+async function openAsset(code){
+  $('detail').innerHTML=`<div class="d-head"><button class="d-close" onclick="closeDetail()">✕ ปิด</button><b>${esc(code)}</b><span></span></div><div class="d-body"><div class="loading"><div class="spin"></div>กำลังโหลดประวัติเครื่อง...</div></div>`;
+  $('detail').classList.add('open');document.body.style.overflow='hidden';history.pushState({detail:'asset'},'');
+  let d;try{d=await api('asset',{code});}catch(e){$('detail').querySelector('.d-body').innerHTML=`<div class="panel"><h2>เปิดไม่สำเร็จ</h2><p>${esc(e.message)}</p></div>`;return;}
+  const body=$('detail').querySelector('.d-body');
+  if(d.kind!=='asset'){body.innerHTML=`<div class="panel"><h2>${d.kind==='blank'?'🏷 สติกเกอร์เปล่า':'ไม่พบเครื่อง'}</h2><p>${d.kind==='blank'?`สติกเกอร์ <b>${esc(code)}</b> ยังไม่ได้ผูกกับเครื่องไหน<br>ผูกได้ตอนทำใบงาน PM ของสาขานี้ — กด "🏷 ติดสติกเกอร์เปล่า → สแกน" ที่เครื่องนั้น`:`ไม่พบรหัส <b>${esc(code)}</b> ในทะเบียนเครื่อง — แจ้งแอดมิน`}</p></div>`;return;}
+  const a=d.asset,logs=d.logs||[],row=(k,v)=>v?`<div class="d-row"><span>${k}</span><b>${v}</b></div>`:'';
+  const open=logs.filter(l=>l.follow_up&&!l.follow_up_done_at);
+  const last=logs.find(l=>l.kind==='pm'||l.kind==='repair');
+  const photo=p=>`<a href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.url)}" loading="lazy" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:9px;background:var(--gray-dim)"></a>`;
+  const ev=l=>{const rd=Object.entries(l.readings||{}).filter(([,v])=>v!==''&&v!=null);const ph=(Array.isArray(l.photos)?l.photos:[]).filter(p=>p&&p.url);
+    return `<div class="card" style="cursor:default"><div class="row1"><div><b>${esc(thDate(String(l.done_at||'').slice(0,10)))} ${esc(String(l.done_at||'').slice(0,4)?(+String(l.done_at).slice(0,4)+543):'')}</b><div class="meta">${esc([KIND_L[l.kind]||l.kind,l.team,l.job_id].filter(Boolean).join(' · '))}</div></div>${l.condition?`<span class="chip ${condCls(l.condition)}">${esc(l.condition)}</span>`:''}</div>
+      ${l.cause?`<div class="detail"><b>สาเหตุ</b> ${esc(l.cause)}</div>`:''}${l.fix?`<div class="detail"><b>การแก้ไข</b> ${esc(l.fix)}</div>`:''}${l.recommendation?`<div class="detail">${esc(l.recommendation)}</div>`:''}
+      ${l.follow_up?`<div class="detail" style="background:var(--yellow-dim)"><b>งานต่อเนื่อง${l.follow_up_done_at?' (ทำแล้ว)':''}</b> ${esc(l.follow_up_note||'')}</div>`:''}
+      ${rd.length?`<details style="margin-top:8px"><summary style="font-size:13px;color:var(--text2);cursor:pointer">ค่าที่วัด ${rd.length} รายการ</summary><div class="d-grid" style="margin-top:6px">${rd.map(([k,v])=>row(esc(k),esc(typeof v==='object'?Object.entries(v).map(([x,y])=>x+' '+y).join(' · '):v))).join('')}</div></details>`:''}
+      ${ph.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${ph.slice(0,8).map(photo).join('')}${ph.length>8?`<span class="chip" style="align-self:center">+${ph.length-8}</span>`:''}</div>`:''}</div>`;};
+  body.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"><span class="chip blue">${esc(a.asset_type||'เครื่อง')}</span>${a.status==='retired'?'<span class="chip">ปลดระวางแล้ว</span>':''}${last&&last.condition?`<span class="chip ${condCls(last.condition)}">ล่าสุด: ${esc(last.condition)}</span>`:''}</div>
+    <div class="d-title">${esc(a.branch||'-')}</div><div class="meta" style="margin-bottom:12px;">${esc(a.client||'')}${a.location?' · '+esc(a.location):''}</div>
+    ${open.length?`<div class="d-box warn"><b>⚠ งานต่อเนื่องที่ยังค้าง ${open.length} รายการ</b>${open.map(l=>`<br>• ${esc(l.follow_up_note||l.cause||'-')} <span style="color:var(--text2)">(${esc(thDate(String(l.done_at||'').slice(0,10)))})</span>`).join('')}</div>`:''}
+    ${d.next?`<div class="d-box"><b>📅 PM รอบถัดไป</b><br>${esc(thDate(d.next.planned_date))}${d.next.team?' · '+esc(d.next.team):''}${d.next.job_id?' · '+esc(d.next.job_id):''}</div>`:''}
+    <div class="d-grid">${row('รหัสเครื่อง',esc(a.id))}${row('สติกเกอร์',esc(a.qr_code||''))}${row('ยี่ห้อ / รุ่น',esc([a.brand,a.model].filter(Boolean).join(' ')))}${row('ขนาด',esc(a.capacity||''))}${row('Serial',esc(a.serial_no||''))}${row('น้ำยา',esc(a.refrigerant||''))}${row('ติดตั้ง',a.installed_at?esc(thDate(a.installed_at)):'')}${row('รูปป้ายเครื่อง',a.label_photo_url?`<a href="${esc(a.label_photo_url)}" target="_blank" rel="noopener">เปิดรูป</a>`:'')}</div>
+    ${a.note?`<div class="d-box" style="margin-top:12px">${esc(a.note)}</div>`:''}
+    <div class="sec">🧾 ประวัติงาน <span class="n">${logs.length}</span></div>${logs.length?logs.map(ev).join(''):'<div class="empty">ยังไม่มีประวัติงานของเครื่องนี้</div>'}`;
+}
 function openSubmit(id,mode){location.href=SUBMIT_PAGE+'?job='+encodeURIComponent(id)+'&from=tech'+(mode?'&mode='+mode:'');}
 // ===== ข้อมูลตัวอย่าง (?demo=1) =====
 function demoApi(action,extra){
@@ -282,6 +316,11 @@ function demoApi(action,extra){
   if(action==='me')return Promise.resolve({ok:true,line:{name:'Amnuay',picture:''},tech:new URLSearchParams(location.search).get('demo')==='new'?null:tech});
   if(action==='register')return Promise.resolve({ok:true,tech:{...tech,status:'pending',requested_team:extra.team,display_name:extra.displayName}});
   if(action==='start')return Promise.resolve({ok:true,status:'ช่างกำลังเข้าซ่อม',started:{at:new Date().toISOString(),by:'ช่างอำนวย'}});
+  if(action==='asset'){if(/^PFQ/.test(extra.code))return Promise.resolve({ok:true,kind:'blank',code:extra.code});
+    return Promise.resolve({ok:true,kind:'asset',asset:{id:extra.code,qr_code:'PFQ-00031',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',branch:'Pun Thai บางพระ1',asset_type:'แอร์',brand:'Daikin',model:'FTKC18',capacity:'18000 BTU',serial_no:'E123456',location:'หน้าร้าน',refrigerant:'R32',status:'active'},
+      next:{planned_date:addDays(t,20),team:'ทีม1 - อำนวย',job_id:null,round_no:2},
+      logs:[{done_at:addDays(t,-60)+'T10:00:00Z',kind:'pm',team:'ทีม1 - อำนวย',job_id:'PR430100',condition:'ต้องซ่อม',cause:'น้ำยารั่วที่แฟลร์',fix:'ขันแฟลร์ เติมน้ำยา',follow_up:true,follow_up_note:'เปลี่ยนคาปาซิเตอร์คอยล์ร้อนรอบหน้า',readings:{'แรงดันน้ำยา':'120 psi','กระแส':'6.2 A'},photos:[]},
+            {done_at:addDays(t,-150)+'T10:00:00Z',kind:'pm',team:'ทีม2',job_id:'PR428000',condition:'ปกติ',readings:{},photos:[]}]});}
   const dJobs=[
     {id:'PR431019',branch:'Pun Thai บางแวก (พุทธมณฑลสาย3)',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:addDays(t,-2),status:'รอช่างส่งงาน',level:'Level 1',detail:'- ตู้แช่เค้ก//ยี่ห้อ SYSTEMFORM\n- ตู้เค้กมีเสียงดังตลอดเวลา และไม่ทำความเย็น',phone:'061-0313386',waitingAdmin:false,inProgress:false,started:null},
     {id:'PR431279',branch:'Pun Thai บางพระ1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:t,status:'ช่างกำลังเข้าซ่อม',level:'Level 1',detail:'แจ้งซ่อมหลอดไฟไม่ติดในตู้เค้ก และภายในตู้มีกลิ่นสารเคมี',phone:'0659424767',waitingAdmin:false,inProgress:true,started:{at:new Date().toISOString(),by:'ช่างอำนวย'}},
