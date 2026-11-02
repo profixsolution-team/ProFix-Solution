@@ -8468,7 +8468,25 @@ function refreshSalesDocNo(){
   const editId=document.getElementById('sale-id')?.value;
   if(editId){
     // แก้ไขของเดิม: ปกติคงเลขเดิม ยกเว้นใบกำกับภาษีที่ "เปลี่ยนเดือน" (เช่น 69/10xx → วันรับเงินเป็นเดือน 11) → รันเลขใหม่ของเดือนนั้น
-    if(dt!=='tax_invoice'||!noEl)return saleNoFormatCheck();
+    if(!noEl)return saleNoFormatCheck();
+    if(dt!=='tax_invoice'){
+      // ใบเสนอราคา / ใบแจ้งหนี้ ฯลฯ: เลขรันแยกตามบริษัท → เปลี่ยนบริษัทที่ออก (เช่น PP&MP → ProFix) ต้องได้เลขลำดับของบริษัทใหม่
+      // (เดิมคงเลขเดิม → ไปชนเลขเดียวกันที่บริษัทใหม่ใช้อยู่แล้ว = error 23505 ตอนบันทึก) · เปลี่ยนกลับบริษัทเดิม = ใช้เลขเดิม
+      const orig=noEl.dataset.orig||noEl.value;
+      const cname=String(companyName||'').trim(),origCo=String(noEl.dataset.origCo||'').trim();
+      if(origCo&&cname!==origCo){
+        const key=cname+'|'+dt;
+        if(noEl.dataset.autoFor!==key){
+          const nv=nextSalesDocNo(dt,due,companyName);
+          noEl.value=nv;noEl.dataset.autoFor=key;
+          setAccountingStatus('sales',`เปลี่ยนบริษัทที่ออกเอกสาร → เลขที่เปลี่ยนจาก ${orig} เป็น ${nv} (บันทึกแล้วจึงมีผล)`,'warn');
+        }
+      }else if(origCo&&noEl.dataset.autoFor){
+        noEl.value=orig;noEl.dataset.autoFor='';
+        setAccountingStatus('sales','กลับมาบริษัทเดิม — ใช้เลขเดิม '+orig,'ok');
+      }
+      return saleNoFormatCheck();
+    }
     const orig=noEl.dataset.orig||noEl.value;
     const curM=parseTaxInvoiceNo(noEl.value.trim());
     const origM=parseTaxInvoiceNo(orig);
@@ -9538,11 +9556,22 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     updated_at:new Date().toISOString()
     };
     // บันทึกเอกสาร — ถ้าเลขที่เอกสารชน (unique sales_invoice_no) ให้ถามเลขสูงสุดจริงจาก server แล้วข้ามไปเลขว่างถัดไป
+    let bumpOnEdit=false;
     for(let attempt=0;attempt<10;attempt++){
       try{await sbUpsertResilient('sales_invoices','?on_conflict=id',inv);break;}
       catch(e){
         const m=String(e?.message||e);
-        if((isNewDoc||renumberedOnEdit)&&/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)&&attempt<9){
+        // แก้ไขของเดิมแล้วเลขชน (เช่น ใบเดิมไม่มีชื่อบริษัท → ฟอร์มเติมบริษัทให้ → ไปชนเลขเดียวกันของบริษัทนั้น) → บอกว่าชนกับใบไหน แล้วถามก่อนรันเลขใหม่
+        if(!isNewDoc&&!renumberedOnEdit&&!bumpOnEdit&&/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)){
+          const no=String(inv.sales_invoice_no||'').trim(),co=String(inv.company_name||'').trim();
+          const hit=(salesInvoices||[]).find(x=>x.id!==id&&(x.status||'active')==='active'&&String(x.sales_invoice_no||'').trim()===no&&String(x.company_name||'').trim()===co);
+          const prev=salesInvoices.find(x=>x.id===id),prevCo=String(prev&&prev.company_name||'').trim();
+          const who=hit?`${(SALES_DOC_META[hit.doc_type||'tax_invoice']||{}).title||'เอกสาร'} ${hit.doc_no||hit.sales_invoice_no} (${salesInvoiceJobs(hit).join(', ')||hit.customer_name||'-'})`:'เอกสารอีกใบที่ไม่ได้โหลดไว้ในหน้านี้';
+          const coNote=prevCo!==co?`\n\nสาเหตุ: ใบนี้เดิมบันทึกบริษัทเป็น "${prevCo||'(ว่าง)'}" ตอนนี้เป็น "${co}" — เลขนี้ของบริษัทนี้มีใบอื่นใช้อยู่แล้ว`:'';
+          if(!confirm(`เลขที่ ${no} ซ้ำกับ ${who} ของบริษัทเดียวกัน${coNote}\n\nกด OK = รันเลขใหม่ให้ใบนี้ (เลขว่างถัดไป) แล้วบันทึก\nกด Cancel = ยังไม่บันทึก`)){setAccountingStatus('sales',`ยังไม่บันทึก — เลขที่ ${no} ซ้ำกับ ${who}`,'err');return;}
+          bumpOnEdit=true;
+        }
+        if((isNewDoc||renumberedOnEdit||bumpOnEdit)&&/sales_invoice_no/.test(m)&&/(23505|duplicate)/.test(m)&&attempt<9){
           const cur=String(inv.sales_invoice_no||inv.doc_no||docNo);
           const taxm=parseTaxInvoiceNo(cur); // ใบกำกับภาษี 69/0901 หรือ 2026/1001 → prefix ปี/เดือน + ลำดับ
           let bumped;
