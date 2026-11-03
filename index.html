@@ -10555,6 +10555,7 @@ function tpPayState(j,paid){
   if(start&&d&&d<start)return 'pre';
   return Number(j.pt||0)>0?'ready':'miss';
 }
+function tpCanPay(j,s){return s!=='paid'&&Number(j.pt||0)>0;}
 function tpTechTotal(j){return tpRound(Number(j.pt||0)+(j.tpPartOwn?Number(j.partC||0):0));}
 function tpOweJobs(){const paid=tpPaidMap();return liveJobs().filter(j=>tpHasTeam(j)&&tpPayState(j,paid)==='ready');}
 function tpMonthLabel(ym,half){const m=+String(ym).slice(5,7),y=+String(ym).slice(0,4);const last=new Date(y,m,0).getDate();return `${TP_TH_MONTH[m-1]} ${y+543}${half?(half===1?' (1–15)':` (16–${last})`):''}`;}
@@ -10681,10 +10682,11 @@ function tpTeamPanelHtml(team,tjs,st,paid){
   const ym=tpState.ym,m=+ym.slice(5),last=new Date(+ym.slice(0,4),m,0).getDate();
   const grp=tpState.half?[[tpState.half,list]]:[[1,list.filter(j=>+tpJobDate(j).slice(8,10)<=15)],[2,list.filter(j=>+tpJobDate(j).slice(8,10)>15)]];
   const readyIds=all.filter(j=>st.get(j.id)==='ready').map(j=>tpKey(j.id));
-  const allSel=readyIds.length&&readyIds.every(k=>tpState.sel.has(k));
+  const payIds=list.filter(j=>tpCanPay(j,st.get(j.id))).map(j=>tpKey(j.id)); // เลือกได้ในตัวกรองที่ดูอยู่
+  const allSel=payIds.length&&payIds.every(k=>tpState.sel.has(k));
   const row=j=>{const s=st.get(j.id),P=TP_PS[s],k=tpKey(j.id),pl=tpPurLines(j),pn=pl?pl.filter(l=>!l.used&&l.as!=='skip').length:0,po=s==='paid'?paid.get(k):null,d=tpJobDate(j);
     return `<tr class="tp-jr${tpState.open===j.id?' sel':''}" data-id="${esc(j.id)}" onclick="tpDrawer(this.dataset.id)">
-      <td onclick="event.stopPropagation()">${s==='ready'?`<input type="checkbox" ${tpState.sel.has(k)?'checked':''} data-id="${esc(j.id)}" onchange="tpSelJob(this.dataset.id,this.checked)">`:''}</td>
+      <td onclick="event.stopPropagation()">${tpCanPay(j,s)?`<input type="checkbox" ${tpState.sel.has(k)?'checked':''} data-id="${esc(j.id)}" onchange="tpSelJob(this.dataset.id,this.checked)" title="${s==='ready'?'เลือกจ่ายงานนี้':s==='pre'?'งานก่อนวันเริ่มใช้ระบบ — เลือกจ่ายได้ถ้ายังไม่เคยจ่าย':'งานยังไม่เสร็จ — เลือกจ่ายได้ถ้าตกลงจ่ายก่อน'}">`:s==='miss'?'<input type="checkbox" disabled title="กรอกค่าแรงช่างก่อน (กดที่แถว)">':''}</td>
       <td style="white-space:nowrap">${+d.slice(8,10)} ${TP_TH_MONTH[+d.slice(5,7)-1]}</td>
       <td><span class="mono ta fw7">${esc(j.id)}</span>${pl&&pl.length?`<span class="tp-clip${pn&&s!=='paid'?' new':''}" title="บิลซื้อที่ระบุ PR นี้">📎 บิลซื้อ ${pl.length}${pn&&s!=='paid'?' · ยังไม่ดึง':''}</span>`:''}<div class="tm" style="font-size:12px">${esc(j.branch||'-')}</div></td>
       <td style="font-size:12.5px">${esc(j.type||'-')}</td>
@@ -10697,7 +10699,7 @@ function tpTeamPanelHtml(team,tjs,st,paid){
     <div class="tp-card-h">${jqTeamAvatar(team)}<div style="flex:1;min-width:0"><div class="tp-card-t">${T}</div><div class="tm" style="font-size:12px;">${payeeLine} <button class="btn btn-ghost btn-xs" data-t="${T}" onclick="tpOpenPayee(this.dataset.t)">แก้ไขผู้รับเงิน</button></div></div>
       ${pullN?`<button class="btn btn-ghost btn-sm" onclick="tpPullTeam()" title="ตั้งค่าแรง/ค่าของ ตามยอดบิลซื้อที่ระบุ PR">📎 ดึงจากบิลซื้อ (${pullN} งาน)</button>`:''}</div>
     <div class="tp-fchips">${fl.map(([k,l])=>`<button type="button" class="tp-fchip${f===k?' on':''}" onclick="tpState.f='${k}';renderTP()">${l}<i>${cnt(k)}</i></button>`).join('')}</div>
-    <div class="table-scroll"><table class="tp-jt"><thead><tr><th style="width:32px">${readyIds.length?`<input type="checkbox" title="เลือกงานที่รอจ่ายทั้งหมด" ${allSel?'checked':''} onchange="tpSelAll(this.checked)">`:''}</th><th>วันที่เข้า</th><th>PR / สาขา</th><th>ประเภท</th><th>สถานะงาน</th><th style="text-align:right">ค่าแรงช่าง</th><th style="text-align:right">ค่าของ</th><th>จ่ายช่าง</th></tr></thead><tbody>
+    <div class="table-scroll"><table class="tp-jt"><thead><tr><th style="width:32px">${payIds.length?`<input type="checkbox" title="เลือกทุกงานที่จ่ายได้ในรายการนี้" ${allSel?'checked':''} onchange="tpSelAll(this.checked)">`:''}</th><th>วันที่เข้า</th><th>PR / สาขา</th><th>ประเภท</th><th>สถานะงาน</th><th style="text-align:right">ค่าแรงช่าง</th><th style="text-align:right">ค่าของ</th><th>จ่ายช่าง</th></tr></thead><tbody>
     ${grp.map(([h,g])=>!g.length?'':`<tr class="tp-gh"><td colspan="8">งวด ${h===1?'1–15':'16–'+last} ${TP_TH_MONTH[m-1]} · ${g.length} งาน · ค่าแรงรวม ฿${money(g.reduce((s,j)=>s+Number(j.pt||0),0))}</td></tr>`+g.map(row).join('')).join('')||'<tr><td colspan="8" class="tm" style="text-align:center;padding:26px">ไม่มีงานในตัวกรองนี้</td></tr>'}
     </tbody></table></div>`;
   // เอกสารจ่ายที่มีงานของเดือนนี้
@@ -10709,14 +10711,21 @@ function tpTeamPanelHtml(team,tjs,st,paid){
   }
   html+='</div>';
   // แถบบันทึกจ่าย (เลือกงานที่รอจ่าย)
-  if(readyIds.length){
-    const d=tpSelDraft(team);
-    html+=`<div class="tp-paybar"><div><div class="tp-pbx">${T} · เลือก ${d.picked.length}/${readyIds.length} งานที่รอจ่าย</div><div>ค่าแรง ฿${money(d.gross)}${d.own?` + คืนค่าของ ฿${money(d.own)}`:''} − หัก ${Number(techPay.settings.wht_rate??3)}% ฿${money(d.wht)}</div></div>
+  // แถบจ่าย: แสดงตลอด — ติ๊กงานในตาราง แล้วพิมพ์ร่างเอกสาร / บันทึกจ่าย
+  const unpaid=all.filter(j=>st.get(j.id)!=='paid');
+  if(unpaid.length){
+    const d=tpSelDraft(team),dis=d.picked.length?'':'disabled',hint='ติ๊ก ☑ หน้างานที่จะจ่ายก่อน';
+    const warn=d.picked.filter(j=>st.get(j.id)!=='ready').length;
+    html+=`<div class="tp-paybar"><div style="min-width:0"><div class="tp-pbx">${T} · ${d.picked.length?`เลือก ${d.picked.length} งาน${warn?` (ยังไม่ส่งงาน/ก่อนเริ่มระบบ ${warn})`:''}`:`ยังไม่ได้เลือกงาน — ติ๊ก ☑ หน้างานที่จะจ่าย (รอจ่าย ${readyIds.length} งาน)`}</div><div>${d.picked.length?`ค่าแรง ฿${money(d.gross)}${d.own?` + คืนค่าของ ฿${money(d.own)}`:''} − หัก ${Number(techPay.settings.wht_rate??3)}% ฿${money(d.wht)}${tpState.adjust[team]?` ${tpState.adjust[team]>0?'+':'−'} ปรับ ฿${money(Math.abs(tpState.adjust[team]))}`:''}`:'งานที่ยังไม่กรอกค่าแรง เลือกไม่ได้ — กดที่แถวเพื่อกรอกก่อน'}</div></div>
       <span style="flex:1"></span><div style="text-align:right"><div class="tp-pbx">โอนสุทธิ</div><b style="font-size:18px">฿${money(d.net)}</b></div>
-      <button class="btn btn-sm tp-pb-ghost" onclick="tpSelAll(${allSel?'false':'true'})">${allSel?'ล้างที่เลือก':'เลือกที่รอจ่ายทั้งหมด'}</button>
-      <button class="btn btn-ghost btn-sm tp-pb-ghost" data-t="${T}" onclick="tpAskAdjust(this.dataset.t)" title="เพิ่ม/หักยอด เช่น หักเบิกล่วงหน้า">± ปรับยอด${tpState.adjust[team]?` (${money(tpState.adjust[team])})`:''}</button>
-      <button class="btn btn-ghost btn-sm tp-pb-ghost" ${d.picked.length?'':'disabled'} data-t="${T}" onclick="tpPrintVoucher(null,this.dataset.t)">🧾 ร่างใบสำคัญ</button>
-      <button class="btn btn-primary" ${d.picked.length?'':'disabled'} data-t="${T}" onclick="tpOpenPay(this.dataset.t)">ยืนยันโอน + บันทึกจ่าย</button></div>`;
+      <div class="flex g8" style="flex-wrap:wrap;justify-content:flex-end">
+      ${readyIds.length?`<button class="btn btn-sm tp-pb-ghost" onclick="tpSelReady(${readyIds.every(k=>tpState.sel.has(k))?'false':'true'})">${readyIds.every(k=>tpState.sel.has(k))?'ล้างที่เลือก':`เลือกที่รอจ่ายทั้งหมด (${readyIds.length})`}</button>`:''}
+      <button class="btn btn-sm tp-pb-ghost" data-t="${T}" onclick="tpAskAdjust(this.dataset.t)" title="เพิ่ม/หักยอด เช่น หักเบิกล่วงหน้า">± ปรับยอด</button>
+      <button class="btn btn-sm tp-pb-ghost" ${dis} title="${d.picked.length?'ใบสำคัญรับเงิน (ร่าง) ของงานที่เลือก':hint}" data-t="${T}" onclick="tpPrintVoucher(null,this.dataset.t)">🧾 ใบสำคัญรับเงิน</button>
+      <button class="btn btn-sm tp-pb-ghost" ${dis} title="${d.picked.length?'50 ทวิ (ร่าง) ของงานที่เลือก':hint}" data-t="${T}" onclick="tpPrint50Tawi(null,this.dataset.t)">📄 50 ทวิ</button>
+      <button class="btn btn-sm tp-pb-ghost" ${dis} title="${d.picked.length?'Excel รายการงานที่เลือก':hint}" data-t="${T}" onclick="tpExportTeamXlsx(null,this.dataset.t)">⬇ Excel</button>
+      <button class="btn btn-primary" ${dis} title="${d.picked.length?'':hint}" data-t="${T}" onclick="tpOpenPay(this.dataset.t)">ยืนยันโอน + บันทึกจ่าย</button></div></div>
+    <div class="tm" style="font-size:11.5px;margin-top:6px">ร่างเอกสารพิมพ์ได้ก่อนโอน (มีลายน้ำ "ร่าง") · กด "ยืนยันโอน + บันทึกจ่าย" แล้วจะได้เลขเอกสาร และพิมพ์ฉบับจริงได้ที่ "เอกสารจ่ายที่มีงานของเดือนนี้"</div>`;
   }
   return html;
 }
@@ -10728,11 +10737,13 @@ function tpAskAdjust(team){
 }
 function tpPickYear(y){tpState.ym=(tpState.yms||[]).filter(k=>k.startsWith(y)).pop()||tpState.ym;tpState.sel.clear();renderTP();}
 function tpSelJob(id,on){const k=tpKey(id);on?tpState.sel.add(k):tpState.sel.delete(k);renderTP();}
-function tpSelAll(on){const paid=tpPaidMap();tpViewJobs().filter(j=>j.team===tpState.team&&tpPayState(j,paid)==='ready').forEach(j=>{const k=tpKey(j.id);on?tpState.sel.add(k):tpState.sel.delete(k);});renderTP();}
+// หัวตาราง: ทุกงานที่จ่ายได้ในตัวกรองที่ดูอยู่ · ปุ่มในแถบจ่าย: เฉพาะงานที่รอจ่าย
+function tpSelAll(on){const paid=tpPaidMap(),f=tpState.f;tpViewJobs().filter(j=>{if(j.team!==tpState.team)return false;const s=tpPayState(j,paid);return tpCanPay(j,s)&&(f==='all'||s===f||(f==='open'&&s==='pre'));}).forEach(j=>{const k=tpKey(j.id);on?tpState.sel.add(k):tpState.sel.delete(k);});renderTP();}
+function tpSelReady(on){const paid=tpPaidMap();tpViewJobs().filter(j=>j.team===tpState.team&&tpPayState(j,paid)==='ready').forEach(j=>{const k=tpKey(j.id);on?tpState.sel.add(k):tpState.sel.delete(k);});renderTP();}
 // ร่างจ่ายจากงานที่เลือก (ค่าแรง − หัก ณ ที่จ่าย + คืนค่าของที่ช่างสำรองจ่าย + ปรับยอด)
 function tpSelDraft(team){
   const paid=tpPaidMap();
-  const picked=liveJobs().filter(j=>j.team===team&&tpState.sel.has(tpKey(j.id))&&tpPayState(j,paid)==='ready').sort((a,b)=>tpDoneDate(a).localeCompare(tpDoneDate(b)));
+  const picked=liveJobs().filter(j=>j.team===team&&tpState.sel.has(tpKey(j.id))&&tpCanPay(j,tpPayState(j,paid))).sort((a,b)=>tpDoneDate(a).localeCompare(tpDoneDate(b)));
   const gross=tpRound(picked.reduce((s,j)=>s+Number(j.pt||0),0)),own=tpRound(picked.reduce((s,j)=>s+(j.tpPartOwn?Number(j.partC||0):0),0));
   const adj=tpRound(tpState.adjust[team]||0),wht=tpWht(gross);
   const last=picked.length?tpDoneDate(picked[picked.length-1])||todayISO():todayISO();
@@ -14959,10 +14970,108 @@ async function renderPM(){
   const seg=`<div class="d2-seg sl-tabs pm-tabs">${tabs.map(([k,l])=>`<button type="button" class="${pmView===k?'on':''}" onclick="pmView='${k}';renderPM()">${l}</button>`).join('')}</div>`;
   const fv=['ov','cal','plan'].includes(pmView)&&pm.contracts.length>0;
   const body=pmView==='assets'?pmAssetsHtml():pmView==='qr'?pmQrHtml():pmView==='ov'?pmOvHtml():pmView==='cal'?pmCalHtml():pmPlanHtml();
-  root.innerHTML=`<div class="pm-bar">${seg}<span style="flex:1"></span>${fv?`<button class="btn btn-sm pm-exbtn" onclick="pmExportOpen()">⬇ Export Excel / Google Sheet</button>`:''}${pmAutoChipHtml()}${pmTechSwHtml()}<button class="btn btn-ghost btn-sm" onclick="pm.loaded=false;renderPM()" title="โหลดใหม่">⟳ รีเฟรช</button></div>${fv?pmFBarHtml():''}${body}`;
+  root.innerHTML=`<div class="pm-bar">${seg}<span style="flex:1"></span>${fv?`<button class="btn btn-sm pm-exbtn" onclick="pmExportOpen()">⬇ Export Excel / Google Sheet</button>`:''}${pm.contracts.length?'<button class="btn btn-ghost btn-sm" onclick="pmAuditOpen()" title="หา PR ที่ผูกผิดสาขา และงาน PM ที่ชื่อสาขาต่างกันนิดหน่อยจนยังไม่ถูกผูก">🔎 ตรวจการผูก PR</button>':''}${pmAutoChipHtml()}${pmTechSwHtml()}<button class="btn btn-ghost btn-sm" onclick="pm.loaded=false;renderPM()" title="โหลดใหม่">⟳ รีเฟรช</button></div>${fv?pmFBarHtml():''}${body}`;
   if(pmView==='plan')pmApplyFilter();
   const live=pm.assets.filter(a=>a.status!=='retired');
   phSet('pm',[['สัญญา',pm.contracts.filter(c=>c.status==='active').length],['เครื่องในทะเบียน',live.length],['สาขาในสัญญา',pm.sites.length]],'PM (ทดลอง)','แผนบำรุงรักษา · ทะเบียนเครื่อง · สติกเกอร์ QR — ช่วงทดลองเห็นเฉพาะแอดมิน');
+}
+
+// ---------- ตรวจการผูก PR กับสาขา ----------
+// เทียบชื่อสาขาในงาน (คิวช่าง/Admin) กับสาขาที่ผูกอยู่: ความคล้ายของตัวอักษร (bigram) + ตัวเลขในชื่อต้องตรงกัน (ชลบุรี1 ≠ ชลบุรี3)
+function pmDigits(x){return [...new Set((String(x||'').match(/\d+/g)||[]).map(n=>String(+n)))];}
+function pmDice(a,b){if(a===b)return 1;if(a.length<2||b.length<2)return 0;const g=t=>{const m=new Map();for(let i=0;i<t.length-1;i++){const k=t.slice(i,i+2);m.set(k,(m.get(k)||0)+1);}return m;};const A=g(a),B=g(b);let n=0;A.forEach((v,k)=>{n+=Math.min(v,B.get(k)||0);});return 2*n/(a.length+b.length-2);}
+function pmSiteKeyer(sites){
+  const ns=sites.map(x=>pmNorm(String(x.branch).replace(/ถนน/g,'ถ')));let pre=ns.length>1?ns[0]:'';ns.forEach(n=>{while(pre&&!n.startsWith(pre))pre=pre.slice(0,-1);});pre=pre.replace(/\d+$/,'');
+  const key=x=>{let b=pmNorm(String(x||'').replace(/ถนน/g,'ถ').replace(/สาขา/g,''));if(pre.length>=3&&b.startsWith(pre))b=b.slice(pre.length);return b;};
+  // คำที่อยู่ในชื่อสาขาเกือบทุกแห่ง (เช่น ชื่อแบรนด์ Punthai) ไม่ใช้แยกสาขา
+  const cnt=new Map();sites.forEach(x=>new Set(pmTokens(x.branch)).forEach(t=>cnt.set(t,(cnt.get(t)||0)+1)));
+  key.common=new Set([...cnt].filter(([t,n])=>sites.length>=4&&n/sites.length>=.5).map(([t])=>t));
+  return key;
+}
+function pmTokens(x){return String(x||'').replace(/ถนน/g,'ถ').split(/[\s()\-_.,/]+/).map(t=>pmNorm(t)).filter(t=>t.length>=3);}
+function pmSiteScore(branch,site,key){
+  const ds=pmDigits(site.branch),dj=pmDigits(branch);
+  if(ds.length&&!ds.every(d=>dj.includes(d)))return 0; // ตัวเลขของสาขาไม่อยู่ในชื่องาน = คนละสาขา
+  const a=key(branch),b=key(site.branch);if(!a||!b)return 0;
+  let sc=Math.max(pmDice(a,b),pmDice(pmNorm(branch),pmNorm(site.branch)));
+  if(a.length>=4&&b.length>=4&&(a.includes(b)||b.includes(a)))sc=Math.max(sc,.9);
+  // คำเฉพาะของสาขา (ไม่นับชื่อแบรนด์) ที่อยู่ในชื่องาน — เช่น "พันไท บ้านบึง" ↔ "Punthai บ้านบึง (หน้าตลาด)"
+  const tk=pmTokens(site.branch).filter(t=>!(key.common||new Set()).has(t)),jn=pmNorm(String(branch).replace(/ถนน/g,'ถ'));
+  if(tk.length){const tot=tk.reduce((n,t)=>n+t.length,0),hit=tk.filter(t=>jn.includes(t)).reduce((n,t)=>n+t.length,0),r=hit/tot;if(r>=.99)sc=Math.max(sc,.9);else if(r>=.4)sc=Math.max(sc,.6+.3*r);}
+  if(!ds.length&&dj.length)sc*=.9;
+  return sc;
+}
+function pmBestSite(branch,sites,key){
+  const sc=sites.map(x=>({s:x,v:pmSiteScore(branch,x,key)})).sort((a,b)=>b.v-a.v);
+  return {s:sc[0]&&sc[0].v>0?sc[0].s:null,v:sc[0]?sc[0].v:0,gap:sc[0]?sc[0].v-(sc[1]?sc[1].v:0):0};
+}
+var pmAud=null;
+function pmAuditRun(){
+  const cands=pmJobCands(),wrong=[],miss=[],nojob=[];
+  const used=new Map();pmLiveVisits().forEach(v=>{if(v.job_id)used.set(String(v.job_id).toUpperCase().trim(),v);});
+  pm.contracts.filter(c=>c.status==='active').forEach(c=>{
+    const sites=pmSitesOf(c.id);if(!sites.length)return;const key=pmSiteKeyer(sites),cn=pmCoName(c.client);
+    const vis=pmLiveVisits().filter(v=>v.contract_id===c.id);
+    vis.filter(v=>v.job_id).forEach(v=>{
+      const pr=String(v.job_id).toUpperCase().trim(),r=cands.get(pr),cur=sites.find(x=>x.id===v.site_id);if(!cur)return;
+      if(!r||!r.branch){nojob.push({c,v,pr,cur});return;}
+      const cs=pmSiteScore(r.branch,cur,key),best=pmBestSite(r.branch,sites,key);
+      if(best.s&&best.s.id!==cur.id&&best.v>=.7&&best.v-cs>=.15){
+        const tv=vis.find(x=>x.site_id===best.s.id&&+x.round_no===+v.round_no);
+        wrong.push({c,v,pr,r,cur,cs,to:best.s,score:best.v,tv,blocked:tv&&tv.job_id?tv.job_id:'',on:best.v>=.85&&!(tv&&tv.job_id)});
+      }else if(cs<.5)wrong.push({c,v,pr,r,cur,cs,to:null,score:0,on:false});
+    });
+    const yr=+c.year||0;
+    [...cands.values()].forEach(r=>{
+      if(used.has(r.pr)||!/PM|บำรุง|preventive|maint/i.test(r.text||r.type||''))return;
+      const rc=pmCoName(r.client);if(!rc||!cn||!(rc.includes(cn)||cn.includes(rc)))return;
+      if(r.date&&yr&&r.date<yr+'-01-01')return;
+      const best=pmBestSite(r.branch,sites,key);if(!best.s||best.v<.7)return;
+      const open=vis.filter(x=>x.site_id===best.s.id&&!x.job_id&&!['done','skipped','cancelled'].includes(x.status));
+      let tv=null;if(r.date){const n=open.filter(x=>x.planned_date).map(x=>({x,d:Math.abs(pmDDiff(x.planned_date,r.date))})).filter(o=>o.d<=60).sort((a,b)=>a.d-b.d);if(n.length)tv=n[0].x;}
+      if(!tv)tv=open.slice().sort((a,b)=>a.round_no-b.round_no)[0]||null;
+      miss.push({c,r,pr:r.pr,to:best.s,score:best.v,amb:best.gap<.08,tv,on:!!tv&&best.v>=.85&&best.gap>=.08});
+    });
+  });
+  pmAud={wrong,miss,nojob};return pmAud;
+}
+function pmAuditOpen(){
+  const A=pmAuditRun(),pct=v=>Math.round(v*100)+'%',T=x=>esc(x.c.client).slice(0,40);
+  const multi=pm.contracts.filter(c=>c.status==='active').length>1;
+  const wr=A.wrong.map((x,i)=>`<tr><td class="pm-cb"><input type="checkbox" ${x.on?'checked':''} ${x.to&&!x.blocked?'':'disabled'} onchange="pmAud.wrong[${i}].on=this.checked"></td>
+    <td class="mono"><b>${esc(x.pr)}</b><div class="tm" style="font-size:11.5px">รอบ ${esc(x.v.round_no)}${multi?' · '+T(x):''}</div></td>
+    <td>${esc(x.r?x.r.branch:'')}<div class="tm" style="font-size:11.5px">${esc(x.r?x.r.src:'')}</div></td>
+    <td><span class="tr">${esc(x.cur.branch)}</span><div class="tm" style="font-size:11.5px">ตรง ${pct(x.cs)}</div></td>
+    <td>${x.to?`<span class="tg fw7">${esc(x.to.branch)}</span><div class="tm" style="font-size:11.5px">ตรง ${pct(x.score)}${x.blocked?` · <span class="tr">รอบนี้ผูก ${esc(x.blocked)} อยู่แล้ว</span>`:''}</div>`:'<span class="tm">ไม่พบสาขาที่ตรงในสัญญา — ตรวจเอง</span>'}</td>
+    <td><button type="button" class="jq-link" onclick="closeM('m-pm');pmHistOpen('${esc(x.v.id)}')">🕘</button></td></tr>`).join('');
+  const ms=A.miss.map((x,i)=>`<tr><td class="pm-cb"><input type="checkbox" ${x.on?'checked':''} ${x.tv?'':'disabled'} onchange="pmAud.miss[${i}].on=this.checked"></td>
+    <td class="mono"><b>${esc(x.pr)}</b><div class="tm" style="font-size:11.5px">${esc(x.r.date||'')}</div></td>
+    <td>${esc(x.r.branch)}<div class="tm" style="font-size:11.5px">${esc(x.r.src)}${x.r.type?' · '+esc(x.r.type):''}</div></td>
+    <td><span class="fw7">${esc(x.to.branch)}</span><div class="tm" style="font-size:11.5px">ตรง ${pct(x.score)}${x.amb?' · <span class="tr">มีสาขาชื่อใกล้กันอีก</span>':''}</div></td>
+    <td>${x.tv?`รอบที่ ${esc(x.tv.round_no)}${x.tv.planned_date?` <span class="tm">(${esc(pmThDateY(x.tv.planned_date))})</span>`:''}`:'<span class="tm">ไม่มีรอบที่ว่าง</span>'}</td></tr>`).join('');
+  pmModal('ตรวจการผูก PR กับสาขา',`ผูกน่าจะผิด ${A.wrong.length} งาน · ยังไม่ผูกแต่น่าจะตรง ${A.miss.length} งาน — ติ๊กอันที่ต้องการแก้ แล้วกดปุ่มด้านล่าง (ติ๊กให้ก่อนเฉพาะที่มั่นใจ ≥ 85%)`,
+    `<div class="fw7" style="margin:2px 0 6px">⚠ ผูกน่าจะผิดสาขา (${A.wrong.length})</div>
+    ${A.wrong.length?`<table class="pm-tbl"><thead><tr><th class="pm-cb"></th><th>PR</th><th>สาขาในงาน</th><th>ผูกอยู่กับ</th><th>ควรย้ายไป</th><th></th></tr></thead><tbody>${wr}</tbody></table>`:'<div class="tm" style="padding:6px 0 10px">ไม่พบ ✓</div>'}
+    <div class="fw7" style="margin:14px 0 6px">🔗 งาน PM ที่ยังไม่ผูก แต่ชื่อสาขาใกล้เคียง (${A.miss.length})</div>
+    ${A.miss.length?`<table class="pm-tbl"><thead><tr><th class="pm-cb"></th><th>PR</th><th>สาขาในงาน</th><th>สาขาในสัญญาที่ใกล้ที่สุด</th><th>ผูกเข้า</th></tr></thead><tbody>${ms}</tbody></table>`:'<div class="tm" style="padding:6px 0">ไม่พบ ✓</div>'}
+    ${A.nojob.length?`<div class="tm" style="font-size:12px;margin-top:12px">ℹ มี ${A.nojob.length} รอบที่ผูก PR ที่ไม่พบในคิวช่าง/Admin (ตรวจชื่อสาขาไม่ได้): ${A.nojob.slice(0,12).map(x=>esc(x.pr)).join(', ')}${A.nojob.length>12?' …':''}</div>`:''}`,
+    `<button class="btn btn-ghost" onclick="closeM('m-pm')">ปิด</button>${A.wrong.length||A.miss.length?'<button class="btn btn-primary" id="pmaud-ok" onclick="pmAuditApply()">แก้ตามที่ติ๊ก</button>':''}`,true);
+}
+async function pmAuditApply(){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const A=pmAud;if(!A)return;const now=new Date().toISOString(),by=getActorName();
+  const mv=A.wrong.filter(x=>x.on&&x.to&&!x.blocked),ln=A.miss.filter(x=>x.on&&x.tv);
+  if(!mv.length&&!ln.length){alert('ยังไม่ได้ติ๊กรายการ');return;}
+  if(!confirm(`ย้าย ${mv.length} งานไปสาขาที่ถูก · ผูกใหม่ ${ln.length} งาน\nทุกการเปลี่ยนจะบันทึกในประวัติแผน`))return;
+  const btn=document.getElementById('pmaud-ok');if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
+  const put=rows=>pmUpsert('pm_visits',rows).then(part=>(part&&part.length?part:rows).forEach(r=>{const k=pm.visits.findIndex(x=>x.id===r.id);if(k>=0)pm.visits[k]={...pm.visits[k],...r};else pm.visits.push(r);}));
+  let ok=0,fail=0;
+  for(const x of mv){try{
+      await put([{...pmVBase(x.v),job_id:null,updated_at:now,updated_by:by}]);
+      await put([{...pmVBase(x.tv,{id:pmId('PMV'),contract_id:x.c.id,round_no:x.v.round_no,site_id:x.to.id,branch:x.to.branch,status:'planned'}),job_id:x.pr,updated_at:now,updated_by:by}]);ok++;
+    }catch(e){fail++;console.warn('pm audit move',x.pr,e);}}
+  for(const x of ln){try{await put([{...pmVBase(x.tv),job_id:x.pr,updated_at:now,updated_by:by}]);ok++;}catch(e){fail++;console.warn('pm audit link',x.pr,e);}}
+  closeM('m-pm');renderPM();alert(`แก้แล้ว ${ok} งาน${fail?` · ไม่สำเร็จ ${fail} (ดู console)`:''}`);
 }
 
 // ---------- ผลจับคู่ PR อัตโนมัติ ----------
