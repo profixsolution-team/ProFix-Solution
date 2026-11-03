@@ -5492,6 +5492,7 @@ async function saveAdminTask(openQueueAfter=false){
   }
   await savePendingAdminPdf(data.jobId,taskId);
   closeM('m-admin');renderAdmin();renderDash();fillSelects();saveState();
+  if(data.jobId)pmAutoLinkSoon(); // งาน PM ที่ได้เลข PR แล้ว → ผูกเข้าแผน PM ของสาขานั้นอัตโนมัติ
   await writeAuditLog(action,'admin_task',taskId,before,patchFromDiff(before||{},after||{}),after);
   if(openQueueAfter)setTimeout(()=>openJobFromAdmin(taskId),0);
   return taskId;
@@ -6318,6 +6319,7 @@ async function saveJob(){if(!guardEdit())return;
     saveUIState();
   }
   saveState();
+  if(savedJobId)pmAutoLinkSoon(); // งาน PM → ผูกเข้าแผน PM ของสาขานั้นอัตโนมัติ
   if(savedJobId&&action!=='update_job')verifyJobPersisted(savedJobId); // ชั้น 4: ยืนยันงานเปิดใหม่ขึ้นเซิร์ฟเวอร์จริง (ไม่บล็อก UI)
   writeAuditLog(action,'job',savedJobId,before,patchFromDiff(before||{},after||{}),after);
 }
@@ -14258,6 +14260,9 @@ async function pmReq(table,query,opt){const r=await fetch(splitUrl(table,query),
 // PostgREST ส่งหลายแถวครั้งเดียว ทุกแถวต้องมีคอลัมน์ชุดเดียวกัน (PGRST102) → แยกส่งตามชุดคอลัมน์
 async function pmBulk(table,rows,query,prefer){if(!Array.isArray(rows))rows=[rows];const g=new Map();rows.forEach(r=>{const k=Object.keys(r).sort().join(',');if(!g.has(k))g.set(k,[]);g.get(k).push(r);});
   const out=[];for(const part of g.values()){const res=await pmReq(table,query,{method:'POST',prefer,body:JSON.stringify(part)});if(Array.isArray(res))out.push(...res);}return out;}
+// บันทึกแผนที่มีอยู่แล้ว: ส่งเฉพาะคีย์ของแถว + ช่องที่เปลี่ยน (เดิมส่งทั้งแถวจากข้อมูลที่โหลดไว้ → ถ้าข้อมูลในเครื่องเก่า
+// เช่น อีกเครื่องเพิ่งผูก PR / ช่างเพิ่งส่งงาน จะเขียนทับ PR หรือสถานะกลับเป็นค่าเก่า) · แถวใหม่ = ใช้ค่าเริ่มต้นที่ส่งมา
+function pmVBase(v,fresh){if(!v)return fresh;const s=pm.sites.find(x=>x.id===v.site_id);return {id:v.id,contract_id:v.contract_id,round_no:v.round_no,site_id:v.site_id,branch:(s&&s.branch)||v.branch};}
 function pmUpsert(table,rows){return pmBulk(table,rows,'?on_conflict=id','resolution=merge-duplicates,return=representation');}
 function pmInsert(table,rows){return pmBulk(table,rows,'','return=representation');}
 function pmPatch(table,id,fields){return pmReq(table,`?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',prefer:'return=representation',body:JSON.stringify(fields)});}
@@ -14352,8 +14357,8 @@ function pmStChip(v,st){return v?`<button type="button" class="chip pm-st pm-stb
 async function pmVisitPatch(vid,fields){
   if(typeof guardEdit==='function'&&!guardEdit())return;
   const v=pm.visits.find(x=>x.id===vid);if(!v)return;
-  const row={...v,...fields,updated_at:new Date().toISOString(),updated_by:getActorName()};
-  try{const [saved]=await pmUpsert('pm_visits',[row]);const i=pm.visits.findIndex(x=>x.id===vid);if(i>=0)pm.visits[i]=saved||row;renderPM();pmVLogsReload(vid);}
+  const row={...pmVBase(v),...fields,updated_at:new Date().toISOString(),updated_by:getActorName()};
+  try{const [saved]=await pmUpsert('pm_visits',[row]);const i=pm.visits.findIndex(x=>x.id===vid);if(i>=0)pm.visits[i]={...pm.visits[i],...row,...(saved||{})};renderPM();pmVLogsReload(vid);}
   catch(e){pmErr(e);}
 }
 async function pmVLogsReload(vid){if(!pm.vlogOk)return;try{const rows=await sbFetchAll('pm_visit_logs',`?select=visit_id,at,by,action,changes&visit_id=eq.${encodeURIComponent(vid)}&order=at.asc`);pm.vlogs=(pm.vlogs||[]).filter(l=>l.visit_id!==vid).concat(rows||[]);pmVLogMemo=null;}catch(e){}}
@@ -14681,16 +14686,31 @@ async function renderPM(){
   const root=document.getElementById('pm-root');if(!root)return;
   if(!pm.loaded){root.innerHTML='<div class="d2-empty">กำลังโหลดข้อมูล PM...</div>';await pmLoad();}
   else pmAutoReload();
+  if(pm.loaded&&!pm.missing&&pm.autoFor!==pm.at){pm.autoFor=pm.at;pmAutoLinkSoon();} // โหลดแผนใหม่ → ไล่จับคู่ PR ที่ยังไม่ผูก
   if(pm.missing){root.innerHTML=`<div class="d2-box"><div class="d2-in d2-pad" style="line-height:1.8"><b>ยังไม่ได้สร้างตาราง PM</b><br>รันไฟล์ <code>console_pm_phase1.sql</code> ใน Supabase SQL Editor ก่อน แล้วกดรีเฟรชหน้านี้</div></div>`;return;}
   if(pm.error&&!pm.contracts.length&&!pm.assets.length){root.innerHTML=`<div class="d2-empty">โหลดข้อมูล PM ไม่สำเร็จ: ${esc(pm.error)}</div>`;}
   const tabs=[['ov','ภาพรวม'],['cal','ปฏิทิน'],['plan','แผน PM'],['assets','ทะเบียนเครื่อง'],['qr','สติกเกอร์ QR']];
   const seg=`<div class="d2-seg sl-tabs pm-tabs">${tabs.map(([k,l])=>`<button type="button" class="${pmView===k?'on':''}" onclick="pmView='${k}';renderPM()">${l}</button>`).join('')}</div>`;
   const fv=['ov','cal','plan'].includes(pmView)&&pm.contracts.length>0;
   const body=pmView==='assets'?pmAssetsHtml():pmView==='qr'?pmQrHtml():pmView==='ov'?pmOvHtml():pmView==='cal'?pmCalHtml():pmPlanHtml();
-  root.innerHTML=`<div class="pm-bar">${seg}<span style="flex:1"></span>${fv?`<button class="btn btn-sm pm-exbtn" onclick="pmExportOpen()">⬇ Export Excel / Google Sheet</button>`:''}${pmTechSwHtml()}<button class="btn btn-ghost btn-sm" onclick="pm.loaded=false;renderPM()" title="โหลดใหม่">⟳ รีเฟรช</button></div>${fv?pmFBarHtml():''}${body}`;
+  root.innerHTML=`<div class="pm-bar">${seg}<span style="flex:1"></span>${fv?`<button class="btn btn-sm pm-exbtn" onclick="pmExportOpen()">⬇ Export Excel / Google Sheet</button>`:''}${pmAutoChipHtml()}${pmTechSwHtml()}<button class="btn btn-ghost btn-sm" onclick="pm.loaded=false;renderPM()" title="โหลดใหม่">⟳ รีเฟรช</button></div>${fv?pmFBarHtml():''}${body}`;
   if(pmView==='plan')pmApplyFilter();
   const live=pm.assets.filter(a=>a.status!=='retired');
   phSet('pm',[['สัญญา',pm.contracts.filter(c=>c.status==='active').length],['เครื่องในทะเบียน',live.length],['สาขาในสัญญา',pm.sites.length]],'PM (ทดลอง)','แผนบำรุงรักษา · ทะเบียนเครื่อง · สติกเกอร์ QR — ช่วงทดลองเห็นเฉพาะแอดมิน');
+}
+
+// ---------- ผลจับคู่ PR อัตโนมัติ ----------
+function pmAutoChipHtml(){
+  const a=pm.auto;if(!a)return '';const n=a.linked.length,p=a.pending.length;if(!n&&!p)return '';
+  return `<button type="button" class="pm-sw${p?' warn':''}" style="cursor:pointer" onclick="pmAutoOpen()" title="ผลการจับคู่ PR กับแผน PM อัตโนมัติ">🔗 ${n?`ผูก PR อัตโนมัติ ${n} งาน`:''}${n&&p?' · ':''}${p?`รอผูกเอง ${p} งาน`:''}</button>`;
+}
+function pmAutoOpen(){
+  const a=pm.auto||{linked:[],pending:[]};
+  const li=a.linked.map(x=>`<tr><td class="mono">${esc(x.pr)}</td><td>${esc(x.branch)}</td><td>รอบที่ ${esc(x.round)}</td><td><button type="button" class="jq-link" onclick="closeM('m-pm');pmHistOpen('${esc(x.vid)}')">🕘 ประวัติ</button></td></tr>`).join('');
+  const pe=a.pending.map(x=>`<tr><td class="mono">${esc(x.pr)}</td><td>${esc(x.branch||'-')}<div class="tm" style="font-size:11.5px">${esc(x.client||'')}</div></td><td>${esc(x.date||'')}</td><td class="tm">${esc(x.why)}</td></tr>`).join('');
+  pmModal('จับคู่ PR กับแผน PM อัตโนมัติ','ระบบผูกให้เฉพาะงาน PM ที่ลูกค้า + สาขาตรงกับสัญญาแบบไม่กำกวม · ที่ไม่ชัดต้องผูกเองจากปุ่ม "＋ ผูกงาน"',
+    `${li?`<b>ผูกแล้ว</b><table class="pm-tbl" style="margin:6px 0 14px"><tbody>${li}</tbody></table>`:''}${pe?`<b>รอผูกเอง</b><table class="pm-tbl" style="margin-top:6px"><thead><tr><th>PR</th><th>สาขาในงาน</th><th>วันที่</th><th>เหตุผล</th></tr></thead><tbody>${pe}</tbody></table>`:''}`,
+    `<button class="btn btn-ghost" onclick="closeM('m-pm')">ปิด</button>${pe?`<button class="btn btn-primary" onclick="closeM('m-pm');pmView='plan';renderPM();pmLinkOpen()">＋ เปิดหน้าต่างผูกงาน</button>`:''}`,true);
 }
 
 // ---------- สวิตช์ฟอร์มช่าง PM ----------
@@ -14768,8 +14788,8 @@ async function pmSetVisit(siteId,fields){
   if(typeof guardEdit==='function'&&!guardEdit())return;
   const c=pmContract(),s=pm.sites.find(x=>x.id===siteId);if(!c||!s)return;
   const v=pmVisit(c.id,pmRound,siteId);
-  const row={...(v||{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:siteId,branch:s.branch,status:'planned'}),...fields,updated_at:new Date().toISOString(),updated_by:getActorName()};
-  try{const [saved]=await pmUpsert('pm_visits',[row]);const i=pm.visits.findIndex(x=>x.id===row.id);if(i>=0)pm.visits[i]=saved||row;else pm.visits.push(saved||row);renderPM();}
+  const row={...pmVBase(v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:siteId,branch:s.branch,status:'planned'}),...fields,updated_at:new Date().toISOString(),updated_by:getActorName()};
+  try{const [saved]=await pmUpsert('pm_visits',[row]);const i=pm.visits.findIndex(x=>x.id===row.id);if(i>=0)pm.visits[i]={...pm.visits[i],...row,...(saved||{})};else pm.visits.push(saved||row);renderPM();}
   catch(e){pmErr(e);}
 }
 function pmEditContract(id){
@@ -14948,8 +14968,8 @@ async function pmXSave(){
       try{const [sv]=await pmPatch('pm_sites',x.site.id,f);if(sv)Object.assign(x.site,sv);}catch(e){console.warn(e);}
     }
     const useDone=pmX.useDone;const vrows=pmX.rows.filter(x=>x.site&&x.res!=='dupname'&&(x.pr||x.date||x.team||(x.done&&useDone))).map(x=>{const v=pmVisit(c.id,pmRound,x.site.id);
-      return {...(v||{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:x.site.id,branch:x.site.branch,status:'planned'}),...(x.pr?{job_id:x.pr}:{}),...(x.date?{planned_date:x.date}:{}),...(x.team?{team:x.team}:{}),...(x.done&&useDone?{status:'done'}:{}),updated_at:now,updated_by:getActorName()};});
-    for(let i=0;i<vrows.length;i+=200){const part=await pmUpsert('pm_visits',vrows.slice(i,i+200));(part&&part.length?part:vrows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(v=>v.id===r.id);if(k>=0)pm.visits[k]=r;else pm.visits.push(r);});}
+      return {...pmVBase(v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:x.site.id,branch:x.site.branch,status:'planned'}),...(x.pr?{job_id:x.pr}:{}),...(x.date?{planned_date:x.date}:{}),...(x.team?{team:x.team}:{}),...(x.done&&useDone?{status:'done'}:{}),updated_at:now,updated_by:getActorName()};});
+    for(let i=0;i<vrows.length;i+=200){const part=await pmUpsert('pm_visits',vrows.slice(i,i+200));(part&&part.length?part:vrows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(v=>v.id===r.id);if(k>=0)pm.visits[k]={...pm.visits[k],...r};else pm.visits.push(r);});}
     closeM('m-pm');renderPM();alert(`เพิ่ม ${newRows.length} สาขา · อัปเดตแผนรอบ ${pmRound} ${vrows.length} สาขา`);
   }catch(e){pmErr(e);if(btn){btn.disabled=false;btn.textContent=pmXBtnText();}}
 }
@@ -15038,8 +15058,8 @@ async function pmBulkPlanSave(){
   const {out,err}=pmBulkCompute();if(err){alert(err);return;}if(!out.length){alert('ไม่มีสาขาให้จัด');return;}
   const now=new Date().toISOString();
   const rows=out.map(({s,date,team})=>{const v=pmVisit(c.id,pmRound,s.id);
-    return {...(v||{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:s.id,branch:s.branch,status:'planned'}),planned_date:date,team:team||(v&&v.team)||null,updated_at:now,updated_by:getActorName()};});
-  try{for(let i=0;i<rows.length;i+=200){const part=await pmUpsert('pm_visits',rows.slice(i,i+200));(part&&part.length?part:rows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(x=>x.id===r.id);if(k>=0)pm.visits[k]=r;else pm.visits.push(r);});}
+    return {...pmVBase(v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:s.id,branch:s.branch,status:'planned'}),planned_date:date,team:team||(v&&v.team)||null,updated_at:now,updated_by:getActorName()};});
+  try{for(let i=0;i<rows.length;i+=200){const part=await pmUpsert('pm_visits',rows.slice(i,i+200));(part&&part.length?part:rows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(x=>x.id===r.id);if(k>=0)pm.visits[k]={...pm.visits[k],...r};else pm.visits.push(r);});}
     closeM('m-pm');pmSel.clear();renderPM();}catch(e){pmErr(e);}
 }
 // ผูก PR: วางข้อความ/Excel จากลูกค้า → จับคู่สาขาอัตโนมัติ
@@ -15052,19 +15072,83 @@ function pmMatchSite(text,sites){const t=pmNorm(text);if(!t)return null;let best
 async function pmLinkPairs(pairs){
   if(typeof guardEdit==='function'&&!guardEdit())return;
   const c=pmContract();
-  const rows=pairs.map(p=>{const s=pm.sites.find(x=>x.id===p.site),v=pmVisit(c.id,pmRound,s.id);return {...(v||{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:s.id,branch:s.branch,status:'planned'}),job_id:p.pr,updated_at:new Date().toISOString(),updated_by:getActorName()};});
-  try{const saved=await pmUpsert('pm_visits',rows);(saved||rows).forEach(r=>{const i=pm.visits.findIndex(x=>x.id===r.id);if(i>=0)pm.visits[i]=r;else pm.visits.push(r);});closeM('m-pm');renderPM();alert(`ผูก PR แล้ว ${rows.length} สาขา`);}catch(e){pmErr(e);}
+  const rows=pairs.map(p=>{const s=pm.sites.find(x=>x.id===p.site),v=pmVisit(c.id,pmRound,s.id);return {...pmVBase(v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:s.id,branch:s.branch,status:'planned'}),job_id:p.pr,updated_at:new Date().toISOString(),updated_by:getActorName()};});
+  try{const saved=await pmUpsert('pm_visits',rows);(saved||rows).forEach(r=>{const i=pm.visits.findIndex(x=>x.id===r.id);if(i>=0)pm.visits[i]={...pm.visits[i],...r};else pm.visits.push(r);});closeM('m-pm');renderPM();alert(`ผูก PR แล้ว ${rows.length} สาขา`);}catch(e){pmErr(e);}
 }
 // ---------- ผูกงานจากคิวช่าง / Admin Tracker: ค้นหา + ติ๊กเลือก + จับคู่สาขาอัตโนมัติ ----------
 var pmLk=null;
 function pmCoName(x){return pmNorm(String(x||'').replace(/บริษัท|จำกัด|\(มหาชน\)|มหาชน|co\.?,?\s*ltd\.?|ltd\.?|inc\.?/gi,''));}
+// งานที่มีเลข PR จากคิวช่าง + Admin Tracker (ใช้ทั้งหน้าต่างผูกงาน และตัวจับคู่อัตโนมัติ)
+function pmJobCands(){
+  const map=new Map();
+  liveJobs().forEach(j=>{const pr=String(j.id||'').toUpperCase();if(!pr)return;map.set(pr,{pr,branch:j.branch||'',client:j.client||'',type:j.type||'',text:[j.type,j.note,j.detail].join(' '),date:String(j.dateIn||j.date||j.assignedAt||'').slice(0,10),status:j.status||'',team:j.team||'',src:'คิวช่าง',q:true});});
+  (typeof adminTasks!=='undefined'&&adminTasks||[]).forEach(t=>{if(isDeletedRecord(t))return;const pr=pmPrOf(t.jobId);if(!pr)return;const m=map.get(pr);if(m){m.src='คิวช่าง · Admin';m.a=true;if(!m.text.includes(t.type||''))m.text+=' '+(t.type||'')+' '+(t.detail||'');if(!m.client)m.client=t.customer||t.client||'';if(!m.branch)m.branch=taskSiteText(t)||'';return;}
+    map.set(pr,{pr,branch:taskSiteText(t)||'',client:t.customer||t.client||'',type:t.type||'',text:[t.type,t.detail].join(' '),date:String(t.due||'').slice(0,10),status:t.status||'',team:t.assign||'',src:'Admin Tracker',a:true});});
+  return map;
+}
+// ---------- จับคู่ PR กับแผน PM อัตโนมัติ ----------
+// งานที่เป็นงาน PM (ประเภท/รายละเอียดมีคำว่า PM / บำรุง) + ลูกค้าตรงกับสัญญาที่ใช้งานอยู่ + ชื่อสาขาตรงกับสาขาในสัญญาแบบไม่กำกวม
+// → ผูกเข้ารอบที่ยังไม่มี PR และยังไม่เสร็จ (มีวันที่งาน: รอบที่วันนัดใกล้ที่สุดภายใน 60 วัน · ไม่งั้น: รอบเลขน้อยสุดที่ยังเปิดอยู่)
+// ไม่ชัด (หลายสาขาเข้าข่าย / สาขายังไม่มีแผน) → ไม่ผูก แต่นับเป็น "รอผูกเอง" ให้กดดูในหน้า PM
+// บันทึกแบบ PATCH เฉพาะ job_id และเฉพาะแถวที่ job_id ยังว่าง (กันชนกับแอดมินที่ผูกพร้อมกัน) · ประวัติแผนจะขึ้นว่า "ระบบ (จับคู่อัตโนมัติ)"
+const PM_AUTO_BY='ระบบ (จับคู่อัตโนมัติ)';
+function pmAutoSite(branch,client,sites){
+  const t=pmNorm(branch);if(!t||!sites.length)return null;
+  // ชื่อสาขาในสัญญามักขึ้นต้นเหมือนกัน (เช่น "Pun Thai ...") หรือขึ้นต้นด้วยชื่อลูกค้า → ตัดออกเหลือส่วนที่แยกสาขาได้
+  const cn=pmNorm(client),ns=sites.map(s=>pmNorm(s.branch));let pre=ns.length>1?ns[0]:'';ns.forEach(n=>{while(pre&&!n.startsWith(pre))pre=pre.slice(0,-1);});
+  const keys=ns.map(b=>[...new Set([b,cn&&b.startsWith(cn)?b.slice(cn.length):b,pre.length>=3?b.slice(pre.length):b])].filter(k=>k.length>=2));
+  const eq=sites.filter((s,i)=>keys[i].includes(t));
+  if(eq.length)return eq.length===1?eq[0]:null;
+  const lens=keys.map(ks=>Math.max(0,...ks.filter(k=>k.length>=3&&t.includes(k)).map(k=>k.length)));
+  const L=Math.max(...lens);if(L>0){const top=sites.filter((s,i)=>lens[i]===L);return top.length===1?top[0]:null;}
+  const inSite=sites.filter((s,i)=>t.length>=3&&ns[i].includes(t));
+  return inSite.length===1?inSite[0]:null;
+}
+var pmAutoTimer=null,pmAutoBusy=null;
+function pmAutoLinkSoon(){clearTimeout(pmAutoTimer);pmAutoTimer=setTimeout(()=>{pmAutoLink().then(r=>{if(r&&r.fresh&&document.getElementById('page-pm')?.classList.contains('active'))renderPM();}).catch(e=>console.warn('pm auto link',e));},1500);}
+async function pmAutoLink(){
+  if(!AUTH||AUTH.role!=='admin')return null;
+  if(pmAutoBusy)return pmAutoBusy;
+  pmAutoBusy=(async()=>{
+    // อ่านแผนล่าสุดจาก server ทุกครั้ง (ข้อมูลในเครื่องอาจเก่า)
+    let C,S,V;
+    try{[C,S,V]=await Promise.all([sbFetchAll('pm_contracts','?select=id,client,status,year'),sbFetchAll('pm_sites','?select=id,contract_id,branch&status=eq.active'),sbFetchAll('pm_visits','?select=id,contract_id,site_id,round_no,planned_date,job_id,status')]);}
+    catch(e){return null;} // ยังไม่มีตาราง PM / ไม่ใช่แอดมิน
+    const used=new Set(V.filter(v=>v.job_id).map(v=>String(v.job_id).toUpperCase().trim()));
+    const active=C.filter(c=>c.status==='active');
+    const takenV=new Set(),linked=[],pending=[];
+    const cands=[...pmJobCands().values()].filter(r=>!used.has(r.pr)&&/PM|บำรุง|preventive|maint/i.test(r.text||r.type||''))
+      .sort((a,b)=>String(a.date||'9999').localeCompare(String(b.date||'9999')));
+    for(const r of cands){
+      const rc=pmCoName(r.client);if(!rc)continue;
+      const cs=active.filter(c=>{const k=pmCoName(c.client);return k&&(k.includes(rc)||rc.includes(k));});
+      if(!cs.length)continue; // ไม่ใช่ลูกค้าที่มีสัญญา PM
+      const yr=Math.min(...cs.map(c=>+c.year||9999));if(r.date&&yr<9999&&r.date<yr+'-01-01')continue; // งานเก่าก่อนปีสัญญา
+      let hit=null;
+      for(const c of cs){const site=pmAutoSite(r.branch,c.client,S.filter(s=>s.contract_id===c.id));if(site){hit={c,site};break;}}
+      if(!hit){pending.push({...r,why:'จับคู่สาขาไม่ได้'});continue;}
+      const open=V.filter(v=>v.contract_id===hit.c.id&&v.site_id===hit.site.id&&!v.job_id&&!takenV.has(v.id)&&!['done','skipped','cancelled'].includes(v.status));
+      if(!open.length){pending.push({...r,why:`${hit.site.branch}: ไม่มีรอบที่ว่าง`});continue;}
+      let v=null;
+      if(r.date){const near=open.filter(x=>x.planned_date).map(x=>({x,d:Math.abs(pmDDiff(x.planned_date,r.date))})).filter(o=>o.d<=60).sort((a,b)=>a.d-b.d);if(near.length)v=near[0].x;}
+      if(!v)v=open.slice().sort((a,b)=>a.round_no-b.round_no)[0];
+      try{
+        const res=await pmReq('pm_visits',`?id=eq.${encodeURIComponent(v.id)}&job_id=is.null`,{method:'PATCH',prefer:'return=representation',body:JSON.stringify({job_id:r.pr,updated_at:new Date().toISOString(),updated_by:PM_AUTO_BY})});
+        if(!Array.isArray(res)||!res.length)continue; // มีคนผูกไปก่อนแล้ว
+        takenV.add(v.id);used.add(r.pr);linked.push({pr:r.pr,branch:hit.site.branch,round:v.round_no,vid:v.id});
+        const i=pm.visits.findIndex(x=>x.id===v.id);if(i>=0)pm.visits[i]={...pm.visits[i],...res[0]};
+      }catch(e){console.warn('pm auto link',r.pr,e);}
+    }
+    pm.auto={at:Date.now(),linked:[...((pm.auto&&pm.auto.linked)||[]),...linked].slice(-50),pending,fresh:linked.length};
+    for(const l of linked)await pmVLogsReload(l.vid);
+    return pm.auto;
+  })();
+  try{return await pmAutoBusy;}finally{pmAutoBusy=null;}
+}
 function pmLinkOpen(siteId){
   const c=pmContract();if(!c)return;const sites=pmSitesOf(c.id);
   const usedBy=new Map();pmLiveVisits().forEach(v=>{if(v.job_id)usedBy.set(String(v.job_id).toUpperCase(),v);});
-  const map=new Map();
-  liveJobs().forEach(j=>{const pr=String(j.id||'').toUpperCase();if(!pr)return;map.set(pr,{pr,branch:j.branch||'',client:j.client||'',type:j.type||'',text:[j.type,j.note,j.detail].join(' '),date:String(j.dateIn||j.date||j.assignedAt||'').slice(0,10),status:j.status||'',team:j.team||'',src:'คิวช่าง',q:true});});
-  (typeof adminTasks!=='undefined'&&adminTasks||[]).forEach(t=>{if(isDeletedRecord(t))return;const pr=pmPrOf(t.jobId);if(!pr)return;const m=map.get(pr);if(m){m.src='คิวช่าง · Admin';m.a=true;if(!m.text.includes(t.type||''))m.text+=' '+(t.type||'')+' '+(t.detail||'');return;}
-    map.set(pr,{pr,branch:taskSiteText(t)||'',client:t.customer||t.client||'',type:t.type||'',text:[t.type,t.detail].join(' '),date:String(t.due||'').slice(0,10),status:t.status||'',team:t.assign||'',src:'Admin Tracker',a:true});});
+  const map=pmJobCands();
   const cn=pmCoName(c.client);
   const rows=[...map.values()].map(r=>{const site=pmMatchSite(r.branch,sites);const u=usedBy.get(r.pr);const us=u&&pm.sites.find(x=>x.id===u.site_id);
     return {...r,site:site?site.id:'',auto:!!site,used:u?`${us?us.branch:'สาขาอื่น'} · รอบ ${u.round_no}`:'',mine:!!site||(!!cn&&!!pmCoName(r.client)&&(pmCoName(r.client).includes(cn)||cn.includes(pmCoName(r.client)))),pmish:/PM|บำรุง|preventive|maint/i.test(r.text),on:false};});
@@ -15134,8 +15218,8 @@ async function pmLkSave(){
     const seen=new Set(),skip=[];const rows=[];
     pick.forEach(p=>{if(seen.has(p.site)){skip.push(p.pr);return;}seen.add(p.site);const s=pm.sites.find(x=>x.id===p.site),v=pmVisit(c.id,pmRound,p.site);
       const tm=p.team&&(teams||[]).some(t=>t.name===p.team)?p.team:null;
-      rows.push({...(v||{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:p.site,branch:s?s.branch:'',status:'planned'}),job_id:p.pr,planned_date:(v&&v.planned_date)||(/^\d{4}-\d{2}-\d{2}$/.test(p.date||'')?p.date:null),team:(v&&v.team)||tm,updated_at:now,updated_by:getActorName()});});
-    for(let i=0;i<rows.length;i+=200){const part=await pmUpsert('pm_visits',rows.slice(i,i+200));(part&&part.length?part:rows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(x=>x.id===r.id);if(k>=0)pm.visits[k]=r;else pm.visits.push(r);});}
+      rows.push({...pmVBase(v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:p.site,branch:s?s.branch:'',status:'planned'}),job_id:p.pr,planned_date:(v&&v.planned_date)||(/^\d{4}-\d{2}-\d{2}$/.test(p.date||'')?p.date:null),team:(v&&v.team)||tm,updated_at:now,updated_by:getActorName()});});
+    for(let i=0;i<rows.length;i+=200){const part=await pmUpsert('pm_visits',rows.slice(i,i+200));(part&&part.length?part:rows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(x=>x.id===r.id);if(k>=0)pm.visits[k]={...pm.visits[k],...r};else pm.visits.push(r);});}
     closeM('m-pm');renderPM();
     alert(`ผูกงานแล้ว ${rows.length} สาขา${want.length?` (เพิ่มสาขาใหม่ ${want.length})`:''}${skip.length?`\nข้าม ${skip.length} งานที่เลือกซ้ำสาขาเดียวกัน: ${skip.slice(0,10).join(', ')}`:''}`);
   }catch(e){pmErr(e);if(btn){btn.disabled=false;pmLkCount();}}
@@ -15495,10 +15579,10 @@ async function pmBulkEditSave(){
     if(unpr&&v&&v.job_id)f.job_id=null;
     if(!Object.keys(f).length)return;
     if(!v&&f.planned_date==null&&!f.team&&!f.status)return; // ยังไม่มีแผน + ไม่มีอะไรให้ตั้ง
-    rows.push({...(v||{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:s.id,branch:s.branch,status:'planned'}),...f,updated_at:now,updated_by:getActorName()});
+    rows.push({...pmVBase(v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:s.id,branch:s.branch,status:'planned'}),...f,updated_at:now,updated_by:getActorName()});
   });
   if(!rows.length){alert('ไม่มีรายการที่ต้องเปลี่ยน');return;}
-  try{const saved=await pmUpsert('pm_visits',rows);(saved&&saved.length?saved:rows).forEach(r=>{const i=pm.visits.findIndex(x=>x.id===r.id);if(i>=0)pm.visits[i]=r;else pm.visits.push(r);});
+  try{const saved=await pmUpsert('pm_visits',rows);(saved&&saved.length?saved:rows).forEach(r=>{const i=pm.visits.findIndex(x=>x.id===r.id);if(i>=0)pm.visits[i]={...pm.visits[i],...r};else pm.visits.push(r);});
     closeM('m-pm');pmSel.clear();renderPM();}
   catch(e){pmErr(e);}
 }
