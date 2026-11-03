@@ -15417,7 +15417,7 @@ function pmLinkOpen(siteId){
   const map=pmJobCands();
   const cn=pmCoName(c.client);
   const rows=[...map.values()].map(r=>{const site=pmMatchSite(r.branch,sites);const u=usedBy.get(r.pr);const us=u&&pm.sites.find(x=>x.id===u.site_id);
-    return {...r,site:site?site.id:'',auto:!!site,used:u?`${us?us.branch:'สาขาอื่น'} · รอบ ${u.round_no}`:'',mine:!!site||(!!cn&&!!pmCoName(r.client)&&(pmCoName(r.client).includes(cn)||cn.includes(pmCoName(r.client)))),pmish:/PM|บำรุง|preventive|maint/i.test(r.text),on:false};});
+    return {...r,site:site?site.id:'',auto:!!site,used:u?`${us?us.branch:'สาขาอื่น'} · รอบ ${u.round_no}`:'',usedVid:u?u.id:'',mine:!!site||(!!cn&&!!pmCoName(r.client)&&(pmCoName(r.client).includes(cn)||cn.includes(pmCoName(r.client)))),pmish:/PM|บำรุง|preventive|maint/i.test(r.text),on:false};});
   rows.sort((a,b)=>(b.auto-a.auto)||String(b.date).localeCompare(String(a.date)));
   const s0=siteId&&pm.sites.find(x=>x.id===siteId);
   pmLk={rows,site:siteId||'',q:s0?s0.branch.replace(new RegExp('^'+String(c.client||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*','i'),''):'',src:'all',from:`${c.year}-01-01`,to:`${c.year}-12-31`,pmOnly:true,mine:true};
@@ -15448,11 +15448,12 @@ function pmLkRender(){
   const c=pmContract(),vis=pmLkVisible(),show=vis.slice(0,300),sn=id=>(pm.sites.find(s=>s.id===id)||{}).branch||'';
   const qpr=pmPrOf(pmLk.q),extra=qpr&&!pmLk.rows.some(r=>r.pr===qpr);
   const tag=(col,l)=>`<span class="pm-tag" style="--c:${col}">${esc(l)}</span>`;
-  const siteCell=(r,i)=>r.used?`<span class="tm" style="font-size:12px">ผูกแล้ว · ${esc(r.used)}</span>`:r.newSite?`${tag('#175fff','＋ สาขาใหม่: '+r.newSite)} <button type="button" class="link-btn" style="font-size:12px" onclick="pmLk.rows[${i}].newSite='';pmLkRender()">ยกเลิก</button>`
-    :`<input class="filter-input pm-lk-site" list="pml-sites" value="${esc(sn(r.site))}" placeholder="— เลือกสาขา —" onchange="pmLkSite(${i},this.value)">${r.site?(r.auto&&!r.edited?` ${tag('#16a34a','✓ จับคู่อัตโนมัติ')}`:''):`<div><button type="button" class="link-btn" style="font-size:12px" onclick="pmLkNew(${i})">＋ เพิ่มเป็นสาขาใหม่ในสัญญา</button></div>`}`;
+  const siteCell=(r,i)=>r.used&&!r.move?`<span class="tm" style="font-size:12px">ผูกแล้ว · ${esc(r.used)}</span><div><button type="button" class="link-btn" style="font-size:12px" onclick="pmLkMove(${i})" title="ผูกผิดสาขา/ผิดรอบ → ย้ายมาผูกที่สาขาที่เลือกในรอบนี้">↪ ย้ายมาผูกสาขาอื่นแทน</button></div>`
+    :(r.move?`<div style="margin-bottom:4px">${tag('#d97706','ย้ายจาก '+r.used)} <button type="button" class="link-btn" style="font-size:12px" onclick="const r=pmLk.rows[${i}];r.move=false;r.on=false;pmLkRender()">ยกเลิก</button></div>`:'')+(r.newSite?`${tag('#175fff','＋ สาขาใหม่: '+r.newSite)} <button type="button" class="link-btn" style="font-size:12px" onclick="pmLk.rows[${i}].newSite='';pmLkRender()">ยกเลิก</button>`
+    :`<input class="filter-input pm-lk-site" list="pml-sites" value="${esc(sn(r.site))}" placeholder="— เลือกสาขา —" onchange="pmLkSite(${i},this.value)">${r.site?(r.auto&&!r.edited?` ${tag('#16a34a','✓ จับคู่อัตโนมัติ')}`:''):`<div><button type="button" class="link-btn" style="font-size:12px" onclick="pmLkNew(${i})">＋ เพิ่มเป็นสาขาใหม่ในสัญญา</button></div>`}`);
   el.innerHTML=`<table class="pm-tbl"><thead><tr><th class="pm-cb"><input type="checkbox" title="เลือกทั้งหมดที่แสดง" onchange="pmLkAll(this.checked)"></th><th>PR</th><th>งาน</th><th>วันที่ · สถานะ</th><th>ผูกกับสาขาในสัญญา</th></tr></thead><tbody>
     ${extra?`<tr><td class="pm-cb"><input type="checkbox" id="pml-extra-on" ${pmLk.extraOn?'checked':''} onchange="pmLk.extraOn=this.checked;pmLkCount()"></td><td class="mono"><b>${esc(qpr)}</b></td><td colspan="2"><span class="tm" style="font-size:12px">ยังไม่อยู่ในคิวช่าง/Admin — ผูกเลข PR นี้ไว้ก่อนได้</span></td><td><input class="filter-input pm-lk-site" list="pml-sites" id="pml-extra-site" value="${esc(sn(pmLk.site))}" placeholder="— เลือกสาขา —"></td></tr>`:''}
-    ${show.map(({r,i})=>`<tr class="${r.used?'off':''}"><td class="pm-cb"><input type="checkbox" ${r.on?'checked':''} ${r.used?'disabled':''} onchange="pmLk.rows[${i}].on=this.checked;pmLkCount()"></td>
+    ${show.map(({r,i})=>`<tr class="${r.used&&!r.move?'off':''}"><td class="pm-cb"><input type="checkbox" ${r.on?'checked':''} ${r.used&&!r.move?'disabled':''} onchange="pmLk.rows[${i}].on=this.checked;pmLkCount()"></td>
       <td class="mono"><b>${esc(r.pr)}</b></td><td>${esc(r.branch||'-')}<div class="tm" style="font-size:11.5px">${esc(r.src)}${r.type?' · '+esc(r.type):''}${r.team?' · '+esc(r.team):''}</div></td>
       <td style="white-space:nowrap">${r.date?esc(pmThDateY(r.date)):'—'}<div>${r.status?`<span class="pm-tag" style="--c:${pfStatusColor(r.status)}">${esc(r.status)}</span>`:''}</div></td><td>${siteCell(r,i)}</td></tr>`).join('')}
     ${!show.length&&!extra?`<tr><td colspan="5"><div class="d2-empty">ไม่พบงานที่ตรงเงื่อนไข — ลองเอาติ๊ก "เฉพาะงาน PM" / "เฉพาะลูกค้านี้" ออก หรือพิมพ์เลข PR</div></td></tr>`:''}
@@ -15466,13 +15467,17 @@ function pmLkCount(){
 }
 function pmLkSite(i,name){const c=pmContract(),s=pmSitesOf(c.id).find(x=>pmNorm(x.branch)===pmNorm(name));const r=pmLk.rows[i];r.site=s?s.id:'';r.edited=true;if(s)r.on=true;pmLkRender();}
 function pmLkNew(i){const r=pmLk.rows[i];const name=prompt('ชื่อสาขาใหม่ที่จะเพิ่มเข้าสัญญา',r.branch||'');if(!name||!name.trim())return;r.newSite=name.trim();r.site='';r.on=true;pmLkRender();}
-function pmLkAll(on){pmLkVisible().forEach(({r})=>{if(!r.used)r.on=on&&!!(r.site||r.newSite);});pmLkRender();}
+function pmLkAll(on){pmLkVisible().forEach(({r})=>{if(!r.used||r.move)r.on=on&&!!(r.site||r.newSite);});pmLkRender();}
+// PR ที่ผูกกับสาขา/รอบอื่นอยู่แล้ว (เช่น ผูกผิดสาขา) → ย้ายมาผูกที่สาขาที่เลือกในรอบนี้ (ตอนบันทึกจะถอด PR ออกจากที่เดิมให้)
+function pmLkMove(i){const r=pmLk.rows[i],c=pmContract();r.move=true;r.on=true;r.edited=true;
+  if(!r.site){const s=(pmLk.site&&pm.sites.find(x=>x.id===pmLk.site))||pmMatchSite(r.branch,pmSitesOf(c.id));r.site=s?s.id:'';}
+  pmLkRender();}
 function pmLkPickMatched(){const c=pmContract();const taken=new Set(pmSitesOf(c.id).filter(s=>(pmVisit(c.id,pmRound,s.id)||{}).job_id).map(s=>s.id));
   pmLk.rows.forEach(r=>r.on=false);pmLkVisible().forEach(({r})=>{if(r.site&&!r.used&&!taken.has(r.site)){r.on=true;taken.add(r.site);}});pmLkRender();}
 async function pmLkSave(){
   if(typeof guardEdit==='function'&&!guardEdit())return;
   const c=pmContract(),now=new Date().toISOString(),sites=pmSitesOf(c.id);
-  const pick=pmLk.rows.filter(r=>r.on&&!r.used&&(r.site||r.newSite)).map(r=>({pr:r.pr,site:r.site,newSite:r.newSite,date:r.date,team:r.team}));
+  const pick=pmLk.rows.filter(r=>r.on&&(!r.used||r.move)&&(r.site||r.newSite)).map(r=>({pr:r.pr,site:r.site,newSite:r.newSite,date:r.date,team:r.team,fromVid:r.move?r.usedVid:''}));
   if(pmLk.extraOn){const qpr=pmPrOf(pmLk.q),nm=document.getElementById('pml-extra-site')?.value||'';const s=sites.find(x=>pmNorm(x.branch)===pmNorm(nm));if(!s){alert('เลือกสาขาให้ '+qpr+' ก่อน');return;}pick.push({pr:qpr,site:s.id});}
   if(!pick.length){alert('ยังไม่ได้เลือกงาน (ต้องมีสาขาที่จะผูกด้วย)');return;}
   const btn=document.getElementById('pml-ok');if(btn){btn.disabled=true;btn.textContent='กำลังบันทึก...';}
@@ -15485,9 +15490,14 @@ async function pmLkSave(){
     pick.forEach(p=>{if(seen.has(p.site)){skip.push(p.pr);return;}seen.add(p.site);const s=pm.sites.find(x=>x.id===p.site),v=pmVisit(c.id,pmRound,p.site);
       const tm=p.team&&(teams||[]).some(t=>t.name===p.team)?p.team:null;
       rows.push({...pmVBase(v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:p.site,branch:s?s.branch:'',status:'planned'}),job_id:p.pr,planned_date:(v&&v.planned_date)||(/^\d{4}-\d{2}-\d{2}$/.test(p.date||'')?p.date:null),team:(v&&v.team)||tm,updated_at:now,updated_by:getActorName()});});
+    // ย้าย: ถอด PR ออกจากสาขา/รอบเดิมก่อน (ไม่ให้ PR เดียวผูก 2 ที่)
+    const linkIds=new Set(rows.map(r=>r.id));
+    const unl=pick.filter(p=>p.fromVid&&!linkIds.has(p.fromVid)&&rows.some(r=>r.job_id===p.pr)).map(p=>pm.visits.find(v=>v.id===p.fromVid)).filter(Boolean)
+      .map(v=>({...pmVBase(v),job_id:null,updated_at:now,updated_by:getActorName()}));
+    if(unl.length){const part=await pmUpsert('pm_visits',unl);(part&&part.length?part:unl).forEach(r=>{const k=pm.visits.findIndex(x=>x.id===r.id);if(k>=0)pm.visits[k]={...pm.visits[k],...r};});}
     for(let i=0;i<rows.length;i+=200){const part=await pmUpsert('pm_visits',rows.slice(i,i+200));(part&&part.length?part:rows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(x=>x.id===r.id);if(k>=0)pm.visits[k]={...pm.visits[k],...r};else pm.visits.push(r);});}
     closeM('m-pm');renderPM();
-    alert(`ผูกงานแล้ว ${rows.length} สาขา${want.length?` (เพิ่มสาขาใหม่ ${want.length})`:''}${skip.length?`\nข้าม ${skip.length} งานที่เลือกซ้ำสาขาเดียวกัน: ${skip.slice(0,10).join(', ')}`:''}`);
+    alert(`ผูกงานแล้ว ${rows.length} สาขา${unl.length?` (ย้ายจากที่เดิม ${unl.length} งาน)`:''}${want.length?` (เพิ่มสาขาใหม่ ${want.length})`:''}${skip.length?`\nข้าม ${skip.length} งานที่เลือกซ้ำสาขาเดียวกัน: ${skip.slice(0,10).join(', ')}`:''}`);
   }catch(e){pmErr(e);if(btn){btn.disabled=false;pmLkCount();}}
 }
 // ป้าย "PM รอบ N" บนงานในคิวช่าง / Admin Tracker (โหลดข้อมูล PM เบื้องหลังครั้งแรก — แอดมินเท่านั้น)
