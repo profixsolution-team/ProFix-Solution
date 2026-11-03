@@ -643,6 +643,42 @@ select option{background:var(--surface2);}
 .tp-paid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:12px 16px;border-top:1px solid var(--border)}
 .tp-paid>div:last-child{grid-column:1/-1}.tp-paid-net{font-weight:800;font-size:16px;color:var(--green)}
 .tp-note{background:var(--accent-dim);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.7;margin-bottom:12px}.tp-note.warn{background:var(--yellow-dim)}
+.pmm-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.pmm-top .filter-select{width:auto}
+.pmm-wrap{display:grid;grid-template-columns:300px minmax(0,1fr) 300px;gap:10px;height:calc(100vh - 250px);min-height:560px}
+.pmm-col{background:var(--surface);border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pmm-ch{padding:12px 14px;border-bottom:1px solid var(--border)}.pmm-ch .pmm-q{width:100%;margin-top:8px}
+.pmm-list{overflow:auto;flex:1;min-height:0}
+.pmm-it{display:flex;gap:10px;align-items:flex-start;padding:8px 14px;border-bottom:1px solid var(--border);cursor:pointer}
+.pmm-it:hover{background:var(--accent-dim)}.pmm-it.sel{background:var(--accent-dim)}
+.pmm-it .n{font-weight:600;font-size:13px}.pmm-it small{display:block;color:var(--text3);font-size:11.5px}.pmm-it .km{margin-left:auto;font-size:12px;color:var(--text2);white-space:nowrap}
+.pmm-dot{width:11px;height:11px;border-radius:50%;flex:none;margin-top:5px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.18)}
+.pmm-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 14px;border-bottom:1px solid var(--border)}
+.pmm-kpi div{background:var(--surface2);border-radius:10px;padding:6px 8px}.pmm-kpi b{display:block;font-size:17px}.pmm-kpi span{font-size:11px;color:var(--text2)}
+.pmm-warn{margin:10px 14px;background:var(--yellow-dim);color:var(--yellow);border-radius:12px;padding:9px 12px;font-size:12.5px}.pmm-warn summary{cursor:pointer}
+.pmm-ngl{margin:8px -12px 0;background:var(--surface);max-height:190px;overflow:auto}
+.pmm-ng{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border);font-size:12.5px;cursor:pointer;color:var(--text)}.pmm-ng:hover{background:var(--surface2)}
+.pmm-mapcol{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--border);min-height:0}
+.pmm-slot,.pmm-map{position:absolute;inset:0}
+.pmm-search{position:absolute;left:54px;top:10px;z-index:600;display:flex;gap:6px;width:min(460px,calc(100% - 250px))}
+.pmm-search input{flex:1;border-radius:999px;box-shadow:0 4px 14px rgba(15,23,42,.12)}
+.pmm-tools{position:absolute;right:10px;top:10px;z-index:600;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.pmm-tools .btn{background:var(--surface);box-shadow:0 4px 14px rgba(15,23,42,.12)}.pmm-tools .btn.on{background:#0b1220;color:#fff;border-color:#0b1220}
+.pmm-rbar{position:absolute;left:50%;top:56px;transform:translateX(-50%);z-index:600;background:var(--surface);border-radius:999px;padding:6px 14px;box-shadow:0 4px 14px rgba(15,23,42,.18);font-size:13px;display:none;align-items:center;gap:8px;white-space:nowrap}
+.pmm-rbar.on{display:flex}
+.pmm-pinbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:600;background:#0b1220;color:#fff;border-radius:14px;padding:9px 14px;font-size:13px;display:none;gap:10px;align-items:center;box-shadow:0 8px 24px rgba(15,23,42,.3);max-width:90%}
+.pmm-pinbar.on{display:flex}
+.pmm-mtype{position:absolute;right:10px;bottom:22px;z-index:600}
+.pmm-legend{position:absolute;left:10px;bottom:22px;z-index:600;background:var(--surface);border-radius:12px;padding:8px 12px;font-size:12px;box-shadow:0 4px 18px rgba(15,23,42,.15);line-height:1.8;max-height:45%;overflow:auto}
+.pmm-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.pmm-pin{width:16px;height:16px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.pmm-pin.sel{outline:3px solid #175fff;outline-offset:1px}.pmm-pin.num{width:22px;height:22px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:700}
+.pmm-pp b{font-size:13.5px}.pmm-pp .tm{font-size:12px}.pmm-a{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.pmm-a a,.pmm-a button{border:1px solid #d7e0ea;background:#fff;border-radius:999px;padding:3px 9px;font:inherit;font-size:12px;cursor:pointer;color:#16202d;text-decoration:none}
+.pmm-a .p{background:#175fff;border-color:#175fff;color:#fff}
+.pmm-selbox{padding:12px 14px;border-top:1px solid var(--border);background:var(--surface2)}
+.pmm-dteam{padding:10px 14px;border-bottom:1px solid var(--border);font-size:12.5px}.pmm-dteam .h{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;margin-bottom:4px}.pmm-dteam .h .tm{margin-left:auto;font-weight:400}
+.leaflet-container{font-family:inherit}
+@media (max-width:1100px){.pmm-wrap{grid-template-columns:1fr;height:auto}.pmm-mapcol{height:520px}.pmm-col{max-height:440px}.pmm-search{width:calc(100% - 70px);top:52px;left:10px}}
 /* ----- การเงิน & จ่ายช่าง (รวมหน้า) ----- */
 .tp-mbar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:8px 10px;margin-bottom:14px}
 .tp-mbar .tp-year{width:auto;min-width:96px;border-radius:999px}
@@ -14966,12 +15002,13 @@ async function renderPM(){
   if(pm.loaded&&!pm.missing&&pm.autoFor!==pm.at){pm.autoFor=pm.at;pmAutoLinkSoon();} // โหลดแผนใหม่ → ไล่จับคู่ PR ที่ยังไม่ผูก
   if(pm.missing){root.innerHTML=`<div class="d2-box"><div class="d2-in d2-pad" style="line-height:1.8"><b>ยังไม่ได้สร้างตาราง PM</b><br>รันไฟล์ <code>console_pm_phase1.sql</code> ใน Supabase SQL Editor ก่อน แล้วกดรีเฟรชหน้านี้</div></div>`;return;}
   if(pm.error&&!pm.contracts.length&&!pm.assets.length){root.innerHTML=`<div class="d2-empty">โหลดข้อมูล PM ไม่สำเร็จ: ${esc(pm.error)}</div>`;}
-  const tabs=[['ov','ภาพรวม'],['cal','ปฏิทิน'],['plan','แผน PM'],['assets','ทะเบียนเครื่อง'],['qr','สติกเกอร์ QR']];
+  const tabs=[['ov','ภาพรวม'],['cal','ปฏิทิน'],['plan','แผน PM'],['map','แผนที่'],['assets','ทะเบียนเครื่อง'],['qr','สติกเกอร์ QR']];
   const seg=`<div class="d2-seg sl-tabs pm-tabs">${tabs.map(([k,l])=>`<button type="button" class="${pmView===k?'on':''}" onclick="pmView='${k}';renderPM()">${l}</button>`).join('')}</div>`;
   const fv=['ov','cal','plan'].includes(pmView)&&pm.contracts.length>0;
-  const body=pmView==='assets'?pmAssetsHtml():pmView==='qr'?pmQrHtml():pmView==='ov'?pmOvHtml():pmView==='cal'?pmCalHtml():pmPlanHtml();
+  const body=pmView==='assets'?pmAssetsHtml():pmView==='qr'?pmQrHtml():pmView==='ov'?pmOvHtml():pmView==='cal'?pmCalHtml():pmView==='map'?pmMapHtml():pmPlanHtml();
   root.innerHTML=`<div class="pm-bar">${seg}<span style="flex:1"></span>${fv?`<button class="btn btn-sm pm-exbtn" onclick="pmExportOpen()">⬇ Export Excel / Google Sheet</button>`:''}${pm.contracts.length?'<button class="btn btn-ghost btn-sm" onclick="pmAuditOpen()" title="หา PR ที่ผูกผิดสาขา และงาน PM ที่ชื่อสาขาต่างกันนิดหน่อยจนยังไม่ถูกผูก">🔎 ตรวจการผูก PR</button>':''}${pmAutoChipHtml()}${pmTechSwHtml()}<button class="btn btn-ghost btn-sm" onclick="pm.loaded=false;renderPM()" title="โหลดใหม่">⟳ รีเฟรช</button></div>${fv?pmFBarHtml():''}${body}`;
   if(pmView==='plan')pmApplyFilter();
+  if(pmView==='map')pmMapMount();
   const live=pm.assets.filter(a=>a.status!=='retired');
   phSet('pm',[['สัญญา',pm.contracts.filter(c=>c.status==='active').length],['เครื่องในทะเบียน',live.length],['สาขาในสัญญา',pm.sites.length]],'PM (ทดลอง)','แผนบำรุงรักษา · ทะเบียนเครื่อง · สติกเกอร์ QR — ช่วงทดลองเห็นเฉพาะแอดมิน');
 }
@@ -15104,6 +15141,233 @@ async function pmTechToggle(){
     if(!r.ok)throw new Error(await r.text());
     pm.tech=on;broadcastDataChanged('uisettings');renderPM();
   }catch(e){alert('บันทึกสวิตช์ไม่สำเร็จ: '+(e.message||e));}
+}
+
+// ---------- แผนที่ (OpenStreetMap + Leaflet) ----------
+// พิกัดสาขา = pm_sites.geo (จากคอลัมน์ "พิกัด" ตอนนำเข้า Excel / ปักหมุดในแท็บนี้) · ปุ่มเปิด/นำทางพาไป Google Maps (ไม่ต้องมี API key)
+var pmMap={mode:'plan',sel:[],colorBy:'st',q:'',fst:'',fteam:'',day:'',focus:null,radius:false,box:false,pinFor:'',ngOpen:false,km:10};
+var pmL=null; // {map, el, layer, lines, found, circle, tiles}
+function pmLeaflet(){
+  if(window.L&&window.L.map)return Promise.resolve();
+  if(pmLeaflet.p)return pmLeaflet.p;
+  return pmLeaflet.p=new Promise((res,rej)=>{
+    const c=document.createElement('link');c.rel='stylesheet';c.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(c);
+    const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onload=res;s.onerror=()=>{pmLeaflet.p=null;rej(new Error('โหลดแผนที่ไม่สำเร็จ'));};document.head.appendChild(s);});
+}
+// อ่านพิกัด: "13.3611, 100.9847" · "13.3611 100.9847" · ลิงก์ Google Maps (@lat,lng / ?q=lat,lng / !3dLAT!4dLNG) · องศา 13°21'40.0"N 100°59'05.0"E
+function pmGeoParse(t){
+  t=String(t||'').trim();if(!t)return null;let m,a=null;
+  const dms=[...t.matchAll(/(\d{1,3})\s*°\s*(\d{1,2})\s*['′]\s*([\d.]+)\s*(?:"|″|'')?\s*([NSEW])/gi)];
+  if(dms.length>=2){const v=x=>(+x[1]+ +x[2]/60+ +x[3]/3600)*(/[SW]/i.test(x[4])?-1:1);const la=dms.find(x=>/[NS]/i.test(x[4])),lo=dms.find(x=>/[EW]/i.test(x[4]));if(la&&lo)a=[v(la),v(lo)];}
+  if(!a&&(m=t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)))a=[+m[1],+m[2]];
+  if(!a&&(m=t.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/)))a=[+m[1],+m[2]];
+  if(!a&&(m=t.match(/[?&](?:q|query|ll|destination|center)=(-?\d+\.\d+)\s*(?:,|%2C)\s*\+?(-?\d+\.\d+)/i)))a=[+m[1],+m[2]];
+  if(!a&&(m=t.match(/(-?\d{1,3}\.\d{2,})\s*[,\s]\s*(-?\d{1,3}\.\d{2,})/)))a=[+m[1],+m[2]];
+  if(!a)return null;
+  let [la,lo]=a;if(la>90&&lo<=90)[la,lo]=[lo,la]; // สลับ lat/lng
+  if(!(la>=-90&&la<=90&&lo>=-180&&lo<=180))return null;
+  return [la,lo];
+}
+const pmInTH=g=>g&&g[0]>=5.3&&g[0]<=20.6&&g[1]>=97.2&&g[1]<=105.8;
+function pmKm(a,b){const R=6371,r=x=>x*Math.PI/180,dl=r(b[0]-a[0]),dg=r(b[1]-a[1]);const h=Math.sin(dl/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+// เรียงเส้นทางแบบใกล้สุดก่อน เริ่มจากรายการแรก
+function pmRoute(arr){const g=arr.filter(x=>x.g);if(g.length<2)return {order:g,dist:0};const left=g.slice(1),o=[g[0]];let d=0;while(left.length){const c=o[o.length-1];let bi=0,bd=1e9;left.forEach((x,i)=>{const k=pmKm(c.g,x.g);if(k<bd){bd=k;bi=i;}});d+=bd;o.push(left.splice(bi,1)[0]);}return {order:o,dist:d};}
+const pmGmap=g=>`https://www.google.com/maps?q=${g[0].toFixed(6)},${g[1].toFixed(6)}`,pmGnav=g=>`https://www.google.com/maps/dir/?api=1&destination=${g[0].toFixed(6)},${g[1].toFixed(6)}`;
+function pmMapRows(){
+  const c=pmContract();if(!c)return [];
+  return pmSitesOf(c.id).map(s=>{const v=pmVisit(c.id,pmRound,s.id),g=pmGeoParse(s.geo);return {s,v,g:g&&pmInTH(g)?g:null,bad:!!g&&!pmInTH(g),st:pmVisitState(v),team:v&&v.team||'',date:String(v&&v.planned_date||'').slice(0,10)};});
+}
+function pmMapColor(r){return pmMap.colorBy==='team'?(r.team?teamColorOf(r.team):'#94a3b8'):r.st.c;}
+function pmMapVisible(rows){const q=pmNorm(pmMap.q);return rows.filter(r=>(!q||pmNorm(r.s.branch+' '+(r.s.address||'')+' '+(r.v&&r.v.job_id||'')).includes(q))&&(!pmMap.fst||r.st.k===pmMap.fst||(pmMap.fst==='plan'&&['plan','job','work'].includes(r.st.k)))&&(!pmMap.fteam||r.team===pmMap.fteam));}
+function pmMapHtml(){
+  if(!pm.contracts.length)return `<div class="d2-box"><div class="d2-in d2-pad pm-empty"><b>ยังไม่มีสัญญา PM</b></div></div>`;
+  const c=pmContract(),rnds=pmRoundsOf(c);if(!rnds.includes(+pmRound))pmRound=rnds[0];
+  const tms=[...new Set(pmMapRows().map(r=>r.team).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'th'));
+  return `<div class="pmm-top">
+    ${pm.contracts.length>1?`<select class="filter-select" onchange="pmContractId=this.value;pmMap.sel=[];renderPM()">${pm.contracts.map(x=>`<option value="${esc(x.id)}"${x.id===c.id?' selected':''}>${esc(x.client)} · ${esc(x.name)}</option>`).join('')}</select>`:''}
+    <select class="filter-select" onchange="pmRound=+this.value;pmMap.sel=[];renderPM()">${rnds.map(r=>`<option value="${r}"${+pmRound===r?' selected':''}>รอบที่ ${r}</option>`).join('')}</select>
+    <div class="d2-seg"><button type="button" class="${pmMap.mode==='plan'?'on':''}" onclick="pmMap.mode='plan';renderPM()">จัดแผน</button><button type="button" class="${pmMap.mode==='day'?'on':''}" onclick="pmMapDayMode()">เส้นทางรายวัน</button></div>
+    <select class="filter-select" onchange="pmMap.colorBy=this.value;pmMapDraw();pmMapPanels()"><option value="st"${pmMap.colorBy==='st'?' selected':''}>สีตาม: สถานะแผน</option><option value="team"${pmMap.colorBy==='team'?' selected':''}>สีตาม: ทีม</option></select></div>
+  <div class="pmm-wrap">
+    <div class="pmm-col"><div class="pmm-ch"><b>สาขาในรอบที่ ${esc(pmRound)}</b> <span class="tm" id="pmm-cnt"></span>
+        <input class="filter-input pmm-q" placeholder="🔍 ค้นชื่อสาขา / ที่อยู่ / PR" value="${esc(pmMap.q)}" oninput="pmMap.q=this.value;pmMapDraw();pmMapPanels()">
+        <div class="flex g8" style="margin-top:6px"><select class="filter-select" style="flex:1" onchange="pmMap.fst=this.value;pmMapDraw();pmMapPanels()"><option value="">ทุกสถานะ</option>${[['none','ยังไม่จัด'],['plan','จัดแล้ว / มี PR'],['done','เสร็จแล้ว']].map(([k,l])=>`<option value="${k}"${pmMap.fst===k?' selected':''}>${l}</option>`).join('')}</select>
+        <select class="filter-select" style="flex:1" onchange="pmMap.fteam=this.value;pmMapDraw();pmMapPanels()"><option value="">ทุกทีม</option>${tms.map(t=>`<option${pmMap.fteam===t?' selected':''}>${esc(t)}</option>`).join('')}</select></div></div>
+      <div id="pmm-kpi" class="pmm-kpi"></div><div id="pmm-nogeo"></div><div class="pmm-list" id="pmm-list"></div></div>
+    <div class="pmm-mapcol"><div id="pmm-slot" class="pmm-slot"><div class="d2-empty">กำลังโหลดแผนที่...</div></div>
+      <div class="pmm-search"><input id="pmm-ms" class="filter-input" placeholder="🔍 วางพิกัด (13.3611, 100.9847) · ลิงก์ Google Maps · หรือชื่อสาขา" onkeydown="if(event.key==='Enter')pmMapSearch()"><button class="btn btn-primary btn-sm" onclick="pmMapSearch()">ค้นหา</button></div>
+      <div class="pmm-tools"><button type="button" class="btn btn-sm${pmMap.radius?' on':''}" id="pmm-tr" onclick="pmMapRadiusToggle()" title="กดสาขา แล้วเลือกสาขาในรัศมีรอบ ๆ">◎ เลือกในรัศมี</button><button type="button" class="btn btn-sm" id="pmm-tb" onclick="pmMapBoxToggle()" title="ลากกรอบบนแผนที่เพื่อเลือก">▭ ลากกรอบเลือก</button><button type="button" class="btn btn-sm" onclick="pmMapFit()">⤢ ดูทั้งหมด</button></div>
+      <div class="pmm-rbar${pmMap.radius?' on':''}" id="pmm-rbar">รัศมี <input type="range" min="1" max="40" value="${pmMap.km}" oninput="pmMap.km=+this.value;pmMapRadiusPreview()"> <b id="pmm-rkm">${pmMap.km} กม.</b> <span class="tm" id="pmm-rinfo">กดสาขาที่เป็นจุดศูนย์กลาง</span><button class="btn btn-primary btn-sm" onclick="pmMapRadiusOk()">เลือก</button><button class="btn btn-ghost btn-sm" onclick="pmMapRadiusOff()">✕</button></div>
+      <div class="pmm-pinbar" id="pmm-pinbar"></div>
+      <div class="d2-seg pmm-mtype"><button type="button" class="on" data-t="road" onclick="pmMapTiles('road',this)">แผนที่</button><button type="button" data-t="sat" onclick="pmMapTiles('sat',this)">ดาวเทียม</button></div>
+      <div class="pmm-legend" id="pmm-legend"></div></div>
+    <div class="pmm-col"><div class="pmm-ch"><b id="pmm-rt">ที่เลือก</b> <span class="tm" id="pmm-sc"></span></div><div class="pmm-list" id="pmm-sel"></div><div class="pmm-selbox" id="pmm-selbox"></div></div>
+  </div>`;
+}
+async function pmMapMount(){
+  const slot=document.getElementById('pmm-slot');if(!slot)return;
+  try{await pmLeaflet();}catch(e){slot.innerHTML=`<div class="d2-empty">${esc(e.message)} — ตรวจอินเทอร์เน็ตแล้วกดรีเฟรช</div>`;return;}
+  if(!document.getElementById('pmm-slot'))return;
+  if(!pmL){
+    const el=document.createElement('div');el.className='pmm-map';
+    const map=L.map(el,{zoomControl:true}).setView([13.3,100.95],9);
+    const tiles={road:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),
+      sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagery © Esri'})};
+    tiles.road.addTo(map);
+    el.style.position='absolute';el.style.inset='0'; // Leaflet ตั้ง position:relative ตอนสร้างนอก DOM → สูง 0
+    pmL={map,el,tiles,layer:L.layerGroup().addTo(map),lines:L.layerGroup().addTo(map),found:null,circle:null,fitted:''};
+    map.on('click',e=>{if(pmMap.pinFor&&!pmMap.box)pmMapSetGeo(pmMap.pinFor,[e.latlng.lat,e.latlng.lng]);});
+    let b0=null,rect=null;
+    map.on('mousedown',e=>{if(!pmMap.box)return;b0=e.latlng;rect=L.rectangle([b0,b0],{color:'#175fff',weight:1,fillOpacity:.08}).addTo(map);});
+    map.on('mousemove',e=>{if(b0&&rect)rect.setBounds([b0,e.latlng]);});
+    map.on('mouseup',e=>{if(!b0)return;const bd=L.latLngBounds(b0,e.latlng);pmMapVisible(pmMapRows()).filter(r=>r.g&&bd.contains(r.g)).forEach(r=>{if(!pmMap.sel.includes(r.s.id))pmMap.sel.push(r.s.id);});map.removeLayer(rect);b0=rect=null;pmMapBoxToggle(false);pmMapDraw();pmMapPanels();});
+    new ResizeObserver(()=>map.invalidateSize()).observe(el);
+  }
+  slot.innerHTML='';slot.appendChild(pmL.el);
+  pmL.map.invalidateSize();requestAnimationFrame(()=>pmL&&pmL.map.invalidateSize());setTimeout(()=>pmL&&pmL.map.invalidateSize(),250); // ย้าย DOM ทุกครั้งที่ renderPM → คำนวณขนาดใหม่
+  pmMapDraw();pmMapPanels();
+  const key=pmContract().id+'|'+pmRound+'|'+pmMap.mode;
+  if(pmL.fitted!==key){pmL.fitted=key;setTimeout(()=>pmMap.mode==='day'?pmMapFitDay():pmMapFit(),60);}
+}
+function pmMapTiles(t,btn){if(!pmL)return;Object.values(pmL.tiles).forEach(x=>pmL.map.removeLayer(x));pmL.tiles[t].addTo(pmL.map);btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===btn));}
+function pmMapFit(){if(!pmL)return;const g=pmMapVisible(pmMapRows()).filter(r=>r.g).map(r=>r.g);if(g.length)pmL.map.fitBounds(g,{padding:[40,40],maxZoom:14});}
+function pmMapFitDay(){if(!pmL)return;const p=pmL.layer.getLayers().map(m=>m.getLatLng&&m.getLatLng()).filter(Boolean);if(p.length)pmL.map.fitBounds(p,{padding:[60,60],maxZoom:14});}
+function pmMapIcon(color,label,sel){const n=label!=null&&label!=='';return L.divIcon({className:'',html:`<div class="pmm-pin${n?' num':''}${sel?' sel':''}" style="background:${color}">${n?esc(label):''}</div>`,iconSize:n?[22,22]:[16,16],iconAnchor:n?[11,11]:[8,8]});}
+function pmMapDayRows(){const c=pmContract();if(!c||!pmMap.day)return [];const ids=new Set(pmSitesOf(c.id).map(s=>s.id));
+  return pmLiveVisits().filter(v=>v.contract_id===c.id&&ids.has(v.site_id)&&String(v.planned_date||'').slice(0,10)===pmMap.day&&v.status!=='cancelled').map(v=>{const s=pm.sites.find(x=>x.id===v.site_id),g=pmGeoParse(s.geo);return {s,v,g:g&&pmInTH(g)?g:null,team:v.team||'ไม่ระบุทีม',st:pmVisitState(v)};});}
+function pmMapDraw(){
+  if(!pmL)return;const {map,layer,lines}=pmL;layer.clearLayers();lines.clearLayers();
+  if(pmMap.mode==='day'){
+    const ds=pmMapDayRows().filter(r=>r.g);
+    [...new Set(ds.map(r=>r.team))].forEach(t=>{const col=teamColorOf(t),r=pmRoute(ds.filter(x=>x.team===t));
+      if(r.order.length>1)L.polyline(r.order.map(x=>x.g),{color:col,weight:4,opacity:.8,dashArray:'6 6'}).addTo(lines);
+      r.order.forEach((x,i)=>L.marker(x.g,{icon:pmMapIcon(col,i+1)}).bindPopup(()=>pmMapPop(x)).addTo(layer));});
+  }else{
+    pmMapVisible(pmMapRows()).filter(r=>r.g).forEach(r=>{
+      const m=L.marker(r.g,{icon:pmMapIcon(pmMapColor(r),null,pmMap.sel.includes(r.s.id))}).addTo(layer);
+      m.bindTooltip(`${esc(r.s.branch)}${r.team?' · '+esc(r.team):''}${r.date?' · '+esc(pmThDateY(r.date)):''}`,{direction:'top',offset:[0,-8]});
+      m.on('click',()=>{if(pmMap.radius){pmMap.focus={g:r.g,name:r.s.branch};pmMapRadiusPreview();return;}if(pmMap.pinFor)return;L.popup({minWidth:260}).setLatLng(r.g).setContent(pmMapPop(r)).openOn(map);});});
+    const sel=pmMapRows().filter(r=>pmMap.sel.includes(r.s.id));
+    if(sel.length>1){const rt=pmRoute(sel);if(rt.order.length>1)L.polyline(rt.order.map(x=>x.g),{color:'#0b1220',weight:3,opacity:.55,dashArray:'4 6'}).addTo(lines);}
+  }
+  const lg=document.getElementById('pmm-legend');
+  if(lg){if(pmMap.mode==='day'||pmMap.colorBy==='team'){const ts=pmMap.mode==='day'?[...new Set(pmMapDayRows().map(r=>r.team))]:[...new Set(pmMapRows().map(r=>r.team).filter(Boolean))];lg.innerHTML=ts.slice(0,10).map(t=>`<div><i style="background:${teamColorOf(t)}"></i>${esc(t)}</div>`).join('')+(pmMap.mode==='day'?'':'<div><i style="background:#94a3b8"></i>ยังไม่จัด</div>');}
+    else lg.innerHTML=[['#94a3b8','ยังไม่จัด'],['#d97706','จัดแล้ว รอ PR'],['#175fff','มี PR'],['#7c3aed','กำลังทำ'],['#16a34a','เสร็จแล้ว']].map(([c,l])=>`<div><i style="background:${c}"></i>${l}</div>`).join('');}
+}
+function pmMapPop(r){
+  const g=r.g,sel=pmMap.sel.includes(r.s.id),I=esc(r.s.id).replace(/'/g,'&#39;');
+  return `<div class="pmm-pp"><b>${esc(r.s.branch)}</b><div class="tm">${r.v&&r.v.team?esc(r.v.team)+' · นัด '+esc(pmThDateY(r.v.planned_date||'')):'ยังไม่จัดแผน'}${r.v&&r.v.job_id?' · '+esc(r.v.job_id):''} · ${esc(r.st.l)}</div>${r.s.address?`<div class="tm" style="font-size:11.5px">${esc(r.s.address)}</div>`:''}
+    <div class="pmm-a">${pmMap.mode==='plan'?`<button class="p" onclick="pmMapToggle('${I}');pmL.map.closePopup()">${sel?'เอาออกจากที่เลือก':'＋ เลือกสาขานี้'}</button><button onclick="pmMapRadiusFrom(${g[0]},${g[1]},'${esc(r.s.branch).replace(/'/g,'&#39;')}')">◎ ใกล้เคียง</button>`:''}<a href="${pmGmap(g)}" target="_blank" rel="noopener">Google Maps</a><a href="${pmGnav(g)}" target="_blank" rel="noopener">นำทาง</a><button onclick="pmMapStartPin('${I}');pmL.map.closePopup()">ย้ายหมุด</button></div></div>`;
+}
+function pmMapToggle(id){const i=pmMap.sel.indexOf(id);i>=0?pmMap.sel.splice(i,1):pmMap.sel.push(id);pmMapDraw();pmMapPanels();}
+function pmMapPanels(){
+  const rows=pmMapRows(),vis=pmMapVisible(rows),$=id=>document.getElementById(id);if(!$('pmm-list'))return;
+  $('pmm-cnt').textContent=`${vis.length} / ${rows.length} สาขา`;
+  const cnt=f=>rows.filter(f).length;
+  $('pmm-kpi').innerHTML=`<div><b>${cnt(r=>r.st.k==='none')}</b><span>ยังไม่จัด</span></div><div><b>${cnt(r=>['plan','job','work'].includes(r.st.k))}</b><span>จัดแล้ว</span></div><div><b>${cnt(r=>r.st.k==='done')}</b><span>เสร็จแล้ว</span></div>`;
+  const ng=rows.filter(r=>!r.g);
+  $('pmm-nogeo').innerHTML=ng.length?`<details class="pmm-warn" ${pmMap.ngOpen?'open':''} ontoggle="pmMap.ngOpen=this.open"><summary>📍 <b>${ng.length} สาขายังไม่มีพิกัด${ng.some(r=>r.bad)?` (พิกัดผิด/นอกประเทศไทย ${ng.filter(r=>r.bad).length})`:''}</b> — กดเพื่อปักหมุด</summary>
+    <div class="pmm-ngl">${ng.map(r=>`<div class="pmm-ng" data-id="${esc(r.s.id)}" onclick="pmMapStartPin(this.dataset.id)"><span style="flex:1;min-width:0">${esc(r.s.branch)}${r.bad?` <span class="tr" title="${esc(r.s.geo)}">(พิกัดผิด)</span>`:''}</span><span class="btn btn-ghost btn-xs">ปักหมุด</span></div>`).join('')}</div>
+    <div class="tm" style="font-size:11.5px;padding:6px 2px 0">หรือนำเข้าไฟล์ Excel เดิมซ้ำ — ระบบเติมพิกัดให้เฉพาะสาขาที่ยังว่าง</div></details>`:'';
+  const last=pmMap.sel.length?rows.find(r=>r.s.id===pmMap.sel[pmMap.sel.length-1]):null,f=last&&last.g;
+  const arr=vis.slice().sort((a,b)=>f&&a.g&&b.g?pmKm(f,a.g)-pmKm(f,b.g):(a.g?0:1)-(b.g?0:1)||a.s.sort_no-b.s.sort_no);
+  $('pmm-list').innerHTML=arr.slice(0,400).map(r=>`<div class="pmm-it${pmMap.sel.includes(r.s.id)?' sel':''}" data-id="${esc(r.s.id)}" onclick="pmMapGo(this.dataset.id)"><span class="pmm-dot" style="background:${pmMapColor(r)}"></span><div style="min-width:0"><div class="n">${esc(r.s.branch)}</div><small>${r.team?esc(r.team)+(r.date?' · '+esc(pmThDateY(r.date)):''):'ยังไม่จัด'}${r.v&&r.v.job_id?' · '+esc(r.v.job_id):''}${r.g?'':' · ไม่มีพิกัด'}</small></div>${f&&r.g&&last.s.id!==r.s.id?`<span class="km">${pmKm(f,r.g).toFixed(1)} กม.</span>`:''}</div>`).join('')||'<div class="d2-empty">ไม่พบสาขา</div>';
+  // ขวา
+  if(pmMap.mode==='day'){
+    const ds=pmMapDayRows(),teams=[...new Set(ds.map(r=>r.team))];
+    $('pmm-rt').textContent='เส้นทางวันที่ '+(pmMap.day?pmThDateY(pmMap.day):'-');$('pmm-sc').textContent=`${ds.length} สาขา`;
+    $('pmm-sel').innerHTML=teams.map(t=>{const g=ds.filter(r=>r.team===t),rt=pmRoute(g),ng2=g.filter(r=>!r.g);
+      return `<div class="pmm-dteam"><div class="h"><span class="pmm-dot" style="background:${teamColorOf(t)};margin:0"></span>${esc(t)}<span class="tm">${g.length} สาขา${rt.dist?` · ~${rt.dist.toFixed(0)} กม.`:''}</span></div>${rt.order.map((r,i)=>`<div class="tm">${i+1}. ${esc(r.s.branch)}</div>`).join('')}${ng2.map(r=>`<div class="tm">• ${esc(r.s.branch)} <span class="tr">(ไม่มีพิกัด)</span></div>`).join('')}
+        ${rt.order.length?`<a class="btn btn-ghost btn-xs" style="margin-top:6px" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/${rt.order.map(r=>r.g[0].toFixed(5)+','+r.g[1].toFixed(5)).join('/')}">🧭 เปิดเส้นทางใน Google Maps (ส่งให้ช่าง)</a>`:''}</div>`;}).join('')||'<div class="d2-empty">ไม่มีสาขาที่นัดวันนี้</div>';
+    $('pmm-selbox').innerHTML=`<div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="pmMapShiftDay(-1)">‹</button><input type="date" class="filter-input" style="flex:1" value="${esc(pmMap.day)}" onchange="pmMap.day=this.value;pmMapDraw();pmMapPanels();pmMapFitDay()"><button class="btn btn-ghost btn-sm" onclick="pmMapShiftDay(1)">›</button></div><div class="tm" style="font-size:11.5px;margin-top:6px">เส้นประ = ลำดับเข้าสาขาที่ใกล้ที่สุดก่อน (ระยะเส้นตรงโดยประมาณ)</div>`;
+    return;}
+  const sel=rows.filter(r=>pmMap.sel.includes(r.s.id)),rt=pmRoute(sel),ord=rt.order.concat(sel.filter(r=>!r.g));
+  $('pmm-rt').textContent='ที่เลือก';$('pmm-sc').textContent=sel.length?`${sel.length} สาขา${rt.dist?` · ระยะรวม ~${rt.dist.toFixed(0)} กม.`:''}`:'';
+  $('pmm-sel').innerHTML=sel.length?ord.map((r,i)=>`<div class="pmm-it"><span class="pmm-dot" style="background:${pmMapColor(r)}"></span><div style="min-width:0"><div class="n">${r.g?(i+1)+'. ':''}${esc(r.s.branch)}</div><small>${r.team?esc(r.team)+(r.date?' · '+esc(pmThDateY(r.date)):''):'ยังไม่จัด'}${r.v&&r.v.job_id?' · '+esc(r.v.job_id):''}</small></div><span class="km" style="cursor:pointer" data-id="${esc(r.s.id)}" onclick="pmMapToggle(this.dataset.id)">✕</span></div>`).join('')
+    :`<div class="d2-empty" style="line-height:1.8">กดหมุดสาขา → <b>＋ เลือกสาขานี้</b><br>หรือใช้ <b>◎ เลือกในรัศมี</b> · <b>▭ ลากกรอบเลือก</b><br><span class="tm">รายการซ้ายเรียงตามระยะจากสาขาล่าสุดที่เลือก</span></div>`;
+  const tOpts=(teams||[]).map(t=>`<option value="${esc(t.name)}">${esc(t.name)}</option>`).join('');
+  $('pmm-selbox').innerHTML=sel.length?`<div class="fw7" style="font-size:13px">จัดแผนให้ ${sel.length} สาขาที่เลือก (รอบที่ ${esc(pmRound)})</div>
+    <select class="filter-select" id="pmm-at" style="width:100%;margin-top:8px"><option value="">— ทีม (ไม่เปลี่ยน) —</option>${tOpts}</select>
+    <div class="flex g8" style="margin-top:6px"><input type="date" class="filter-input" id="pmm-ad" style="flex:1"><select class="filter-select" id="pmm-ap" style="flex:1"><option value="0">วันเดียวกันทั้งหมด</option>${[2,3,4,5,6,8].map(n=>`<option value="${n}"${n===4?' selected':''}>วันละ ${n} สาขา</option>`).join('')}</select></div>
+    <label class="pm-inl" style="margin-top:6px;font-size:12px"><input type="checkbox" id="pmm-skipsun" checked> ข้ามวันอาทิตย์</label>
+    <div class="flex g8" style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="pmMap.sel=[];pmMapDraw();pmMapPanels()">ล้าง</button><span style="flex:1"></span><button class="btn btn-primary btn-sm" onclick="pmMapAssign()">บันทึกแผน</button></div>
+    <div class="tm" style="font-size:11.5px;margin-top:6px">แบ่งวันตามลำดับเส้นทาง (ใกล้กันอยู่วันเดียวกัน) · ไม่เลือกวัน = เปลี่ยนแค่ทีม · การเปลี่ยนแผนบันทึกในประวัติแผน</div>`:'';
+}
+function pmMapGo(id){const r=pmMapRows().find(x=>x.s.id===id);if(!r)return;if(!r.g){pmMapStartPin(id);return;}if(!pmL)return;pmL.map.flyTo(r.g,Math.max(pmL.map.getZoom(),14));setTimeout(()=>L.popup({minWidth:260}).setLatLng(r.g).setContent(pmMapPop(r)).openOn(pmL.map),450);}
+function pmMapShiftDay(n){const d=calDate(pmMap.day||todayISO());d.setDate(d.getDate()+n);pmMap.day=calISO(d);pmMapDraw();pmMapPanels();pmMapFitDay();}
+function pmMapDayMode(){
+  pmMap.mode='day';
+  if(!pmMap.day){const c=pmContract(),t=todayISO();const ds=pmLiveVisits().filter(v=>v.contract_id===c.id&&v.planned_date).map(v=>String(v.planned_date).slice(0,10)).sort();pmMap.day=ds.find(d=>d>=t)||ds[ds.length-1]||t;}
+  renderPM();
+}
+// ----- ค้นหา / ปักหมุด -----
+function pmMapSearch(){
+  const t=(document.getElementById('pmm-ms')?.value||'').trim();if(!t||!pmL)return;
+  if(/goo\.gl|maps\.app/i.test(t)){alert('ลิงก์ย่อของ Google Maps อ่านพิกัดไม่ได้\n\nเปิดลิงก์ใน Google Maps → กดค้างที่หมุด → คัดลอกตัวเลขพิกัด แล้ววางที่นี่แทน');return;}
+  const g=pmGeoParse(t);
+  if(g){if(pmMap.pinFor){pmMapSetGeo(pmMap.pinFor,g);return;}pmMapShowFound(g);return;}
+  const q=pmNorm(t),r=pmMapRows().find(x=>pmNorm(x.s.branch).includes(q));
+  if(r){pmMapGo(r.s.id);return;}
+  alert('ไม่พบ — วางพิกัดแบบ 13.3611, 100.9847 หรือลิงก์ Google Maps หรือพิมพ์ชื่อสาขา');
+}
+function pmMapShowFound(g){
+  const {map}=pmL;if(pmL.found)map.removeLayer(pmL.found);
+  const rows=pmMapRows(),near=rows.filter(r=>r.g).map(r=>({r,d:pmKm(g,r.g)})).sort((a,b)=>a.d-b.d).slice(0,3),ng=rows.filter(r=>!r.g);
+  pmL.found=L.marker(g,{icon:L.divIcon({className:'',html:'<div style="font-size:30px;line-height:30px">📍</div>',iconSize:[30,30],iconAnchor:[15,30]})}).addTo(map)
+    .bindPopup(`<div class="pmm-pp"><b>จุดที่ค้นหา</b><div class="tm">${g[0].toFixed(6)}, ${g[1].toFixed(6)}${pmInTH(g)?'':' · <span class="tr">อยู่นอกประเทศไทย?</span>'}</div>
+      ${near.length?`<div class="tm" style="margin-top:4px">สาขาใกล้สุด: ${near.map(x=>`${esc(x.r.s.branch)} (${x.d.toFixed(1)} กม.)`).join(' · ')}</div>`:''}
+      <select id="pmm-fs" style="width:100%;margin-top:6px"><option value="">— ตั้งเป็นพิกัดของสาขา… —</option>${ng.length?`<optgroup label="ยังไม่มีพิกัด">${ng.map(r=>`<option value="${esc(r.s.id)}">${esc(r.s.branch)}</option>`).join('')}</optgroup>`:''}<optgroup label="สาขาที่มีพิกัดแล้ว (ย้ายหมุด)">${rows.filter(r=>r.g).map(r=>`<option value="${esc(r.s.id)}">${esc(r.s.branch)}</option>`).join('')}</optgroup></select>
+      <div class="pmm-a"><button class="p" onclick="const v=document.getElementById('pmm-fs').value;if(v)pmMapSetGeo(v,[${g[0]},${g[1]}])">บันทึกพิกัด</button>${pmMap.mode==='plan'?`<button onclick="pmMapRadiusFrom(${g[0]},${g[1]},'จุดที่ค้นหา')">◎ สาขาในรัศมี</button>`:''}<a href="${pmGmap(g)}" target="_blank" rel="noopener">Google Maps</a></div></div>`,{minWidth:290}).openPopup();
+  map.flyTo(g,13);
+}
+function pmMapStartPin(id){
+  const s=pm.sites.find(x=>x.id===id);if(!s)return;pmMap.pinFor=id;
+  const b=document.getElementById('pmm-pinbar');if(b){b.innerHTML=`📍 คลิกบนแผนที่ตรงที่ตั้ง <b>${esc(s.branch)}</b> · หรือวางพิกัด/ลิงก์ในช่องค้นหา <button class="btn btn-ghost btn-xs" onclick="pmMapEndPin()">ยกเลิก</button>`;b.classList.add('on');}
+  if(pmL){pmL.map.getContainer().style.cursor='crosshair';const pv=pmSiteGeo(s).prov;const near=pv&&pmMapRows().find(r=>r.g&&pmSiteGeo(r.s).prov===pv);if(near)pmL.map.flyTo(near.g,12);}
+}
+function pmMapEndPin(){pmMap.pinFor='';document.getElementById('pmm-pinbar')?.classList.remove('on');if(pmL)pmL.map.getContainer().style.cursor='';}
+async function pmMapSetGeo(id,g){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const s=pm.sites.find(x=>x.id===id);if(!s)return;
+  const val=`${g[0].toFixed(6)}, ${g[1].toFixed(6)}`;
+  if(s.geo&&pmGeoParse(s.geo)&&!confirm(`เปลี่ยนพิกัด ${s.branch}\nจาก ${s.geo}\nเป็น ${val} ?`))return;
+  try{const [sv]=await pmPatch('pm_sites',id,{geo:val,updated_at:new Date().toISOString()});Object.assign(s,sv||{geo:val});pmGeoCache.delete(s);}
+  catch(e){if(/geo/.test(String(e&&e.message))){alert('ยังไม่มีช่องพิกัดในฐานข้อมูล — รันไฟล์ console_pm_sites_geo.sql ก่อน');return;}pmErr(e);return;}
+  if(pmL&&pmL.found){pmL.map.removeLayer(pmL.found);pmL.found=null;}
+  pmMapEndPin();pmMapDraw();pmMapPanels();if(pmL)pmL.map.flyTo(g,Math.max(pmL.map.getZoom(),14));
+}
+// ----- เลือกในรัศมี / ลากกรอบ -----
+function pmMapRadiusToggle(){pmMap.radius?pmMapRadiusOff():(pmMap.radius=true,pmMapBoxToggle(false),document.getElementById('pmm-rbar')?.classList.add('on'),document.getElementById('pmm-tr')?.classList.add('on'));}
+function pmMapRadiusFrom(la,lo,name){pmMap.radius=true;pmMap.focus={g:[la,lo],name};document.getElementById('pmm-rbar')?.classList.add('on');document.getElementById('pmm-tr')?.classList.add('on');if(pmL)pmL.map.closePopup();pmMapRadiusPreview();}
+function pmMapRadiusPreview(){
+  const k=document.getElementById('pmm-rkm');if(k)k.textContent=pmMap.km+' กม.';if(!pmL||!pmMap.focus)return;
+  if(pmL.circle)pmL.map.removeLayer(pmL.circle);
+  pmL.circle=L.circle(pmMap.focus.g,{radius:pmMap.km*1000,color:'#175fff',weight:1,fillOpacity:.08}).addTo(pmL.map);
+  const n=pmMapVisible(pmMapRows()).filter(r=>r.g&&pmKm(pmMap.focus.g,r.g)<=pmMap.km).length;
+  const i=document.getElementById('pmm-rinfo');if(i)i.textContent=`รอบ ${pmMap.focus.name} · ${n} สาขา`;
+}
+function pmMapRadiusOk(){if(!pmMap.focus)return;pmMapVisible(pmMapRows()).filter(r=>r.g&&pmKm(pmMap.focus.g,r.g)<=pmMap.km).forEach(r=>{if(!pmMap.sel.includes(r.s.id))pmMap.sel.push(r.s.id);});pmMapRadiusOff();pmMapDraw();pmMapPanels();}
+function pmMapRadiusOff(){pmMap.radius=false;pmMap.focus=null;document.getElementById('pmm-rbar')?.classList.remove('on');document.getElementById('pmm-tr')?.classList.remove('on');if(pmL&&pmL.circle){pmL.map.removeLayer(pmL.circle);pmL.circle=null;}}
+function pmMapBoxToggle(on){pmMap.box=on===undefined?!pmMap.box:on;document.getElementById('pmm-tb')?.classList.toggle('on',pmMap.box);if(pmL)pmMap.box?pmL.map.dragging.disable():pmL.map.dragging.enable();if(pmMap.box&&pmMap.radius)pmMapRadiusOff();}
+// ----- บันทึกแผนจากที่เลือก -----
+async function pmMapAssign(){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const c=pmContract(),team=document.getElementById('pmm-at')?.value||'',d0=document.getElementById('pmm-ad')?.value||'',per=+(document.getElementById('pmm-ap')?.value||0),skipSun=!!document.getElementById('pmm-skipsun')?.checked;
+  if(!team&&!d0){alert('เลือกทีม หรือวันเริ่ม อย่างน้อยหนึ่งอย่าง');return;}
+  const rows=pmMapRows(),sel=rows.filter(r=>pmMap.sel.includes(r.s.id)),rt=pmRoute(sel),ord=rt.order.concat(sel.filter(r=>!r.g));
+  const done=ord.filter(r=>r.st.k==='done');
+  if(done.length&&!confirm(`มี ${done.length} สาขาที่เสร็จแล้วในรอบนี้ — ข้ามสาขาเหล่านี้?\n(ยกเลิก = ไม่บันทึก)`))return;
+  const list=ord.filter(r=>r.st.k!=='done');
+  let day=d0?calDate(d0):null,cnt=0;const dates=[];
+  list.forEach((r,i)=>{if(!day){dates.push(null);return;}if(per&&i>0&&i%per===0){day.setDate(day.getDate()+1);}while(skipSun&&day.getDay()===0)day.setDate(day.getDate()+1);dates.push(calISO(day));});
+  const now=new Date().toISOString(),by=getActorName();
+  const out=list.map((r,i)=>({...pmVBase(r.v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:r.s.id,branch:r.s.branch,status:'planned'}),...(team?{team}:{}),...(dates[i]?{planned_date:dates[i]}:{}),updated_at:now,updated_by:by}));
+  const nd=new Set(dates.filter(Boolean)).size;
+  if(!confirm(`บันทึกแผน ${out.length} สาขา${team?` → ${team}`:''}${nd?` · ${nd} วัน (${pmThDateY(dates.find(Boolean))} – ${pmThDateY(dates.filter(Boolean).pop())})`:''}?`))return;
+  try{
+    for(let i=0;i<out.length;i+=200){const part=await pmUpsert('pm_visits',out.slice(i,i+200));(part&&part.length?part:out.slice(i,i+200)).forEach(x=>{const k=pm.visits.findIndex(v=>v.id===x.id);if(k>=0)pm.visits[k]={...pm.visits[k],...x};else pm.visits.push(x);});}
+    pmMap.sel=[];renderPM();
+  }catch(e){pmErr(e);}
 }
 
 // ---------- แผน PM ----------
