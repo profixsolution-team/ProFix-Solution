@@ -11056,32 +11056,96 @@ function tpPrintVoucher(payoutId,team){
   generateDocWindow(tpDocShell('ใบสำคัญรับเงิน '+(p.doc_no||p.team),body));
 }
 function tpTaxBoxes(id){const s=String(id||'').replace(/\D/g,'').padEnd(13,' ').slice(0,13);const g=[1,4,5,2,1];let i=0;return g.map(n=>{const part=s.slice(i,i+n);i+=n;return [...part].map(ch=>`<span class="tb">${ch.trim()?esc(ch):'&nbsp;'}</span>`).join('');}).join('<span class="dash">-</span>');}
+// 50 ทวิ — วางตามแบบฟอร์มของกรมสรรพากร (ฉบับที่ 1 / ฉบับที่ 2 · ผู้มีหน้าที่หัก / ผู้ถูกหัก · ตารางประเภทเงินได้ครบทุกข้อ)
 function tpPrint50Tawi(payoutId,team){
   const D=tpDocData(payoutId,team);if(!D)return;
   const {p,payee,payer}=D;
   const juristic=String(payee.tax||'').replace(/\D/g,'').startsWith('0');
-  const paidD=tpThaiDate(p.paid_at);
-  const css=`.t50 h2{text-align:center;font-size:16px;margin:30px 0 2px}.t50 .sub{text-align:center;font-size:11px;color:#4b5563}.t50 .cp{position:absolute;top:12mm;right:15mm;font-size:10.5px;color:#4b5563;text-align:right}
-  .party{border:1px solid #6b7280;padding:8px 10px;margin-top:8px}.party .lb{font-weight:700}.tb{display:inline-block;width:16px;height:20px;border:1px solid #6b7280;text-align:center;line-height:18px;font-weight:700;margin:0 1px}.dash{margin:0 3px}
-  table.w{width:100%;border-collapse:collapse;margin-top:8px;font-size:11.5px}.w th,.w td{border:1px solid #6b7280;padding:4px 6px;vertical-align:top}.w th{background:#f3f4f6}`;
-  const sheet=copy=>`<div class="sheet t50">${D.draft?'<div class="draft">ร่าง · ยังไม่ได้บันทึกจ่าย</div>':''}<div class="cp">${copy}<br>เล่มที่ ........ เลขที่ ${esc(p.doc_no||'........')}</div>
-  <h2>หนังสือรับรองการหักภาษี ณ ที่จ่าย</h2><div class="sub">ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร</div>
-  <div class="party"><span class="lb">ผู้มีหน้าที่หักภาษี ณ ที่จ่าย :</span> เลขประจำตัวผู้เสียภาษีอากร ${tpTaxBoxes(payer.taxId)}<br>ชื่อ <b>${esc(payer.name||'')}</b> (${esc(payer.branch||'สำนักงานใหญ่')})<br>ที่อยู่ ${esc(payer.address||'')}</div>
-  <div class="party"><span class="lb">ผู้ถูกหักภาษี ณ ที่จ่าย :</span> เลขประจำตัวผู้เสียภาษีอากร ${tpTaxBoxes(payee.tax)}<br>ชื่อ <b>${esc(payee.name||'')}</b><br>ที่อยู่ ${esc(payee.address||'.................................................................................................')}</div>
-  <div style="margin-top:8px">ลำดับที่ ........ ในแบบ &nbsp; ☐ ภ.ง.ด.1ก &nbsp; ☐ ภ.ง.ด.1ก พิเศษ &nbsp; ☐ ภ.ง.ด.2 &nbsp; ${juristic?'☐':'☒'} ภ.ง.ด.3 &nbsp; ☐ ภ.ง.ด.2ก &nbsp; ☐ ภ.ง.ด.3ก &nbsp; ${juristic?'☒':'☐'} ภ.ง.ด.53</div>
-  <table class="w"><thead><tr><th>ประเภทเงินได้พึงประเมินที่จ่าย</th><th style="width:30mm">วัน เดือน หรือปีภาษี ที่จ่าย</th><th style="width:30mm">จำนวนเงินที่จ่าย</th><th style="width:30mm">ภาษีที่หักและนำส่งไว้</th></tr></thead><tbody>
-  <tr><td>1. เงินเดือน ค่าจ้าง เบี้ยเลี้ยง โบนัส ฯลฯ ตามมาตรา 40 (1)</td><td></td><td></td><td></td></tr>
-  <tr><td>2. ค่าธรรมเนียม ค่านายหน้า ฯลฯ ตามมาตรา 40 (2)</td><td></td><td></td><td></td></tr>
-  <tr><td>3. ค่าแห่งลิขสิทธิ์ ฯลฯ ตามมาตรา 40 (3)</td><td></td><td></td><td></td></tr>
-  <tr><td>4. ดอกเบี้ย / เงินปันผล ฯลฯ ตามมาตรา 40 (4)</td><td></td><td></td><td></td></tr>
-  <tr><td>5. การจ่ายเงินได้ที่ต้องหักภาษี ณ ที่จ่าย ตามคำสั่งกรมสรรพากรที่ออกตามมาตรา 3 เตรส เช่น รางวัล ส่วนลดหรือประโยชน์ใดๆ เนื่องจากการส่งเสริมการขาย ค่าแสดงของนักแสดงสาธารณะ <b>ค่าจ้างทำของ ค่าบริการ</b> ค่าเบี้ยประกันวินาศภัย ค่าขนส่ง ฯลฯ<br>&nbsp;&nbsp;&nbsp;(ระบุ) <b>ค่าจ้างทำของ — งานซ่อม/บริการ ${esc(D.period.label)}</b></td><td class="c">${paidD}</td><td class="r">${money(p.gross)}</td><td class="r">${money(p.wht_amount)}</td></tr>
-  <tr><td>6. อื่นๆ (ระบุ) ..........................................</td><td></td><td></td><td></td></tr>
-  <tr><th style="text-align:right">รวมเงินที่จ่ายและภาษีที่หักนำส่ง</th><th></th><th class="r">${money(p.gross)}</th><th class="r">${money(p.wht_amount)}</th></tr>
-  </tbody></table>
-  <div style="margin-top:6px">รวมเงินภาษีที่หักนำส่ง (ตัวอักษร) <b>${esc(thaiBahtText(p.wht_amount))}</b></div>
-  <div style="margin-top:6px">ผู้จ่ายเงิน &nbsp; ☒ หัก ณ ที่จ่าย &nbsp; ☐ ออกให้ตลอดไป &nbsp; ☐ ออกให้ครั้งเดียว &nbsp; ☐ อื่นๆ</div>
-  <div class="party" style="margin-top:14px;display:flex;justify-content:space-between;gap:16px"><div style="font-size:11px;color:#4b5563;max-width:95mm">ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ</div><div style="text-align:center;min-width:92mm">ลงชื่อ ..................................................<br>ผู้มีหน้าที่หักภาษี ณ ที่จ่าย<br>${paidD}</div></div></div>`;
-  const body=`<style>${css}</style>`+sheet('ฉบับที่ 1 (สำหรับผู้ถูกหักภาษี ณ ที่จ่าย ใช้แนบพร้อมกับแบบแสดงรายการภาษี)')+sheet('ฉบับที่ 2 (สำหรับผู้ถูกหักภาษี ณ ที่จ่าย เก็บไว้เป็นหลักฐาน)');
+  const paidIso=String(p.paid_at||todayISO()).slice(0,10),pd=calDate(paidIso);
+  const TH_FULL=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const paidShort=tpThaiDate(paidIso);
+  const amt=n=>{const v=Number(n||0).toFixed(2).split('.');return [Number(v[0]).toLocaleString('en-US'),v[1]];};
+  const [g1,g2]=amt(p.gross),[w1,w2]=amt(p.wht_amount);
+  const ck=on=>`<span class="cb">${on?'✓':''}</span>`;
+  const tax13=t=>{const s=String(t||'').replace(/\D/g,'').padEnd(13,' ').slice(0,13);let i=0;return [1,4,5,2,1].map(n=>{const part=s.slice(i,i+n);i+=n;return `<span class="tg">${[...part].map(ch=>`<i>${ch.trim()?esc(ch):''}</i>`).join('')}</span>`;}).join('<b class="dh">-</b>');};
+  const tax10=()=>[1,4,4,1].map(n=>`<span class="tg">${'<i></i>'.repeat(n)}</span>`).join('<b class="dh">-</b>');
+  const row=(label,cls='',fill=false)=>`<tr class="${cls}"><td class="lb">${label}</td><td class="dt">${fill?esc(paidShort):''}</td><td class="m1">${fill?g1:''}</td><td class="m2">${fill?g2:''}</td><td class="m1">${fill?w1:''}</td><td class="m2">${fill?w2:''}</td></tr>`;
+  const css=`@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
+  .t50{font-family:'Sarabun','TH Sarabun New',Arial,sans-serif!important;font-size:11px;padding:7mm 10mm 6mm!important;line-height:1.3;color:#000}
+  .t50 *{font-family:inherit!important}
+  .t50 .cps{font-size:10.5px;font-style:italic}.t50 .cps div{color:#9ca3af}.t50 .cps div.on{color:#000}.t50 .cps b{font-style:normal}
+  .t50 .frame{border:1.2px solid #000;margin-top:3px;padding:0 5px 5px}
+  .t50 .hd{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;padding:3px 0}
+  .t50 .hd h1{grid-column:2;margin:0;font-size:17px;text-align:center;font-weight:700}.t50 .hd .s{grid-column:2;text-align:center;font-size:11.5px}
+  .t50 .bk{grid-column:3;grid-row:1/3;text-align:right;font-size:11px;align-self:center;line-height:1.7}
+  .t50 .box{border:1.2px solid #000;border-radius:7px;padding:4px 8px;margin-top:4px}
+  .t50 .ln{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-height:20px}
+  .t50 .ln .k{font-weight:700;white-space:nowrap}.t50 .ln .f{flex:1;border-bottom:1px dotted #000;min-height:15px;padding:0 4px;font-weight:600}
+  .t50 .nt{font-size:9.5px;font-style:italic;margin:0 0 1px 28px;color:#111}
+  .t50 .tg{display:inline-flex;border:1px solid #000}.t50 .tg i{display:inline-block;width:14px;height:17px;border-left:1px dotted #000;text-align:center;line-height:17px;font-style:normal;font-weight:700;font-size:11.5px}.t50 .tg i:first-child{border-left:0}
+  .t50 .dh{margin:0 2px;font-weight:400}
+  .t50 .cb{display:inline-block;width:13px;height:13px;border:1px solid #000;vertical-align:-2px;text-align:center;line-height:12px;font-weight:700;font-size:12px;margin-right:4px}
+  .t50 .frm{display:grid;grid-template-columns:auto repeat(4,1fr);gap:3px 10px;align-items:center;font-size:11px}
+  .t50 table.it{width:100%;border-collapse:collapse;margin-top:4px;border:1.2px solid #000}
+  .t50 .it th{font-weight:700;font-size:11.5px;border:1px solid #000;padding:3px;text-align:center;background:#fff;color:#000}
+  .t50 .it td{border-left:1px solid #000;padding:0 4px;height:15px;vertical-align:bottom;font-size:11px}
+  .t50 .it td.lb{border-left:0}.t50 .it td.m1{text-align:right;border-bottom:1px dotted #555;font-weight:600}.t50 .it td.m2{width:7mm;text-align:center;border-left:1px dotted #000;border-bottom:1px dotted #555;font-weight:600}
+  .t50 .it td.dt{text-align:center;border-bottom:1px dotted #555;font-weight:600}
+  .t50 .it .i1 td.lb{padding-left:22px}.t50 .it .i2 td.lb{padding-left:38px}.t50 .it .i3 td.lb{padding-left:60px}.t50 .it .i4 td.lb{padding-left:80px}
+  .t50 .it tr.tot td{border-top:1.2px solid #000;font-weight:700;height:20px}
+  .t50 .wd{display:flex;align-items:center;gap:8px;margin-top:4px;font-weight:700}.t50 .wd span.g{flex:1;background:#d9d9d9;padding:2px 8px;min-height:18px;font-weight:600}
+  .t50 .bt{display:grid;grid-template-columns:1fr 1.25fr;gap:6px;margin-top:4px}
+  .t50 .warn{display:flex;gap:8px;font-size:10.5px}.t50 .warn b{white-space:nowrap}
+  .t50 .cert{text-align:center;font-size:11px;position:relative;padding-right:52px}
+  .t50 .seal{position:absolute;right:4px;top:22px;width:46px;height:46px;border:1px solid #000;border-radius:50%;font-size:8.5px;display:grid;place-items:center;line-height:1.15;text-align:center}
+  .t50 .foot{font-size:10px;margin-top:4px;display:grid;grid-template-columns:auto 1fr;gap:0 10px}
+  @media print{.t50{padding:7mm 9mm!important}}`;
+  const party=(title,tax,name,addr)=>`<div class="box">
+    <div class="ln"><span class="k">${title}</span><span style="flex:1"></span><span class="k">เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)*</span>${tax13(tax)}</div>
+    <div class="ln"><span class="k">ชื่อ</span><span class="f">${esc(name||'')}</span><span class="k" style="font-weight:600">เลขประจำตัวผู้เสียภาษีอากร</span>${tax10()}</div>
+    <div class="nt">(ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)</div>
+    <div class="ln"><span class="k">ที่อยู่</span><span class="f">${esc(addr||'')}</span></div>
+    <div class="nt">(ให้ระบุ ชื่ออาคาร/หมู่บ้าน ห้องเลขที่ ชั้นที่ เลขที่ ตรอก/ซอย หมู่ที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด)</div>`;
+  const sheet=copy=>`<div class="sheet t50">${D.draft?'<div class="draft">ร่าง · ยังไม่ได้บันทึกจ่าย</div>':''}
+  <div class="cps"><div class="${copy===1?'on':''}"><b>ฉบับที่ 1</b> (สำหรับผู้ถูกหักภาษี ณ ที่จ่าย ใช้แนบพร้อมกับแบบแสดงรายการภาษี)</div><div class="${copy===2?'on':''}"><b>ฉบับที่ 2</b> (สำหรับผู้ถูกหักภาษี ณ ที่จ่าย เก็บไว้เป็นหลักฐาน)</div></div>
+  <div class="frame">
+    <div class="hd"><h1>หนังสือรับรองการหักภาษี ณ ที่จ่าย</h1><div class="s">ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร</div><div class="bk">เล่มที่ ..................<br>เลขที่ <b>${esc(p.doc_no||'.....................')}</b></div></div>
+    ${party('ผู้มีหน้าที่หักภาษี ณ ที่จ่าย : -',payer.taxId,`${payer.name||''}${payer.branch?` (${payer.branch})`:' (สำนักงานใหญ่)'}`,payer.address)}</div>
+    ${party('ผู้ถูกหักภาษี ณ ที่จ่าย : -',payee.tax,payee.name,payee.address)}
+      <div class="ln" style="margin-top:3px;align-items:flex-start"><div style="min-width:150px"><span class="k">ลำดับที่</span> <span class="tg"><i style="width:60px"></i></span> ในแบบ<div class="nt" style="margin:1px 0 0;font-size:8.5px">(ให้สามารถอ้างอิงหรือสอบยันกันได้ระหว่างลำดับที่ตาม<br>หนังสือรับรองฯ กับแบบยื่นรายการภาษีหักที่จ่าย)</div></div>
+        <div class="frm" style="flex:1"><span></span><span>${ck(0)}(1) ภ.ง.ด.1ก</span><span>${ck(0)}(2) ภ.ง.ด.1ก พิเศษ</span><span>${ck(0)}(3) ภ.ง.ด.2</span><span>${ck(!juristic)}(4) ภ.ง.ด.3</span>
+          <span></span><span>${ck(0)}(5) ภ.ง.ด.2ก</span><span>${ck(0)}(6) ภ.ง.ด.3ก</span><span>${ck(juristic)}(7) ภ.ง.ด.53</span><span></span></div></div></div>
+    <table class="it"><colgroup><col><col style="width:24mm"><col style="width:21mm"><col style="width:7mm"><col style="width:19mm"><col style="width:7mm"></colgroup>
+      <thead><tr><th>ประเภทเงินได้พึงประเมินที่จ่าย</th><th>วัน เดือน<br>หรือปีภาษี ที่จ่าย</th><th colspan="2">จำนวนเงินที่จ่าย</th><th colspan="2">ภาษีที่หัก<br>และนำส่งไว้</th></tr></thead><tbody>
+      ${row('1. เงินเดือน ค่าจ้าง เบี้ยเลี้ยง โบนัส ฯลฯ ตามมาตรา 40 (1)')}
+      ${row('2. ค่าธรรมเนียม ค่านายหน้า ฯลฯ ตามมาตรา 40 (2)')}
+      ${row('3. ค่าแห่งลิขสิทธิ์ ฯลฯ ตามมาตรา 40 (3)')}
+      ${row('4. (ก) ดอกเบี้ย ฯลฯ ตามมาตรา 40 (4) (ก)')}
+      ${row('(ข) เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ ตามมาตรา 40 (4) (ข)','i1')}
+      ${row('(1) กรณีผู้ได้รับเงินปันผลได้รับเครดิตภาษี โดยจ่ายจาก','i2')}
+      ${row('กำไรสุทธิของกิจการที่ต้องเสียภาษีเงินได้นิติบุคคลในอัตราดังนี้','i3')}
+      ${row('(1.1) อัตราร้อยละ 30 ของกำไรสุทธิ','i3')}${row('(1.2) อัตราร้อยละ 25 ของกำไรสุทธิ','i3')}${row('(1.3) อัตราร้อยละ 20 ของกำไรสุทธิ','i3')}${row('(1.4) อัตราอื่น ๆ (ระบุ)............... ของกำไรสุทธิ','i3')}
+      ${row('(2) กรณีผู้ได้รับเงินปันผลไม่ได้รับเครดิตภาษี เนื่องจากจ่ายจาก','i2')}
+      ${row('(2.1) กำไรสุทธิของกิจการที่ได้รับยกเว้นภาษีเงินได้นิติบุคคล','i3')}
+      ${row('(2.2) เงินปันผลหรือเงินส่วนแบ่งของกำไรที่ได้รับยกเว้นไม่ต้องนำมารวม','i3')}${row('คำนวณเป็นรายได้เพื่อเสียภาษีเงินได้นิติบุคคล','i4')}
+      ${row('(2.3) กำไรสุทธิส่วนที่ได้หักผลขาดทุนสุทธิยกมาไม่เกิน 5 ปี','i3')}${row('ก่อนรอบระยะเวลาบัญชีปีปัจจุบัน','i4')}
+      ${row('(2.4) กำไรที่รับรู้ทางบัญชีโดยวิธีส่วนได้เสีย (equity method)','i3')}${row('(2.5) อื่น ๆ (ระบุ).......................................','i3')}
+      ${row('5. การจ่ายเงินได้ที่ต้องหักภาษี ณ ที่จ่าย ตามคำสั่งกรมสรรพากรที่ออกตามมาตรา')}
+      ${row('3 เตรส เช่น รางวัล ส่วนลดหรือประโยชน์ใด ๆ เนื่องจากการส่งเสริมการขาย รางวัล','i1')}
+      ${row('ในการประกวด การแข่งขัน การชิงโชค ค่าแสดงของนักแสดงสาธารณะ <b>ค่าจ้าง</b>','i1')}
+      ${row(`<b>ทำของ</b> ค่าโฆษณา ค่าเช่า ค่าขนส่ง <b>ค่าบริการ</b> ค่าเบี้ยประกันวินาศภัย ฯลฯ <span style="font-weight:600">— ค่าจ้างทำของ (งานซ่อม/บำรุงรักษา) ${esc(D.period.label)}</span>`,'i1',true)}
+      ${row('6. อื่น ๆ (ระบุ)........................................................................')}
+      <tr class="tot"><td class="lb" style="text-align:right;padding-right:10px" colspan="2">รวมเงินที่จ่ายและภาษีที่หักนำส่ง</td><td class="m1">${g1}</td><td class="m2">${g2}</td><td class="m1">${w1}</td><td class="m2">${w2}</td></tr>
+    </tbody></table>
+    <div class="wd">รวมเงินภาษีที่หักนำส่ง <i style="font-weight:400">(ตัวอักษร)</i><span class="g">${esc(thaiBahtText(p.wht_amount))}</span></div>
+    <div class="box" style="font-size:11px"><b>เงินที่จ่ายเข้า</b> กบข./กสจ./กองทุนสงเคราะห์ครูโรงเรียนเอกชน .................. บาท &nbsp; กองทุนประกันสังคม .................. บาท &nbsp; กองทุนสำรองเลี้ยงชีพ .................. บาท</div>
+    <div class="box" style="font-size:11.5px"><b style="margin-right:10px">ผู้จ่ายเงิน</b> ${ck(1)}(1) หัก ณ ที่จ่าย &nbsp;&nbsp; ${ck(0)}(2) ออกให้ตลอดไป &nbsp;&nbsp; ${ck(0)}(3) ออกให้ครั้งเดียว &nbsp;&nbsp; ${ck(0)}(4) อื่น ๆ (ระบุ)...............................</div>
+    <div class="bt"><div class="box warn"><b>คำเตือน</b><div>ผู้มีหน้าที่ออกหนังสือรับรองการหักภาษี ณ ที่จ่าย ฝ่าฝืนไม่ปฏิบัติตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร ต้องรับโทษทางอาญาตามมาตรา 35 แห่งประมวลรัษฎากร</div></div>
+      <div class="box cert">ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ<div style="margin-top:12px">ลงชื่อ.................................................................ผู้จ่ายเงิน</div>
+        <div style="margin-top:6px"><b>${pd.getDate()}</b> / <b>${TH_FULL[pd.getMonth()]}</b> / <b>${pd.getFullYear()+543}</b></div><div style="font-size:10px;font-style:italic">(วัน เดือน ปี ที่ออกหนังสือรับรองฯ)</div><div class="seal">ประทับตรา<br>นิติบุคคล<br>(ถ้ามี)</div></div></div>
+  </div>
+  <div class="foot"><span>หมายเหตุ เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)* หมายถึง</span><span>1. กรณีบุคคลธรรมดาไทย ให้ใช้เลขประจำตัวประชาชนของกรมการปกครอง<br>2. กรณีนิติบุคคล ให้ใช้เลขทะเบียนนิติบุคคลของกรมพัฒนาธุรกิจการค้า<br>3. กรณีอื่น ๆ นอกเหนือจาก 1. และ 2. ให้ใช้เลขประจำตัวผู้เสียภาษีอากร (13 หลัก) ของกรมสรรพากร</span></div></div>`;
+  const body=`<style>${css}</style>`+sheet(1)+sheet(2);
   generateDocWindow(tpDocShell('50 ทวิ '+(p.doc_no||p.team),body));
 }
 // สรุป/Excel ตามเดือน (และครึ่งเดือน) ที่ดูอยู่: เอกสารจ่ายที่มีงานของช่วงนี้ + งานรอจ่ายของแต่ละทีม
