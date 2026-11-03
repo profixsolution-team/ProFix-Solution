@@ -643,6 +643,56 @@ select option{background:var(--surface2);}
 .tp-paid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:12px 16px;border-top:1px solid var(--border)}
 .tp-paid>div:last-child{grid-column:1/-1}.tp-paid-net{font-weight:800;font-size:16px;color:var(--green)}
 .tp-note{background:var(--accent-dim);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.7;margin-bottom:12px}.tp-note.warn{background:var(--yellow-dim)}
+/* ----- การเงิน & จ่ายช่าง (รวมหน้า) ----- */
+.tp-mbar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:8px 10px;margin-bottom:14px}
+.tp-mbar .tp-year{width:auto;min-width:96px;border-radius:999px}
+.tp-months{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}.tp-months::-webkit-scrollbar{display:none}
+.tp-mchip{flex:none;border:1px solid var(--border);background:var(--surface2);border-radius:12px;padding:6px 12px;cursor:pointer;text-align:left;font:inherit;color:var(--text);min-width:88px}
+.tp-mchip b{display:block;font-size:13px}.tp-mchip small{font-size:11px;color:var(--text3)}
+.tp-mchip.on{background:#0b1220;border-color:#0b1220;color:#fff}.tp-mchip.on small{color:#cbd5e1}
+.tp-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-left:4px;vertical-align:middle}
+.tp-half{flex:none}
+.tp-kpis.tp-kpis5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.tp-tcard{background:var(--surface);border:2px solid transparent;border-radius:14px;padding:12px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.tp-tcard:hover{border-color:var(--border2)}.tp-tcard.on{border-color:var(--accent)}
+.tp-tcard .nm{font-weight:700}
+.tp-trow{display:flex;align-items:center;gap:10px}
+.tp-trow2{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--text2)}.tp-trow2 b{color:var(--text)}
+.tp-sbar{height:6px;border-radius:9px;background:var(--surface2);overflow:hidden;display:flex;margin:10px 0 6px}.tp-sbar i{display:block;height:100%}
+.tp-pill.bad{background:var(--red-dim);color:var(--red)}
+.tp-fchips{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.tp-fchip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:4px 11px;font:inherit;font-size:12.5px;cursor:pointer;color:var(--text2)}
+.tp-fchip.on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);font-weight:600}.tp-fchip i{font-style:normal;color:var(--text3);margin-left:4px}
+.tp-jt td{vertical-align:middle}
+.tp-jr{cursor:pointer}.tp-jr:hover td{background:var(--accent-dim)}.tp-jr.sel td{background:var(--accent-dim)}
+.tp-gh td{background:var(--surface2);font-size:12px;color:var(--text2);font-weight:600;padding:7px 10px}
+.tp-clip{display:inline-block;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-dim);border-radius:999px;padding:1px 7px;margin-left:6px;white-space:nowrap}
+.tp-clip.new{color:var(--yellow);background:var(--yellow-dim)}
+.tp-paybar{position:sticky;bottom:12px;z-index:4;margin-top:12px;background:#0b1220;color:#fff;border-radius:16px;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 12px 34px rgba(15,23,42,.25)}
+.tp-paybar .tp-pbx{font-size:12px;color:#94a3b8}
+.tp-paybar .tp-pb-ghost{background:transparent!important;color:#fff!important;border-color:#334155!important}
+.tp-dw-ov{position:fixed;inset:0;background:rgba(15,23,42,.25);opacity:0;pointer-events:none;transition:opacity .15s;z-index:900}
+.tp-dw-ov.on{opacity:1;pointer-events:auto}
+.tp-dw{position:fixed;top:0;right:0;bottom:0;width:460px;max-width:100%;background:var(--surface);box-shadow:-10px 0 40px rgba(15,23,42,.18);transform:translateX(105%);transition:transform .2s;z-index:901;display:flex;flex-direction:column}
+.tp-dw.on{transform:none}
+.tp-dw-h{padding:16px 18px;border-bottom:1px solid var(--border)}
+.tp-dw-b{padding:16px 18px;overflow:auto;flex:1}
+.tp-dw-f{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.tp-grp{background:var(--surface2);border-radius:14px;padding:12px 14px;margin-bottom:12px}.tp-grp h4{margin:0 0 8px;font-size:13px}
+.tp-fld{display:grid;grid-template-columns:1fr 140px;align-items:center;gap:8px;margin:7px 0}.tp-fld label{font-size:13px;color:var(--text2)}
+.tp-fld input{text-align:right;font-weight:600}
+.tp-chk{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--text2);margin-top:6px;cursor:pointer}
+.tp-chk input{width:auto!important;flex:none;margin:2px 0 0;padding:0}.tp-chk span{text-align:left}
+.tp-tot{display:flex;justify-content:space-between;font-weight:700;padding-top:8px;border-top:1px dashed var(--border2);margin-top:6px}
+.tp-pl{border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:9px 11px;margin:7px 0;font-size:12.5px}
+.tp-pl .r1{display:flex;gap:8px;align-items:center}.tp-pl .r1 b{flex:1;font-size:13px}
+.tp-pl.used{border-color:var(--green);background:var(--green-dim)}
+.tp-as{display:flex;align-items:center;margin-top:6px}
+.tp-as button{border:1px solid var(--border);background:var(--surface);font:inherit;font-size:12px;padding:3px 10px;cursor:pointer;color:var(--text2);margin-right:-1px}
+.tp-as button:first-child{border-radius:999px 0 0 999px}.tp-as button:nth-child(3){border-radius:0 999px 999px 0}
+.tp-as button.on{background:#0b1220;border-color:#0b1220;color:#fff}.tp-as button:disabled{opacity:.5;cursor:default}
+@media (max-width:1200px){.tp-kpis.tp-kpis5{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:768px){.tp-kpis.tp-kpis5{grid-template-columns:repeat(2,minmax(0,1fr))}.tp-mbar{flex-wrap:wrap}.tp-months{order:3;flex-basis:100%}.tp-fld{grid-template-columns:1fr 120px}}
 @media (max-width:980px){.tp-kpis{grid-template-columns:repeat(2,1fr)}.tp-grid,.tp-foot{grid-template-columns:1fr}#page-tech-pay .tp-field select{min-width:0;width:100%}}
 
 /* =====================================================================
@@ -1584,8 +1634,8 @@ body.pfpv-lock{overflow:hidden;}
     <button class="nav-item" data-page="purchase-tax" onclick="goTo('purchase-tax',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></span>บิลซื้อ / ภาษีซื้อ</button>
     <button class="nav-item" data-page="workorders" onclick="goTo('workorders',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg></span>แฟ้ม PR</button>
     <div class="nav-section">การเงิน</div>
-    <button class="nav-item" data-page="finance" onclick="goTo('finance',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></span>ภาพรวมการเงิน</button>
-    <button class="nav-item" data-page="tech-pay" onclick="goTo('tech-pay',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></span>จ่ายช่าง</button>
+    <button class="nav-item" data-page="finance" style="display:none" onclick="goTo('finance',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></span>ภาพรวมการเงิน</button>
+    <button class="nav-item" data-page="tech-pay" onclick="goTo('tech-pay',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg></span>การเงิน & จ่ายช่าง</button>
     <div class="nav-section">ตั้งค่า</div>
     <button class="nav-item" data-page="settings-clients" onclick="goTo('settings-clients',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg></span>ลูกค้า / Vendor</button>
     <button class="nav-item" data-page="settings-teams" onclick="goTo('settings-teams',this)"><span class="nav-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span>ทีมช่าง & ราคา</button>
@@ -1881,8 +1931,10 @@ body.pfpv-lock{overflow:hidden;}
 
 <!-- TECH PAY -->
 <div class="page" id="page-tech-pay">
-  <div class="page-header"><div><div class="page-title">จ่ายช่าง</div><div class="page-sub">งวดครึ่งเดือน · หัก ณ ที่จ่าย · ใบสำคัญรับเงิน / 50 ทวิ</div></div></div>
-  <div class="content"><div id="techpay-list"></div></div>
+  <div class="page-header"><div><div class="page-title">การเงิน & จ่ายช่าง</div><div class="page-sub">ทุกงานที่ช่างเข้า แยกตามเดือน · กดที่งานเพื่อกรอกค่าแรง / ค่าของ · หัก ณ ที่จ่าย · ใบสำคัญรับเงิน / 50 ทวิ</div></div>
+    <div class="flex g8 tp-hbar" style="align-items:center;flex-wrap:wrap"><div class="d2-seg" id="tp-tabs"><button type="button" class="on" data-t="pay" onclick="tpSetTab('pay')">จ่ายช่าง</button><button type="button" data-t="ov" onclick="tpSetTab('ov')">ภาพรวมการเงิน</button></div>
+      <span class="tp-paybtns flex g8"><button class="btn btn-ghost btn-sm" onclick="tpExportPeriodXlsx()" title="Excel ของเดือนที่ดูอยู่">⬇ Excel</button><button class="btn btn-ghost btn-sm" onclick="tpPrintPeriodSummary()" title="สรุปจ่ายช่างของเดือนที่ดูอยู่">🖨 สรุป (PDF)</button><button class="btn btn-ghost btn-sm" onclick="tpOpenSettings()" title="ตั้งค่าจ่ายช่าง">⚙</button></span></div></div>
+  <div class="content"><div id="techpay-list"></div><div id="tp-ov-wrap" style="display:none"></div></div>
 </div>
 <!-- LINE PARSER -->
 <!-- WORK ORDERS -->
@@ -4658,6 +4710,8 @@ window.addEventListener('beforeunload',()=>{saveUIState();});
 
 // NAV
 function goTo(id, el){
+  if(id==='finance'){ if(typeof tpState!=='undefined')tpState.tab='ov'; id='tech-pay'; el=null; } // รวมหน้า: การเงิน = แท็บภาพรวมของ "การเงิน & จ่ายช่าง"
+  else if(id==='tech-pay'&&el&&typeof tpState!=='undefined')tpState.tab='pay';
   saveUIState(id);
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -4950,7 +5004,7 @@ function renderDash(){
   const pd=jRows.filter(j=>payLabel(j.pay)==='เก็บแล้ว');
   const ua=unp.reduce((s,j)=>s+jobIncome(j),0);
   const pa=pd.reduce((s,j)=>s+jobIncome(j),0);
-  const ow=(typeof techPay!=='undefined'&&techPay&&techPay.loaded)?tpUnpaidJobs(tpPeriodOf(todayISO())).reduce((s,j)=>s+Number(j.pt||0),0):jRows.filter(j=>!JOB_PROBLEM_STATUSES.has(j.status)).reduce((s,j)=>s+Number(j.pt||0),0);
+  const ow=(typeof techPay!=='undefined'&&techPay&&techPay.loaded)?tpOweJobs().reduce((s,j)=>s+tpTechTotal(j),0):jRows.filter(j=>!JOB_PROBLEM_STATUSES.has(j.status)).reduce((s,j)=>s+Number(j.pt||0),0);
   document.getElementById('ds-unpaid').textContent='฿'+ua.toLocaleString();
   document.getElementById('ds-unpaid-c').textContent=unp.length+' รายการ';
   document.getElementById('ds-paid').textContent='฿'+pa.toLocaleString();
@@ -10482,86 +10536,292 @@ function tpTeamDraft(team,periodKey){
 function tpPayee(team){return techPay.payees[team]||{team};}
 function tpPayerProfile(id){const list=salesCompanyProfiles();return list.find(p=>p.id===(id||techPay.settings.payer_company||'profix'))||list[0];}
 
+// ===== การเงิน & จ่ายช่าง (รวม 2 หน้า) =====
+// แท็บ "จ่ายช่าง": ทุกงานที่แต่ละทีมเข้า แยกตามเดือน (ย้อนหลังได้ทุกเดือน) · กดงาน → กรอกค่าแรง/ค่าของ/รายรับ + ดึงจากบิลซื้อที่ระบุ PR
+// แท็บ "ภาพรวมการเงิน": หน้าการเงินเดิม (ย้าย DOM มาไว้ในหน้านี้ ฟังก์ชัน renderFin เดิมทำงานตามปกติ)
+// สถานะจ่ายของงาน: จ่ายแล้ว (อยู่ในเอกสารจ่าย) / งานยังไม่เสร็จ / ก่อนเริ่มใช้ระบบ (เสร็จก่อนวันเริ่มในตั้งค่า = จ่ายนอกระบบ) / ยังไม่กรอกค่าแรง / รอจ่าย
+Object.assign(tpState,{tab:'pay',ym:'',half:0,f:'all',sel:new Set(),open:'',purAs:{}});
+const TP_PS={paid:['จ่ายแล้ว','ok'],ready:['รอจ่าย','warn'],miss:['ยังไม่กรอกค่าแรง','bad'],open:['งานยังไม่เสร็จ',''],pre:['ก่อนเริ่มใช้ระบบ','']};
+function tpJobDate(j){return String(j.dateIn||j.date||j.assignedAt||'').slice(0,10);}
+function tpHasTeam(j){return !!(j.team&&j.team!=='ระบุทีมช่าง');}
+function tpPaidMap(){
+  const live=new Map((techPay.payouts||[]).filter(p=>p.status!=='cancelled').map(p=>[p.id,p]));
+  const m=new Map();(techPay.items||[]).forEach(it=>{if(it.status==='cancelled')return;const p=live.get(it.payout_id);if(p)m.set(tpKey(it.job_id),p);});return m;
+}
+function tpPayState(j,paid){
+  if((paid||tpPaidMap()).has(tpKey(j.id)))return 'paid';
+  if(!TP_DONE_STATUSES.has(j.status))return 'open';
+  const start=String(techPay.settings.start_date||'').slice(0,10),d=tpDoneDate(j);
+  if(start&&d&&d<start)return 'pre';
+  return Number(j.pt||0)>0?'ready':'miss';
+}
+function tpTechTotal(j){return tpRound(Number(j.pt||0)+(j.tpPartOwn?Number(j.partC||0):0));}
+function tpOweJobs(){const paid=tpPaidMap();return liveJobs().filter(j=>tpHasTeam(j)&&tpPayState(j,paid)==='ready');}
+function tpMonthLabel(ym,half){const m=+String(ym).slice(5,7),y=+String(ym).slice(0,4);const last=new Date(y,m,0).getDate();return `${TP_TH_MONTH[m-1]} ${y+543}${half?(half===1?' (1–15)':` (16–${last})`):''}`;}
+function tpViewJobs(){const ym=tpState.ym,h=tpState.half;return liveJobs().filter(j=>{if(!tpHasTeam(j))return false;const d=tpJobDate(j);if(d.slice(0,7)!==ym)return false;if(h&&((+d.slice(8,10)<=15)!==(h===1)))return false;return true;});}
+// ----- บิลซื้อที่ระบุ PR (purchase_items.job_id) -----
+function tpPurGuess(x,inv){
+  const sup=pmNorm(inv&&inv.supplier_name);
+  const isTeam=sup.length>=3&&(teams||[]).some(t=>{const n=pmNorm(t.name);return n&&(sup.includes(n)||n.includes(sup));});
+  return isTeam||/ค่าแรง|ค่าช่าง|ค่าบริการ|labou?r/i.test(String(x.item_name||''))?'pt':'partC';
+}
+function tpPurLines(j){
+  if(!accountingLoaded)return null;
+  const out=[];
+  (purchaseItems||[]).forEach(x=>{
+    if(x.status==='cancelled'||x.allocation_type==='stock')return;
+    const prs=String(x.job_id||'').split(/[,\s;/]+/).map(s=>s.trim()).filter(Boolean);
+    if(!prs.some(p=>sameJob(p,j.id)))return;
+    const inv=(purchaseInvoices||[]).find(v=>v.id===x.purchase_invoice_id);if(!inv)return; // บิลถูกยกเลิก
+    const k=j.id+'|'+x.id,as=tpState.purAs[k]||(j.tpPurAs||{})[x.id]||tpPurGuess(x,inv);
+    out.push({id:x.id,item:x.item_name||'',amount:tpRound(Number(x.subtotal||x.total_amount||0)/prs.length),split:prs.length,bill:inv.purchase_no||'',supplier:inv.supplier_name||'',date:String(inv.invoice_date||'').slice(0,10),as,used:(j.tpPurUsed||[]).includes(x.id)});
+  });
+  return out;
+}
+function tpPurNew(j){const ls=tpPurLines(j);return ls?ls.filter(l=>!l.used&&l.as!=='skip'):[];}
+// ดึง = ตั้งค่าแรง/ค่าของ "เท่ากับ" ยอดรวมบิลซื้อ (ไม่บวกทับ → ไม่นับซ้ำ) · ค่าของ + ต้นทุนที่จับคู่ไว้แล้วจากแหล่งอื่น (job_cost_items ที่ไม่ใช่บิลเหล่านี้)
+function tpPullPatch(j){
+  const ls=tpPurLines(j)||[];if(!ls.length)return null;
+  const S=k=>tpRound(ls.filter(l=>l.as===k).reduce((s,l)=>s+l.amount,0));
+  const patch={tpPurUsed:ls.filter(l=>l.as!=='skip').map(l=>l.id),tpPurAs:Object.fromEntries(ls.map(l=>[l.id,l.as]))};
+  if(ls.some(l=>l.as==='pt'))patch.pt=S('pt');
+  if(ls.some(l=>l.as==='partC')){const ids=new Set(ls.map(l=>l.id));const other=(typeof jobCosts==='function'?jobCosts(j.id):[]).filter(c=>!ids.has(c.purchase_item_id)).reduce((s,c)=>s+Number(c.cost_amount||0),0);patch.partC=tpRound(S('partC')+other);}
+  return patch;
+}
+function tpSaveJob(id,patch,{silent}={}){
+  if(!guardEdit())return false;
+  const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return false;
+  const before=clonePlain(j);Object.assign(j,patch);
+  saveState();writeAuditLog('update_job_finance','job',id,before,patchFromDiff(before,j),clonePlain(j));
+  if(!silent){renderTP();try{renderDash();}catch(e){}}
+  return true;
+}
+// ----- ย้ายหน้าการเงินเดิมมาเป็นแท็บ -----
+function tpMergeFinance(){
+  const wrap=document.getElementById('tp-ov-wrap'),src=document.querySelector('#page-finance > .content');
+  if(wrap&&src&&!wrap.contains(src))wrap.appendChild(src);
+}
+function tpSetTab(t){
+  tpState.tab=t;
+  if(t==='ov'&&tpState.ym&&typeof financeMonthFilter!=='undefined')financeMonthFilter=tpState.ym;
+  renderTP();
+}
 function renderTP(){
-  const c=document.getElementById('techpay-list');if(!c)return;
+  tpMergeFinance();
+  document.querySelectorAll('#tp-tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tpState.tab));
+  const list=document.getElementById('techpay-list'),ov=document.getElementById('tp-ov-wrap');
+  if(ov)ov.style.display=tpState.tab==='ov'?'':'none';
+  document.querySelectorAll('#page-tech-pay .tp-paybtns').forEach(x=>x.style.display=tpState.tab==='ov'?'none':'');
+  if(list)list.style.display=tpState.tab==='ov'?'none':'';
+  if(tpState.tab==='ov'){try{renderFin();}catch(e){console.warn(e);}return;}
+  const c=list;if(!c)return;
   if(!techPay.loaded){
-    c.innerHTML='<div class="empty"><div class="empty-icon">⏳</div><div>กำลังโหลดงวดจ่าย...</div></div>';
+    c.innerHTML='<div class="empty"><div class="empty-icon">⏳</div><div>กำลังโหลดข้อมูลจ่ายช่าง...</div></div>';
     ensureTechPayLoaded().then(()=>{
       if(!techPay.loaded){c.innerHTML=techPay.missing
         ?'<div class="tp-note warn"><b>ยังไม่ได้สร้างตารางงวดจ่าย</b><br>รันไฟล์ <code>console_tech_pay.sql</code> ใน Supabase → SQL Editor ก่อน แล้วรีเฟรชหน้านี้</div>'
-        :`<div class="tp-note warn">โหลดข้อมูลงวดจ่ายไม่สำเร็จ: ${esc(techPay.error)} <button class="btn btn-ghost btn-sm" onclick="techPay.loaded=false;renderTP()">ลองใหม่</button></div>`;return;}
+        :`<div class="tp-note warn">โหลดข้อมูลจ่ายช่างไม่สำเร็จ: ${esc(techPay.error)} <button class="btn btn-ghost btn-sm" onclick="techPay.loaded=false;renderTP()">ลองใหม่</button></div>`;return;}
       renderTP();
     });
     return;
   }
-  const periods=tpPeriodList();
-  if(!tpState.period||!periods.includes(tpState.period))tpState.period=tpPeriodOf(todayISO());
-  const r=tpPeriodRange(tpState.period),pk=tpState.period;
-  const unpaid=tpUnpaidJobs(pk),payouts=tpPayoutsIn(pk);
-  const teams=[...new Set([...unpaid.map(j=>j.team),...payouts.map(p=>p.team)])].sort((a,b)=>a.localeCompare(b,'th'));
-  if(!teams.includes(tpState.team))tpState.team=teams[0]||'';
-  const drafts=Object.fromEntries(teams.map(t=>[t,tpTeamDraft(t,pk)]));
-  const paidItems=payouts.flatMap(p=>tpItemsOf(p.id));
-  const sumPaid=k=>tpRound(payouts.reduce((s,p)=>s+Number(p[k]||0),0));
-  const sumDraft=k=>tpRound(Object.values(drafts).reduce((s,d)=>s+Number(d[k]||0),0));
-  const jobsN=paidItems.length+Object.values(drafts).reduce((s,d)=>s+d.picked.length,0);
-  const teamsPaid=teams.filter(t=>payouts.some(p=>p.team===t)&&!drafts[t].jobs.length).length;
-  const due=new Date(r.end+'T00:00:00');due.setMonth(due.getMonth()+1,7);
+  if(!accountingLoaded&&!tpState.accWait){tpState.accWait=true;ensureAccountingLoaded().then(()=>{if(document.getElementById('page-tech-pay')?.classList.contains('active'))renderTP();}).catch(()=>{});}
+  const paid=tpPaidMap();
+  // เดือนทั้งหมดที่มีงาน (ย้อนหลังได้ทุกเดือน) + เดือนปัจจุบัน
+  const curYm=todayISO().slice(0,7);
+  const all=liveJobs().filter(j=>tpHasTeam(j)&&tpJobDate(j));
+  const yms=[...new Set([curYm,...all.map(j=>tpJobDate(j).slice(0,7))])].filter(x=>/^\d{4}-\d{2}$/.test(x)).sort();
+  if(!tpState.ym||!yms.includes(tpState.ym))tpState.ym=curYm;
+  tpState.yms=yms;
+  const ym=tpState.ym,yr=ym.slice(0,4),years=[...new Set(yms.map(x=>x.slice(0,4)))].sort().reverse();
+  const byYm=new Map();all.forEach(j=>{const k=tpJobDate(j).slice(0,7);if(!byYm.has(k))byYm.set(k,[]);byYm.get(k).push(j);});
+  const chips=yms.filter(x=>x.slice(0,4)===yr).map(k=>{const js=byYm.get(k)||[],wait=js.filter(j=>['ready','miss'].includes(tpPayState(j,paid))).length;
+    return `<button type="button" class="tp-mchip${k===ym?' on':''}" data-ym="${k}" onclick="tpState.ym=this.dataset.ym;tpState.sel.clear();renderTP()"><b>${TP_TH_MONTH[+k.slice(5)-1]} ${(+k.slice(0,4)+543)%100}${wait?'<i class="tp-dot" title="มีงานรอจ่าย / ยังไม่กรอกค่าแรง"></i>':''}</b><small>${js.length} งาน${wait?` · ค้าง ${wait}`:''}</small></button>`;}).join('');
+  const js=tpViewJobs(),st=new Map(js.map(j=>[j.id,tpPayState(j,paid)])),S=(arr,f)=>tpRound(arr.reduce((s,j)=>s+f(j),0));
+  const inc=S(js,j=>jobIncome(j)),cost=S(js,j=>Number(j.pt||0)+Number(j.partC||0));
+  const ready=js.filter(j=>st.get(j.id)==='ready'),miss=js.filter(j=>st.get(j.id)==='miss'),paidJ=js.filter(j=>st.get(j.id)==='paid');
+  // ทีม (เรียงตามลำดับในตั้งค่าทีม)
+  const order=(teams||[]).map(t=>t.name);
+  const tnames=[...new Set(js.map(j=>j.team))].sort((a,b)=>{const ia=order.indexOf(a),ib=order.indexOf(b);return (ia<0?999:ia)-(ib<0?999:ib)||a.localeCompare(b,'th');});
+  if(!tnames.includes(tpState.team))tpState.team=tnames.find(t=>js.some(j=>j.team===t&&['ready','miss'].includes(st.get(j.id))))||tnames[0]||'';
+  const tstat=t=>{const x=js.filter(j=>j.team===t),c=k=>x.filter(j=>st.get(j.id)===k).length;return {x,paid:c('paid'),ready:c('ready'),miss:c('miss'),open:c('open')+c('pre'),owe:S(x.filter(j=>st.get(j.id)==='ready'),tpTechTotal),paidAmt:S(x.filter(j=>st.get(j.id)==='paid'),tpTechTotal)};};
+  const teamCards=tnames.map(t=>{const s=tstat(t),n=s.x.length||1,T=esc(t);
+    return `<div class="tp-tcard${t===tpState.team?' on':''}" data-t="${T}" onclick="tpState.team=this.dataset.t;tpState.sel.clear();tpState.f='all';renderTP()">
+      <div class="tp-trow">${jqTeamAvatar(t)}<div style="flex:1;min-width:0"><div class="nm">${T}</div><div class="tm" style="font-size:12px">${s.x.length} งานในเดือนนี้</div></div>${s.miss?`<span class="tp-pill bad" title="ยังไม่กรอกค่าแรง">${s.miss}</span>`:''}</div>
+      <div class="tp-sbar"><i style="width:${s.paid/n*100}%;background:var(--green)"></i><i style="width:${s.ready/n*100}%;background:#f59e0b"></i><i style="width:${s.miss/n*100}%;background:var(--red)"></i><i style="width:${s.open/n*100}%;background:var(--border2)"></i></div>
+      <div class="tp-trow2"><span>ค้างจ่าย <b>฿${money(s.owe)}</b></span><span>จ่ายแล้ว ฿${money(s.paidAmt)}</span></div></div>`;}).join('');
+  const lab=tpMonthLabel(ym,tpState.half);
   c.innerHTML=`
-  <div class="tp-top">
-    <div class="tp-field"><label>งวดจ่าย (ครึ่งเดือน)</label><select class="filter-input" onchange="tpState.period=this.value;tpState.team='';renderTP()">${periods.map(k=>{const pr=tpPeriodRange(k),n=tpPayoutsIn(k).length;return `<option value="${k}" ${k===pk?'selected':''}>${pr.label}${k===tpPeriodOf(todayISO())?' · งวดปัจจุบัน':''}${n?` · จ่ายแล้ว ${n} ทีม`:''}</option>`;}).join('')}</select></div>
-    <span style="flex:1"></span>
-    <button class="btn btn-ghost btn-sm" onclick="tpExportPeriodXlsx()">⬇ Excel ทั้งงวด</button>
-    <button class="btn btn-ghost btn-sm" onclick="tpPrintPeriodSummary()">🖨 สรุปงวด (PDF)</button>
-    <button class="btn btn-ghost btn-sm" onclick="tpOpenSettings()" title="ตั้งค่า">⚙</button>
+  <div class="tp-mbar">
+    <select class="filter-input tp-year" onchange="tpPickYear(this.value)">${years.map(y=>`<option value="${y}"${y===yr?' selected':''}>ปี ${+y+543}</option>`).join('')}</select>
+    <div class="tp-months">${chips}</div>
+    <div class="d2-seg tp-half">${[[0,'ทั้งเดือน'],[1,'1–15'],[2,'16–สิ้นเดือน']].map(([h,l])=>`<button type="button" class="${tpState.half===h?'on':''}" onclick="tpState.half=${h};tpState.sel.clear();renderTP()">${l}</button>`).join('')}</div>
   </div>
-  <div class="tp-kpis">
-    <div class="tp-kpi"><div class="l">งานในงวดนี้</div><div class="v">${jobsN} งาน</div><div class="d">${teams.length} ทีม · ${tpThaiDate(r.start)} – ${tpThaiDate(r.end)}</div></div>
-    <div class="tp-kpi"><div class="l">ค่าแรงรวม</div><div class="v">฿${money(sumPaid('gross')+sumDraft('gross'))}</div><div class="d">ก่อนหักภาษี</div></div>
-    <div class="tp-kpi"><div class="l">หัก ณ ที่จ่าย ${Number(techPay.settings.wht_rate??3)}%</div><div class="v tr">−฿${money(sumPaid('wht_amount')+sumDraft('wht'))}</div><div class="d">นำส่งภายใน ${tpThaiDate(due.toISOString().slice(0,10))}</div></div>
-    <div class="tp-kpi dark"><div class="l">ยอดโอนสุทธิ</div><div class="v">฿${money(sumPaid('net')+sumDraft('net'))}</div><div class="d">จ่ายแล้ว ${teamsPaid} / ${teams.length} ทีม · ค้างโอน ฿${money(sumDraft('net'))}</div></div>
+  <div class="tp-kpis tp-kpis5">
+    <div class="tp-kpi"><div class="l">งานที่ช่างเข้า · ${esc(lab)}</div><div class="v">${js.length} งาน</div><div class="d">เสร็จแล้ว ${js.filter(j=>TP_DONE_STATUSES.has(j.status)).length} · ยังไม่เสร็จ ${js.filter(j=>!TP_DONE_STATUSES.has(j.status)).length}</div></div>
+    <div class="tp-kpi"><div class="l">รายรับ (เก็บลูกค้า)</div><div class="v tg">฿${money(inc)}</div><div class="d">ค่าแรง + อะไหล่ + เดินทาง</div></div>
+    <div class="tp-kpi"><div class="l">ต้นทุน (ค่าแรงช่าง + ค่าของ)</div><div class="v tr">฿${money(cost)}</div><div class="d">กำไรขั้นต้น ฿${money(inc-cost)}${inc?` · ${Math.round((inc-cost)/inc*100)}%`:''}</div></div>
+    <div class="tp-kpi" style="cursor:pointer" onclick="tpState.f='miss';renderTP()"><div class="l">ยังไม่กรอกค่าแรง</div><div class="v ${miss.length?'tr':''}">${miss.length} งาน</div><div class="d">งานเสร็จแล้ว แต่ค่าแรงช่าง = 0</div></div>
+    <div class="tp-kpi dark"><div class="l">ค้างจ่ายช่าง (เดือนนี้)</div><div class="v">฿${money(S(ready,tpTechTotal))}</div><div class="d">${ready.length} งาน · จ่ายแล้ว ฿${money(S(paidJ,tpTechTotal))}</div></div>
   </div>
-  ${teams.length?`<div class="tp-grid"><div class="tp-teams">${teams.map(t=>{const d=drafts[t],ps=payouts.filter(p=>p.team===t);const paidNet=tpRound(ps.reduce((s,p)=>s+Number(p.net||0),0));
-      const badge=d.jobs.length?`<span class="tp-pill warn">รอโอน ${d.picked.length} งาน</span>`:`<span class="tp-pill ok">โอนแล้ว ${tpThaiDate(ps[0]?.paid_at)}</span>`;
-      return `<div class="tp-team ${t===tpState.team?'on':''}" onclick="tpState.team='${esc(t).replace(/'/g,'&#39;')}';renderTP()"><div class="nm">${esc(t)}</div><div class="net">฿${money(d.jobs.length?d.net:paidNet)}</div><div class="tm" style="font-size:12px;">${d.jobs.length?`${d.jobs.length} งาน · ค่าแรง ฿${money(d.gross)}`:`${ps.reduce((s,p)=>s+tpItemsOf(p.id).length,0)} งาน`}</div><div style="text-align:right">${badge}</div></div>`;}).join('')}</div>
-    <div>${tpTeamDetailHtml(tpState.team,drafts[tpState.team],payouts.filter(p=>p.team===tpState.team),r)}</div></div>`
-  :`<div class="empty"><div class="empty-icon">✅</div><div>ไม่มีงานที่ต้องจ่ายในงวดนี้</div><div class="tm" style="font-size:12px;margin-top:6px;">นับเฉพาะงานที่ช่างส่งงานแล้ว/ปิดงาน มีค่าแรงช่าง และเสร็จตั้งแต่ ${tpThaiDate(techPay.settings.start_date)}</div></div>`}`;
+  ${tnames.length?`<div class="tp-grid"><div class="tp-teams">${teamCards}<div class="tm" style="font-size:11.5px;line-height:1.8;padding:2px 4px"><span style="color:var(--green)">■</span> จ่ายแล้ว <span style="color:#f59e0b">■</span> รอจ่าย <span style="color:var(--red)">■</span> ยังไม่กรอก <span style="color:var(--border2)">■</span> ยังไม่เสร็จ/ก่อนเริ่มระบบ</div></div>
+    <div>${tpTeamPanelHtml(tpState.team,js.filter(j=>j.team===tpState.team),st,paid)}</div></div>`
+  :`<div class="empty"><div class="empty-icon">📭</div><div>ไม่มีงานที่ระบุทีมช่างในเดือน ${esc(lab)}</div></div>`}`;
+  const on=c.querySelector('.tp-mchip.on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'});
+  if(tpState.open&&document.getElementById('tp-dw')?.classList.contains('on'))tpDrawer(tpState.open,true);
 }
-function tpTeamDetailHtml(team,d,payouts,r){
+function tpTeamPanelHtml(team,tjs,st,paid){
   if(!team)return '';
-  const pe=tpPayee(team),T=esc(team).replace(/'/g,'&#39;');
+  const pe=tpPayee(team),T=esc(team);
   const payeeLine=pe.payee_name||pe.tax_id?`${esc(pe.payee_name||team)} · เลขผู้เสียภาษี ${esc(pe.tax_id||'—')}${pe.bank?' · '+esc(pe.bank):''}`:'<span class="tr">ยังไม่มีข้อมูลผู้รับเงิน (ต้องใช้ออก 50 ทวิ)</span>';
-  let html=`<div class="tp-card"><div class="tp-card-h"><div><div class="tp-card-t">${esc(team)}</div><div class="tm" style="font-size:12px;">${payeeLine} <button class="btn btn-ghost btn-xs" onclick="tpOpenPayee('${T}')">แก้ไขผู้รับเงิน</button></div></div></div>`;
-  if(d&&d.jobs.length){
-    const allOn=d.picked.length===d.jobs.length;
-    html+=`<div class="table-scroll"><table><thead><tr><th style="width:32px"><input type="checkbox" ${allOn?'checked':''} onchange="tpToggleAll('${T}',this.checked)"></th><th>PR</th><th>สาขา</th><th>ประเภท</th><th>เสร็จงาน</th><th>สถานะงาน</th><th style="text-align:right">ค่าแรง</th></tr></thead><tbody>${d.jobs.map(j=>{const k=tpKey(j.id),on=!tpState.excluded.has(k),dd=tpDoneDate(j),carry=dd<r.start;
-      return `<tr class="${on?'':'tp-off'}"><td><input type="checkbox" ${on?'checked':''} onchange="tpToggleJob('${esc(j.id).replace(/'/g,'&#39;')}',this.checked)"></td><td class="mono ta" style="cursor:pointer" onclick="openDet('${esc(j.id).replace(/'/g,'&#39;')}')">${esc(j.id)}</td><td>${esc(j.branch||'-')}</td><td>${esc(j.type||'-')}</td><td>${tpThaiDate(dd)}${carry?' <span class="tp-pill">ค้างจากงวดก่อน</span>':''}</td><td>${statusBadge(j,j.status)}</td><td class="mono" style="text-align:right">${money(j.pt)}</td></tr>`;}).join('')}</tbody></table></div>
-    <div class="tp-foot">
-      <div><div class="tp-sub">เอกสารของงวดนี้ (ร่าง — ยังไม่ได้บันทึกจ่าย)</div>
-        <div class="tp-docs">
-          <div class="tp-doc"><span>🧾</span><div><b>ใบสำคัญรับเงิน</b><div class="tm">ช่างเซ็นรับเงิน · ใช้แทนใบเสร็จ</div></div><button class="btn btn-ghost btn-sm" onclick="tpPrintVoucher(null,'${T}')">พิมพ์</button></div>
-          <div class="tp-doc"><span>📄</span><div><b>หนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ)</b><div class="tm">${Number(techPay.settings.wht_rate??3)}% ของ ฿${money(d.gross)} = ฿${money(d.wht)}</div></div><button class="btn btn-ghost btn-sm" onclick="tpPrint50Tawi(null,'${T}')">พิมพ์</button></div>
-          <div class="tp-doc"><span>📊</span><div><b>รายการงานของทีม (Excel)</b><div class="tm">ส่งให้ช่างตรวจ / ส่งบัญชี</div></div><button class="btn btn-ghost btn-sm" onclick="tpExportTeamXlsx(null,'${T}')">⬇</button></div>
-        </div></div>
-      <div class="tp-sum">
-        <div class="ln"><span>ค่าแรง ${d.picked.length} งาน</span><span class="mono">${money(d.gross)}</span></div>
-        <div class="ln"><span>หัก ณ ที่จ่าย ${Number(techPay.settings.wht_rate??3)}%</span><span class="mono">−${money(d.wht)}</span></div>
-        <div class="ln"><span>ปรับยอด (+/−)</span><input class="tp-adj mono" type="number" step="0.01" value="${d.adjust||''}" placeholder="0.00" onchange="tpState.adjust['${T}']=Number(this.value)||0;renderTP()"></div>
-        ${d.adjust?`<input class="tp-adj-note" placeholder="เหตุผลปรับยอด เช่น หักเบิกล่วงหน้า" value="${esc(d.adjustNote)}" onchange="tpState.adjustNote['${T}']=this.value">`:''}
-        <div class="ln big"><span>โอนสุทธิ</span><span class="mono">${money(d.net)}</span></div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px;" ${d.picked.length?'':'disabled'} onclick="tpOpenPay('${T}')">ยืนยันโอนแล้ว + บันทึก</button>
-      </div>
-    </div>`;
-  }
-  if(payouts.length){
-    html+=`<div class="tp-sub" style="padding:14px 16px 6px;">บันทึกจ่ายแล้วในงวดนี้</div>${payouts.map(p=>{const its=tpItemsOf(p.id);return `<div class="tp-paid"><div><b>${esc(p.doc_no||p.id)}</b> · โอน ${tpThaiDate(p.paid_at)}${p.transfer_ref?' · อ้างอิง '+esc(p.transfer_ref):''}<div class="tm" style="font-size:12px;">${its.length} งาน · ค่าแรง ฿${money(p.gross)} · หัก ${money(p.wht_amount)}${Number(p.adjust_amount)?` · ปรับ ${money(p.adjust_amount)}${p.adjust_note?' ('+esc(p.adjust_note)+')':''}`:''} · บันทึกโดย ${esc(p.created_by||'-')}</div></div>
+  const all=tjs.slice().sort((a,b)=>tpJobDate(a).localeCompare(tpJobDate(b))||String(a.id).localeCompare(String(b.id)));
+  const cnt=k=>k==='all'?all.length:all.filter(j=>st.get(j.id)===k||(k==='open'&&st.get(j.id)==='pre')).length;
+  const f=tpState.f,list=f==='all'?all:all.filter(j=>st.get(j.id)===f||(f==='open'&&st.get(j.id)==='pre'));
+  const pullN=all.filter(j=>st.get(j.id)!=='paid'&&tpPurNew(j).length).length;
+  const ym=tpState.ym,m=+ym.slice(5),last=new Date(+ym.slice(0,4),m,0).getDate();
+  const grp=tpState.half?[[tpState.half,list]]:[[1,list.filter(j=>+tpJobDate(j).slice(8,10)<=15)],[2,list.filter(j=>+tpJobDate(j).slice(8,10)>15)]];
+  const readyIds=all.filter(j=>st.get(j.id)==='ready').map(j=>tpKey(j.id));
+  const allSel=readyIds.length&&readyIds.every(k=>tpState.sel.has(k));
+  const row=j=>{const s=st.get(j.id),P=TP_PS[s],k=tpKey(j.id),pl=tpPurLines(j),pn=pl?pl.filter(l=>!l.used&&l.as!=='skip').length:0,po=s==='paid'?paid.get(k):null,d=tpJobDate(j);
+    return `<tr class="tp-jr${tpState.open===j.id?' sel':''}" data-id="${esc(j.id)}" onclick="tpDrawer(this.dataset.id)">
+      <td onclick="event.stopPropagation()">${s==='ready'?`<input type="checkbox" ${tpState.sel.has(k)?'checked':''} data-id="${esc(j.id)}" onchange="tpSelJob(this.dataset.id,this.checked)">`:''}</td>
+      <td style="white-space:nowrap">${+d.slice(8,10)} ${TP_TH_MONTH[+d.slice(5,7)-1]}</td>
+      <td><span class="mono ta fw7">${esc(j.id)}</span>${pl&&pl.length?`<span class="tp-clip${pn&&s!=='paid'?' new':''}" title="บิลซื้อที่ระบุ PR นี้">📎 บิลซื้อ ${pl.length}${pn&&s!=='paid'?' · ยังไม่ดึง':''}</span>`:''}<div class="tm" style="font-size:12px">${esc(j.branch||'-')}</div></td>
+      <td style="font-size:12.5px">${esc(j.type||'-')}</td>
+      <td>${statusBadge(j,j.status)}</td>
+      <td class="mono" style="text-align:right">${Number(j.pt||0)?money(j.pt):`<span class="${s==='miss'?'tr fw7':'tm'}">${s==='miss'?'+ กรอก':'—'}</span>`}</td>
+      <td class="mono" style="text-align:right">${Number(j.partC||0)?money(j.partC)+(j.tpPartOwn?'<div class="tm" style="font-size:11px">ช่างออกเงิน</div>':''):'<span class="tm">—</span>'}</td>
+      <td><span class="tp-pill ${P[1]}">${P[0]}</span>${po?`<div class="tm" style="font-size:11px">${esc(po.doc_no||'')}</div>`:''}</td></tr>`;};
+  const fl=[['all','ทั้งหมด'],['miss','ยังไม่กรอกค่าแรง'],['ready','รอจ่าย'],['paid','จ่ายแล้ว'],['open','ยังไม่เสร็จ / ก่อนเริ่มระบบ']];
+  let html=`<div class="tp-card">
+    <div class="tp-card-h">${jqTeamAvatar(team)}<div style="flex:1;min-width:0"><div class="tp-card-t">${T}</div><div class="tm" style="font-size:12px;">${payeeLine} <button class="btn btn-ghost btn-xs" data-t="${T}" onclick="tpOpenPayee(this.dataset.t)">แก้ไขผู้รับเงิน</button></div></div>
+      ${pullN?`<button class="btn btn-ghost btn-sm" onclick="tpPullTeam()" title="ตั้งค่าแรง/ค่าของ ตามยอดบิลซื้อที่ระบุ PR">📎 ดึงจากบิลซื้อ (${pullN} งาน)</button>`:''}</div>
+    <div class="tp-fchips">${fl.map(([k,l])=>`<button type="button" class="tp-fchip${f===k?' on':''}" onclick="tpState.f='${k}';renderTP()">${l}<i>${cnt(k)}</i></button>`).join('')}</div>
+    <div class="table-scroll"><table class="tp-jt"><thead><tr><th style="width:32px">${readyIds.length?`<input type="checkbox" title="เลือกงานที่รอจ่ายทั้งหมด" ${allSel?'checked':''} onchange="tpSelAll(this.checked)">`:''}</th><th>วันที่เข้า</th><th>PR / สาขา</th><th>ประเภท</th><th>สถานะงาน</th><th style="text-align:right">ค่าแรงช่าง</th><th style="text-align:right">ค่าของ</th><th>จ่ายช่าง</th></tr></thead><tbody>
+    ${grp.map(([h,g])=>!g.length?'':`<tr class="tp-gh"><td colspan="8">งวด ${h===1?'1–15':'16–'+last} ${TP_TH_MONTH[m-1]} · ${g.length} งาน · ค่าแรงรวม ฿${money(g.reduce((s,j)=>s+Number(j.pt||0),0))}</td></tr>`+g.map(row).join('')).join('')||'<tr><td colspan="8" class="tm" style="text-align:center;padding:26px">ไม่มีงานในตัวกรองนี้</td></tr>'}
+    </tbody></table></div>`;
+  // เอกสารจ่ายที่มีงานของเดือนนี้
+  const pays=[...new Set(all.map(j=>paid.get(tpKey(j.id))).filter(Boolean))];
+  if(pays.length){
+    html+=`<div class="tp-sub" style="padding:14px 16px 6px;">เอกสารจ่ายที่มีงานของเดือนนี้</div>${pays.map(p=>{const its=tpItemsOf(p.id);return `<div class="tp-paid"><div><b>${esc(p.doc_no||p.id)}</b> · โอน ${tpThaiDate(p.paid_at)}${p.transfer_ref?' · อ้างอิง '+esc(p.transfer_ref):''}<div class="tm" style="font-size:12px;">${its.length} งาน · ค่าแรง ฿${money(p.gross)} · หัก ${money(p.wht_amount)}${Number(p.adjust_amount)?` · ปรับ ${money(p.adjust_amount)}${p.adjust_note?' ('+esc(p.adjust_note)+')':''}`:''} · บันทึกโดย ${esc(p.created_by||'-')}</div></div>
       <div class="tp-paid-net mono">฿${money(p.net)}</div>
       <div class="flex g8" style="flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-ghost btn-sm" onclick="tpPrintVoucher('${esc(p.id)}')">🧾 ใบสำคัญรับเงิน</button><button class="btn btn-ghost btn-sm" onclick="tpPrint50Tawi('${esc(p.id)}')">📄 50 ทวิ</button><button class="btn btn-ghost btn-sm" onclick="tpExportTeamXlsx('${esc(p.id)}')">⬇ Excel</button>${p.slip_url?`<button class="btn btn-ghost btn-sm" onclick="window.open('${esc(p.slip_url)}','_blank')">สลิป</button>`:''}<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="tpCancelPayout('${esc(p.id)}')">ยกเลิก</button></div></div>`;}).join('')}`;
   }
-  return html+'</div>';
+  html+='</div>';
+  // แถบบันทึกจ่าย (เลือกงานที่รอจ่าย)
+  if(readyIds.length){
+    const d=tpSelDraft(team);
+    html+=`<div class="tp-paybar"><div><div class="tp-pbx">${T} · เลือก ${d.picked.length}/${readyIds.length} งานที่รอจ่าย</div><div>ค่าแรง ฿${money(d.gross)}${d.own?` + คืนค่าของ ฿${money(d.own)}`:''} − หัก ${Number(techPay.settings.wht_rate??3)}% ฿${money(d.wht)}</div></div>
+      <span style="flex:1"></span><div style="text-align:right"><div class="tp-pbx">โอนสุทธิ</div><b style="font-size:18px">฿${money(d.net)}</b></div>
+      <button class="btn btn-sm tp-pb-ghost" onclick="tpSelAll(${allSel?'false':'true'})">${allSel?'ล้างที่เลือก':'เลือกที่รอจ่ายทั้งหมด'}</button>
+      <button class="btn btn-ghost btn-sm tp-pb-ghost" data-t="${T}" onclick="tpAskAdjust(this.dataset.t)" title="เพิ่ม/หักยอด เช่น หักเบิกล่วงหน้า">± ปรับยอด${tpState.adjust[team]?` (${money(tpState.adjust[team])})`:''}</button>
+      <button class="btn btn-ghost btn-sm tp-pb-ghost" ${d.picked.length?'':'disabled'} data-t="${T}" onclick="tpPrintVoucher(null,this.dataset.t)">🧾 ร่างใบสำคัญ</button>
+      <button class="btn btn-primary" ${d.picked.length?'':'disabled'} data-t="${T}" onclick="tpOpenPay(this.dataset.t)">ยืนยันโอน + บันทึกจ่าย</button></div>`;
+  }
+  return html;
 }
-function tpToggleJob(id,on){const k=tpKey(id);on?tpState.excluded.delete(k):tpState.excluded.add(k);renderTP();}
-function tpToggleAll(team,on){tpUnpaidJobs(tpState.period).filter(j=>j.team===team).forEach(j=>{const k=tpKey(j.id);on?tpState.excluded.delete(k):tpState.excluded.add(k);});renderTP();}
+function tpAskAdjust(team){
+  const a=prompt(`ปรับยอดจ่าย ${team} (บาท)\nบวก = จ่ายเพิ่ม · ลบ = หัก เช่น -500\nเว้นว่าง = ไม่ปรับ`,tpState.adjust[team]||'');if(a===null)return;
+  const v=parseFloat(a)||0;if(!v){delete tpState.adjust[team];delete tpState.adjustNote[team];renderTP();return;}
+  const n=prompt('เหตุผลปรับยอด (แสดงในใบสำคัญรับเงิน)',tpState.adjustNote[team]||'');if(n===null)return;
+  tpState.adjust[team]=v;tpState.adjustNote[team]=n.trim();renderTP();
+}
+function tpPickYear(y){tpState.ym=(tpState.yms||[]).filter(k=>k.startsWith(y)).pop()||tpState.ym;tpState.sel.clear();renderTP();}
+function tpSelJob(id,on){const k=tpKey(id);on?tpState.sel.add(k):tpState.sel.delete(k);renderTP();}
+function tpSelAll(on){const paid=tpPaidMap();tpViewJobs().filter(j=>j.team===tpState.team&&tpPayState(j,paid)==='ready').forEach(j=>{const k=tpKey(j.id);on?tpState.sel.add(k):tpState.sel.delete(k);});renderTP();}
+// ร่างจ่ายจากงานที่เลือก (ค่าแรง − หัก ณ ที่จ่าย + คืนค่าของที่ช่างสำรองจ่าย + ปรับยอด)
+function tpSelDraft(team){
+  const paid=tpPaidMap();
+  const picked=liveJobs().filter(j=>j.team===team&&tpState.sel.has(tpKey(j.id))&&tpPayState(j,paid)==='ready').sort((a,b)=>tpDoneDate(a).localeCompare(tpDoneDate(b)));
+  const gross=tpRound(picked.reduce((s,j)=>s+Number(j.pt||0),0)),own=tpRound(picked.reduce((s,j)=>s+(j.tpPartOwn?Number(j.partC||0):0),0));
+  const adj=tpRound(tpState.adjust[team]||0),wht=tpWht(gross);
+  const last=picked.length?tpDoneDate(picked[picked.length-1])||todayISO():todayISO();
+  const periodKey=tpState.half?`${tpState.ym}-${tpState.half}`:tpPeriodOf(last);
+  const notes=[own?`คืนค่าของที่ช่างสำรองจ่าย ฿${money(own)}`:'',adj?(tpState.adjustNote[team]||'ปรับยอด'):''].filter(Boolean).join(' · ');
+  return {team,jobs:picked,picked,gross,own,wht,adjust:tpRound(adj+own),adjustNote:notes,net:tpRound(gross-wht+adj+own),periodKey};
+}
+// ----- แผงกรอกค่าแรง/ค่าของของงาน -----
+function tpEnsureDrawer(){
+  if(document.getElementById('tp-dw'))return;
+  document.body.insertAdjacentHTML('beforeend','<div class="tp-dw-ov" id="tp-dw-ov" onclick="tpCloseDrawer()"></div><aside class="tp-dw" id="tp-dw" aria-label="กรอกค่าแรง/ค่าของ"></aside>');
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('tp-dw')?.classList.contains('on'))tpCloseDrawer();});
+}
+function tpCloseDrawer(){tpState.open='';document.getElementById('tp-dw')?.classList.remove('on');document.getElementById('tp-dw-ov')?.classList.remove('on');document.querySelectorAll('.tp-jr.sel').forEach(r=>r.classList.remove('sel'));}
+function tpVisibleIds(){return [...document.querySelectorAll('#techpay-list .tp-jr')].map(r=>r.dataset.id);}
+function tpDrawer(id,keepFocus){
+  tpEnsureDrawer();
+  const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
+  tpState.open=id;document.querySelectorAll('.tp-jr').forEach(r=>r.classList.toggle('sel',r.dataset.id===id));
+  const paid=tpPaidMap(),s=tpPayState(j,paid),P=TP_PS[s],po=paid.get(tpKey(j.id)),lock=s==='paid';
+  const n=v=>Number(v||0)?Number(v):'',d=tpJobDate(j),I=esc(j.id);
+  const gpv=jobIncome(j)-Number(j.pt||0)-Number(j.partC||0);
+  const pl=tpPurLines(j);
+  let pur;
+  if(pl===null)pur='<div class="tm" style="font-size:12px">กำลังโหลดบิลซื้อ...</div>';
+  else if(!pl.length)pur=`<div class="tm" style="font-size:12px;line-height:1.6">ยังไม่มีบิลซื้อที่ระบุ PR ${I} — ใส่เลข PR ในช่อง "PR" ของรายการในบิลซื้อ แล้วจะขึ้นที่นี่อัตโนมัติ</div>`;
+  else{
+    const nw=pl.filter(l=>!l.used&&l.as!=='skip'),S=k=>tpRound(pl.filter(l=>l.as===k).reduce((a,l)=>a+l.amount,0));
+    const chg=[pl.some(l=>l.as==='pt')?`ค่าแรง ${money(j.pt||0)} → ${money(S('pt'))}`:'',pl.some(l=>l.as==='partC')?'ค่าของ → ตามบิล':''].filter(Boolean).join(' · ');
+    pur=pl.map(l=>`<div class="tp-pl${l.used?' used':''}"><div class="r1"><b>${esc(l.item)}</b><span class="mono fw7">฿${money(l.amount)}</span></div>
+      <div class="tm" style="font-size:11.5px">${esc(l.bill)} · ${esc(l.supplier||'-')} · ${tpThaiDate(l.date)}${l.split>1?` · แบ่ง ${l.split} PR`:''}</div>
+      <div class="tp-as">${[['partC','ค่าของ'],['pt','ค่าแรงช่าง'],['skip','ไม่นับ']].map(([k,t])=>`<button type="button" class="${l.as===k?'on':''}" ${lock?'disabled':''} data-k="${k}" data-l="${esc(l.id)}" onclick="tpSetPurAs(this.dataset.l,this.dataset.k)">${t}</button>`).join('')}${l.used?'<span class="tg" style="font-size:11.5px;margin-left:8px">✓ ดึงแล้ว</span>':''}</div></div>`).join('')
+      +(lock?'':`<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:6px" onclick="tpPullOne()">${nw.length?'ดึงเข้างานนี้':'ดึงใหม่อีกครั้ง'} — ${esc(chg)}</button>
+      <div class="tm" style="font-size:11.5px;margin-top:6px;line-height:1.6">ระบบเดาให้ก่อน: ผู้ขายเป็นทีมช่าง หรือรายการมีคำว่า "ค่าแรง" = ค่าแรงช่าง · ที่เหลือ = ค่าของ · ยอดในงาน = ยอดรวมบิลซื้อ (แทนค่าที่กรอกไว้ ไม่บวกซ้ำ)</div>`);
+  }
+  const dw=document.getElementById('tp-dw');
+  dw.innerHTML=`<div class="tp-dw-h"><div class="flex g8" style="align-items:center"><b style="font-size:18px">${I}</b><span class="tp-pill ${P[1]}">${P[0]}</span><span style="flex:1"></span>
+      <button class="btn btn-ghost btn-sm" title="งานก่อนหน้า" onclick="tpStep(-1)">‹</button><button class="btn btn-ghost btn-sm" title="งานถัดไป" onclick="tpStep(1)">›</button><button class="btn btn-ghost btn-sm" onclick="tpCloseDrawer()">✕</button></div>
+    <div class="fw7" style="margin-top:6px">${esc(j.branch||'-')}</div><div class="tm" style="font-size:12px">${esc(j.team||'')} · ${esc(j.type||'-')} · เข้า ${tpThaiDate(d)} · ${esc(j.status||'')}</div>
+    <div class="flex g8" style="margin-top:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" data-id="${I}" onclick="openDet(this.dataset.id)">ดูข้อมูลงาน</button><button class="btn btn-ghost btn-xs" data-id="${I}" onclick="openReportModal(this.dataset.id)">รายงานช่าง</button></div></div>
+  <div class="tp-dw-b">
+    ${lock?`<div class="tp-note warn">จ่ายช่างแล้วในเอกสาร <b>${esc(po&&po.doc_no||'')}</b> — แก้ค่าแรง/ค่าของไม่ได้ ต้องยกเลิกเอกสารจ่ายก่อน</div>`:s==='open'?'<div class="tp-note">งานยังไม่เสร็จ — กรอกค่าแรงไว้ก่อนได้ จะขึ้นเป็น "รอจ่าย" เมื่อช่างส่งงานแล้ว</div>':s==='pre'?`<div class="tp-note">งานเสร็จก่อนวันเริ่มใช้ระบบจ่ายช่าง (${tpThaiDate(techPay.settings.start_date)}) — ถือว่าจ่ายนอกระบบแล้ว (เปลี่ยนวันเริ่มได้ที่ ⚙)</div>`:''}
+    <div class="tp-grp"><h4>💸 จ่ายช่าง</h4>
+      <div class="tp-fld"><label>ค่าแรงช่าง</label><input id="tpd-pt" type="number" step="0.01" value="${n(j.pt)}" placeholder="0" ${lock?'disabled':''}></div>
+      <div class="tp-fld"><label>ค่าของ / อะไหล่ (ต้นทุน)</label><input id="tpd-partC" type="number" step="0.01" value="${n(j.partC)}" placeholder="0" ${lock?'disabled':''}></div>
+      <label class="tp-chk"><input type="checkbox" id="tpd-own" ${j.tpPartOwn?'checked':''} ${lock?'disabled':''}><span>ช่างสำรองจ่ายค่าของเอง → คืนเงินพร้อมค่าแรงในรอบจ่าย</span></label>
+      <div class="tp-tot"><span>รวมจ่ายช่างงานนี้</span><span class="mono">฿${money(tpTechTotal(j))}</span></div></div>
+    <div class="tp-grp"><h4>📎 บิลซื้อที่ระบุ PR ${I}${pl&&pl.length?` (${pl.length} รายการ)`:''}</h4>${pur}</div>
+    <div class="tp-grp"><h4>💰 รายรับจากลูกค้า</h4>
+      <div class="tp-fld"><label>ค่าแรง (เก็บลูกค้า)</label><input id="tpd-pc" type="number" step="0.01" value="${n(j.pc)}" placeholder="0"></div>
+      <div class="tp-fld"><label>ค่าอะไหล่ (เก็บลูกค้า)</label><input id="tpd-partR" type="number" step="0.01" value="${n(j.partR)}" placeholder="0"></div>
+      <div class="tp-fld"><label>ค่าเดินทาง</label><input id="tpd-fuel" type="number" step="0.01" value="${n(j.fuel)}" placeholder="0"></div>
+      <div class="tp-tot"><span>กำไรงานนี้</span><span class="mono ${gpv>=0?'tg':'tr'}">฿${money(gpv)}</span></div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" data-id="${I}" onclick="matchFinanceFromSales(this.dataset.id).then(()=>tpDrawer(this.dataset.id))">🔗 ดึงราคาจากใบเสนอราคา/บิลขาย</button></div>
+    <div class="tm" style="font-size:12px">แก้ที่นี่ = แก้ที่งานในคิวช่างตัวเดียวกัน (ข้อมูลชุดเดียว)</div>
+  </div>
+  <div class="tp-dw-f"><button class="btn btn-ghost" onclick="tpCloseDrawer()">ปิด</button><span style="flex:1"></span><button class="btn btn-ghost" onclick="tpSaveDrawer(false)">บันทึก</button><button class="btn btn-primary" onclick="tpSaveDrawer(true)">บันทึก + งานถัดไป ›</button></div>`;
+  dw.classList.add('on');document.getElementById('tp-dw-ov').classList.add('on');
+  dw.onkeydown=e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.type==='number'){e.preventDefault();tpSaveDrawer(true);}};
+  if(!keepFocus)setTimeout(()=>{const i=document.getElementById(lock?'tpd-pc':'tpd-pt');if(i){i.focus();i.select&&i.select();}},120);
+}
+function tpStep(n){const ids=tpVisibleIds(),i=ids.indexOf(tpState.open),nx=ids[i+n];if(nx)tpDrawer(nx);}
+function tpSaveDrawer(next){
+  const id=tpState.open,j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
+  const v=k=>{const el=document.getElementById('tpd-'+k);return el?(parseFloat(el.value)||0):Number(j[k]||0);};
+  const patch={pc:v('pc'),partR:v('partR'),fuel:v('fuel')};
+  if(tpPayState(j)!=='paid'){patch.pt=v('pt');patch.partC=v('partC');patch.tpPartOwn=!!document.getElementById('tpd-own')?.checked;}
+  const ids=tpVisibleIds(),nx=ids[ids.indexOf(id)+1];
+  if(!tpSaveJob(id,patch))return;
+  if(next&&nx)tpDrawer(nx);else if(next)tpCloseDrawer();else tpDrawer(id,true);
+}
+function tpSetPurAs(itemId,k){tpState.purAs[tpState.open+'|'+itemId]=k;tpDrawer(tpState.open,true);}
+function tpPullOne(){
+  const j=jobs.find(x=>x.id===tpState.open&&!isDeletedRecord(x));if(!j)return;
+  const p=tpPullPatch(j);if(!p)return;
+  // ช่องที่กรอกในแผงแต่ยังไม่บันทึก (รายรับ) เก็บไว้ด้วย
+  ['pc','partR','fuel'].forEach(k=>{const el=document.getElementById('tpd-'+k);if(el)p[k]=parseFloat(el.value)||0;});
+  if(tpSaveJob(j.id,p))tpDrawer(j.id,true);
+}
+function tpPullTeam(){
+  const paid=tpPaidMap();
+  const list=tpViewJobs().filter(j=>j.team===tpState.team&&tpPayState(j,paid)!=='paid'&&tpPurNew(j).length);
+  if(!list.length)return;
+  if(!confirm(`ดึงยอดจากบิลซื้อเข้า ${list.length} งานของ ${tpState.team}?\n\nค่าแรง/ค่าของของแต่ละงาน จะถูกตั้งเท่ากับยอดรวมบิลซื้อที่ระบุ PR นั้น (แทนค่าที่กรอกไว้)\nตรวจทีละงานได้โดยกดที่แถว`))return;
+  if(!guardEdit())return;
+  list.forEach(j=>{const p=tpPullPatch(j);if(p)tpSaveJob(j.id,p,{silent:true});});
+  renderTP();try{renderDash();}catch(e){}
+  setTimeout(()=>alert(`ดึงจากบิลซื้อแล้ว ${list.length} งาน`),30);
+}
 
 // ----- ผู้รับเงิน / ตั้งค่า -----
 function tpOpenPayee(team){
@@ -10605,7 +10865,7 @@ async function tpSaveSettings(){
 
 // ----- บันทึกจ่าย -----
 function tpOpenPay(team){
-  const d=tpTeamDraft(team,tpState.period);if(!d.picked.length)return;
+  const d=tpSelDraft(team);if(!d.picked.length)return;
   const pe=tpPayee(team);
   document.getElementById('tpm-team').value=team;
   document.getElementById('tpm-summary').innerHTML=`<b>${esc(team)}</b> · ${d.picked.length} งาน<br>ค่าแรง ฿${money(d.gross)} − หัก ณ ที่จ่าย ฿${money(d.wht)}${d.adjust?` ${d.adjust>0?'+':'−'} ปรับยอด ฿${money(Math.abs(d.adjust))}`:''} = <b>โอนสุทธิ ฿${money(d.net)}</b>${pe.bank?`<br>โอนเข้า ${esc(pe.bank)}`:''}${pe.tax_id?'':'<br><span class="tr">⚠ ยังไม่มีเลขผู้เสียภาษีของผู้รับเงิน — บันทึกได้ แต่ 50 ทวิ จะไม่ครบ</span>'}`;
@@ -10625,8 +10885,9 @@ async function tpNextDocNo(paidAt){
 }
 async function tpConfirmPay(){
   if(!guardEdit())return;
-  const team=document.getElementById('tpm-team').value,pk=tpState.period,r=tpPeriodRange(pk);
-  const d=tpTeamDraft(team,pk);if(!d.picked.length){closeM('m-tp-pay');return;}
+  const team=document.getElementById('tpm-team').value;
+  const d=tpSelDraft(team);if(!d.picked.length){closeM('m-tp-pay');return;}
+  const pk=d.periodKey,r=tpPeriodRange(pk);
   const btn=document.getElementById('tpm-save');btn.disabled=true;btn.textContent='กำลังบันทึก...';
   try{
     let slipUrl='';
@@ -10642,7 +10903,7 @@ async function tpConfirmPay(){
       const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/tech_pay_create`,{method:'POST',headers:sbHeaders(),body:JSON.stringify({p_payout:payout,p_items:items})});
       if(res.ok){
         writeAuditLog('tech_payout_create','tech_payout',id,null,payout,{...payout,items:items.map(i=>i.job_id)});
-        delete tpState.adjust[team];delete tpState.adjustNote[team];
+        delete tpState.adjust[team];delete tpState.adjustNote[team];d.picked.forEach(j=>tpState.sel.delete(tpKey(j.id)));
         closeM('m-tp-pay');
         await ensureTechPayLoaded(true);renderTP();broadcastDataChanged('techpay');
         setTimeout(()=>{if(confirm(`บันทึกจ่าย ${team} แล้ว (${docNo})\nพิมพ์ใบสำคัญรับเงินเลยไหม?`))tpPrintVoucher(id);},50);
@@ -10678,10 +10939,9 @@ function tpDocData(payoutId,team){
     const rows=tpItemsOf(p.id).map(it=>({id:it.job_id,branch:it.job_branch,type:it.job_type,done:it.job_done_date,amount:Number(it.amount||0)}));
     return {draft:false,p,rows,payee:{name:p.payee_name||p.team,tax:p.payee_tax_id,address:p.payee_address,bank:p.payee_bank},period:tpPeriodRange(p.period_key),payer:tpPayerProfile(p.payer_company)};
   }
-  if(!tpState.period)tpState.period=tpPeriodOf(todayISO());
-  const d=tpTeamDraft(team,tpState.period),pe=tpPayee(team);
+  const d=tpSelDraft(team),pe=tpPayee(team);
   const p={id:'',doc_no:'',team,gross:d.gross,wht_rate:Number(techPay.settings.wht_rate??3),wht_amount:d.wht,adjust_amount:d.adjust,adjust_note:d.adjustNote,net:d.net,paid_at:todayISO(),transfer_ref:''};
-  return {draft:true,p,rows:d.picked.map(j=>({id:j.id,branch:j.branch,type:j.type,done:tpDoneDate(j),amount:Number(j.pt||0)})),payee:{name:pe.payee_name||team,tax:pe.tax_id,address:pe.address,bank:pe.bank},period:tpPeriodRange(tpState.period),payer:tpPayerProfile()};
+  return {draft:true,p,rows:d.picked.map(j=>({id:j.id,branch:j.branch,type:j.type,done:tpDoneDate(j),amount:Number(j.pt||0)})),payee:{name:pe.payee_name||team,tax:pe.tax_id,address:pe.address,bank:pe.bank},period:tpPeriodRange(d.periodKey),payer:tpPayerProfile()};
 }
 const TP_DOC_CSS=`@page{size:A4 portrait;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,'Noto Sans Thai',sans-serif}body{margin:0;background:#edf2f7;color:#111827;font-size:12.5px}
 .toolbar{position:fixed;top:0;left:0;right:0;background:#0b1220;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;z-index:2}.toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit}.btn-print{background:#175fff;color:#fff}.btn-ghost{background:#374151;color:#fff;margin-right:6px}
@@ -10742,20 +11002,28 @@ function tpPrint50Tawi(payoutId,team){
   const body=`<style>${css}</style>`+sheet('ฉบับที่ 1 (สำหรับผู้ถูกหักภาษี ณ ที่จ่าย ใช้แนบพร้อมกับแบบแสดงรายการภาษี)')+sheet('ฉบับที่ 2 (สำหรับผู้ถูกหักภาษี ณ ที่จ่าย เก็บไว้เป็นหลักฐาน)');
   generateDocWindow(tpDocShell('50 ทวิ '+(p.doc_no||p.team),body));
 }
+// สรุป/Excel ตามเดือน (และครึ่งเดือน) ที่ดูอยู่: เอกสารจ่ายที่มีงานของช่วงนี้ + งานรอจ่ายของแต่ละทีม
+function tpViewSummary(){
+  const paid=tpPaidMap(),js=tpViewJobs();
+  const payouts=[...new Set(js.map(j=>paid.get(tpKey(j.id))).filter(Boolean))];
+  const teams=[...new Set(js.filter(j=>tpPayState(j,paid)==='ready').map(j=>j.team))];
+  const drafts=teams.map(t=>{const picked=js.filter(j=>j.team===t&&tpPayState(j,paid)==='ready');const gross=tpRound(picked.reduce((s,j)=>s+Number(j.pt||0),0)),own=tpRound(picked.reduce((s,j)=>s+(j.tpPartOwn?Number(j.partC||0):0),0)),wht=tpWht(gross);return {team:t,picked,gross,wht,adjust:own,net:tpRound(gross-wht+own)};});
+  const ym=tpState.ym,y=+ym.slice(0,4),m=+ym.slice(5,7),last=new Date(y,m,0).getDate(),h=tpState.half;
+  const r={key:ym+(h?'-'+h:''),start:`${ym}-${h===2?'16':'01'}`,end:`${ym}-${h===1?'15':String(last).padStart(2,'0')}`,label:tpMonthLabel(ym,h)};
+  return {r,payouts,drafts};
+}
 function tpPrintPeriodSummary(){
-  const pk=tpState.period,r=tpPeriodRange(pk),payouts=tpPayoutsIn(pk);
-  const unpaid=tpUnpaidJobs(pk),teams=[...new Set(unpaid.map(j=>j.team))];
-  const drafts=teams.map(t=>tpTeamDraft(t,pk)).filter(d=>d.picked.length);
+  const {r,payouts,drafts}=tpViewSummary();
   const rows=[...payouts.map(p=>({team:p.team,payee:p.payee_name,n:tpItemsOf(p.id).length,gross:+p.gross,wht:+p.wht_amount,adj:+p.adjust_amount,net:+p.net,st:`โอนแล้ว ${tpThaiDate(p.paid_at)}${p.transfer_ref?' · '+p.transfer_ref:''}`,no:p.doc_no})),
     ...drafts.map(d=>({team:d.team,payee:tpPayee(d.team).payee_name||'',n:d.picked.length,gross:d.gross,wht:d.wht,adj:d.adjust,net:d.net,st:'ยังไม่โอน',no:''}))];
   const S=k=>tpRound(rows.reduce((s,x)=>s+x[k],0));
   const co=tpPayerProfile();
-  const body=`<div class="sheet"><div class="hd">${tpCoHead(co)}<div class="title">สรุปงวดจ่ายช่าง<small>${esc(r.label)}</small></div></div>
+  const body=`<div class="sheet"><div class="hd">${tpCoHead(co)}<div class="title">สรุปจ่ายช่าง<small>${esc(r.label)}</small></div></div>
   <div class="meta"><div><b>ช่วงงาน</b>${tpThaiDate(r.start)} – ${tpThaiDate(r.end)}</div><div><b>พิมพ์เมื่อ</b>${tpThaiDate(todayISO())} โดย ${esc(getActorName())}</div></div>
   <table class="it"><thead><tr><th>ทีม / ผู้รับเงิน</th><th style="width:14mm">งาน</th><th style="width:24mm">ค่าแรง</th><th style="width:22mm">หัก ณ ที่จ่าย</th><th style="width:20mm">ปรับยอด</th><th style="width:26mm">โอนสุทธิ</th><th style="width:40mm">สถานะ</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.team)}</b>${x.payee&&x.payee!==x.team?'<br><span style="color:#6b7280">'+esc(x.payee)+'</span>':''}${x.no?'<br><span style="color:#6b7280">'+esc(x.no)+'</span>':''}</td><td class="c">${x.n}</td><td class="r">${money(x.gross)}</td><td class="r">${money(x.wht)}</td><td class="r">${x.adj?money(x.adj):'-'}</td><td class="r"><b>${money(x.net)}</b></td><td>${esc(x.st)}</td></tr>`).join('')||'<tr><td colspan="7" class="c">ไม่มีรายการ</td></tr>'}</tbody></table>
   <table class="tot"><tr><td>รวมค่าแรง</td><td class="r">${money(S('gross'))}</td></tr><tr><td>รวมหัก ณ ที่จ่าย</td><td class="r">${money(S('wht'))}</td></tr><tr><td>รวมปรับยอด</td><td class="r">${money(S('adj'))}</td></tr><tr class="g"><td>รวมโอนสุทธิ</td><td class="r">${money(S('net'))}</td></tr></table>
   <div class="sig"><div>ผู้จัดทำ</div><div>ผู้ตรวจสอบ</div><div>ผู้อนุมัติ</div></div></div>`;
-  generateDocWindow(tpDocShell('สรุปงวดจ่ายช่าง '+r.label,body));
+  generateDocWindow(tpDocShell('สรุปจ่ายช่าง '+r.label,body));
 }
 function tpXlsxReady(){if(typeof XLSX==='undefined'){alert('ไลบรารี xlsx ยังโหลดไม่เสร็จ — ลองใหม่อีกครั้ง');return false;}return true;}
 function tpExportTeamXlsx(payoutId,team){
@@ -10771,9 +11039,7 @@ function tpExportTeamXlsx(payoutId,team){
 }
 function tpExportPeriodXlsx(){
   if(!tpXlsxReady())return;
-  const pk=tpState.period,r=tpPeriodRange(pk),payouts=tpPayoutsIn(pk);
-  const teams=[...new Set(tpUnpaidJobs(pk).map(j=>j.team))];
-  const drafts=teams.map(t=>tpTeamDraft(t,pk)).filter(d=>d.picked.length);
+  const {r,payouts,drafts}=tpViewSummary();
   const sum=[['ทีม','ผู้รับเงิน','เลขผู้เสียภาษี','บัญชี','จำนวนงาน','ค่าแรง','หัก ณ ที่จ่าย','ปรับยอด','โอนสุทธิ','สถานะ','วันที่โอน','อ้างอิง','เลขที่เอกสาร'],
     ...payouts.map(p=>[p.team,p.payee_name||'',p.payee_tax_id||'',p.payee_bank||'',tpItemsOf(p.id).length,+p.gross,+p.wht_amount,+p.adjust_amount,+p.net,'โอนแล้ว',p.paid_at||'',p.transfer_ref||'',p.doc_no||'']),
     ...drafts.map(d=>{const pe=tpPayee(d.team);return [d.team,pe.payee_name||'',pe.tax_id||'',pe.bank||'',d.picked.length,d.gross,d.wht,d.adjust,d.net,'ยังไม่โอน','','',''];})];
