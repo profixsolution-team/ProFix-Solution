@@ -9959,6 +9959,17 @@ async function renderDocPagesForPdf(html){
     d.head.appendChild(st);
     try{if(d.fonts&&d.fonts.ready)await d.fonts.ready;}catch(e){}
     await Promise.all([...d.images].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r;setTimeout(r,4000);})));
+    // html2canvas วาดรูป SVG (โลโก้ ProFix) ออกมาว่างเปล่า → แปลงเป็น PNG ก่อนจับภาพ
+    for(const im of [...d.images]){
+      if(!/\.svg(\?|#|$)|^data:image\/svg/i.test(im.currentSrc||im.src)||!im.naturalWidth)continue;
+      try{
+        const k=Math.max(1,1200/im.naturalWidth),c=document.createElement('canvas');
+        c.width=Math.round(im.naturalWidth*k);c.height=Math.round((im.naturalHeight||im.naturalWidth/2)*k);
+        c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+        const png=c.toDataURL('image/png');
+        await new Promise(r=>{im.onload=im.onerror=r;im.src=png;setTimeout(r,2000);});
+      }catch(e){console.warn('svg→png failed',e);}
+    }
     await new Promise(r=>setTimeout(r,250));
     try{fr.contentWindow.fitAll&&fr.contentWindow.fitAll();}catch(e){} // ใบกำกับ/ใบแจ้งหนี้: ล็อก 1 หน้า A4
     const sheets=[...d.querySelectorAll('.sheet')].filter(el=>fr.contentWindow.getComputedStyle(el).display!=='none');

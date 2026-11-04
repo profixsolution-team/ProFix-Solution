@@ -74,6 +74,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:'Anuphan',syste
 .btn.ok{background:var(--green);color:#fff;}
 .btn:disabled{opacity:.55;}
 .btn.small{flex:0 0 auto;padding:11px 13px;}
+.doc-link{display:flex;align-items:center;gap:8px;margin-top:9px;padding:10px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg,#f6f8fb);color:var(--text);text-decoration:none;font-size:14px;}
+.doc-link .doc-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
 .empty{text-align:center;color:var(--text3);padding:26px 10px;font-size:14px;}
 .panel{background:var(--card);border-radius:16px;border:1px solid var(--line);padding:20px 18px;margin-top:10px;}
 .panel h2{margin:0 0 6px;font-size:19px;}
@@ -234,9 +236,16 @@ function statusChip(j){
   const cls=j.done?'':/ส่งงานแล้ว|กำลังเข้าซ่อม/.test(s)?'green':/รออนุมัติ|PO|ขออนุมัติ/.test(s)?'yellow':/ร่าง/.test(s)?'blue':/รอช่าง/.test(s)?'red':'';
   return `<span class="chip ${cls}">${esc(s)}</span>`;
 }
+function telHref(p){return 'tel:'+esc(String(p).split(/[,/]| หรือ /)[0].replace(/[^\d+]/g,''));}
+// ใบงานในแฟ้ม PR — 1 ไฟล์ = เปิดเลย · หลายไฟล์ = เปิดหน้ารายละเอียด (มีรายการไฟล์)
+function docBtn(j){const n=(j.docs||[]).length;if(!n)return '';
+  return n===1?`<a class="btn ghost small" href="${esc(j.docs[0].url)}" target="_blank" rel="noopener" aria-label="ดูใบงาน">📄 ใบงาน</a>`:`<button class="btn ghost small" onclick="openDetail('${esc(j.id)}',true)" aria-label="ดูใบงาน">📄 ใบงาน (${n})</button>`;}
+function docsHtml(j){const d=j.docs||[];if(!d.length)return '';
+  return `<div class="d-box" id="d-docs" style="white-space:normal"><b>📄 ใบงาน / เอกสารในแฟ้ม PR</b>${d.map(x=>`<a class="doc-link" href="${esc(x.url)}" target="_blank" rel="noopener"><span>${x.image?'🖼️':'📄'}</span><span class="doc-name">${esc(x.name)}</span><span class="chip ${x.kind==='approval'?'yellow':'blue'}">${x.kind==='approval'?'ใบอนุมัติ':'ใบงาน'}</span></a>`).join('')}</div>`;}
 function jobActions(j){
   // ขั้นตอน: ยังไม่เริ่ม → [▶️ เริ่มงาน] (กดเมื่อถึงสาขา) → [⏳ รอขออนุมัติ] / [🔧 ส่งงาน] · ส่งงานแล้ว → ดู/แก้รายงาน · ปิดงานแล้ว → ไม่มีปุ่ม
-  const tel=j.phone?`<a class="btn ghost small" href="tel:${esc(String(j.phone).replace(/[^\d+]/g,''))}">📞</a>`:'';
+  const ph=j.branchPhone||j.phone;
+  const tel=(ph?`<a class="btn ghost small" href="${telHref(ph)}" aria-label="โทรหาสาขา">📞</a>`:'')+docBtn(j);
   if(j.done)return tel;
   if(j.waitingAdmin)return `<button class="btn ghost" onclick="openSubmit('${esc(j.id)}','')">📄 ดู/แก้รายงาน</button>`+tel;
   if(j.inProgress)return `<button class="btn warn" onclick="openSubmit('${esc(j.id)}','quote')">⏳ รอขออนุมัติ</button><button class="btn primary" onclick="openSubmit('${esc(j.id)}','done')">🔧 ส่งงาน</button>`+tel;
@@ -252,23 +261,26 @@ function card(j,cls){
     <div class="btns" onclick="event.stopPropagation()">${jobActions(j)}</div></div>`;
 }
 // ===== รายละเอียดงานแบบเต็ม (แตะการ์ด) =====
-function openDetail(id){
+function openDetail(id,toDocs){
   const j=jobs.find(x=>x.id===id);if(!j)return;
   const row=(k,v)=>v?`<div class="d-row"><span>${k}</span><b>${v}</b></div>`:'';
-  const tel=j.phone?`<a href="tel:${esc(String(j.phone).replace(/[^\d+]/g,''))}">${esc(j.phone)}</a>`:'';
+  const tel=j.phone&&j.phone!==j.branchPhone?`<a href="${telHref(j.phone)}">📞 ${esc(j.phone)}</a>`:'';
+  const btel=j.branchPhone?`<a href="${telHref(j.branchPhone)}">📞 ${esc(j.branchPhone)}</a>`:'';
   const tIn=j.dateIn?`${esc(thDate(j.dateIn))} ${esc(j.timeIn||'')}`:'';
   const tDone=j.dateDone?`${esc(thDate(j.dateDone))} ${esc(j.timeDone||'')}`:'';
   $('detail').innerHTML=`<div class="d-head"><button class="d-close" onclick="closeDetail()" aria-label="ปิด">‹ กลับ</button><b>${esc(j.id)}</b><span></span></div>
     <div class="d-body"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">${j.level?`<span class="chip ${/1/.test(j.level)?'red':''}">${esc(j.level)}</span>`:''}${statusChip(j)}</div>
       <div class="d-title">${esc(j.branch||'-')}</div><div class="meta" style="margin-bottom:12px;">${esc(j.client||'')}</div>
       ${j.reviewNote?`<div class="d-box warn"><b>หมายเหตุจากแอดมิน</b><br>${esc(j.reviewNote)}</div>`:''}
+      ${docsHtml(j)}
       <div class="d-box"><b>รายละเอียดงาน / อาการที่แจ้ง</b><br>${esc(j.detail||'-')}${j.jobNote?`<br><br><b>หมายเหตุงาน</b><br>${esc(j.jobNote)}`:''}</div>
-      <div class="d-grid">${row('ประเภทงาน',esc(j.type))}${row('วันนัด',esc(thDate(j.date)))}${row('ทีม',esc(j.team))}${row('เบอร์หน้างาน',tel)}${row('เลขอ้างอิงลูกค้า',esc(j.ref))}${row('วันที่สั่งงาน',esc(j.assignedAt))}
+      <div class="d-grid">${row('ประเภทงาน',esc(j.type))}${row('วันนัด',esc(thDate(j.date)))}${row('ทีม',esc(j.team))}${row('เบอร์สาขา',btel)}${row('เบอร์ผู้แจ้ง',tel)}${row('เลขอ้างอิงลูกค้า',esc(j.ref))}${row('วันที่สั่งงาน',esc(j.assignedAt))}
         ${row('เริ่มงาน',j.started?`${esc(thTime(j.started.at))} · ${esc(j.started.by||'')}`:'')}${row('เข้างานจริง',tIn)}${row('เสร็จงาน',tDone)}${row('ส่งรายงาน',j.techSubmittedAt?esc(thTime(j.techSubmittedAt)):'')}${row('สถานะรายงาน',esc(j.reportStatus))}</div>
     </div>
     <div class="d-foot btns">${jobActions(j)}</div>`;
   const wasOpen=$('detail').classList.contains('open');
   $('detail').classList.add('open');document.body.style.overflow='hidden';
+  if(toDocs)setTimeout(()=>{const el=$('d-docs');if(el)el.scrollIntoView({block:'start'});},50);
   if(wasOpen)history.replaceState({detail:id},'');else history.pushState({detail:id},''); // ปุ่มย้อนกลับของมือถือ = ปิดหน้ารายละเอียด
 }
 function closeDetail(fromPop){$('detail').classList.remove('open');document.body.style.overflow='';if(!fromPop&&history.state&&history.state.detail)history.back();}
@@ -286,7 +298,8 @@ const KIND_L={pm:'PM',repair:'ซ่อม',note:'บันทึก'};
 function condCls(c){return !c?'':/ปกติ/.test(c)?'green':/เสีย/.test(c)?'red':'yellow';}
 async function openAsset(code){
   $('detail').innerHTML=`<div class="d-head"><button class="d-close" onclick="closeDetail()">✕ ปิด</button><b>${esc(code)}</b><span></span></div><div class="d-body"><div class="loading"><div class="spin"></div>กำลังโหลดประวัติเครื่อง...</div></div>`;
-  $('detail').classList.add('open');document.body.style.overflow='hidden';history.pushState({detail:'asset'},'');
+  $('detail').classList.add('open');document.body.style.overflow='hidden';
+  if(toDocs)setTimeout(()=>{const el=$('d-docs');if(el)el.scrollIntoView({block:'start'});},50);history.pushState({detail:'asset'},'');
   let d;try{d=await api('asset',{code});}catch(e){$('detail').querySelector('.d-body').innerHTML=`<div class="panel"><h2>เปิดไม่สำเร็จ</h2><p>${esc(e.message)}</p></div>`;return;}
   const body=$('detail').querySelector('.d-body');
   if(d.kind!=='asset'){body.innerHTML=`<div class="panel"><h2>${d.kind==='blank'?'🏷 สติกเกอร์เปล่า':'ไม่พบเครื่อง'}</h2><p>${d.kind==='blank'?`สติกเกอร์ <b>${esc(code)}</b> ยังไม่ได้ผูกกับเครื่องไหน<br>ผูกได้ตอนทำใบงาน PM ของสาขานี้ — กด "🏷 ติดสติกเกอร์เปล่า → สแกน" ที่เครื่องนั้น`:`ไม่พบรหัส <b>${esc(code)}</b> ในทะเบียนเครื่อง — แจ้งแอดมิน`}</p></div>`;return;}
@@ -322,10 +335,10 @@ function demoApi(action,extra){
       logs:[{done_at:addDays(t,-60)+'T10:00:00Z',kind:'pm',team:'ทีม1 - อำนวย',job_id:'PR430100',condition:'ต้องซ่อม',cause:'น้ำยารั่วที่แฟลร์',fix:'ขันแฟลร์ เติมน้ำยา',follow_up:true,follow_up_note:'เปลี่ยนคาปาซิเตอร์คอยล์ร้อนรอบหน้า',readings:{'แรงดันน้ำยา':'120 psi','กระแส':'6.2 A'},photos:[]},
             {done_at:addDays(t,-150)+'T10:00:00Z',kind:'pm',team:'ทีม2',job_id:'PR428000',condition:'ปกติ',readings:{},photos:[]}]});}
   const dJobs=[
-    {id:'PR431019',branch:'Pun Thai บางแวก (พุทธมณฑลสาย3)',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:addDays(t,-2),status:'รอช่างส่งงาน',level:'Level 1',detail:'- ตู้แช่เค้ก//ยี่ห้อ SYSTEMFORM\n- ตู้เค้กมีเสียงดังตลอดเวลา และไม่ทำความเย็น',phone:'061-0313386',waitingAdmin:false,inProgress:false,started:null},
+    {id:'PR431019',branch:'Pun Thai บางแวก (พุทธมณฑลสาย3)',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:addDays(t,-2),status:'รอช่างส่งงาน',level:'Level 1',detail:'- ตู้แช่เค้ก//ยี่ห้อ SYSTEMFORM\n- ตู้เค้กมีเสียงดังตลอดเวลา และไม่ทำความเย็น',phone:'061-0313386',branchPhone:'02-111-2233',docs:[{name:'PR431019.pdf',url:'https://example.com/PR431019.pdf',kind:'workorder'},{name:'อนุมัติอะไหล่.jpg',url:'https://example.com/a.jpg',kind:'approval',image:true}],waitingAdmin:false,inProgress:false,started:null},
     {id:'PR431279',branch:'Pun Thai บางพระ1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:t,status:'ช่างกำลังเข้าซ่อม',level:'Level 1',detail:'แจ้งซ่อมหลอดไฟไม่ติดในตู้เค้ก และภายในตู้มีกลิ่นสารเคมี',phone:'0659424767',waitingAdmin:false,inProgress:true,started:{at:new Date().toISOString(),by:'ช่างอำนวย'}},
     {id:'PR430498',branch:'Lotus บางนา',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมแอร์',date:addDays(t,-2),status:'ช่างกำลังเข้าซ่อม',level:'2',detail:'แอร์ห้องเย็นน้ำแข็งเกาะคอยล์',phone:'',waitingAdmin:false,inProgress:true,started:{at:new Date(Date.now()-2*86400000).toISOString(),by:'ช่างอำนวย'}},
-    {id:'PR430557',branch:'Max Mart ตลาดไท1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมแอร์',date:addDays(t,3),status:'รอช่างเข้าซ่อม',level:'3',detail:'แอร์เปิดแล้วสวิทซ์คัทเอาท์ดีด แอร์ตัวที่ 3 (อนุมัติอะไหล่แล้ว)',phone:'064-9342803',waitingAdmin:false,inProgress:false,started:null},
+    {id:'PR430557',branch:'Max Mart ตลาดไท1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมแอร์',date:addDays(t,3),status:'รอช่างเข้าซ่อม',level:'3',detail:'แอร์เปิดแล้วสวิทซ์คัทเอาท์ดีด แอร์ตัวที่ 3 (อนุมัติอะไหล่แล้ว)',phone:'064-9342803',docs:[{name:'PR430557.pdf',url:'https://example.com/PR430557.pdf',kind:'workorder'}],waitingAdmin:false,inProgress:false,started:null},
     {id:'PR430492',branch:'Pun Thai พนมสารคาม5',client:'',type:'PM แอร์ และ ตู้แช่',date:'',status:'รอดำเนินการ',level:'3',detail:'PM โครงการ PM แอร์ / ตู้แช่ 2026 รอบที่ 2',phone:'',waitingAdmin:false,inProgress:false,started:null},
     {id:'PR428711',branch:'Max Mart กบินทร์บุรี8',client:'',type:'ซ่อมแอร์',date:addDays(t,-5),status:'ช่างส่งงานแล้ว',level:'3',detail:'',phone:'',waitingAdmin:true,inProgress:false,started:{at:new Date(Date.now()-5*864e5).toISOString(),by:'ช่างอำนวย'},techSubmittedAt:new Date(Date.now()-4*864e5).toISOString(),reportStatus:'รอตรวจ',dateIn:addDays(t,-5),timeIn:'10:30',dateDone:addDays(t,-5),timeDone:'15:00'},
     {id:'PR-429095',branch:'MAGURO สาขา INT-INTERSECT RAMA 3',client:'บริษัท มากุโระ กรุ๊ป จำกัด (มหาชน)',type:'ซ่อมแอร์',date:addDays(t,-9),status:'ปิดงาน',level:'3',detail:'แอร์ไม่เย็น',phone:'',waitingAdmin:false,inProgress:false,done:true,started:null}
