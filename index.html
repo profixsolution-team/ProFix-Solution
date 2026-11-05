@@ -7917,8 +7917,11 @@ function salesTaxSummaryHtml(inv,items){
   const coAddr=esc(company.address||'');
   const coPhone=esc(company.phone||'-');
   const coTax=esc(company.taxId||'-');
-  const sellerSig=salesDocImageUrl(inv.seller_signature_url||'');
+  // ลายเซ็นผู้ออกบิล: ของใบนี้ → ไม่มี (ใบเก่า) ใช้ลายเซ็นที่บันทึกไว้กับชื่อผู้เซ็น · ใช้ทั้งช่อง "ผู้ส่งสินค้า" และ "ผู้มีอำนาจลงนาม"
+  const sellerProfileSig=((salesSignerProfiles||[]).find(x=>String(x.name||'').trim().toLowerCase()===String(inv.seller_name||'').trim().toLowerCase()&&inv.seller_name)||{}).signature||'';
+  const sellerSig=salesDocImageUrl(inv.seller_signature_url||sellerProfileSig||'');
   const sellerSigHtml=sellerSig?`<img class="sig-img" src="${esc(sellerSig)}" alt="ลายเซ็นผู้มีอำนาจลงนาม">`:'';
+  const senderSigHtml=sellerSig?`<img class="sig-img" src="${esc(sellerSig)}" alt="ลายเซ็นผู้ส่งสินค้า">`:'';
   const sellerName=esc(inv.seller_name||'');
   const minRows=16;
   const blank=Math.max(0,minRows-lineRows.length);
@@ -7984,7 +7987,7 @@ function salesTaxSummaryHtml(inv,items){
   </section>
   <section class="signs">
     <div class="sg"><div class="sg-top">ได้รับสินค้าตามรายการข้างบนไว้เรียบร้อยแล้ว</div><div class="sg-sp"></div><div class="sg-lbl">ผู้รับสินค้า</div><div class="sg-lbl">วันที่</div></div>
-    <div class="sg"><div class="sg-top">&nbsp;</div><div class="sg-sp"></div><div class="sg-lbl">ผู้ส่งสินค้า</div><div class="sg-lbl">วันที่</div></div>
+    <div class="sg"><div class="sg-top">&nbsp;</div><div class="sg-sp">${senderSigHtml}</div><div class="sg-lbl">ผู้ส่งสินค้า${sellerName?' ( '+sellerName+' )':''}</div><div class="sg-lbl">วันที่</div></div>
     <div class="sg sg-co"><div class="sg-top">${coName}</div><div class="sg-sp">${sellerSigHtml}</div><div class="sg-lbl">${sellerName?'( '+sellerName+' )':'&nbsp;'}</div><div class="sg-lbl">ผู้มีอำนาจลงนาม</div></div>
   </section>
   </div></section>`;
@@ -8830,7 +8833,7 @@ function openSalesModal(id='',prefJobId='',docType=''){
   salesConvertSourceId=inv?.source_doc_id||'';
   document.getElementById('sale-no').value=inv?.doc_no||inv?.sales_invoice_no||nextNo;
   document.getElementById('sale-no').dataset.orig=inv?(inv.doc_no||inv.sales_invoice_no||''):''; // เลขเดิมตอนเปิดแก้ไข (ใช้ตอนเปลี่ยนเดือน)
-  document.getElementById('sale-no').dataset.origCo=inv?String(inv.company_name||'').trim():''; // บริษัทเดิมตอนเปิดแก้ไข (ใช้ตอนเปลี่ยนบริษัท)
+  document.getElementById('sale-no').dataset.origCo=inv?String(inv.company_name||saleCompany.name||'').trim():''; // ใบเก่าที่ไม่มีชื่อบริษัท = ฟอร์มแสดงเป็น ProFix → นับว่าเดิมเป็น ProFix (เปลี่ยนเป็นบริษัทอื่นแล้วต้องรันเลขใหม่) // บริษัทเดิมตอนเปิดแก้ไข (ใช้ตอนเปลี่ยนบริษัท)
   document.getElementById('sale-no').dataset.autoFor='';
   const tplSel=document.getElementById('sale-doc-template');if(tplSel)tplSel.value=(inv?.doc_template&&inv.doc_template!=='summary')?inv.doc_template:'boq';
   // รูปแบบสรุป: เอกสารเดิม = ตามที่บันทึกไว้ · สร้างใหม่ = ใบกำกับภาษี/ใบแจ้งหนี้ใช้แบบสรุปเป็นค่าเริ่มต้น (ทุกทางเข้าได้หน้าตาเดียวกัน)
@@ -9631,6 +9634,15 @@ async function saveSalesInvoice(){if(!guardEdit())return;
   try{
     const isNewDoc=!document.getElementById('sale-id').value; // เอกสารใหม่เท่านั้นที่อนุญาตให้ขยับเลขเมื่อชนกัน (แก้ไขของเดิม = ห้ามเปลี่ยนเลข)
     const _noEl=document.getElementById('sale-no');
+    // ใบกำกับภาษีของบริษัทอื่น (พีพี / พีที) ต้องเป็นปี พ.ศ. 2 หลัก (69/MMNN) — ได้รูปแบบ ProFix (2026/MMNN) มา = รันเลขใหม่ตามบริษัทก่อนบันทึก
+    // (ใบใหม่ทำให้เลย · ใบเดิมถามก่อน เผื่อเลขนั้นส่งลูกค้าไปแล้ว) · ProFix ใบเก่าที่เป็น 69/ ไม่ยุ่ง
+    {const dt0=document.getElementById('sale-doc-type')?.value||'tax_invoice',co0=document.getElementById('sale-company-name')?.value||quoteCompanyDefaults().name,m0=dt0==='tax_invoice'&&_noEl?parseTaxInvoiceNo(_noEl.value.trim()):null;
+      const y4=m0&&String(m0[1]).split('/')[0].length===4,pf=isProfixCompany(co0);
+      if(m0&&((y4&&!pf)||(isNewDoc&&!y4&&pf))){
+        const old=_noEl.value.trim();
+        if(isNewDoc||confirm(`เลขที่ใบกำกับ ${old} เป็นรูปแบบของ ProFix (ปี ค.ศ. 4 หลัก)\nแต่บริษัทที่ออกบิลคือ ${co0}\n\nOK = รันเลขใหม่ตามบริษัทนี้ (ปี พ.ศ. 2 หลัก) แล้วบันทึก\nCancel = เก็บเลขเดิมไว้ (เช่น ส่งใบนี้ให้ลูกค้าไปแล้ว)`)){
+          saleRenumberByCompany();setAccountingStatus('sales',`รูปแบบเลขไม่ตรงบริษัท — เปลี่ยน ${old} เป็น ${_noEl.value.trim()}`,'warn');}
+      }}
     const renumberedOnEdit=!isNewDoc&&_noEl&&_noEl.dataset.orig&&_noEl.value.trim()!==_noEl.dataset.orig; // แก้ไขแล้วเปลี่ยนเดือน → เลขใหม่ ชนได้ → ให้ขยับได้เหมือนเอกสารใหม่
     const id=document.getElementById('sale-id').value||newAccountingId('SINV');
     const pendingInput=(document.getElementById('sale-job-input')?.value||'').trim();
