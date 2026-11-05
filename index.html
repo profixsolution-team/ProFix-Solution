@@ -2861,6 +2861,11 @@ const jobIncome = j => Number(j.pc||0) + Number(j.partR||0) + Number(j.fuel||0);
 // กลุ่มสถานะงานที่ใช้สรุปตัวเลขหน้าแดชบอร์ด/จ่ายช่าง — ต้องตรงกับสถานะจริงใน J_ST
 // (ของเดิมกรองด้วยชื่อสถานะที่ไม่มีอยู่จริง เช่น 'รอเปิดงาน'/'Reject'/'เสร็จงาน' → การ์ดเลยขึ้น 0 ตลอด)
 const JOB_DONE_STATUSES=new Set(['ปิดงาน','แอดมินตรวจแล้ว','ดำเนินการแล้ว','ปิดงานสำรวจ']);
+// งานที่ช่างส่งงานแล้ว (ช่างส่งงาน → แอดมินตรวจ → รอวางบิล → รอออกใบกำกับภาษี → รอจ่าย(ช่าง) → ปิดงาน) = ไม่นับเป็น "งานค้าง"
+// รวมชื่อสถานะที่ตั้งเพิ่มเองในตั้งค่า เช่น "รอจ่ายช่าง" / "รอทำใบกำกับภาษี" (จับจากคำ)
+const JOB_AFTER_SUBMIT=new Set(['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','เสร็จงาน','รอวางบิล','รอออกใบกำกับภาษี','รอจ่าย','ปิดงาน','ปิดงานสำรวจ','ดำเนินการแล้ว','ยกเลิก']);
+function isJobAfterSubmit(st){st=String(st||'').trim();return JOB_AFTER_SUBMIT.has(st)||/วางบิล|ใบกำกับ|จ่ายช่าง|^รอจ่าย|^รอเก็บเงิน/.test(st);}
+function isJobPendingWork(j){return !!j&&!isJobAfterSubmit(j.status);} // งานค้างจริง (ช่างยังต้องทำ / รออนุมัติแล้วกลับไปทำ)
 const JOB_PENDING_STATUSES=new Set(['รอดำเนินการ','รอช่างเข้าซ่อม']);
 const JOB_PROBLEM_STATUSES=new Set(['ต้องแก้ไข','ติดปัญหา','Reject']);
 const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -5160,7 +5165,7 @@ function renderAdmin(){
     const mid='am-'+t.id;
     const stBadge=statusBadge(t,t.status||'-');
     const _opts=A_ST.concat(A_ST.includes(t.status)?[]:[t.status]).filter(Boolean);
-    return `<tr class="task-row${techUpdateRowClass(t)}" onclick="openAdminDetail('${t.id}')"><td class="at-pri-td">${mobileCard(pr||'ยังไม่เปิด PR',t.type,t.assign,t.due,stBadge)}<span class="at-dk">${atPriDot(t)}</span></td><td class="at-task"><div class="jq-two"><b>${esc(t.detail||t.type||'-')}</b><small>${esc(t.type||'')}${t.phone?' · '+esc(t.phone):''} · ${esc(t.id)}</small></div></td><td class="jq-pr"><div class="jq-prid">${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${techUpdateMark(t)}${esc(pr)}</button>`:`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">＋ เปิดคิว</button>`}</div>${adminNeedsQueueBadge(t)||techUpdatePill(t)||pmJobChip(pr)?`<div class="jq-badges">${adminNeedsQueueBadge(t)?'<span class="queue-pill">รอจัดคิวช่าง</span>':''}${techUpdatePill(t)}${pmJobChip(pr)}</div>`:''}</td><td><div class="jq-two"><span>${esc(taskSiteText(t)||'-')}</span></div></td><td>${t.assign?`<span class="jq-team">${jqTeamAvatar(t.assign)}<span>${esc(t.assign)}</span></span>`:'<span class="tm">—</span>'}</td><td>${atDueHtml(t)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${pfStatusColor(t.status)}">${_opts.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
+    return `<tr class="task-row${techUpdateRowClass(t)}" onclick="openAdminDetail('${t.id}')"><td class="at-pri-td">${mobileCard(pr||'ยังไม่เปิด PR',t.type,t.assign,t.due,stBadge)}<span class="at-dk">${atPriDot(t)}</span></td><td class="at-task"><div class="jq-two"><b>${esc(t.detail||t.type||'-')}</b><small>${esc(t.type||'')}${t.phone?' · '+esc(t.phone):''} · ${esc(t.id)}</small>${linked?adminNotePill(linked):''}</div></td><td class="jq-pr"><div class="jq-prid">${pr?`<button class="link-btn" onclick="event.stopPropagation();${linked?`openDet('${pr}')`:`openJobFromAdmin('${t.id}')`}">${techUpdateMark(t)}${esc(pr)}</button>`:`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openJobFromAdmin('${t.id}')">＋ เปิดคิว</button>`}</div>${adminNeedsQueueBadge(t)||techUpdatePill(t)||pmJobChip(pr)?`<div class="jq-badges">${adminNeedsQueueBadge(t)?'<span class="queue-pill">รอจัดคิวช่าง</span>':''}${techUpdatePill(t)}${pmJobChip(pr)}</div>`:''}</td><td><div class="jq-two"><span>${esc(taskSiteText(t)||'-')}</span></div></td><td>${t.assign?`<span class="jq-team">${jqTeamAvatar(t.assign)}<span>${esc(t.assign)}</span></span>`:'<span class="tm">—</span>'}</td><td>${atDueHtml(t)}</td><td><select class="status-select" onclick="event.stopPropagation()" onchange="setAS('${t.id}',this.value)" style="color:${pfStatusColor(t.status)}">${_opts.map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openAdminDetail('${t.id}')">ดูรายละเอียด</button><button onclick="editAdminTask('${t.id}')">แก้ไข</button><button onclick="openJobFromAdmin('${t.id}')">เปิดคิวช่างจาก PR</button><button onclick="deleteAdminTask('${t.id}')">ลบงาน</button></div></td></tr>`;
   }).join('');
 }
 async function setAS(id,s){
@@ -5964,7 +5969,7 @@ function renderJobs(){
   window.__jobQueueFil=fil;try{jqRenderTags(fil,scoped);}catch(e){}
   const tb=document.getElementById('job-tbody');
   if(!fil.length){tb.innerHTML=trackerEmptyHtml('jobs',allJobs.length,8);return;}
-  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');const _b=`${techUpdatePill(j)}${level1Badge(j)}${techAcceptPill(j)}${pmJobChip(j.id)}`;const _late=jqLateDays(j);return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="jq-pr">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}<div class="jq-prid">${techUpdateMark(j)}${esc(j.id)}</div>${_b?`<div class="jq-badges">${_b}</div>`:''}</td><td><div class="jq-two"><b>${esc(j.branch||'-')}</b><small>${esc(j.client||'')}${j.ref&&j.ref!=='N/A'?' · '+esc(j.ref):''}</small></div></td><td>${esc(j.type||'-')}</td><td><span class="jq-team">${jqTeamAvatar(j.team)}<span>${esc(j.team||'-')}</span></span></td><td><div class="jq-two"><span class="${_late?'jq-late':''}">${esc(jqThDate(j.date))}${_late?` · เลย ${_late} วัน`:''}</span><small>Assign ${esc(jqThDate(j.assignedAt)||'-')}</small></div></td><td><select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="${SB[j.status]==='b-urgent'?'':'color:'+pfStatusColor(j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="jq-upd">${esc(jqRelTime(j.modifiedAt||j.techUpdateAt||''))}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
+  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');const _b=`${techUpdatePill(j)}${level1Badge(j)}${techAcceptPill(j)}${pmJobChip(j.id)}`;const _late=jqLateDays(j);return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="jq-pr">${mobileCard(j.id,j.type,j.team,j.date,stBadge)}<div class="jq-prid">${techUpdateMark(j)}${esc(j.id)}</div>${_b?`<div class="jq-badges">${_b}</div>`:''}</td><td><div class="jq-two"><b>${esc(j.branch||'-')}</b><small>${esc(j.client||'')}${j.ref&&j.ref!=='N/A'?' · '+esc(j.ref):''}</small>${adminNotePill(j)}</div></td><td>${esc(j.type||'-')}</td><td><span class="jq-team">${jqTeamAvatar(j.team)}<span>${esc(j.team||'-')}</span></span></td><td><div class="jq-two"><span class="${_late?'jq-late':''}">${esc(jqThDate(j.date))}${_late?` · เลย ${_late} วัน`:''}</span><small>Assign ${esc(jqThDate(j.assignedAt)||'-')}</small></div></td><td><select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="${SB[j.status]==='b-urgent'?'':'color:'+pfStatusColor(j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="jq-upd">${esc(jqRelTime(j.modifiedAt||j.techUpdateAt||''))}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
 async function setJS(id,s){if(!guardEdit())return;
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
@@ -13044,13 +13049,14 @@ async function approvePartsRepair(){
   const j=syncReportFormToJob();if(!j)return;
   j.status='รอช่างเข้าซ่อม';
   j.reportReviewStatus='รอช่างเข้าซ่อม';
-  j.reviewNote=document.getElementById('mrpt-review-note').value||'อนุมัติอะไหล่แล้ว รอช่างเข้าซ่อมต่อ';
+  j.reviewNote=document.getElementById('mrpt-review-note').value.trim(); // หมายเหตุจริงของแอดมินเท่านั้น — ข้อความอัตโนมัติไม่ทับ (ไปอยู่ในประวัติแทน)
+  const _evNote=j.reviewNote||'อนุมัติอะไหล่แล้ว รอช่างเข้าซ่อมต่อ';
   ensureJobStatus('รอช่างเข้าซ่อม');
-  syncAdminTasksFromReport(id,'รอช่างเข้าซ่อม',j.reviewNote);
+  syncAdminTasksFromReport(id,'รอช่างเข้าซ่อม',_evNote);
   j.technicianReport={...(j.technicianReport||{}),needQuote:false,noPhoto:{during:false,after:false},reviewStatus:'รอช่างเข้าซ่อม',reviewNote:j.reviewNote,approvedForRepairAt:new Date().toISOString()};
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
   try{
-    await patchJobAfterAdminReview(id,reportReviewPatch(j),{statuses:['รอช่างเข้าซ่อม'],adminTaskNote:j.reviewNote});
+    await patchJobAfterAdminReview(id,reportReviewPatch(j),{statuses:['รอช่างเข้าซ่อม'],adminTaskNote:_evNote});
     await writeAuditLog('approve_parts_repair','job',id,before,patchFromDiff(before||{},j),clonePlain(j));
   }catch(e){
     alert('บันทึกอนุมัติซ่อมต่อขึ้น Supabase ไม่สำเร็จ: '+e.message);
@@ -13064,13 +13070,14 @@ async function closeSurveyJob(){
   if(!confirm('ปิดงานนี้เป็นงานสำรวจใช่ไหม?'))return;
   j.status='ปิดงานสำรวจ';
   j.reportReviewStatus='ตรวจแล้ว';
-  j.reviewNote=document.getElementById('mrpt-review-note').value||'ไม่อนุมัติซ่อมต่อ / ปิดงานสำรวจ';
+  j.reviewNote=document.getElementById('mrpt-review-note').value.trim(); // หมายเหตุจริงของแอดมินเท่านั้น — ข้อความอัตโนมัติไม่ทับ (ไปอยู่ในประวัติแทน)
+  const _evNote=j.reviewNote||'ไม่อนุมัติซ่อมต่อ / ปิดงานสำรวจ';
   ensureJobStatus('ปิดงานสำรวจ');
-  syncAdminTasksFromReport(id,'ปิดงานสำรวจ',j.reviewNote);
+  syncAdminTasksFromReport(id,'ปิดงานสำรวจ',_evNote);
   j.technicianReport={...(j.technicianReport||{}),reviewStatus:'ตรวจแล้ว',reviewNote:j.reviewNote,closedSurveyAt:new Date().toISOString()};
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
   try{
-    await patchJobAfterAdminReview(id,reportReviewPatch(j),{statuses:['ปิดงานสำรวจ'],adminTaskNote:j.reviewNote});
+    await patchJobAfterAdminReview(id,reportReviewPatch(j),{statuses:['ปิดงานสำรวจ'],adminTaskNote:_evNote});
     await writeAuditLog('close_survey_job','job',id,before,patchFromDiff(before||{},j),clonePlain(j));
   }catch(e){
     alert('บันทึกปิดงานสำรวจขึ้น Supabase ไม่สำเร็จ: '+e.message);
@@ -13083,14 +13090,15 @@ async function approveReport(){
   const x=syncReportFormToJob();if(!x)return;
   x.reportReviewStatus='ตรวจแล้ว';
   x.status='แอดมินตรวจแล้ว';
-  x.reviewNote=document.getElementById('mrpt-review-note').value||'อนุมัติรายงานแล้ว';
+  x.reviewNote=document.getElementById('mrpt-review-note').value.trim(); // หมายเหตุจริงของแอดมินเท่านั้น — ข้อความอัตโนมัติไม่ทับ (ไปอยู่ในประวัติแทน)
+  const _evNote=x.reviewNote||'อนุมัติรายงานแล้ว';
   ensureJobStatus('แอดมินตรวจแล้ว');
-  syncAdminTasksFromReport(id,'แอดมินตรวจแล้ว',x.reviewNote);
+  syncAdminTasksFromReport(id,'แอดมินตรวจแล้ว',_evNote);
   x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ตรวจแล้ว',reviewNote:x.reviewNote,reviewedAt:new Date().toISOString()};
   closeM('m-report');
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
   try{
-    await patchJobAfterAdminReview(id,reportReviewPatch(x),{statuses:['แอดมินตรวจแล้ว'],adminTaskNote:x.reviewNote});
+    await patchJobAfterAdminReview(id,reportReviewPatch(x),{statuses:['แอดมินตรวจแล้ว'],adminTaskNote:_evNote});
     await writeAuditLog('approve_report','job',id,before,patchFromDiff(before||{},x),clonePlain(x));
   }catch(e){
     alert('บันทึกอนุมัติรายงานขึ้น Supabase ไม่สำเร็จ: '+e.message);
@@ -13490,7 +13498,7 @@ function updateHeaderStats(page){
   try{
     const today=todayISO(),ym=today.slice(0,7);
     const live=liveJobs(),open=live.filter(j=>j.status!=='ปิดงาน');
-    const late=open.filter(j=>j.date&&String(j.date).slice(0,10)<today&&!PH_AFTER_TECH.has(j.status)).length;
+    const late=open.filter(j=>j.date&&String(j.date).slice(0,10)<today&&!PH_AFTER_TECH.has(j.status)&&isJobPendingWork(j)).length;
     if(page==='dashboard'){
       const h=new Date().getHours(),g=h<12?'สวัสดีตอนเช้า':h<17?'สวัสดีตอนบ่าย':'สวัสดีตอนเย็น';
       const who=(AUTH&&AUTH.display_name)?', '+AUTH.display_name:'';
@@ -13498,7 +13506,8 @@ function updateHeaderStats(page){
       phSet('dashboard',[['งานเปิดอยู่',open.length],['รอตรวจรายงาน',open.filter(j=>j.status==='ช่างส่งงานแล้ว').length],['ปิดงานเดือนนี้',live.filter(j=>j.status==='ปิดงาน'&&String(j.dateDone||j.date||'').slice(0,7)===ym).length]],g+who+' 👋',th);
     }else if(page==='jobs'){
       const in7=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
-      phSet('jobs',[['งานค้าง',open.length],['เลยวันนัด',late,late?'bad':''],['นัด 7 วันข้างหน้า',open.filter(j=>{const x=String(j.date||'').slice(0,10);return x>=today&&x<=in7&&!PH_AFTER_TECH.has(j.status);}).length]]);
+      const pend=open.filter(isJobPendingWork);
+      phSet('jobs',[['งานค้าง',pend.length],['เลยวันนัด',late,late?'bad':''],['นัด 7 วันข้างหน้า',open.filter(j=>{const x=String(j.date||'').slice(0,10);return x>=today&&x<=in7&&!PH_AFTER_TECH.has(j.status)&&isJobPendingWork(j);}).length]]);
     }else if(page==='admin-tracker'){
       const t=(adminTasks||[]).filter(x=>!isDeletedRecord(x)&&!['เสร็จแล้ว','ปิดงาน','Reject'].includes(x.status));
       const od=t.filter(x=>x.due&&String(x.due).slice(0,10)<today).length;
@@ -13667,12 +13676,12 @@ function jqEnsureModal(id,inner){let m=document.getElementById(id);if(!m){m=docu
 function openJobTeamSummary(){
   const base=(liveJobs()||[]).filter(j=>companyMatch('jobs',()=>jobCompanyId(j))&&inDateScope(j,'jobs'));
   const today=todayISO(),in7=new Date(Date.now()+7*864e5).toISOString().slice(0,10),ym=today.slice(0,7);
-  const open=base.filter(j=>j.status!=='ปิดงาน');
+  const open=base.filter(isJobPendingWork); // ช่างส่งงานแล้ว → รอวางบิล / ใบกำกับ / รอจ่าย = ไม่นับค้าง
   const late=j=>j.date&&String(j.date).slice(0,10)<today&&!JQ_AFTER_TECH.has(j.status);
   const soon=j=>{const d=String(j.date||'').slice(0,10);return d>=today&&d<=in7&&!JQ_AFTER_TECH.has(j.status);};
   const closedM=j=>j.status==='ปิดงาน'&&String(j.dateDone||j.date||'').slice(0,7)===ym;
   const teamNames=[...new Set([...teams.map(t=>t.name),...base.map(j=>j.team).filter(Boolean)])];
-  const order=jqStatusList({}).flatMap(([,ss])=>ss).filter(s=>s!=='ปิดงาน');
+  const order=jqStatusList({}).flatMap(([,ss])=>ss).filter(s=>!isJobAfterSubmit(s));
   const rows=teamNames.map(t=>{const tj=open.filter(j=>j.team===t);return {t,tj,late:tj.filter(late).length,soon:tj.filter(soon).length,done:base.filter(j=>j.team===t&&closedM(j)).length};}).filter(r=>r.tj.length||r.done).sort((a,b)=>b.tj.length-a.tj.length);
   const k=(l,v,c)=>`<div class="stat-card"><div class="stat-label">${l}</div><div class="stat-value" style="${c||''}">${v}</div></div>`;
   jqEnsureModal('m-jq-team',`<div class="modal" style="max-width:960px;"><div class="modal-header"><div><div class="modal-title">สรุปงานรายทีม</div><div class="tm" style="font-size:12px;margin-top:2px;">ตามตัวกรองบริษัท/วันที่ที่เลือกอยู่ · เน้นปริมาณงาน (ยอดเงินดูที่หน้าจ่ายช่าง/การเงิน)</div></div><button class="close-btn" onclick="closeM('m-jq-team')">×</button></div>
@@ -13757,7 +13766,7 @@ function openDet(id){
     <div class="dw-steps">${DW_FLOW.map((f,i)=>`<div class="${i<k?'done':i===k?'cur':''}">${f}</div>`).join('')}</div>
     <div class="dw-tabs">${[['ov','ภาพรวม'],['link','ลิงก์ช่าง / ลูกค้า'],['doc','เอกสาร & การเงิน']].map(([t,l])=>`<button type="button" class="dw-tab" data-t="${t}" onclick="dwTabSet('${t}')">${l}</button>`).join('')}</div></div>
   <div class="dw-pane" data-t="ov">
-    ${jobAdminNote(j)?`<div class="dw-note"${adminNoteStyle(j)}><div class="t">📝 หมายเหตุจากแอดมิน${j.technicianReport?.reviewedAt?`<small>${esc(String(j.technicianReport.reviewedAt).slice(0,10))}</small>`:'<small></small>'}</div>${esc(jobAdminNote(j))}</div>`:''}
+    ${adminNoteBlock(j)}
     <div class="dw-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${v}</b></div>`).join('')}</div>
     <div class="dw-box"><div class="dw-box-t">ลูกค้า / สาขา</div>${esc(j.client)} - ${esc(j.branch)}${j.ref?` (${esc(j.ref)})`:''}</div>
     <div class="dw-box"><div class="dw-box-t">รายละเอียดงาน</div>${esc(j.note||'-')}</div>
@@ -13781,8 +13790,29 @@ document.addEventListener('click',e=>{if(!e.target.closest('.dw-menu-w'))documen
 
 // หมายเหตุจากแอดมิน = ช่อง "หมายเหตุรีวิว" ตอนตรวจรายงานช่าง (j.reviewNote) — ช่างเห็นข้อความเดียวกันในแอป LINE
 // ข้อความอัตโนมัติ (เช่น "อนุมัติรายงานแล้ว") ไม่ขึ้นป้าย เพราะสถานะงานบอกอยู่แล้ว
+// แหล่งเดียว = j.reviewNote ของงาน (คิวช่าง / Admin Tracker / LINE ช่าง อ่านจากที่เดียวกัน) · แก้ได้จากหน้าตรวจรายงาน หรือปุ่ม 📝 ในหน้ารายละเอียด
 var ADMIN_AUTO_NOTES=new Set(['อนุมัติรายงานแล้ว','อนุมัติอะไหล่แล้ว รอช่างเข้าซ่อมต่อ','ไม่อนุมัติซ่อมต่อ / ปิดงานสำรวจ','บันทึกการตรวจรายงาน']);
-function jobAdminNote(j){const n=String((j&&(j.reviewNote||j.technicianReport?.reviewNote))||'').trim();return ADMIN_AUTO_NOTES.has(n)?'':n;}
+const ADMIN_AUTO_NOTE_RE=/^(เปลี่ยนสถานะเป็น .+|.+ เริ่มงานแล้ว \(LINE\)|.+ถึงสาขา.*|ช่างส่งงาน.*|ช่างบันทึกร่าง.*|แอดมินอนุมัติ.*)$/;
+function isAutoAdminNote(n){n=String(n||'').trim();return ADMIN_AUTO_NOTES.has(n)||ADMIN_AUTO_NOTE_RE.test(n);}
+function jobAdminNote(j){if(!j)return '';const n=String(('reviewNote' in j&&j.reviewNote!=null)?j.reviewNote:(j.technicianReport?.reviewNote||'')).trim();return isAutoAdminNote(n)?'':n;}
+// แก้หมายเหตุแอดมินจากหน้ารายละเอียด (คิวช่าง / Admin) — บันทึกที่งานในคิวช่าง ทุกหน้าเห็นตรงกัน
+async function editJobAdminNote(jobId,taskId){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const j=liveJobs().find(x=>sameJob(x.id,jobId));if(!j){alert('ไม่พบงานในคิวช่าง — เปิด PR ในคิวช่างก่อน');return;}
+  const v=await uiPrompt({title:'📝 หมายเหตุจากแอดมิน',label:`${j.id} · ${j.branch||''} — ขึ้นในคิวช่าง, Admin และ LINE ช่าง (เว้นว่าง = ลบหมายเหตุ)`,value:jobAdminNote(j),multiline:true});
+  if(v==null)return;
+  const note=String(v).trim(),before=clonePlain(j);
+  try{await patchJobFieldsOnServer(j.id,{reviewNote:note});
+    try{writeAuditLog('edit_admin_note','job',j.id,{reviewNote:before.reviewNote||''},{reviewNote:note},clonePlain(j));}catch(e){}
+    try{renderJobs();renderAdmin();}catch(e){}
+    const m=document.getElementById('m-detail');if(m&&m.classList.contains('open')){if(taskId)openAdminDetail(taskId);else openDet(j.id);}
+  }catch(e){alert('บันทึกหมายเหตุไม่สำเร็จ: '+(e.message||e));}
+}
+function adminNoteBlock(j,taskId){
+  if(!j)return '';const n=jobAdminNote(j),jid=esc(j.id).replace(/'/g,'&#39;'),tid=esc(taskId||'').replace(/'/g,'&#39;');
+  return n?`<div class="dw-note"${adminNoteStyle(j)}><div class="t">📝 หมายเหตุจากแอดมิน<small>${j.technicianReport?.reviewedAt?esc(String(j.technicianReport.reviewedAt).slice(0,10)):''} <button type="button" class="link-btn" style="font-size:11.5px" onclick="editJobAdminNote('${jid}','${tid}')">✏️ แก้</button></small></div>${esc(n)}</div>`
+    :`<div style="margin:0 0 10px"><button type="button" class="btn btn-ghost btn-sm" onclick="editJobAdminNote('${jid}','${tid}')">📝 เพิ่มหมายเหตุจากแอดมิน</button></div>`;
+}
 // สีป้าย = สีที่แอดมินเลือกตอนเขียนหมายเหตุในหน้าตรวจรายงานช่าง (ต่องาน) — ไม่ได้เลือก = สีเหลืองเริ่มต้น
 function jobAdminNoteColor(j){const c=String((j&&(j.reviewNoteColor||j.technicianReport?.reviewNoteColor))||'');return /^#[0-9a-f]{6}$/i.test(c)?c:'';}
 function adminNoteStyle(j){const c=jobAdminNoteColor(j);return c?` style="--an:${c}"`:'';}
@@ -13970,7 +14000,8 @@ function openAdminDetail(id){
     <div class="dw-status">${statusSel}${techUpdatePill(t)}<span style="flex:1"></span>${prim}<button class="btn btn-ghost" onclick="editAdminTask('${tid}')">✏️ แก้ไข</button></div>
     <div style="height:14px"></div></div>
   <div class="dw-pane on">
-    ${t.reportReviewNote?`<div class="dw-note"><div class="t">📝 หมายเหตุจากรายงานช่าง${t.reportReviewedAt?`<small>${esc(String(t.reportReviewedAt).slice(0,10))}</small>`:''}</div>${esc(t.reportReviewNote)}</div>`:''}
+    ${(()=>{const lj=liveJobs().find(j=>sameJob(j.id,t.jobId||''));if(lj)return adminNoteBlock(lj,t.id); // หมายเหตุเดียวกับคิวช่าง
+      return t.reportReviewNote&&!isAutoAdminNote(t.reportReviewNote)?`<div class="dw-note"><div class="t">📝 หมายเหตุ${t.reportReviewedAt?`<small>${esc(String(t.reportReviewedAt).slice(0,10))}</small>`:''}</div>${esc(t.reportReviewNote)}</div>`:'';})()}
     <div class="dw-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${v}</b></div>`).join('')}</div>
     <div class="dw-box"><div class="dw-box-t">ลูกค้า / สาขา</div>${esc(taskSiteText(t)||'-')}</div>
     <div class="dw-box"><div class="dw-box-t">รายละเอียด</div>${esc(t.detail||'-')}</div>
@@ -14481,7 +14512,7 @@ function jqTeamAvatar(team){
 // ----- หน้ารายชื่อทีม -----
 function renderTeamsV2(){
   const tb=document.getElementById('team-tbody');if(!tb)return;
-  const open=liveJobs().filter(j=>j.status!=='ปิดงาน');
+  const open=liveJobs().filter(isJobPendingWork);
   tb.innerHTML=teams.map((t,i)=>{const n=open.filter(j=>j.team===t.name).length;
     return `<tr class="tm2-row" onclick="openTeamModal(${i})"><td><div class="tm2-who">${jqTeamAvatar(t.name)}<div><b>${esc(t.name)}</b><small>${esc(t.note||'')}</small></div></div></td>
       <td>${esc(t.lead||'-')}</td><td class="mono" style="font-size:12px;">${esc(t.phone||'-')}</td><td>${t.skill?`<span class="chip">${esc(t.skill)}</span>`:'-'}</td>
