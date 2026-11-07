@@ -14775,13 +14775,14 @@ async function pmUpsert(table,rows){const out=await pmBulk(table,rows,'?on_confl
 // ---------- วันนัดแหล่งเดียว (แผน PM ↔ คิวช่าง) ----------
 // งานที่ผูก PR แล้ว: วันในแผน = วันนัดในคิวช่าง (j.date) · แก้วันในหน้า PM → คิวช่างเปลี่ยนตาม · แก้วันในคิวช่าง → แผนเปลี่ยนตาม (ตอนระบบไล่จับคู่ PR)
 // ไม่แตะงานที่ช่างเริ่มแล้ว / ส่งงาน / ปิดงานแล้ว · ตอนผูก PR (มี job_id ในแถว) ไม่ดันวันไปทับคิว — ใช้วันในคิวเป็นหลัก
-const PM_JOB_DONE_ST=['ปิดงาน','ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รอออกใบกำกับภาษี','รอวางบิล','ดำเนินการแล้ว','ปิดงานสำรวจ'];
+// งานเสร็จในมุม PM = ช่างส่งงานแล้วเป็นต้นไป (เกณฑ์เดียวกับงานค้าง · รวมรอวางบิล/ใบกำกับ/รอจ่ายช่าง) ยกเว้นงานยกเลิก
+function pmJobStDone(st){return isJobAfterSubmit(st)&&!/ยกเลิก/.test(String(st||''));}
 var pmPushIds=new Set(); // แถวที่ผูก PR พร้อมตั้งวันเอง (กล่องแผน PM ในหน้าเปิดงาน) → ให้ดันวันไปคิวได้
 var pmTeamPushIds=new Set(); // แถวที่แอดมินเปลี่ยนทีมเองในหน้า PM (เลือกทีม / แก้หลายสาขา / จัดวันเป็นชุด) → ดันทีมไปคิวช่าง
 // ทีมแหล่งเดียว: งานที่ผูก PR แล้ว ทีมในแผน = ทีมในคิวช่าง (ชื่อทีมสะกดต่างกันเล็กน้อย → ใช้ชื่อในรายชื่อทีม)
 function pmTeamCanon(t){t=String(t||'').trim();if(!t)return '';const k=x=>String(x||'').toLowerCase().replace(/[\s\-–—_.()]/g,'');const m=(typeof teams!=='undefined'&&teams||[]).find(x=>k(x.name)===k(t));return m?m.name:t;}
 function pmVTeam(v){const j=v&&v.job_id?pmJob(v.job_id):null;return (j&&pmTeamCanon(j.team))||(v&&v.team)||'';}
-function pmJobOpenFor(pr){if(!pr)return null;const j=liveJobs().find(x=>sameJob(x.id,pr));return j&&!pmStartOf(j)&&!PM_JOB_DONE_ST.includes(j.status)?j:null;}
+function pmJobOpenFor(pr){if(!pr)return null;const j=liveJobs().find(x=>sameJob(x.id,pr));return j&&!pmStartOf(j)&&!pmJobStDone(j.status)?j:null;}
 async function pmSyncJobDates(rows){
   let n=0;
   for(const r of rows||[]){
@@ -14838,7 +14839,7 @@ function pmVisitState(v){
   if(!v)return {k:'none',l:'ยังไม่จัด',c:'#94a3b8'};
   if(v.status==='skipped')return {k:'skip',l:'ข้าม',c:'#64748b'};
   const j=pmJob(v.job_id);
-  if(v.status==='done'||(j&&['ปิดงาน','ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รอออกใบกำกับภาษี','รอวางบิล'].includes(j.status)))return {k:'done',l:j?j.status:'เสร็จแล้ว',c:'#16a34a'};
+  if(v.status==='done'||(j&&pmJobStDone(j.status)))return {k:'done',l:j?j.status:'เสร็จแล้ว',c:'#16a34a'};
   if(v.job_id){if(j&&(pmStartOf(j)||PM_WORK_ST.includes(j.status)))return {k:'work',l:j.status,c:'#7c3aed'};return {k:'job',l:j?j.status:'มี PR',c:'#175fff'};}
   return {k:'plan',l:'รอ PR',c:'#d97706'};
 }
