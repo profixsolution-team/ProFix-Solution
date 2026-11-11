@@ -667,6 +667,11 @@ select option{background:var(--surface2);}
 .pmm-rbar.on{display:flex}
 .pmm-pinbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:600;background:#0b1220;color:#fff;border-radius:14px;padding:9px 14px;font-size:13px;display:none;gap:10px;align-items:center;box-shadow:0 8px 24px rgba(15,23,42,.3);max-width:90%}
 .pmm-pinbar.on{display:flex}
+.pmm-geo{position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,.18);padding:6px;max-height:340px;overflow:auto;font-size:13px}
+.pmm-geo>button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:7px 9px;cursor:pointer;color:var(--text);font:inherit}
+.pmm-geo>button:hover{background:var(--surface2)}.pmm-geo>button small{display:block;color:var(--text2);font-size:11.5px;line-height:1.4;margin-top:1px}
+.pmm-geo>.tm{padding:8px 9px}.pmm-gfoot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);margin-top:4px;padding:7px 9px 3px;font-size:12px}
+.pmm-gfoot a{font-weight:600}.pmm-gfoot button{margin-left:auto;background:none;border:0;color:var(--text2);cursor:pointer;font:inherit}
 .pmm-mtype{position:absolute;right:10px;bottom:22px;z-index:600}
 .pmm-legend{position:absolute;left:10px;bottom:22px;z-index:600;background:var(--surface);border-radius:12px;padding:8px 12px;font-size:12px;box-shadow:0 4px 18px rgba(15,23,42,.15);line-height:1.8;max-height:45%;overflow:auto}
 .pmm-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
@@ -10264,7 +10269,7 @@ function renderJobAccountingSection(jobId){
   const sales=salesInvoices.filter(x=>salesInvoiceMatchesJob(x,jobId)&&x.status!=='cancelled');
   const totalCost=costs.reduce((s,x)=>s+Number(x.cost_amount||0),0);
   const totalVat=costs.reduce((s,x)=>s+Number(x.vat_amount||0),0);
-  const salesTotal=sales.reduce((s,x)=>s+Number(x.total_amount||0),0);
+  const salesTotal=saleRevenueSum(sales).total; // ไม่นับใบเสนอราคา+ใบกำกับของงานเดียวกันซ้ำ
   const pending=techRows.filter(x=>x.matched_status==='pending').length;
   const stockMoves=stockMovements.filter(m=>sameJob(m.job_id,jobId)&&m.status!=='cancelled');
   el.innerHTML=`<div class="table-wrap" style="margin-top:14px;">
@@ -14582,6 +14587,34 @@ function setSaleTeamFilter(v){saleTeamFilter=v||'';try{localStorage.setItem('pro
 (function(){const o=window.filterAccountingList;if(typeof o!=='function')return;window.filterAccountingList=function(list,kind){const r=o.apply(this,arguments);
   if(kind!=='sale'||!saleTeamFilter)return r;const jm=saleJobMap();return r.filter(x=>{const t=saleDocTeams(x,jm);return saleTeamFilter==='__none'?!t.length:t.includes(saleTeamFilter);});};})();
 function saleDocTotal(d){return (d.doc_type||'')==='tax_invoice'&&typeof taxInvoiceLiveTotal==='function'?taxInvoiceLiveTotal(d):Number(d.total_amount||0);}
+// รายได้ไม่นับซ้ำ: งานเดียวมีหลายเอกสาร (ใบเสนอราคา → ใบกำกับภาษี → ใบแจ้งหนี้/ใบเสร็จ) → นับใบที่ไปไกลสุดใบเดียว
+//  ลำดับ ใบกำกับภาษี > ใบเสร็จ > ใบแจ้งหนี้ > ใบเสนอราคา · ใบที่มีใบลำดับสูงกว่าอ้างถึง (source_doc_id) หรือมี PR เดียวกัน = ไม่นับ
+//  ใบเสนอราคาฉบับเก่าที่ออกใหม่แทนแล้ว = ไม่นับ · เช็คกับเอกสารทุกใบ (ไม่ใช่แค่ตามตัวกรอง) กันนับซ้ำข้ามเดือน
+const SALE_REV_RANK={tax_invoice:4,receipt:3,invoice:2,quotation:1};
+function saleRevIndex(){
+  const all=(salesInvoices||[]).filter(d=>d.status!=='cancelled'),byId=new Map(all.map(d=>[String(d.id),d]));
+  const rk=d=>SALE_REV_RANK[d.doc_type||'tax_invoice']||0,up=(m,k,r)=>{if((m.get(k)||0)<r)m.set(k,r);};
+  const prMax=new Map(),srcMax=new Map(),prPaid=new Set(),srcPaid=new Set(),qKeep=new Map();
+  all.forEach(d=>{const r=rk(d),paid=r>1&&d.payment_status==='paid';salesInvoiceJobs(d).forEach(p=>{const k=normalizePR(p);if(!k)return;up(prMax,k,r);if(paid)prPaid.add(k);});});
+  (salesInvoiceItems||[]).forEach(it=>{if(it.status==='cancelled'||!it.source_doc_id)return;const d=byId.get(String(it.sales_invoice_id));if(!d)return;const k=String(it.source_doc_id);up(srcMax,k,rk(d));if(rk(d)>1&&d.payment_status==='paid')srcPaid.add(k);});
+  const qOk=p=>{const k=normalizePR(p);if(!qKeep.has(k))qKeep.set(k,new Set(quotationSetForJob(p).map(q=>String(q.id))));return qKeep.get(k).size?qKeep.get(k):null;};
+  return {rk,prMax,srcMax,prPaid,srcPaid,qOk};
+}
+function saleRevCounts(d,ix){
+  const r=ix.rk(d),id=String(d.id),prs=salesInvoiceJobs(d).map(normalizePR).filter(Boolean);
+  if((ix.srcMax.get(id)||0)>r)return false;
+  if(prs.some(k=>(ix.prMax.get(k)||0)>r))return false;
+  if(r===1&&prs.length&&!salesInvoiceJobs(d).some(p=>{const s=ix.qOk(p);return !s||s.has(id);}))return false;
+  return true;
+}
+function saleRevPaid(d,ix){return d.payment_status==='paid'||ix.srcPaid.has(String(d.id))||salesInvoiceJobs(d).some(p=>ix.prPaid.has(normalizePR(p)));}
+// {total, billed=ออกบิลแล้ว, quoted=ใบเสนอราคาที่ยังไม่ออกบิล, unpaid=บิลที่ยังไม่รับเงิน (ไม่รวมใบเสนอราคา), n=จำนวนใบที่นับ}
+function saleRevenueSum(list){
+  const ix=saleRevIndex(),o={total:0,billed:0,quoted:0,unpaid:0,n:0,docs:list.length};
+  list.forEach(d=>{if(d.status==='cancelled'||!saleRevCounts(d,ix))return;const v=saleDocTotal(d);o.n++;o.total+=v;
+    if((d.doc_type||'tax_invoice')==='quotation')o.quoted+=v;else{o.billed+=v;if(!saleRevPaid(d,ix))o.unpaid+=v;}});
+  return o;
+}
 function saleTypeCounts(){const keep=saleDocType;saleDocType='';let base=[];try{base=filterAccountingList(salesInvoices,'sale');}finally{saleDocType=keep;}
   const c={'':base.length};Object.keys(SALES_DOC_META).forEach(k=>{c[k]=base.filter(x=>(x.doc_type||'tax_invoice')===k).length;});return c;}
 function buildSalesControlsV2(){
@@ -14616,16 +14649,21 @@ function saleRenderTags(list){
   if(saleTeamFilter)tags.push(['tm',saleTeamFilter==='__none'?'ไม่มีทีม':saleTeamFilter]);
   if(st.month)tags.push(['dt','เดือน '+st.month]);else if(st.date||st.dateTo)tags.push(['dt',(st.date||'…')+' ถึง '+(st.dateTo||'…')]);else if(st.range)tags.push(['dt',st.range==='today'?'วันนี้':'สัปดาห์นี้']);
   const pk=salesPicked.size?pickedSalesDocs():null,sl=pk||list;
-  const unpaid=sl.filter(x=>x.payment_status!=='paid').reduce((s,x)=>s+saleDocTotal(x),0);
-  el.innerHTML=`<span class="tm">${pk?`<b style="color:var(--accent)">เลือก ${pk.length} ใบ</b> · `:''}รวม ฿${money(sl.reduce((s,x)=>s+saleDocTotal(x),0))} · ค้างรับ ฿${money(unpaid)}</span>`+(tags.length?tags.map(([k,l])=>`<span class="jq-tag">${esc(l)}<button type="button" onclick="saleUntag('${k}')" title="เอาตัวกรองนี้ออก">×</button></span>`).join('')+`<button type="button" class="jq-link" onclick="saleTeamFilter='';try{localStorage.setItem('profix_sale_team','')}catch(e){};clearAccountingFilter('sale');const i=document.getElementById('sale-search-input');if(i)i.value='';">ล้างทั้งหมด</button>`:'');
+  let sumTxt;
+  if(pk||st.docType){const unpaid=sl.filter(x=>x.payment_status!=='paid').reduce((s,x)=>s+saleDocTotal(x),0);sumTxt=`${pk?`<b style="color:var(--accent)">เลือก ${pk.length} ใบ</b> · `:''}รวม ฿${money(sl.reduce((s,x)=>s+saleDocTotal(x),0))} · ค้างรับ ฿${money(unpaid)}`;}
+  else{const rv=saleRevenueSum(sl);sumTxt=`<span title="งานเดียวมีหลายใบ (ใบเสนอราคา → ใบกำกับภาษี → ใบแจ้งหนี้) นับใบที่ไปไกลสุดใบเดียว · ใบเสนอราคาฉบับเก่าที่ออกใหม่แทนแล้วไม่นับ">รายได้ ฿${money(rv.total)} = ออกบิลแล้ว ฿${money(rv.billed)} + ใบเสนอราคายังไม่ออกบิล ฿${money(rv.quoted)} · ค้างรับ ฿${money(rv.unpaid)}${rv.docs>rv.n?` · <i>ไม่นับซ้ำ ${rv.docs-rv.n} ใบ</i>`:''}</span>`;}
+  el.innerHTML=`<span class="tm">${sumTxt}</span>`+(tags.length?tags.map(([k,l])=>`<span class="jq-tag">${esc(l)}<button type="button" onclick="saleUntag('${k}')" title="เอาตัวกรองนี้ออก">×</button></span>`).join('')+`<button type="button" class="jq-link" onclick="saleTeamFilter='';try{localStorage.setItem('profix_sale_team','')}catch(e){};clearAccountingFilter('sale');const i=document.getElementById('sale-search-input');if(i)i.value='';">ล้างทั้งหมด</button>`:'');
 }
 function saleUntag(k){if(k==='q'){saleSearch='';const i=document.getElementById('sale-search-input');if(i)i.value='';}if(k==='ty')saleDocType='';if(k==='tm'){saleTeamFilter='';try{localStorage.setItem('profix_sale_team','');}catch(e){}}if(k==='dt'){saleDate='';saleDateTo='';saleMonth='';saleRange='';}renderSalesTax();}
 // หัวหน้า: ตัวเลขสรุปตามตัวกรอง (แทนการ์ด 4 ใบเดิม) · ติ๊กเลือกเอกสาร = นับเฉพาะที่เลือก
 function saleSummaryUpdate(list){
   if(!list)list=filterAccountingList(salesInvoices,'sale');
-  const pk=salesPicked.size?pickedSalesDocs():null,sl=pk||list;
-  const total=sl.reduce((s,x)=>s+saleDocTotal(x),0),unpaid=sl.filter(x=>x.payment_status!=='paid').reduce((s,x)=>s+saleDocTotal(x),0);
-  phSet('sales-tax',[[pk?`ยอดรวม (เลือก ${pk.length} ใบ)`:'ยอดรวม (ตามตัวกรอง)','฿'+money(total)],['ยังไม่รับเงิน','฿'+money(unpaid),unpaid?'bad':''],['เอกสาร',pk?`${pk.length} / ${list.length} ใบ`:list.length+' ใบ']],'เอกสารขาย','ใบเสนอราคา · ใบแจ้งหนี้ · ใบกำกับภาษี · ใบเสร็จ — คลิกแถวเพื่อพรีวิว · ติ๊กเลือกเอกสาร = ยอดรวมนับเฉพาะที่เลือก');
+  const pk=salesPicked.size?pickedSalesDocs():null,sl=pk||list,ty=accountingFilterState('sale').docType;
+  // เลือกประเภทเดียว / ติ๊กเลือกเอง = บวกตรงตามที่เห็น · ทั้งหมด = รายได้ไม่นับซ้ำ (งานละ 1 ยอด)
+  const plain=!!(pk||ty),rv=plain?null:saleRevenueSum(sl);
+  const total=plain?sl.reduce((s,x)=>s+saleDocTotal(x),0):rv.total,unpaid=plain?sl.filter(x=>x.payment_status!=='paid').reduce((s,x)=>s+saleDocTotal(x),0):rv.unpaid;
+  const tl=pk?`ยอดรวม (เลือก ${pk.length} ใบ)`:ty?`ยอดรวม${(SALES_DOC_META[ty]||{}).title||''}`:'รายได้ (งานละ 1 ยอด)';
+  phSet('sales-tax',[[tl,'฿'+money(total)],[plain?'ยังไม่รับเงิน':'ออกบิลแล้ว ยังไม่รับเงิน','฿'+money(unpaid),unpaid?'bad':''],['เอกสาร',pk?`${pk.length} / ${list.length} ใบ`:list.length+' ใบ']],'เอกสารขาย','ใบเสนอราคา · ใบแจ้งหนี้ · ใบกำกับภาษี · ใบเสร็จ — คลิกแถวเพื่อพรีวิว · ติ๊กเลือกเอกสาร = ยอดรวมนับเฉพาะที่เลือก');
   saleRenderTags(list);
 }
 (function(){const o=window.renderSalesTax;if(typeof o!=='function')return;window.renderSalesTax=function(){const r=o.apply(this,arguments);try{
@@ -15510,7 +15548,7 @@ function pmMapHtml(){
         <select class="filter-select" style="flex:1" onchange="pmMap.fteam=this.value;pmMapDraw();pmMapPanels()"><option value="">ทุกทีม</option>${tms.map(t=>`<option${pmMap.fteam===t?' selected':''}>${esc(t)}</option>`).join('')}</select></div></div>
       <div id="pmm-kpi" class="pmm-kpi"></div><div id="pmm-nogeo"></div><div class="pmm-list" id="pmm-list"></div></div>
     <div class="pmm-mapcol"><div id="pmm-slot" class="pmm-slot"><div class="d2-empty">กำลังโหลดแผนที่...</div></div>
-      <div class="pmm-search"><input id="pmm-ms" class="filter-input" placeholder="🔍 วางพิกัด (13.3611, 100.9847) · ลิงก์ Google Maps · หรือชื่อสาขา" onkeydown="if(event.key==='Enter')pmMapSearch()"><button class="btn btn-primary btn-sm" onclick="pmMapSearch()">ค้นหา</button></div>
+      <div class="pmm-search"><input id="pmm-ms" class="filter-input" placeholder="🔍 ชื่อสถานที่ / ที่อยู่ · พิกัด (13.3611, 100.9847) · ลิงก์ Google Maps · ชื่อสาขา" onkeydown="if(event.key==='Enter')pmMapSearch();else if(event.key==='Escape')pmMapGeoClose()"><button class="btn btn-primary btn-sm" onclick="pmMapSearch()">ค้นหา</button></div>
       <div class="pmm-tools"><button type="button" class="btn btn-sm${pmMap.radius?' on':''}" id="pmm-tr" onclick="pmMapRadiusToggle()" title="กดสาขา แล้วเลือกสาขาในรัศมีรอบ ๆ">◎ เลือกในรัศมี</button><button type="button" class="btn btn-sm" id="pmm-tb" onclick="pmMapBoxToggle()" title="ลากกรอบบนแผนที่เพื่อเลือก">▭ ลากกรอบเลือก</button><button type="button" class="btn btn-sm" onclick="pmMapFit()">⤢ ดูทั้งหมด</button></div>
       <div class="pmm-rbar${pmMap.radius?' on':''}" id="pmm-rbar">รัศมี <input type="range" min="1" max="40" value="${pmMap.km}" oninput="pmMap.km=+this.value;pmMapRadiusPreview()"> <b id="pmm-rkm">${pmMap.km} กม.</b> <span class="tm" id="pmm-rinfo">กดสาขาที่เป็นจุดศูนย์กลาง</span><button class="btn btn-primary btn-sm" onclick="pmMapRadiusOk()">เลือก</button><button class="btn btn-ghost btn-sm" onclick="pmMapRadiusOff()">✕</button></div>
       <div class="pmm-pinbar" id="pmm-pinbar"></div>
@@ -15620,27 +15658,48 @@ function pmMapSearch(){
   const t=(document.getElementById('pmm-ms')?.value||'').trim();if(!t||!pmL)return;
   if(/goo\.gl|maps\.app/i.test(t)){alert('ลิงก์ย่อของ Google Maps อ่านพิกัดไม่ได้\n\nเปิดลิงก์ใน Google Maps → กดค้างที่หมุด → คัดลอกตัวเลขพิกัด แล้ววางที่นี่แทน');return;}
   const g=pmGeoParse(t);
+  pmMapGeoClose();
   if(g){if(pmMap.pinFor){pmMapSetGeo(pmMap.pinFor,g);return;}pmMapShowFound(g);return;}
-  const q=pmNorm(t),r=pmMapRows().find(x=>pmNorm(x.s.branch).includes(q));
-  if(r){pmMapGo(r.s.id);return;}
-  alert('ไม่พบ — วางพิกัดแบบ 13.3611, 100.9847 หรือลิงก์ Google Maps หรือพิมพ์ชื่อสาขา');
+  // กำลังปักหมุดให้สาขา → ข้อความที่พิมพ์ = ที่อยู่/สถานที่ ไม่ใช่ชื่อสาขาในแผน
+  if(!pmMap.pinFor){const q=pmNorm(t),r=pmMapRows().find(x=>pmNorm(x.s.branch).includes(q));if(r){pmMapGo(r.s.id);return;}}
+  pmMapGeocode(t);
 }
-function pmMapShowFound(g){
+// ค้นหาชื่อสถานที่/ที่อยู่ในแผนที่ OpenStreetMap (Nominatim · ฟรี ไม่ต้องใช้คีย์ · จำกัด 1 ครั้ง/วินาที)
+// เลือกผล → ขึ้นหมุด 📍 ให้ตรวจตำแหน่งก่อน แล้วค่อยกด "บันทึกพิกัด" ให้สาขา · ไม่เจอ → ปุ่มเปิดค้นหาใน Google Maps
+var pmGeoReqT=0;
+async function pmMapGeocode(t){
+  const box=pmMapGeoBox();box.innerHTML='<div class="tm">กำลังค้นหา “'+esc(t)+'” …</div>';
+  const wait=1100-(Date.now()-pmGeoReqT);if(wait>0)await new Promise(r=>setTimeout(r,wait));pmGeoReqT=Date.now();
+  let res=null;
+  try{const r=await fetch('https://nominatim.openstreetmap.org/search?'+new URLSearchParams({format:'jsonv2',countrycodes:'th','accept-language':'th',limit:'6',q:t}));if(r.ok)res=await r.json();}catch(e){console.warn('geocode',e);}
+  pmMap.geoRes=(Array.isArray(res)?res:[]).map(x=>({g:[+x.lat,+x.lon],name:x.name||'',addr:x.display_name||''})).filter(x=>isFinite(x.g[0])&&isFinite(x.g[1]));
+  const s=pmMap.pinFor&&pm.sites.find(x=>x.id===pmMap.pinFor);
+  box.innerHTML=(res===null?'<div class="tm">ค้นหาไม่สำเร็จ (เน็ตหรือบริการแผนที่ขัดข้อง) — ลองใหม่อีกครั้ง</div>'
+      :pmMap.geoRes.length?pmMap.geoRes.map((x,i)=>`<button type="button" onclick="pmMapGeoPick(${i})"><b>${esc(x.name||x.addr.split(',')[0])}</b><small>${esc(x.addr)}</small></button>`).join('')
+      :'<div class="tm">ไม่พบในแผนที่ OpenStreetMap — ลองพิมพ์สั้นลง เช่น ชื่อห้าง/ถนน + อำเภอ หรือหาใน Google Maps</div>')
+    +`<div class="pmm-gfoot"><a href="https://www.google.com/maps/search/${encodeURIComponent(t)}" target="_blank" rel="noopener">หาใน Google Maps ↗</a><span class="tm">เจอแล้วกดค้างที่จุด → คัดลอกตัวเลขพิกัด → วางในช่องค้นหา${s?' (ตั้งให้ '+esc(s.branch)+' ทันที)':''}</span><button type="button" onclick="pmMapGeoClose()">ปิด</button></div>`;
+}
+function pmMapGeoBox(){let b=document.getElementById('pmm-geo');if(!b){b=document.createElement('div');b.id='pmm-geo';b.className='pmm-geo';document.querySelector('.pmm-search')?.appendChild(b);}b.style.display='';return b;}
+function pmMapGeoClose(){const b=document.getElementById('pmm-geo');if(b)b.style.display='none';}
+function pmMapGeoPick(i){const x=(pmMap.geoRes||[])[i];if(!x)return;pmMapGeoClose();pmMapShowFound(x.g,x.name||x.addr.split(',')[0]);}
+// ปุ่มในแถบปักหมุด: ค้นหาจากชื่อสาขา + จังหวัด
+function pmMapGeoFor(id){const s=pm.sites.find(x=>x.id===id);if(!s)return;const q=[s.branch,pmSiteGeo(s).prov].filter(Boolean).join(' ');const i=document.getElementById('pmm-ms');if(i)i.value=q;pmMapGeocode(q);}
+function pmMapShowFound(g,label){
   const {map}=pmL;if(pmL.found)map.removeLayer(pmL.found);
   const rows=pmMapRows(),near=rows.filter(r=>r.g).map(r=>({r,d:pmKm(g,r.g)})).sort((a,b)=>a.d-b.d).slice(0,3),ng=rows.filter(r=>!r.g);
   pmL.found=L.marker(g,{icon:L.divIcon({className:'',html:'<div style="font-size:30px;line-height:30px">📍</div>',iconSize:[30,30],iconAnchor:[15,30]})}).addTo(map)
-    .bindPopup(`<div class="pmm-pp"><b>จุดที่ค้นหา</b><div class="tm">${g[0].toFixed(6)}, ${g[1].toFixed(6)}${pmInTH(g)?'':' · <span class="tr">อยู่นอกประเทศไทย?</span>'}</div>
+    .bindPopup(`<div class="pmm-pp"><b>${esc(label||'จุดที่ค้นหา')}</b><div class="tm">${g[0].toFixed(6)}, ${g[1].toFixed(6)}${pmInTH(g)?'':' · <span class="tr">อยู่นอกประเทศไทย?</span>'}</div>
       ${near.length?`<div class="tm" style="margin-top:4px">สาขาใกล้สุด: ${near.map(x=>`${esc(x.r.s.branch)} (${x.d.toFixed(1)} กม.)`).join(' · ')}</div>`:''}
-      <select id="pmm-fs" style="width:100%;margin-top:6px"><option value="">— ตั้งเป็นพิกัดของสาขา… —</option>${ng.length?`<optgroup label="ยังไม่มีพิกัด">${ng.map(r=>`<option value="${esc(r.s.id)}">${esc(r.s.branch)}</option>`).join('')}</optgroup>`:''}<optgroup label="สาขาที่มีพิกัดแล้ว (ย้ายหมุด)">${rows.filter(r=>r.g).map(r=>`<option value="${esc(r.s.id)}">${esc(r.s.branch)}</option>`).join('')}</optgroup></select>
+      <select id="pmm-fs" style="width:100%;margin-top:6px"><option value="">— ตั้งเป็นพิกัดของสาขา… —</option>${ng.length?`<optgroup label="ยังไม่มีพิกัด">${ng.map(r=>`<option value="${esc(r.s.id)}"${r.s.id===pmMap.pinFor?' selected':''}>${esc(r.s.branch)}</option>`).join('')}</optgroup>`:''}<optgroup label="สาขาที่มีพิกัดแล้ว (ย้ายหมุด)">${rows.filter(r=>r.g).map(r=>`<option value="${esc(r.s.id)}"${r.s.id===pmMap.pinFor?' selected':''}>${esc(r.s.branch)}</option>`).join('')}</optgroup></select>
       <div class="pmm-a"><button class="p" onclick="const v=document.getElementById('pmm-fs').value;if(v)pmMapSetGeo(v,[${g[0]},${g[1]}])">บันทึกพิกัด</button>${pmMap.mode==='plan'?`<button onclick="pmMapRadiusFrom(${g[0]},${g[1]},'จุดที่ค้นหา')">◎ สาขาในรัศมี</button>`:''}<a href="${pmGmap(g)}" target="_blank" rel="noopener">Google Maps</a></div></div>`,{minWidth:290}).openPopup();
   map.flyTo(g,13);
 }
 function pmMapStartPin(id){
   const s=pm.sites.find(x=>x.id===id);if(!s)return;pmMap.pinFor=id;
-  const b=document.getElementById('pmm-pinbar');if(b){b.innerHTML=`📍 คลิกบนแผนที่ตรงที่ตั้ง <b>${esc(s.branch)}</b> · หรือวางพิกัด/ลิงก์ในช่องค้นหา <button class="btn btn-ghost btn-xs" onclick="pmMapEndPin()">ยกเลิก</button>`;b.classList.add('on');}
+  const b=document.getElementById('pmm-pinbar');if(b){b.innerHTML=`📍 คลิกบนแผนที่ตรงที่ตั้ง <b>${esc(s.branch)}</b> · หรือวางพิกัด/ลิงก์ในช่องค้นหา <button class="btn btn-primary btn-xs" onclick="pmMapGeoFor('${esc(id).replace(/'/g,'&#39;')}')">🔎 ค้นหาจากชื่อสาขา</button> <button class="btn btn-ghost btn-xs" onclick="pmMapEndPin()">ยกเลิก</button>`;b.classList.add('on');}
   if(pmL){pmL.map.getContainer().style.cursor='crosshair';const pv=pmSiteGeo(s).prov;const near=pv&&pmMapRows().find(r=>r.g&&pmSiteGeo(r.s).prov===pv);if(near)pmL.map.flyTo(near.g,12);}
 }
-function pmMapEndPin(){pmMap.pinFor='';document.getElementById('pmm-pinbar')?.classList.remove('on');if(pmL)pmL.map.getContainer().style.cursor='';}
+function pmMapEndPin(){pmMap.pinFor='';pmMapGeoClose();document.getElementById('pmm-pinbar')?.classList.remove('on');if(pmL)pmL.map.getContainer().style.cursor='';}
 async function pmMapSetGeo(id,g){
   if(typeof guardEdit==='function'&&!guardEdit())return;
   const s=pm.sites.find(x=>x.id===id);if(!s)return;
