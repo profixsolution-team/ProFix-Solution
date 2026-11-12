@@ -417,6 +417,7 @@ body[data-theme="light"] .cal-day.muted{background:#eef3f8;}
 .accounting-status.warn{color:var(--yellow);}
 .accounting-status.err{color:var(--red);}
 .accounting-line-table input,.accounting-line-table select{padding:6px 8px;font-size:12px;}
+.accounting-line-table textarea.si-desc{padding:6px 8px;font-size:12px;min-height:30px;height:30px;resize:none;overflow:hidden;line-height:1.45;display:block;}
 .accounting-line-table{min-width:980px;}
 .accounting-panel .table-wrap{max-width:100%;overflow-x:auto;}
 .accounting-line-table th,.accounting-line-table td{padding:6px 8px;}
@@ -7691,7 +7692,7 @@ function boqQuoteDocHtml(inv,items){
     // ค่าของ/ค่าแรง = ราคาต่อ 1 หน่วย, รวม = ราคาจริงตามปริมาณ
     const mat=(!isLabor&&unitPrice)?money(unitPrice):'-';
     const lab=(isLabor&&unitPrice)?money(unitPrice):'-';
-    return `<tr><td class="c">${i+1}</td><td>${esc(it.category||'')}</td><td class="c">${esc(it.item_code||'')}</td><td>${esc(it.description||'')}</td><td class="c">${esc(it.unit||'')}</td><td class="c">${it.quantity?money(it.quantity):''}</td><td class="r">${mat}</td><td class="r">${lab}</td><td class="r">${sub?money(sub):'-'}</td></tr>`;
+    return `<tr><td class="c">${i+1}</td><td>${esc(it.category||'')}</td><td class="c">${esc(it.item_code||'')}</td><td style="white-space:pre-line;overflow-wrap:anywhere">${esc(it.description||'')}</td><td class="c">${esc(it.unit||'')}</td><td class="c">${it.quantity?money(it.quantity):''}</td><td class="r">${mat}</td><td class="r">${lab}</td><td class="r">${sub?money(sub):'-'}</td></tr>`;
   }).join('');
   const blank=Math.max(0,12-items.length);
   const blankRows=Array.from({length:blank}).map(()=>`<tr><td class="c">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td class="r">-</td><td class="r">-</td><td class="r">-</td></tr>`).join('');
@@ -7837,7 +7838,7 @@ function salesDocHtml(inv,items){
 .sheet{position:relative;width:210mm;min-height:297mm;margin:56px auto 18px;padding:12mm 15mm 8mm;background:#fff;box-shadow:0 12px 34px rgba(16,24,40,.16);overflow:hidden;}
 .top{display:grid;grid-template-columns:1fr 78mm;align-items:start;gap:10mm}.brand-logo{width:56mm;max-height:28mm;object-fit:contain;object-position:left top}.doc-title{text-align:right;font-size:20px;font-weight:900;color:#05070a}.doc-meta{margin-top:10px;display:grid;grid-template-columns:1fr 54mm;gap:4px 8px;text-align:right;font-size:12px}.doc-meta b{font-size:13px;white-space:nowrap}
 .party{display:grid;grid-template-columns:1fr 1fr;gap:14mm;margin-top:6mm}.party h3{margin:0 0 4px;color:#6b7280;font-size:13px}.party .name{font-weight:800;color:#111827;margin-bottom:3px}.party div{color:#6b7280;margin:2px 0}
-.items{width:100%;border-collapse:collapse;margin-top:4mm;table-layout:fixed}.items th{background:${docTheme.primary};color:${docTheme.primaryText};font-weight:800;font-size:13px;padding:4px 4px;border:1px solid #d4dbe5}.items td{height:6.5mm;border:1px solid #d4dbe5;padding:2px 5px;vertical-align:middle}.items tbody tr:nth-child(odd){background:${docTheme.soft}}.items .no{width:8mm;text-align:center}.items .cat{width:22mm;font-size:11px;text-align:center}.items td.cat{color:#4b5563}.items .desc{width:auto}.items .qty{width:18mm;text-align:right}.items .unit{width:14mm;text-align:center}.items .price,.items .amount{width:26mm;text-align:right}
+.items{width:100%;border-collapse:collapse;margin-top:4mm;table-layout:fixed}.items th{background:${docTheme.primary};color:${docTheme.primaryText};font-weight:800;font-size:13px;padding:4px 4px;border:1px solid #d4dbe5}.items td{height:6.5mm;border:1px solid #d4dbe5;padding:2px 5px;vertical-align:middle}.items tbody tr:nth-child(odd){background:${docTheme.soft}}.items .no{width:8mm;text-align:center}.items .cat{width:22mm;font-size:11px;text-align:center}.items td.cat{color:#4b5563}.items .desc{width:auto}.items td.desc{white-space:pre-line;overflow-wrap:anywhere}.items .qty{width:18mm;text-align:right}.items .unit{width:14mm;text-align:center}.items .price,.items .amount{width:26mm;text-align:right}
 .note-total{display:grid;grid-template-columns:1fr 70mm;gap:10mm;margin-top:3mm;align-items:start}.note h3{margin:0 0 5px;color:#6b7280;font-size:13px}.note .box{white-space:pre-wrap;color:#697386;line-height:1.3;font-size:11px}.total table{width:100%;border-collapse:collapse}.total td{padding:3px 4px;font-size:13px}.total .label{font-weight:800}.total .right{text-align:right}.grand td{background:${docTheme.primary};color:${docTheme.primaryText};font-size:16px;font-weight:900;border:1px solid #fff}.amount-text{display:grid;grid-template-columns:22mm 1fr;gap:8px;width:70mm;margin:3mm 0 0 auto;font-weight:800}
 .signs{display:grid;grid-template-columns:1fr 1fr;gap:28mm;margin-top:4mm;color:#6b7280;font-size:11px;break-inside:avoid}.signature-box{height:16mm;display:flex;align-items:flex-end;justify-content:center}.signature-img{max-width:54mm;max-height:15mm;object-fit:contain;display:block}.sign-line{color:#111;text-align:center}.footer{margin-top:2mm;text-align:center;color:#7b8492;font-size:10px;font-style:italic;break-inside:avoid}.muted{color:#7b8795;font-size:10px}
 @media print{html,body{width:210mm;background:#fff;}.toolbar{display:none}.sheet{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:12mm 15mm 8mm;}.items thead{display:table-header-group}.items tr,.note-total,.amount-text,.signs,.footer{break-inside:avoid;page-break-inside:avoid}}</style></head>
@@ -7941,8 +7942,8 @@ function salesTaxSummaryHtml(inv,items){
   const minRows=16;
   const blank=Math.max(0,minRows-lineRows.length);
   const rowsHtml=lineRows.map(r=>isInv
-    ?`<tr><td class="c">${r.no}</td><td class="c">${esc(r.po)}</td><td>${esc(r.desc)}</td><td class="c">${esc(r.taxNo)}</td><td class="c">${money(r.qty).replace(/\.00$/,'')}</td><td class="r">${money(r.unitPrice)}</td><td class="r">${money(r.amount)}</td></tr>`
-    :`<tr><td class="c">${r.no}</td><td class="c">${esc(r.pr)}</td><td class="c">${esc(r.po)}</td><td>${esc(r.desc)}</td><td class="c">${money(r.qty).replace(/\.00$/,'')}</td><td class="r">${money(r.qty?Math.round(r.amount/r.qty*100)/100:r.amount)}</td><td class="r">${money(r.amount)}</td></tr>`
+    ?`<tr><td class="c">${r.no}</td><td class="c">${esc(r.po)}</td><td class="d">${esc(r.desc)}</td><td class="c">${esc(r.taxNo)}</td><td class="c">${money(r.qty).replace(/\.00$/,'')}</td><td class="r">${money(r.unitPrice)}</td><td class="r">${money(r.amount)}</td></tr>`
+    :`<tr><td class="c">${r.no}</td><td class="c">${esc(r.pr)}</td><td class="c">${esc(r.po)}</td><td class="d">${esc(r.desc)}</td><td class="c">${money(r.qty).replace(/\.00$/,'')}</td><td class="r">${money(r.qty?Math.round(r.amount/r.qty*100)/100:r.amount)}</td><td class="r">${money(r.amount)}</td></tr>`
   ).join('');
   const blankCells=7;
   const blankHtml=Array.from({length:blank}).map(()=>'<tr class="blank"><td class="c">&nbsp;</td>'+Array.from({length:blankCells-1}).map(()=>'<td></td>').join('')+'</tr>').join('');
@@ -8039,7 +8040,7 @@ body{margin:0;background:#e9edf2;color:#0b1220;font-size:12px;line-height:1.32;}
 .tbl td{border-left:1px solid #b9c4d4;border-right:1px solid #b9c4d4;padding:2px 6px;height:6.4mm;font-size:12px;vertical-align:middle;}
 .tbl tbody tr:last-child td{border-bottom:1px solid var(--theme,#17325c);}
 .tbl .c-no{width:11mm;}.tbl .c-code{width:20mm;}.tbl .c-qty{width:11mm;}.tbl .c-unit{width:20mm;}.tbl .c-amt{width:20mm;}
-.tbl .c-po{width:27mm;}.tbl .c-txno{width:30mm;}.tbl .c-price{width:20mm;}.tbl td{word-break:break-all;}
+.tbl .c-po{width:27mm;}.tbl .c-txno{width:30mm;}.tbl .c-price{width:20mm;}.tbl td{word-break:normal;overflow-wrap:anywhere;}.tbl td.d{white-space:pre-line;}
 .tbl td.c{text-align:center;}.tbl td.r{text-align:right;}
 .tbl tbody{border-left:1px solid var(--theme,#17325c);border-right:1px solid var(--theme,#17325c);}
 .mid{display:grid;grid-template-columns:1fr 62mm;gap:0;margin-top:0;border-left:1px solid var(--theme,#17325c);border-right:1px solid var(--theme,#17325c);border-bottom:1px solid var(--theme,#17325c);}
@@ -9484,7 +9485,7 @@ function salesSuggestOpen(i,el){
   const q=el.value;
   const box=salesSuggestBox();
   if(!partsFresh&&!partsLoadingPromise)ensurePartsLoaded().then(()=>{if(salesSuggestState.el===el&&document.activeElement===el)salesSuggestOpen(i,el);}).catch(()=>{});
-  if(!String(q||'').trim()){box.hidden=true;return;}
+  if(!String(q||'').trim()||/\n/.test(q)){box.hidden=true;salesSuggestState.list=[];return;}
   const list=salesCatalogSearch(q);
   salesSuggestState.list=list;salesSuggestState.active=0;
   if(!list.length){
@@ -9511,7 +9512,9 @@ function salesSuggestKey(e,i,el){
   const open=box&&!box.hidden&&salesSuggestState.list.length;
   if(e.key==='ArrowDown'&&open){e.preventDefault();salesSuggestHover(Math.min(salesSuggestState.list.length-1,salesSuggestState.active+1));}
   else if(e.key==='ArrowUp'&&open){e.preventDefault();salesSuggestHover(Math.max(0,salesSuggestState.active-1));}
+  else if(e.key==='Enter'&&e.shiftKey){salesSuggestClose();} // ขึ้นบรรทัดใหม่ในช่องรายละเอียด
   else if(e.key==='Enter'&&open){e.preventDefault();salesSuggestPick(salesSuggestState.active);}
+  else if(e.key==='Enter'&&el&&el.tagName==='TEXTAREA'){e.preventDefault();}
   else if(e.key==='Escape'){salesSuggestClose();}
 }
 function salesSuggestBlur(){setTimeout(salesSuggestClose,150);}
@@ -9571,11 +9574,14 @@ function renderSalesItemEditorInner(el){
       +`<td class="mono ta li-no"><div style="display:flex;align-items:center;gap:3px;"><span class="sales-drag-handle" title="ลากเพื่อสลับลำดับ" draggable="true" ondragstart="salesDragStart(event,${i})" ondragend="salesDragEnd(event)" style="cursor:grab;color:var(--text3);">⠿</span><b>${i+1}</b><span style="display:inline-flex;flex-direction:column;">`
       +`<button class="icon-btn" type="button" title="เลื่อนขึ้น" style="padding:0 3px;line-height:1;font-size:10px;${i===0?'opacity:.25;pointer-events:none;':''}" onclick="moveSalesItem(${i},-1)">▲</button>`
       +`<button class="icon-btn" type="button" title="เลื่อนลง" style="padding:0 3px;line-height:1;font-size:10px;${i===n-1?'opacity:.25;pointer-events:none;':''}" onclick="moveSalesItem(${i},1)">▼</button></span></div><div style="margin-top:2px;">${salesSourceBadge(it.source_type)}</div></td>`
-      +`<td data-label="รหัส"><input value="${esc(it.item_code||'')}" onchange="updateSalesDraft(${i},'item_code',this.value)" placeholder="-"></td>${showPo?`<td data-label="เลข PO"><input value="${esc(it.po||'')}" onchange="updateSalesDraft(${i},'po',this.value)" placeholder="เลข PO"></td>`:''}<td class="li-wide" data-label="รายละเอียด"><input value="${esc(it.description||'')}" autocomplete="off" oninput="salesSuggestOpen(${i},this)" onfocus="salesSuggestOpen(${i},this)" onkeydown="salesSuggestKey(event,${i},this)" onblur="salesSuggestBlur()" onchange="updateSalesDraft(${i},'description',this.value)" placeholder="🔍 ค้นหาจากราคากลาง (ชื่อ / รหัส / หมวด)"></td><td data-label="หมวด"><select onchange="updateSalesDraft(${i},'category',this.value)">${catOpts(it)}</select></td><td data-label="จำนวน"><input type="number" min="0" step="any" value="${esc(it.quantity||1)}" onchange="updateSalesDraft(${i},'quantity',this.value)"></td><td data-label="หน่วย"><input value="${esc(it.unit||'')}" onchange="updateSalesDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td data-label="ราคา/หน่วย"><input type="number" min="0" step="any" value="${esc(it.unit_price||0)}" onchange="updateSalesDraft(${i},'unit_price',this.value)"></td><td data-label="ส่วนลด"><input type="number" min="0" step="any" value="${esc(it.discount||0)}" onchange="updateSalesDraft(${i},'discount',this.value)"></td><td class="mono tg" data-label="ยอดก่อน VAT">฿${money(subtotal)}</td>`
+      +`<td data-label="รหัส"><input value="${esc(it.item_code||'')}" onchange="updateSalesDraft(${i},'item_code',this.value)" placeholder="-"></td>${showPo?`<td data-label="เลข PO"><input value="${esc(it.po||'')}" onchange="updateSalesDraft(${i},'po',this.value)" placeholder="เลข PO"></td>`:''}<td class="li-wide" data-label="รายละเอียด"><textarea class="si-desc" rows="1" autocomplete="off" oninput="salesDescFit(this);salesSuggestOpen(${i},this)" onfocus="salesSuggestOpen(${i},this)" onkeydown="salesSuggestKey(event,${i},this)" onblur="salesSuggestBlur()" onchange="updateSalesDraft(${i},'description',this.value)" placeholder="🔍 ค้นหาจากราคากลาง (ชื่อ / รหัส / หมวด) · Shift+Enter = ขึ้นบรรทัดใหม่">${esc(it.description||'')}</textarea></td><td data-label="หมวด"><select onchange="updateSalesDraft(${i},'category',this.value)">${catOpts(it)}</select></td><td data-label="จำนวน"><input type="number" min="0" step="any" value="${esc(it.quantity||1)}" onchange="updateSalesDraft(${i},'quantity',this.value)"></td><td data-label="หน่วย"><input value="${esc(it.unit||'')}" onchange="updateSalesDraft(${i},'unit',this.value)" placeholder="หน่วย"></td><td data-label="ราคา/หน่วย"><input type="number" min="0" step="any" value="${esc(it.unit_price||0)}" onchange="updateSalesDraft(${i},'unit_price',this.value)"></td><td data-label="ส่วนลด"><input type="number" min="0" step="any" value="${esc(it.discount||0)}" onchange="updateSalesDraft(${i},'discount',this.value)"></td><td class="mono tg" data-label="ยอดก่อน VAT">฿${money(subtotal)}</td>`
       +`<td class="li-act" style="white-space:nowrap;"><button class="icon-btn" type="button" title="ลบรายการ" onclick="removeSalesItemRow(${i})">×</button></td></tr>`;
   }).join('')}</tbody></table></div>`;
+  el.querySelectorAll('textarea.si-desc').forEach(salesDescFit);
   updateSalesSummary();
 }
+// ช่องรายละเอียด: ขยายสูงตามจำนวนบรรทัด (Shift+Enter ขึ้นบรรทัดใหม่)
+function salesDescFit(el){if(!el)return;el.style.height='auto';el.style.height=Math.max(el.scrollHeight+2,30)+'px';}
 // ===== สลับลำดับรายการในเอกสาร (ปุ่ม ▲▼ + ลาก) =====
 function moveSalesItem(i,dir){
   const j=i+dir;
