@@ -225,6 +225,10 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .report-thumb{border:1px solid var(--border);background:var(--surface2);border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer;padding:0;position:relative;}
 .report-thumb:hover{border-color:var(--accent);}
 .report-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.rt-wrap{position:relative}.rt-wrap .report-thumb{width:100%;display:block}.rt-wrap.off .report-thumb{opacity:.42;filter:grayscale(.6)}
+.rt-chk{position:absolute;left:4px;top:4px;width:24px;height:24px;display:grid;place-items:center;background:rgba(255,255,255,.92);border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer}.rt-chk input{width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--accent)}
+.rg-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;margin:0 0 8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)}.rg-st{font-size:11.5px}
+.rg-catbar{display:flex;gap:10px;margin:0 0 8px;font-size:11.5px}.rg-catbar button{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;font:inherit;font-size:11.5px}
 .report-thumb-badge{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.72);color:#fff;font-family:var(--mono);font-size:9px;border-radius:999px;padding:2px 5px;}
 .image-preview{max-width:min(92vw,980px);max-height:78vh;display:block;border-radius:10px;border:1px solid var(--border);background:var(--bg);}
 .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:var(--mono);white-space:nowrap;}
@@ -3982,8 +3986,8 @@ function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
   const reportId=reportRow.report_id||reportRow.id;
   // imageRows === null = ยังไม่ได้โหลดรูปของงานนี้ → คงรายการรูปเดิมของงานไว้ (ห้ามล้างเป็นว่าง)
   const prevTr=job.technicianReport||{};
-  const images=imageRows===null?(Array.isArray(prevTr.images)?prevTr.images:(Array.isArray(data.images)?data.images:[])):imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>r.data||{}).filter(Boolean);
-  const documentImages=imageRows===null?(Array.isArray(prevTr.documentImages)?prevTr.documentImages:(Array.isArray(data.documentImages)?data.documentImages:[])):imageRows.filter(r=>(r.data||{}).documentOnly||r.category==='documents').map(r=>r.data||{}).filter(Boolean);
+  const images=imageRows===null?(Array.isArray(prevTr.images)?prevTr.images:(Array.isArray(data.images)?data.images:[])):imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>({...(r.data||{}),_row:r.id})).filter(Boolean);
+  const documentImages=imageRows===null?(Array.isArray(prevTr.documentImages)?prevTr.documentImages:(Array.isArray(data.documentImages)?data.documentImages:[])):imageRows.filter(r=>(r.data||{}).documentOnly||r.category==='documents').map(r=>({...(r.data||{}),_row:r.id})).filter(Boolean);
   const tr={...(job.technicianReport||{}),...data,images,documentImages,reviewStatus:reportRow.review_status||data.reviewStatus||job.technicianReport?.reviewStatus,isDraft:!!reportRow.is_draft,submittedAt:reportRow.submitted_at||data.submittedAt||job.technicianReport?.submittedAt,draftSavedAt:reportRow.draft_saved_at||data.draftSavedAt||job.technicianReport?.draftSavedAt,reportId};
   return {
     ...job,
@@ -4089,6 +4093,7 @@ async function openJobDocWithImages(id,builders){
   if(!j0){alert('ไม่พบงาน '+id);return;}
   const wins=builders.map(()=>{const w=window.open('','_blank');if(w){try{w.document.write('<p style="font-family:sans-serif;padding:24px">กำลังโหลดรูปจากรายงานช่าง...</p>');}catch(e){}}return w;});
   if(wins.some(w=>!w)){wins.forEach(w=>{try{w&&w.close();}catch(e){}});alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+  try{await rptImgFlush();}catch(e){}
   try{await ensureJobImages(id,0);}catch(e){console.warn('โหลดรูปรายงานช่างไม่สำเร็จ',e);}
   const j=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x))||j0;
   builders.forEach((b,i)=>{try{const w=wins[i];w.document.open();w.document.write(b(j));w.document.close();}catch(e){console.warn(e);}});
@@ -7451,7 +7456,7 @@ function renderSalesTax(){
   if(accountingLoadError&&!salesInvoices.length){tb.innerHTML=accountingLoadErrorHtml(9,'renderSalesTax');return;}
   if(!list.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">🧾</div><div>${salesInvoices.length?'ไม่พบบิลขายตามตัวกรอง':'ยังไม่มีบิลขาย'}</div></div></td></tr>`;return;}
   tb.innerHTML=list.map(inv=>{
-    const prBtns=salesInvoiceJobs(inv).map(p=>`<span style="display:inline-flex;align-items:center;flex-wrap:wrap;gap:2px;margin:1px 0;"><span class="pr-chip" onclick="event.stopPropagation();openDet('${esc(p)}')">${esc(p)}</span>${salesJobStatusBadge(p)}</span>`).join('')||'<span class="tm">-</span>';
+    const prBtns=salesInvoiceJobs(inv).map(p=>`<span style="display:inline-flex;align-items:center;flex-wrap:wrap;gap:2px;margin:1px 0;"><span class="pr-chip" onclick="event.stopPropagation();openDet('${esc(p)}')">${esc(p)}</span>${salesJobStatusBadge(p)}</span>`).join('')||'<span class="tm" style="font-size:11.5px" title="เอกสารเดี่ยว ไม่ได้ผูกกับงานในคิวช่าง">ไม่ผูกงาน</span>';
     const dt=inv.doc_type||'tax_invoice';const dmeta=SALES_DOC_META[dt]||SALES_DOC_META.tax_invoice;
     const nextType=SALES_DOC_NEXT[dt];const nextMeta=nextType&&nextType!==dt?SALES_DOC_META[nextType]:null;
     const card=docMobileCard({no:inv.doc_no||inv.sales_invoice_no,type:dmeta.title,total:inv.total_amount,pay:docPayBadge(inv,'sale'),party:salesInvoiceBranchText(inv)||inv.customer_name||'-',
@@ -9658,10 +9663,12 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     const pendingInput=(document.getElementById('sale-job-input')?.value||'').trim();
     if(pendingInput&&!salesDraftJobs.some(x=>x.toLowerCase()===pendingInput.toLowerCase()))salesDraftJobs.push(pendingInput);
     const jobList=[...new Set(salesDraftJobs.map(x=>String(x).trim()).filter(Boolean))];
-    if(!jobList.length){setAccountingStatus('sales','กรุณาระบุ Job ID / PR อย่างน้อย 1 รายการ','err');return;}
     // เตือนถ้ามีเอกสารประเภทเดียวกันของงานนี้อยู่แล้ว (ไม่นับบิลที่กำลังแก้ไข) — ใบกำกับต่อจากใบเสนอราคาไม่นับซ้ำ
     const saveDocType=document.getElementById('sale-doc-type')?.value||'tax_invoice';
     const saveDocLabel=(SALES_DOC_META[saveDocType]||{}).title||'เอกสาร';
+    // ไม่ใส่ PR = เอกสารเดี่ยวที่ไม่ผูกงานช่าง (เช่น ขายของ/บริการนอกงานช่าง) · ใส่ PR ทีหลังได้ด้วยการเปิดแก้เอกสาร
+    const wasNoJob=!isNewDoc&&!salesInvoiceJobs(salesInvoices.find(x=>x.id===id)||{}).length;
+    if(!jobList.length&&!wasNoJob&&!confirm(`ยังไม่ได้ใส่ PR\n\nออก${saveDocLabel}นี้แบบ "ไม่ผูกงานช่าง" ใช่ไหม?\n(เอกสารยังบันทึกและนับยอดในหน้าเอกสารขายตามปกติ แต่ไม่ไปเปลี่ยนสถานะงาน/กำไรต่องาน · ใส่ PR ทีหลังได้)`)){setAccountingStatus('sales','ยังไม่บันทึก — ใส่ PR หรือยืนยันออกแบบไม่ผูกงาน','warn');return;}
     const dupWarn=jobList.map(pr=>{const d=existingSalesBillsForJob(pr,id,saveDocType);return d.length?`${pr}: ${d.map(x=>x.doc_no||x.sales_invoice_no).filter(Boolean).join(', ')}`:'';}).filter(Boolean);
     const qtExtra=saveDocType==='quotation'&&salesIsQtExtra();
     const qtBlocked=salesQtBlockedJobs(id);
@@ -9694,8 +9701,8 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     doc_no:docNo,
     source_doc_id:salesConvertSourceId||null,
     qt_extra:qtExtra,
-    job_id:jobId,
-    job_ids:jobList.join(','),
+    job_id:jobId||null,
+    job_ids:jobList.join(',')||null,
     customer_id:document.getElementById('sale-customer').value.trim(),
     customer_name:document.getElementById('sale-customer').value.trim(),
     invoice_date:document.getElementById('sale-date').value||todayISO(),
@@ -9829,8 +9836,9 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     broadcastDataChanged('accounting'); // แจ้งทุกแท็บให้รีเฟรชทันที (กันข้อมูลค้าง/ปรินท์ผิด)
   }catch(e){
     console.warn('Save sales invoice failed',e);
-    setAccountingStatus('sales','บันทึกบิลขายไม่สำเร็จ: '+e.message,'err');
-    alert('บันทึกบิลขายไม่สำเร็จ: '+e.message);
+    const noJobHint=/job_id/.test(String(e&&e.message))&&/null/i.test(String(e&&e.message))?'\n\nฐานข้อมูลยังไม่รองรับเอกสารที่ไม่ผูกงาน — รันไฟล์ console_sales_doc_no_job.sql ใน Supabase ก่อน':'';
+    setAccountingStatus('sales','บันทึกบิลขายไม่สำเร็จ: '+e.message+noJobHint,'err');
+    alert('บันทึกบิลขายไม่สำเร็จ: '+e.message+noJobHint);
   }
 }
 // ===== แก้บางช่องของงาน/งาน Admin บน server ทันที (อ่านแถวล่าสุด → รวมเฉพาะช่องที่แก้ → บันทึก) =====
@@ -12574,16 +12582,79 @@ function reportDocumentImages(j){
   return Array.isArray(j?.technicianReport?.documentImages)?j.technicianReport.documentImages:[];
 }
 function renderReportImages(j){
-  const imgs=reportImages(j);
-  const docs=reportDocumentImages(j);
+  const imgs=reportImages(j),docs=reportDocumentImages(j);
   if(!imgs.length&&!docs.length)return '<div class="text-box">ยังไม่มีรูปจากช่าง</div>';
-  return `<div class="report-gallery">${['before','during','after'].map(cat=>{
-    const group=imgs.filter(im=>im.category===cat);
-    return `<details class="report-gallery-section"><summary class="report-gallery-title"><span><span class="rg-arrow">▶</span>${REPORT_IMAGE_LABELS[cat]}</span><span class="report-gallery-count">${group.length} รูป<span class="rg-hint">กดรูปเพื่อเลื่อนดู/ซูม</span></span></summary>${group.length?`<div class="report-thumbs">${group.map(im=>{
-      const idx=imgs.indexOf(im);
-      return `<button class="report-thumb" type="button" onclick="pfpvOpen('${esc(j.id)}','${cat}',${group.indexOf(im)})"><img loading="lazy" src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat])}"><span class="report-thumb-badge">${idx+1}</span></button>`;
-    }).join('')}</div>`:'<div class="tm" style="font-size:12px;">ไม่มีรูปในหมวดนี้</div>'}</details>`;
-  }).join('')}${docs.length?`<details class="report-gallery-section"><summary class="report-gallery-title"><span><span class="rg-arrow">▶</span>${REPORT_IMAGE_LABELS.documents}</span><span class="report-gallery-count">${docs.length} รูป<span class="rg-hint">กดรูปเพื่อเลื่อนดู/ซูม</span></span></summary><div class="report-thumbs">${docs.map((im,idx)=>`<button class="report-thumb" type="button" onclick="pfpvOpen('${esc(j.id)}','documents',${idx})"><img loading="lazy" src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS.documents)}"><span class="report-thumb-badge">DOC</span></button>`).join('')}</div></details>`:''}</div>`;
+  return `<div id="rpt-gal">${rptGalleryHtml(j)}</div>`;
+}
+// ติ๊ก = ใช้ในใบงานรูปภาพ + โหลดรวม · บันทึกเป็นแฟล็ก docExclude ในแถวรูป (technician_report_images.data) — ไม่แตะตัวรูปที่ช่างอัป
+function rptGalleryHtml(j){
+  const imgs=reportImages(j),docs=reportDocumentImages(j);
+  const J=esc(j.id).replace(/'/g,'&#39;'),R=im=>esc(String(im._row||'')).replace(/'/g,'&#39;'),can=im=>!!im._row;
+  const photos=imgs.filter(im=>['before','during','after'].includes(im.category)),sel=photos.filter(im=>!im.docExclude);
+  const open=window.__rgOpen||new Set();
+  const thumb=(im,cat,i,badge,chk)=>`<div class="rt-wrap${chk&&im.docExclude?' off':''}"><button class="report-thumb" type="button" onclick="pfpvOpen('${J}','${cat}',${i})"><img loading="lazy" src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat]||'')}"><span class="report-thumb-badge">${badge}</span></button>`
+    +(chk&&can(im)?`<label class="rt-chk" title="ใช้ในใบงานรูปภาพ / โหลดรวม"><input type="checkbox"${im.docExclude?'':' checked'} onchange="rptImgToggle('${J}','${R(im)}',this.checked)"></label>`:'')+`</div>`;
+  const sec=(cat,title,list,chk,badgeFn)=>`<details class="report-gallery-section" data-cat="${cat}"${open.has(cat)?' open':''} ontoggle="rptGalOpen(this)"><summary class="report-gallery-title"><span><span class="rg-arrow">▶</span>${title}</span><span class="report-gallery-count">${chk?`${list.filter(im=>!im.docExclude).length}/`:''}${list.length} รูป<span class="rg-hint">กดรูปเพื่อเลื่อนดู/ซูม</span></span></summary>`
+    +(list.length?`${chk&&list.some(can)?`<div class="rg-catbar"><button type="button" onclick="rptImgSetAll('${J}','${cat}',true)">เลือกทั้งหมวด</button><button type="button" onclick="rptImgSetAll('${J}','${cat}',false)">ไม่เลือกทั้งหมวด</button></div>`:''}<div class="report-thumbs">${list.map((im,i)=>thumb(im,cat,i,badgeFn(im,i),chk)).join('')}</div>`:'<div class="tm" style="font-size:12px;">ไม่มีรูปในหมวดนี้</div>')+`</details>`;
+  const bar=photos.length?`<div class="rg-bar"><span>ติ๊กแล้ว <b>${sel.length}</b>/${photos.length} รูป <span class="tm">= ใช้ในใบงานรูปภาพ</span></span><span style="flex:1"></span>
+    ${photos.some(can)?`<button type="button" class="btn btn-ghost btn-xs" onclick="rptImgSetAll('${J}','',true)">เลือกทั้งหมด</button><button type="button" class="btn btn-ghost btn-xs" onclick="rptImgSetAll('${J}','',false)">ไม่เลือก</button>`:''}
+    <button type="button" class="btn btn-primary btn-xs" ${sel.length?'':'disabled'} onclick="rptImgDownload('${J}')">⬇ โหลดรูปที่เลือก (${sel.length})</button><span class="tm rg-st" id="rg-st"></span></div>`:'';
+  return bar+`<div class="report-gallery">${['before','during','after'].map(cat=>{const group=imgs.filter(im=>im.category===cat);return sec(cat,REPORT_IMAGE_LABELS[cat],group,true,im=>imgs.indexOf(im)+1);}).join('')}`
+    +(docs.length?sec('documents',REPORT_IMAGE_LABELS.documents,docs,false,()=>'DOC'):'')    +`</div>`;
+}
+function rptGalOpen(d){const s=window.__rgOpen||(window.__rgOpen=new Set());const k=d.dataset.cat;if(d.open)s.add(k);else s.delete(k);}
+function rptGalRerender(j){const el=document.getElementById('rpt-gal');if(el&&document.getElementById('mrpt-jobid')?.value===j.id)el.innerHTML=rptGalleryHtml(j);}
+function rptImgJob(jobId){return jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));}
+function rptImgFind(j,row){return [...reportImages(j),...reportDocumentImages(j)].find(im=>im&&String(im._row||'')===String(row));}
+function rptImgStatus(t,bad){const el=document.getElementById('rg-st');if(el){el.textContent=t||'';el.style.color=bad?'var(--red)':'';}}
+// บันทึกลงแถวรูป (merge ลง data) — ช่างส่งงานซ้ำ ฟอร์มช่างคงค่า data เดิมของรูปไว้ → การติ๊กไม่หาย
+async function rptImgPatch(im,extra){
+  const row=im._row;if(!row)throw new Error('รูปนี้ยังไม่ได้โหลดจากฐานข้อมูล — ปิดแล้วเปิดรายงานใหม่');
+  const {_row,...data}=im;Object.assign(data,extra);
+  const r=await fetch(splitUrl('technician_report_images',`?id=eq.${encodeURIComponent(row)}`),{method:'PATCH',headers:sbHeaders({'Prefer':'return=representation'}),body:JSON.stringify({data})});
+  if(!r.ok)throw new Error(await r.text());
+  const out=await r.json();if(!Array.isArray(out)||!out.length)throw new Error('ไม่พบรูปนี้บนระบบแล้ว (ช่างอาจส่งรูปชุดใหม่) — ปิดแล้วเปิดรายงานใหม่');
+  Object.assign(im,extra);
+  try{jobImagesCache.forEach(c=>(c.rows||[]).forEach(x=>{if(String(x.id)===String(row))x.data={...(x.data||{}),...extra};}));}catch(e){}
+}
+var rptImgPend=new Map(),rptImgTimer=null;
+function rptImgQueue(j,ims,on){
+  ims.forEach(im=>{if(!im._row)return;im.docExclude=!on;rptImgPend.set(String(im._row),{im,extra:{docExclude:!on}});});
+  rptGalRerender(j);rptImgStatus('กำลังบันทึก…');
+  clearTimeout(rptImgTimer);rptImgTimer=setTimeout(()=>rptImgFlush().catch(()=>{}),700);
+}
+async function rptImgFlush(){
+  clearTimeout(rptImgTimer);if(!rptImgPend.size)return;
+  const list=[...rptImgPend.values()];rptImgPend.clear();let bad=0,msg='';
+  for(const x of list){try{await rptImgPatch(x.im,x.extra);}catch(e){bad++;msg=e.message||String(e);x.im.docExclude=!x.extra.docExclude;}}
+  const j=list[0]&&jobs.find(q=>(q.technicianReport?.images||[]).includes(list[0].im));if(j)rptGalRerender(j);
+  if(bad){rptImgStatus(`บันทึกไม่สำเร็จ ${bad} รูป`,true);alert('บันทึกการเลือกรูปไม่สำเร็จ '+bad+' รูป\n'+msg);}else rptImgStatus('บันทึกแล้ว ✓');
+}
+function rptImgToggle(jobId,row,on){if(typeof guardEdit==='function'&&!guardEdit())return;const j=rptImgJob(jobId);if(!j)return;const im=rptImgFind(j,row);if(im)rptImgQueue(j,[im],on);}
+function rptImgSetAll(jobId,cat,on){if(typeof guardEdit==='function'&&!guardEdit())return;const j=rptImgJob(jobId);if(!j)return;
+  rptImgQueue(j,reportImages(j).filter(im=>(cat?im.category===cat:['before','during','after'].includes(im.category))&&!!im.docExclude===on),on);}
+// โหลดรูปที่ติ๊กไว้ทีเดียว: 1 รูป = ไฟล์เดียว · หลายรูป = ZIP (ชื่อไฟล์ PR_หมวด_ลำดับ)
+async function rptImgDownload(jobId){
+  const j=rptImgJob(jobId);if(!j)return;
+  const list=reportImages(j).filter(im=>['before','during','after'].includes(im.category)&&!im.docExclude&&im.url);
+  if(!list.length){alert('ยังไม่ได้ติ๊กเลือกรูป');return;}
+  const safe=t=>String(t||'').replace(/[\\/:*?"<>|\s]+/g,'-'),cnt={};
+  const save=(blob,name)=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);};
+  const ext=b=>/png/.test(b.type)?'png':/webp/.test(b.type)?'webp':'jpg';
+  const get=async im=>{const r=await fetch(im.url);if(!r.ok)throw new Error('HTTP '+r.status);return await r.blob();};
+  try{
+    if(list.length===1){rptImgStatus('กำลังโหลด…');const b=await get(list[0]);save(b,`${safe(j.id)}_${safe(REPORT_IMAGE_LABELS[list[0].category])}_1.${ext(b)}`);rptImgStatus('โหลดแล้ว ✓');return;}
+    rptImgStatus('กำลังเตรียม ZIP…');await loadScriptOnce(BULK_PDF_LIBS[2]);
+    const zip=new JSZip();let bad=0,done=0;
+    for(const im of list){
+      const c=REPORT_IMAGE_LABELS[im.category]||im.category;cnt[c]=(cnt[c]||0)+1;
+      try{const b=await get(im);zip.file(`${safe(j.id)}_${safe(c)}_${String(cnt[c]).padStart(2,'0')}.${ext(b)}`,b);}catch(e){bad++;console.warn('download image',im.url,e);}
+      rptImgStatus(`กำลังโหลดรูป ${++done}/${list.length}`);
+    }
+    if(bad===list.length)throw new Error('โหลดรูปไม่ได้เลย');
+    save(await zip.generateAsync({type:'blob'}),`รูป-${safe(j.id)}${j.branch?'-'+safe(j.branch):''}.zip`);
+    rptImgStatus(bad?`โหลดแล้ว (ไม่สำเร็จ ${bad} รูป)`:'โหลดแล้ว ✓',!!bad);
+  }catch(e){rptImgStatus('โหลดไม่สำเร็จ',true);alert('โหลดรูปไม่สำเร็จ: '+(e.message||e));}
 }
 function renderReportRounds(j){
   const rounds=j.reportRounds||j.technicianReport?.rounds||[];
@@ -12793,7 +12864,7 @@ function acceptanceReportHtml(j){
   </main></body></html>`;
 }
 function photoBillingReportHtml(j){
-  const imgs=reportImages(j);
+  const imgs=reportImages(j).filter(im=>!im.docExclude); // ติ๊กออกในหน้ารายงานช่าง = ไม่เอาเข้าใบงานรูปภาพ
   // โลโก้หัวเอกสาร = โลโก้ของลูกค้าเจ้านั้น (ตั้งที่ทะเบียนลูกค้า) — ไม่ได้ตั้งไว้ก็ใช้โลโก้ ProFix
   const headLogo=clientLogoUrl(j.client)||new URL('assets/profix-logo-dark.svg',location.href).href;
   const imageOrientation=im=>{
