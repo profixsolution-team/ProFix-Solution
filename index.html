@@ -228,7 +228,9 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .rt-wrap{position:relative}.rt-wrap .report-thumb{width:100%;display:block}.rt-wrap.off .report-thumb{opacity:.42;filter:grayscale(.6)}
 .rt-chk{position:absolute;left:4px;top:4px;width:24px;height:24px;display:grid;place-items:center;background:rgba(255,255,255,.92);border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer}.rt-chk input{width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--accent)}
 .rg-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;margin:0 0 8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)}.rg-st{font-size:11.5px}
-.rg-catbar{display:flex;gap:10px;margin:0 0 8px;font-size:11.5px}.rg-catbar button{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;font:inherit;font-size:11.5px}
+.rt-wrap[draggable=true]{cursor:grab}.rt-wrap.dragging{opacity:.35}.rt-wrap.dragover .report-thumb{outline:3px solid var(--accent);outline-offset:1px}
+.rt-tools{display:flex;gap:3px;margin-top:4px}.rt-tools button{flex:0 0 auto;border:1px solid var(--border);background:var(--surface);color:var(--text2);border-radius:6px;font-size:10.5px;padding:2px 5px;cursor:pointer;line-height:1.3}.rt-tools .rt-size{flex:1;font-weight:700}.rt-tools .rt-size.own{background:var(--accent);border-color:var(--accent);color:#fff}.rt-tools button:hover{border-color:var(--accent)}
+.rg-catbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 8px;font-size:11.5px}.rg-catbar button{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;font:inherit;font-size:11.5px}
 .report-thumb-badge{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.72);color:#fff;font-family:var(--mono);font-size:9px;border-radius:999px;padding:2px 5px;}
 .image-preview{max-width:min(92vw,980px);max-height:78vh;display:block;border-radius:10px;border:1px solid var(--border);background:var(--bg);}
 .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:var(--mono);white-space:nowrap;}
@@ -4090,6 +4092,24 @@ function applyJobImages(j,report,rows){
   return true;
 }
 // เปิดเอกสารที่ต้องใช้รูป: เปิดแท็บไว้ก่อนทันที (กัน popup ถูกบล็อก) แล้วค่อยใส่เนื้อหาเมื่อรูปโหลดเสร็จ
+// รูปที่ไม่มีขนาดติดมา (เช่นรูปตรวจเช็คที่ดึงจากตอนเช็คอิน) → วัดขนาดจริงจากไฟล์ก่อนจัดหน้า
+// ไม่งั้นใบงานรูปภาพเดาเป็นแนวนอนทั้งหมด (แถวละ 2) ทั้งที่เป็นรูปแนวตั้ง — เติมในหน่วยความจำ (ถ้าแอดมินติ๊กรูปนั้น ขนาดจะติดไปกับแฟล็กด้วย ไม่มีผลเสีย)
+const imgDimCache=new Map();
+function probeImageDims(url){
+  if(imgDimCache.has(url))return Promise.resolve(imgDimCache.get(url));
+  return new Promise(res=>{
+    const im=new Image();let done=false;
+    const fin=v=>{if(done)return;done=true;if(v)imgDimCache.set(url,v);res(v);};
+    im.onload=()=>fin(im.naturalWidth&&im.naturalHeight?{w:im.naturalWidth,h:im.naturalHeight}:null);
+    im.onerror=()=>fin(null);
+    setTimeout(()=>fin(null),6000);
+    im.src=url;
+  });
+}
+async function fillReportImageDims(j){
+  const list=reportImages(j).filter(im=>im&&im.url&&!(Number(im.width)>0&&Number(im.height)>0));
+  await Promise.all(list.map(async im=>{const d=await probeImageDims(im.url);if(d){im.width=d.w;im.height=d.h;}}));
+}
 async function openJobDocWithImages(id,builders){
   const j0=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x));
   if(!j0){alert('ไม่พบงาน '+id);return;}
@@ -4098,6 +4118,7 @@ async function openJobDocWithImages(id,builders){
   try{await rptImgFlush();}catch(e){}
   try{await ensureJobImages(id,0);}catch(e){console.warn('โหลดรูปรายงานช่างไม่สำเร็จ',e);}
   const j=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x))||j0;
+  try{await fillReportImageDims(j);}catch(e){}
   builders.forEach((b,i)=>{try{const w=wins[i];w.document.open();w.document.write(b(j));w.document.close();}catch(e){console.warn(e);}});
 }
 // ===== ระยะ A: ดึงเฉพาะข้อมูลที่เปลี่ยน (incremental sync) — 2026-10-20 =====
@@ -11445,6 +11466,7 @@ async function collectPrDocs(pr){
   const b=workOrderBundle(pr),j=b.job;
   const out=[];
   if(j){
+    try{await fillReportImageDims(j);}catch(e){}
     // รายงานช่าง + ใบตรวจรับงาน ตัดออกจากชุดเอกสาร (ไม่ได้ใช้จริง) — ยังพิมพ์แยกได้ที่หน้าใบงาน
     out.push({label:'ใบงานรูปภาพ (สำหรับวางบิล)',build:()=>photoBillingReportHtml(j)});
   }
@@ -12591,7 +12613,39 @@ function reportDocumentImages(j){
 function renderReportImages(j){
   const imgs=reportImages(j),docs=reportDocumentImages(j);
   if(!imgs.length&&!docs.length)return '<div class="text-box">ยังไม่มีรูปจากช่าง</div>';
+  if(imgs.some(im=>im&&im.url&&!(Number(im.width)>0&&Number(im.height)>0)))setTimeout(()=>fillReportImageDims(j).then(()=>rptGalRerender(j)).catch(()=>{}),0);
   return `<div id="rpt-gal">${rptGalleryHtml(j)}</div>`;
+}
+// ===== จัดเรียง/ขนาดรูปในใบงานรูปภาพ (2026-11-14) =====
+// ขนาด: s=เล็ก (3/แถว) · m=กลาง (2/แถว) · l=ใหญ่ (เต็มแถว) ; ไม่ได้ตั้ง = อัตโนมัติ (แนวตั้ง→เล็ก, แนวนอน→กลาง)
+// ลำดับ: data.docOrder (ตั้งเมื่อแอดมินลากเรียง) ; รูปที่ยังไม่มีลำดับ (เช่นช่างส่งรูปเพิ่ม) ต่อท้ายตามลำดับอัตโนมัติ
+const PHOTO_ROWS_H=202,PHOTO_ROW_GAP=4,PHOTO_SIZE_LABEL={s:'เล็ก',m:'กลาง',l:'ใหญ่'};
+function photoOrient(im){
+  const w=Number(im&&im.width)||0,h=Number(im&&im.height)||0;
+  if(w>0&&h>0)return h>w?'portrait':'landscape';
+  if(im&&(im.orientation==='portrait'||im.orientation==='landscape'))return im.orientation;
+  return 'landscape';
+}
+function photoAutoSize(im){return photoOrient(im)==='portrait'?'s':'m';}
+function photoDocSize(im){return ['s','m','l'].includes(im&&im.docSize)?im.docSize:photoAutoSize(im);}
+function photoHasOrder(im){return im&&im.docOrder!==null&&im.docOrder!==undefined&&im.docOrder!==''&&isFinite(Number(im.docOrder));}
+function photoDocOrdered(group){
+  const rank={s:0,m:1,l:2},auto=group.map((im,i)=>({im,i})).sort((a,b)=>(rank[photoDocSize(a.im)]-rank[photoDocSize(b.im)])||(a.i-b.i)).map(x=>x.im);
+  if(!group.some(photoHasOrder))return auto;
+  return [...auto.filter(photoHasOrder).sort((a,b)=>Number(a.docOrder)-Number(b.docOrder)),...auto.filter(im=>!photoHasOrder(im))];
+}
+// รูปขนาดเดียวกันที่อยู่ติดกันรวมเป็นแถว ; ความสูงแถว (มม.) ตามขนาด + แนวรูป
+function photoDocRows(list){
+  const rows=[];
+  list.forEach(im=>{
+    const size=photoDocSize(im),cap=size==='s'?3:size==='m'?2:1,last=rows[rows.length-1];
+    if(last&&last.size===size&&last.items.length<last.cap)last.items.push(im);else rows.push({size,cap,items:[im]});
+  });
+  rows.forEach(r=>{
+    const port=r.items.some(im=>photoOrient(im)==='portrait');
+    r.h=r.size==='s'?64.5:r.size==='m'?(port?99:64.5):(port?PHOTO_ROWS_H:133.5);
+  });
+  return rows;
 }
 // ติ๊ก = ใช้ในใบงานรูปภาพ + โหลดรวม · บันทึกเป็นแฟล็ก docExclude ในแถวรูป (technician_report_images.data) — ไม่แตะตัวรูปที่ช่างอัป
 function rptGalleryHtml(j){
@@ -12599,14 +12653,18 @@ function rptGalleryHtml(j){
   const J=esc(j.id).replace(/'/g,'&#39;'),R=im=>esc(String(im._row||'')).replace(/'/g,'&#39;'),can=im=>!!im._row;
   const photos=imgs.filter(im=>['before','during','after'].includes(im.category)),sel=photos.filter(im=>!im.docExclude);
   const open=window.__rgOpen||new Set();
-  const thumb=(im,cat,i,badge,chk)=>`<div class="rt-wrap${chk&&im.docExclude?' off':''}"><button class="report-thumb" type="button" onclick="pfpvOpen('${J}','${cat}',${i})"><img loading="lazy" src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat]||'')}"><span class="report-thumb-badge">${badge}</span></button>`
-    +(chk&&can(im)?`<label class="rt-chk" title="ใช้ในใบงานรูปภาพ / โหลดรวม"><input type="checkbox"${im.docExclude?'':' checked'} onchange="rptImgToggle('${J}','${R(im)}',this.checked)"></label>`:'')+`</div>`;
+  const thumb=(im,cat,i,badge,chk)=>{
+    const arr=chk&&can(im),sz=photoDocSize(im),own=['s','m','l'].includes(im.docSize);
+    return `<div class="rt-wrap${chk&&im.docExclude?' off':''}"${arr?` draggable="true" data-row="${R(im)}" ondragstart="rptDragStart(event,'${cat}','${R(im)}')" ondragover="rptDragOver(event,'${cat}')" ondragleave="this.classList.remove('dragover')" ondrop="rptDrop(event,'${J}','${cat}','${R(im)}')" ondragend="rptDragEnd()"`:''}><button class="report-thumb" type="button" onclick="pfpvOpen('${J}','${cat}',${i})"><img loading="lazy" draggable="false" src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat]||'')}"><span class="report-thumb-badge">${badge}</span></button>`
+    +(arr?`<label class="rt-chk" title="ใช้ในใบงานรูปภาพ / โหลดรวม"><input type="checkbox"${im.docExclude?'':' checked'} onchange="rptImgToggle('${J}','${R(im)}',this.checked)"></label>`
+      +`<div class="rt-tools"><button type="button" title="เลื่อนไปก่อน" onclick="rptImgStep('${J}','${R(im)}',-1)">◀</button><button type="button" class="rt-size${own?' own':''}" title="ขนาดในใบงานรูปภาพ: เล็ก 3/แถว · กลาง 2/แถว · ใหญ่ เต็มแถว — กดเพื่อเปลี่ยน" onclick="rptImgSize('${J}','${R(im)}')">${PHOTO_SIZE_LABEL[sz]}</button><button type="button" title="เลื่อนไปหลัง" onclick="rptImgStep('${J}','${R(im)}',1)">▶</button></div>`:'')+`</div>`;
+  };
   const sec=(cat,title,list,chk,badgeFn)=>`<details class="report-gallery-section" data-cat="${cat}"${open.has(cat)?' open':''} ontoggle="rptGalOpen(this)"><summary class="report-gallery-title"><span><span class="rg-arrow">▶</span>${title}</span><span class="report-gallery-count">${chk?`${list.filter(im=>!im.docExclude).length}/`:''}${list.length} รูป<span class="rg-hint">กดรูปเพื่อเลื่อนดู/ซูม</span></span></summary>`
-    +(list.length?`${chk&&list.some(can)?`<div class="rg-catbar"><button type="button" onclick="rptImgSetAll('${J}','${cat}',true)">เลือกทั้งหมวด</button><button type="button" onclick="rptImgSetAll('${J}','${cat}',false)">ไม่เลือกทั้งหมวด</button></div>`:''}<div class="report-thumbs">${list.map((im,i)=>thumb(im,cat,i,badgeFn(im,i),chk)).join('')}</div>`:'<div class="tm" style="font-size:12px;">ไม่มีรูปในหมวดนี้</div>')+`</details>`;
+    +(list.length?`${chk&&list.some(can)?`<div class="rg-catbar"><button type="button" onclick="rptImgSetAll('${J}','${cat}',true)">เลือกทั้งหมวด</button><button type="button" onclick="rptImgSetAll('${J}','${cat}',false)">ไม่เลือกทั้งหมวด</button>${list.some(im=>photoHasOrder(im)||im.docSize)?`<button type="button" onclick="rptImgAutoArrange('${J}','${cat}')">↺ เรียงอัตโนมัติ</button>`:''}<span class="tm">ลากรูป หรือ ◀ ▶ เพื่อจัดลำดับ · กดป้ายขนาดเพื่อเปลี่ยน</span></div>`:''}<div class="report-thumbs">${(chk?photoDocOrdered(list):list).map((im,k)=>thumb(im,cat,list.indexOf(im),badgeFn(im,k),chk)).join('')}</div>`:'<div class="tm" style="font-size:12px;">ไม่มีรูปในหมวดนี้</div>')+`</details>`;
   const bar=photos.length?`<div class="rg-bar"><span>ติ๊กแล้ว <b>${sel.length}</b>/${photos.length} รูป <span class="tm">= ใช้ในใบงานรูปภาพ</span></span><span style="flex:1"></span>
     ${photos.some(can)?`<button type="button" class="btn btn-ghost btn-xs" onclick="rptImgSetAll('${J}','',true)">เลือกทั้งหมด</button><button type="button" class="btn btn-ghost btn-xs" onclick="rptImgSetAll('${J}','',false)">ไม่เลือก</button>`:''}
-    <button type="button" class="btn btn-primary btn-xs" ${sel.length?'':'disabled'} onclick="rptImgDownload('${J}')">⬇ โหลดรูปที่เลือก (${sel.length})</button><span class="tm rg-st" id="rg-st"></span></div>`:'';
-  return bar+`<div class="report-gallery">${['before','during','after'].map(cat=>{const group=imgs.filter(im=>im.category===cat);return sec(cat,REPORT_IMAGE_LABELS[cat],group,true,im=>imgs.indexOf(im)+1);}).join('')}`
+    <button type="button" class="btn btn-ghost btn-xs" ${sel.length?'':'disabled'} onclick="generatePhotoBillingReport()" title="เปิดใบงานรูปภาพตามลำดับ/ขนาดที่จัดไว้">👁 ดูใบงานรูปภาพ</button><button type="button" class="btn btn-primary btn-xs" ${sel.length?'':'disabled'} onclick="rptImgDownload('${J}')">⬇ โหลดรูปที่เลือก (${sel.length})</button><span class="tm rg-st" id="rg-st"></span></div>`:'';
+  return bar+`<div class="report-gallery">${['before','during','after'].map(cat=>{const group=imgs.filter(im=>im.category===cat);return sec(cat,REPORT_IMAGE_LABELS[cat],group,true,(im,k)=>k+1);}).join('')}`
     +(docs.length?sec('documents',REPORT_IMAGE_LABELS.documents,docs,false,()=>'DOC'):'')    +`</div>`;
 }
 function rptGalOpen(d){const s=window.__rgOpen||(window.__rgOpen=new Set());const k=d.dataset.cat;if(d.open)s.add(k);else s.delete(k);}
@@ -12625,17 +12683,52 @@ async function rptImgPatch(im,extra){
   try{jobImagesCache.forEach(c=>(c.rows||[]).forEach(x=>{if(String(x.id)===String(row))x.data={...(x.data||{}),...extra};}));}catch(e){}
 }
 var rptImgPend=new Map(),rptImgTimer=null;
-function rptImgQueue(j,ims,on){
-  ims.forEach(im=>{if(!im._row)return;im.docExclude=!on;rptImgPend.set(String(im._row),{im,extra:{docExclude:!on}});});
+function rptImgQueue(j,ims,on){rptImgQueueSet(j,ims.map(im=>[im,{docExclude:!on}]));}
+// pairs = [[im,{field:value}]] — รวมการแก้หลายครั้งของรูปเดียวกันเป็น PATCH เดียว ; จำค่าเดิมไว้คืนถ้าบันทึกไม่สำเร็จ
+function rptImgQueueSet(j,pairs){
+  pairs.forEach(([im,extra])=>{
+    if(!im||!im._row)return;const k=String(im._row),cur=rptImgPend.get(k),prev=cur?cur.prev:{};
+    Object.keys(extra).forEach(f=>{if(!(f in prev))prev[f]=im[f];});
+    Object.assign(im,extra);rptImgPend.set(k,{im,extra:{...(cur?cur.extra:{}),...extra},prev});
+  });
   rptGalRerender(j);rptImgStatus('กำลังบันทึก…');
   clearTimeout(rptImgTimer);rptImgTimer=setTimeout(()=>rptImgFlush().catch(()=>{}),700);
+}
+function rptCatOrdered(j,cat){return photoDocOrdered(reportImages(j).filter(im=>im.category===cat));}
+function rptImgApplyOrder(j,list){rptImgQueueSet(j,list.map((im,i)=>[im,{docOrder:i}]).filter(([im,x])=>Number(im.docOrder)!==x.docOrder||!photoHasOrder(im)));}
+function rptImgStep(jobId,row,dir){
+  if(typeof guardEdit==='function'&&!guardEdit())return;const j=rptImgJob(jobId);if(!j)return;
+  const im=rptImgFind(j,row);if(!im)return;const list=rptCatOrdered(j,im.category),i=list.indexOf(im),t=i+dir;
+  if(i<0||t<0||t>=list.length)return;list.splice(i,1);list.splice(t,0,im);rptImgApplyOrder(j,list);
+}
+function rptImgSize(jobId,row){
+  if(typeof guardEdit==='function'&&!guardEdit())return;const j=rptImgJob(jobId);if(!j)return;
+  const im=rptImgFind(j,row);if(!im)return;
+  // ล็อกลำดับปัจจุบันไว้ก่อน — ไม่งั้นเปลี่ยนขนาดแล้วรูปจะกระโดดไปกลุ่มอื่นตามการเรียงอัตโนมัติ
+  const list=rptCatOrdered(j,im.category),nx={s:'m',m:'l',l:'s'}[photoDocSize(im)];
+  rptImgApplyOrder(j,list);rptImgQueueSet(j,[[im,{docSize:nx}]]);
+}
+function rptImgAutoArrange(jobId,cat){
+  if(typeof guardEdit==='function'&&!guardEdit())return;const j=rptImgJob(jobId);if(!j)return;
+  rptImgQueueSet(j,reportImages(j).filter(im=>im.category===cat&&(photoHasOrder(im)||im.docSize)).map(im=>[im,{docOrder:null,docSize:null}]));
+}
+let rptDrag=null;
+function rptDragStart(e,cat,row){rptDrag={cat,row};try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',row);}catch(x){}e.currentTarget.classList.add('dragging');}
+function rptDragOver(e,cat){if(!rptDrag||rptDrag.cat!==cat)return;e.preventDefault();try{e.dataTransfer.dropEffect='move';}catch(x){}e.currentTarget.classList.add('dragover');}
+function rptDragEnd(){rptDrag=null;document.querySelectorAll('#rpt-gal .dragging,#rpt-gal .dragover').forEach(n=>n.classList.remove('dragging','dragover'));}
+function rptDrop(e,jobId,cat,toRow){
+  e.preventDefault();const d=rptDrag;rptDragEnd();
+  if(!d||d.cat!==cat||d.row===toRow)return;if(typeof guardEdit==='function'&&!guardEdit())return;
+  const j=rptImgJob(jobId);if(!j)return;const a=rptImgFind(j,d.row),b=rptImgFind(j,toRow);if(!a||!b)return;
+  const list=rptCatOrdered(j,cat),from=list.indexOf(a),to=list.indexOf(b);if(from<0||to<0)return;
+  list.splice(from,1);list.splice(to,0,a);rptImgApplyOrder(j,list); // ลากไปข้างหลัง = วางแทนตำแหน่งนั้น (รูปเดิมขยับขึ้น)
 }
 async function rptImgFlush(){
   clearTimeout(rptImgTimer);if(!rptImgPend.size)return;
   const list=[...rptImgPend.values()];rptImgPend.clear();let bad=0,msg='';
-  for(const x of list){try{await rptImgPatch(x.im,x.extra);}catch(e){bad++;msg=e.message||String(e);x.im.docExclude=!x.extra.docExclude;}}
+  for(const x of list){try{await rptImgPatch(x.im,x.extra);}catch(e){bad++;msg=e.message||String(e);Object.assign(x.im,x.prev||{});}}
   const j=list[0]&&jobs.find(q=>(q.technicianReport?.images||[]).includes(list[0].im));if(j)rptGalRerender(j);
-  if(bad){rptImgStatus(`บันทึกไม่สำเร็จ ${bad} รูป`,true);alert('บันทึกการเลือกรูปไม่สำเร็จ '+bad+' รูป\n'+msg);}else rptImgStatus('บันทึกแล้ว ✓');
+  if(bad){rptImgStatus(`บันทึกไม่สำเร็จ ${bad} รูป`,true);alert('บันทึกการเลือก/จัดเรียงรูปไม่สำเร็จ '+bad+' รูป\n'+msg);}else rptImgStatus('บันทึกแล้ว ✓');
 }
 function rptImgToggle(jobId,row,on){if(typeof guardEdit==='function'&&!guardEdit())return;const j=rptImgJob(jobId);if(!j)return;const im=rptImgFind(j,row);if(im)rptImgQueue(j,[im],on);}
 function rptImgSetAll(jobId,cat,on){if(typeof guardEdit==='function'&&!guardEdit())return;const j=rptImgJob(jobId);if(!j)return;
@@ -12643,7 +12736,7 @@ function rptImgSetAll(jobId,cat,on){if(typeof guardEdit==='function'&&!guardEdit
 // โหลดรูปที่ติ๊กไว้ทีเดียว: 1 รูป = ไฟล์เดียว · หลายรูป = ZIP (ชื่อไฟล์ PR_หมวด_ลำดับ)
 async function rptImgDownload(jobId){
   const j=rptImgJob(jobId);if(!j)return;
-  const list=reportImages(j).filter(im=>['before','during','after'].includes(im.category)&&!im.docExclude&&im.url);
+  const list=['before','during','after'].flatMap(c=>rptCatOrdered(j,c)).filter(im=>!im.docExclude&&im.url); // ตามลำดับในใบงานรูปภาพ
   if(!list.length){alert('ยังไม่ได้ติ๊กเลือกรูป');return;}
   const safe=t=>String(t||'').replace(/[\\/:*?"<>|\s]+/g,'-'),cnt={};
   const save=(blob,name)=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);};
@@ -12874,26 +12967,18 @@ function photoBillingReportHtml(j){
   const imgs=reportImages(j).filter(im=>!im.docExclude); // ติ๊กออกในหน้ารายงานช่าง = ไม่เอาเข้าใบงานรูปภาพ
   // โลโก้หัวเอกสาร = โลโก้ของลูกค้าเจ้านั้น (ตั้งที่ทะเบียนลูกค้า) — ไม่ได้ตั้งไว้ก็ใช้โลโก้ ProFix
   const headLogo=clientLogoUrl(j.client)||new URL('assets/profix-logo-dark.svg',location.href).href;
-  const imageOrientation=im=>{
-    const w=Number(im.width)||0;
-    const h=Number(im.height)||0;
-    if(w>0&&h>0)return h>w?'portrait':'landscape';
-    if(im.orientation==='portrait'||im.orientation==='landscape')return im.orientation;
-    return 'landscape';
-  };
+  // ลำดับ/ขนาดรูป: ระบบจัดให้อัตโนมัติ (แนวตั้ง=เล็ก 3/แถว, แนวนอน=กลาง 2/แถว) · แอดมินลากเรียง/เลือกขนาดเองได้ที่รายงานช่าง
   const makePages=()=>{
     const pages=[];
     ['before','during','after'].forEach(cat=>{
-      const group=imgs.filter(im=>im.category===cat);
-      const rows=[];
-      ['portrait','landscape'].forEach(orientation=>{
-        imageChunks(group.filter(im=>imageOrientation(im)===orientation),orientation==='portrait'?3:2).forEach(items=>{
-          rows.push({orientation,items});
-        });
+      const rows=photoDocRows(photoDocOrdered(imgs.filter(im=>im.category===cat)));
+      let cur=[],used=0;
+      rows.forEach(r=>{
+        const need=(cur.length?PHOTO_ROW_GAP:0)+r.h;
+        if(cur.length&&used+need>PHOTO_ROWS_H+0.01){pages.push({cat,rows:cur});cur=[];used=0;}
+        used+=(cur.length?PHOTO_ROW_GAP:0)+r.h;cur.push(r);
       });
-      imageChunks(rows,3).forEach((pageRows,idx)=>{
-        pages.push({cat,rows:pageRows,part:idx+1});
-      });
+      if(cur.length)pages.push({cat,rows:cur});
     });
     return pages;
   };
@@ -12909,7 +12994,7 @@ function photoBillingReportHtml(j){
     <table class="doc-head"><tr><td rowspan="3" class="logo-cell"><img src="${esc(headLogo)}" alt="${esc(j.client||'โลโก้')}"></td><td>Project : ${esc(project)}</td><td>Page</td><td>${pageIndex+1} of ${total}</td></tr><tr><td>Station Name : ${esc(station)}</td><td>ID</td><td></td></tr><tr><td>Class of Trade : </td><td>Job No.</td><td>${esc(j.id)}</td></tr></table>
     <div class="work-detail">Work Detail : ${esc(workDetail)}</div>
     <div class="photo-title">${esc(pageTitle(page))}</div>
-    ${page.rows.length?`<div class="photo-rows">${page.rows.map(row=>`<div class="photo-row ${row.orientation}">${row.items.map(im=>`<figure class="photo-slot"><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน')}"></figure>`).join('')}</div>`).join('')}</div>`:'<div class="billing-empty">ยังไม่มีรูปจากช่าง</div>'}
+    ${page.rows.length?`<div class="photo-rows">${page.rows.map(row=>`<div class="photo-row" style="height:${row.h}mm;grid-template-columns:repeat(${row.cap},minmax(0,1fr))">${row.items.map(im=>`<figure class="photo-slot"><img src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[im.category]||'รูปงาน')}"></figure>`).join('')}</div>`).join('')}</div>`:'<div class="billing-empty">ยังไม่มีรูปจากช่าง</div>'}
     <footer class="photo-footer">Generated by ProFix Service Console</footer>
   </main>`;
   };
