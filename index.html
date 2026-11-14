@@ -3987,9 +3987,10 @@ function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
   const reportId=reportRow.report_id||reportRow.id;
   // imageRows === null = ยังไม่ได้โหลดรูปของงานนี้ → คงรายการรูปเดิมของงานไว้ (ห้ามล้างเป็นว่าง)
   const prevTr=job.technicianReport||{};
-  const images=imageRows===null?(Array.isArray(prevTr.images)?prevTr.images:(Array.isArray(data.images)?data.images:[])):imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>({...(r.data||{}),_row:r.id})).filter(Boolean);
+  const images=imageRows===null?(Array.isArray(prevTr.images)?prevTr.images:(Array.isArray(data.images)?data.images:[])):imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>({...(r.data||{}),_row:r.id,category:(r.data||{}).category||r.category||'before'})).filter(Boolean);
   const documentImages=imageRows===null?(Array.isArray(prevTr.documentImages)?prevTr.documentImages:(Array.isArray(data.documentImages)?data.documentImages:[])):imageRows.filter(r=>(r.data||{}).documentOnly||r.category==='documents').map(r=>({...(r.data||{}),_row:r.id})).filter(Boolean);
-  const tr={...(job.technicianReport||{}),...data,images,documentImages,reviewStatus:reportRow.review_status||data.reviewStatus||job.technicianReport?.reviewStatus,isDraft:!!reportRow.is_draft,submittedAt:reportRow.submitted_at||data.submittedAt||job.technicianReport?.submittedAt,draftSavedAt:reportRow.draft_saved_at||data.draftSavedAt||job.technicianReport?.draftSavedAt,reportId};
+  // รูปที่ไม่มีหมวด (เช่นรูปตรวจเช็คที่ดึงจากตอนเช็คอิน) = 'ก่อนดำเนินการ' — ตรงกับที่ฟอร์มช่างแสดง
+  const tr={...(job.technicianReport||{}),...data,images:images.map(im=>im&&!im.category&&!im.documentOnly?{...im,category:'before'}:im),documentImages,reviewStatus:reportRow.review_status||data.reviewStatus||job.technicianReport?.reviewStatus,isDraft:!!reportRow.is_draft,submittedAt:reportRow.submitted_at||data.submittedAt||job.technicianReport?.submittedAt,draftSavedAt:reportRow.draft_saved_at||data.draftSavedAt||job.technicianReport?.draftSavedAt,reportId};
   return {
     ...job,
     dateIn:data.dateIn||job.dateIn,
