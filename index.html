@@ -10007,14 +10007,14 @@ function bulkDocFileName(title,no,used){
   let name=base,i=2;while(used.has(name))name=base+'_'+(i++);used.add(name);return name+'.pdf';
 }
 // เรนเดอร์ HTML เอกสารใน iframe ซ่อน แล้วจับภาพทุกหน้า (.sheet ที่มองเห็น) → [{img,landscape}] ต่อหน้า A4
-async function renderDocPagesForPdf(html){
+async function renderDocPagesForPdf(html,opts={}){
   const fr=document.createElement('iframe');
   fr.style.cssText='position:fixed;left:-10000px;top:0;width:1250px;height:1800px;border:0;opacity:0;pointer-events:none;';
   document.body.appendChild(fr);
   try{
     await new Promise(res=>{fr.onload=res;fr.srcdoc=html;});
     const d=fr.contentDocument;
-    const st=d.createElement('style');st.textContent='.toolbar{display:none!important}.sheet{box-shadow:none!important;margin:0 0 20px 0!important}body{background:#fff!important}';
+    const st=d.createElement('style');st.textContent='.toolbar{display:none!important}.sheet{box-shadow:none!important;margin:0 0 20px 0!important}body{background:#fff!important}'+(opts.page?'.page{box-shadow:none!important;margin:0 0 20px 0!important;border:0!important}.photo-page{box-shadow:none!important;margin:0 0 20px 0!important}':'');
     d.head.appendChild(st);
     try{if(d.fonts&&d.fonts.ready)await d.fonts.ready;}catch(e){}
     await Promise.all([...d.images].map(im=>im.complete?0:new Promise(r=>{im.onload=im.onerror=r;setTimeout(r,4000);})));
@@ -10031,13 +10031,21 @@ async function renderDocPagesForPdf(html){
     }
     await new Promise(r=>setTimeout(r,250));
     try{fr.contentWindow.fitAll&&fr.contentWindow.fitAll();}catch(e){} // ใบกำกับ/ใบแจ้งหนี้: ล็อก 1 หน้า A4
-    const sheets=[...d.querySelectorAll('.sheet')].filter(el=>fr.contentWindow.getComputedStyle(el).display!=='none');
+    let sheets=[...d.querySelectorAll('.sheet')].filter(el=>fr.contentWindow.getComputedStyle(el).display!=='none');
+    // เอกสารแบบ .page (ใบงานรูปภาพ / ใบแจ้งเข้าซ่อม / ใบตรวจรับงาน) — จับทีละหน้า
+    if(!sheets.length&&opts.page)sheets=[...d.querySelectorAll('.page, .photo-page')].filter(el=>fr.contentWindow.getComputedStyle(el).display!=='none'&&!(el.parentElement&&el.parentElement.closest('.page, .photo-page')));
     const pages=[];
     for(const el of (sheets.length?sheets:[d.body])){
       const canvas=await window.html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
       const landscape=el.offsetWidth>el.offsetHeight*1.15;
       const ratio=landscape?210/297:297/210; // สูง/กว้าง ของหน้า A4
       const pageH=Math.round(canvas.width*ratio);
+      // หน้า .page ยาวเกิน A4 นิดเดียว → ย่อให้พอดี 1 หน้า (ไม่ตัดเป็นหน้าว่างเพิ่ม)
+      if(opts.page&&canvas.height>pageH&&canvas.height<=pageH*1.15){
+        const c=document.createElement('canvas');c.width=canvas.width;c.height=pageH;
+        const g=c.getContext('2d'),k=pageH/canvas.height,w=Math.round(canvas.width*k);g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(canvas,Math.round((canvas.width-w)/2),0,w,pageH);
+        pages.push({img:c.toDataURL('image/jpeg',0.9),landscape});continue;
+      }
       // เนื้อหายาวกว่า 1 หน้า → ตัดเป็นหลายหน้า
       for(let y=0;y<canvas.height-4;y+=pageH){
         const h=Math.min(pageH,canvas.height-y);
@@ -10132,6 +10140,7 @@ function renderSalesMergeBar(){
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--accent);">
     <b>⬇ ดาวน์โหลด</b><span class="tm">(เลือกต่างบริษัท/ลูกค้าได้)</span><span style="flex:1;"></span>
     <button class="btn btn-ghost btn-sm" onclick="pickAllSalesFiltered()">เลือกทั้งหมดตามตัวกรอง</button>
+    <button class="btn btn-primary btn-sm" onclick="bundleFromSalesPick()" title="รวมเอกสารทั้งหมดของงานที่ผูกกับใบที่เลือก (ใบงานที่อัปโหลด / ใบงานรูปภาพ / ใบตรวจรับ ฯลฯ) — เลือก/เรียงได้รายงาน">📑 ชุดเอกสาร (${jobs.length} งาน)</button>
     <button class="btn btn-success btn-sm" onclick="bulkExportSales('zip')">📦 ZIP แยกไฟล์ (${docs.length})</button>
     <button class="btn btn-ghost btn-sm" onclick="bulkExportSales('pdf')">📄 PDF รวมไฟล์เดียว</button>
   </div>`;
@@ -11459,64 +11468,436 @@ function printAllForPR(pr){
   b.quotes.forEach(q=>printQuoteDoc(q.no));
   if(!b.workDocs.length&&!j&&!b.quotes.length&&!b.sales.length)alert('ยังไม่มีเอกสารสำหรับ PR นี้');
 }
-// ===== ชุดเอกสาร: เลือกเอกสารของงาน แล้วรวมเป็นไฟล์เดียว (พิมพ์/Save PDF) =====
-async function collectPrDocs(pr){
-  try{await ensureAccountingLoaded();}catch(e){}
-  try{await ensureJobImages(pr,0);}catch(e){console.warn('โหลดรูปรายงานช่างไม่สำเร็จ',e);}
-  const b=workOrderBundle(pr),j=b.job;
-  const out=[];
-  if(j){
-    try{await fillReportImageDims(j);}catch(e){}
-    // รายงานช่าง + ใบตรวจรับงาน ตัดออกจากชุดเอกสาร (ไม่ได้ใช้จริง) — ยังพิมพ์แยกได้ที่หน้าใบงาน
-    out.push({label:'ใบงานรูปภาพ (สำหรับวางบิล)',build:()=>photoBillingReportHtml(j)});
-  }
-  const sales=(salesInvoices||[]).filter(x=>salesInvoiceMatchesJob(x,pr)&&x.status!=='cancelled');
-  sales.forEach(inv=>{
-    const items=(salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===inv.id&&x.status!=='cancelled').sort((a,b)=>Number(a.line_no||0)-Number(b.line_no||0));
-    const t=(SALES_DOC_META[inv.doc_type||'tax_invoice']||{}).title||'เอกสารขาย';
-    out.push({label:t+' '+(inv.doc_no||inv.sales_invoice_no||''),build:()=>salesDocHtmlFor(inv,items)});
-  });
-  try{
-    const rows=await sbFetchAll('job_checkins',`?job_id=eq.${encodeURIComponent(j?j.id:pr)}&select=*&order=created_at.desc`);
-    (rows||[]).forEach((r,i)=>out.push({label:'ใบแจ้งเข้าซ่อม'+((rows.length>1)?(' #'+(i+1)):''),build:()=>checkinFormHtml(r,j||{id:pr,client:'',branch:''})}));
-  }catch(e){}
-  try{
-    const rows=await sbFetchAll('job_acceptances',`?job_id=eq.${encodeURIComponent(j?j.id:pr)}&select=*&order=created_at.desc`);
-    (rows||[]).forEach((r,i)=>out.push({label:'ใบตรวจรับงาน'+((rows.length>1)?(' #'+(i+1)):''),build:()=>acceptanceSignedFormHtml(r,j||{id:pr,client:'',branch:''})}));
-  }catch(e){}
-  return out;
+// ===== ชุดเอกสาร v2: หลายงานพร้อมกัน · สูตรเรียงเอกสาร (ใช้กับทุกงาน) · ปรับเองรายงาน · พิมพ์รวม / ZIP แยกโฟลเดอร์ต่องาน =====
+// เปิดได้จาก: หน้าเอกสารขาย (ติ๊กหลายใบ → 📑 ชุดเอกสาร) · หน้างาน / พรีวิวเอกสาร (งานเดียว)
+const BUNDLE_TYPES={
+  tax:{name:'ใบกำกับภาษี',c:'#0b1220'},
+  qt:{name:'ใบเสนอราคา',c:'#d97706'},
+  wo:{name:'ใบงาน (ที่อัปโหลด)',short:'ใบงาน',c:'#7c3aed',up:1},
+  accept:{name:'ใบตรวจรับงาน',c:'#0d9488'},
+  photo:{name:'ใบงานรูปภาพ',c:'#ef4444'},
+  inv:{name:'ใบแจ้งหนี้',c:'#175fff'},
+  rcpt:{name:'ใบเสร็จรับเงิน',c:'#16a34a'},
+  checkin:{name:'ใบแจ้งเข้าซ่อม',c:'#0891b2'},
+  appr:{name:'ใบอนุมัติ (ที่อัปโหลด)',short:'ใบอนุมัติ',c:'#a855f7',up:1}
+};
+const BUNDLE_KEYS=Object.keys(BUNDLE_TYPES);
+const BUNDLE_PRESETS={
+  bill:{name:'วางบิล',order:BUNDLE_KEYS.slice(),off:['inv','rcpt','checkin','appr']},
+  all:{name:'ครบทุกใบ',order:BUNDLE_KEYS.slice(),off:[]}
+};
+const BUNDLE_SALES_TYPE={tax_invoice:'tax',quotation:'qt',invoice:'inv',receipt:'rcpt'};
+const BUNDLE_LS_RECIPE='pf_doc_bundle_recipe_v1',BUNDLE_LS_SAVED='pf_doc_bundle_saved_v1';
+function bundleLsGet(k,def){try{const v=JSON.parse(localStorage.getItem(k)||'null');return v==null?def:v;}catch(e){return def;}}
+function bundleLsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function bundleRecipe(r){
+  const order=(Array.isArray(r&&r.order)?r.order:[]).filter((t,i,a)=>BUNDLE_TYPES[t]&&a.indexOf(t)===i);
+  BUNDLE_KEYS.forEach(t=>{if(!order.includes(t))order.push(t);});
+  return {order,off:new Set([...((r&&r.off)||[])].filter(t=>BUNDLE_TYPES[t]))};
 }
-async function openDocBundle(pr){
-  pr=canonPR(pr)||pr;
+function bundleTypeShort(t){return (BUNDLE_TYPES[t]||{}).short||(BUNDLE_TYPES[t]||{}).name||'เอกสาร';}
+function bundleSafeName(s){return String(s||'').replace(/[\\/:*?"<>|\s]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,90)||'เอกสาร';}
+function bundleUniq(name,used){let n=name,i=2;while(used.has(n))n=name+'_'+(i++);used.add(n);return n;}
+function bundleDateTh(v){try{return v?new Date(v).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}):'';}catch(e){return '';}}
+let bundleSt=null;
+
+// รวบรวมเอกสารทั้งหมดของงาน 1 งาน
+async function bundleCollectJob(pr){
+  const b=workOrderBundle(pr),j=b.job,pd=workOrderPrimaryData(pr),docs=[];let seq=0;
+  const add=o=>docs.push(Object.assign({id:'d'+(++seq)},o));
+  const jid=j?j.id:pr,jobLike=j||{id:pr,client:'',branch:''};
+  // ไฟล์ที่อัปโหลดไว้ (ใบงาน / ใบอนุมัติ) — PDF หรือรูป
+  const fileDoc=(type,x)=>{
+    const url=x.url||x.fileUrl||x.dataUrl;if(!url)return;
+    const isPdf=!String(x.type||'').startsWith('image/')&&!/^data:image\//i.test(url);
+    add({type,kind:'file',url,isPdf,mime:x.type||'',fileName:x.fileName||'',label:x.fileName||(bundleTypeShort(type)+(isPdf?' (PDF)':' (รูปภาพ)')),
+      sub:[x.uploadedAt?'อัปโหลด '+bundleDateTh(x.uploadedAt):'',isPdf?'PDF':'รูปภาพ'].filter(Boolean).join(' · ')});
+  };
+  b.workDocs.filter(x=>!isDeletedRecord(x)).forEach(x=>fileDoc('wo',x));
+  b.approvals.filter(x=>!isDeletedRecord(x)).forEach(x=>fileDoc('appr',x));
+  // เอกสารขาย (เทมเพลตเดียวกับที่พิมพ์จากหน้าเอกสารขาย)
+  (b.sales||[]).forEach(inv=>{
+    const dt=inv.doc_type||'tax_invoice',meta=SALES_DOC_META[dt]||{},no=inv.doc_no||inv.sales_invoice_no||'';
+    add({type:BUNDLE_SALES_TYPE[dt]||'inv',kind:'html',no,label:(meta.title||'เอกสารขาย')+(no?' '+no:''),sub:bundleDateTh(inv.invoice_date),
+      build:()=>{const items=(salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===inv.id&&x.status!=='cancelled').sort((a,c)=>Number(a.line_no||0)-Number(c.line_no||0));return salesDocHtmlFor(inv,items);}});
+  });
+  // ใบงานรูปภาพ (ตามที่จัดเรียง/เลือกไว้ในหน้ารายงานช่าง)
+  if(j){
+    try{await ensureJobImages(j.id,0);}catch(e){console.warn('โหลดรูปรายงานช่างไม่สำเร็จ',e);}
+    try{await fillReportImageDims(j);}catch(e){}
+    const n=reportImages(j).filter(im=>!im.docExclude).length;
+    if(n)add({type:'photo',kind:'html',label:'ใบงานรูปภาพ',sub:n+' รูป',build:()=>photoBillingReportHtml(j)});
+  }
+  try{
+    const rows=await sbFetchAll('job_checkins',`?job_id=eq.${encodeURIComponent(jid)}&select=*&order=created_at.desc`);
+    (rows||[]).forEach((r,i)=>add({type:'checkin',kind:'html',label:'ใบแจ้งเข้าซ่อม'+(rows.length>1?' #'+(i+1):''),sub:bundleDateTh(r.created_at),build:()=>checkinFormHtml(r,jobLike)}));
+  }catch(e){}
+  try{
+    const rows=await sbFetchAll('job_acceptances',`?job_id=eq.${encodeURIComponent(jid)}&select=*&order=created_at.desc`);
+    (rows||[]).forEach((r,i)=>add({type:'accept',kind:'html',label:'ใบตรวจรับงาน'+(rows.length>1?' #'+(i+1):''),sub:bundleDateTh(r.created_at),build:()=>acceptanceSignedFormHtml(r,jobLike)}));
+  }catch(e){}
+  const dash=v=>v&&v!=='—'?v:'';
+  return {pr:jid,client:dash(pd.client),branch:dash(pd.branch),docs,custom:null};
+}
+// ลำดับเอกสารที่ใช้จริงของงาน: ปรับเอง → ตามงาน · ไม่งั้น → ตามสูตร
+function bundleEff(job){
+  if(job.custom){
+    const by=new Map(job.docs.map(d=>[d.id,d])),ids=job.custom.order.filter(id=>by.has(id));
+    job.docs.forEach(d=>{if(!ids.includes(d.id))ids.push(d.id);});
+    return ids.map(id=>({d:by.get(id),on:!job.custom.off.has(id)}));
+  }
+  const st=bundleSt,rk=t=>st.order.indexOf(t);
+  return job.docs.map((d,i)=>({d,i})).sort((a,c)=>rk(a.d.type)-rk(c.d.type)||a.i-c.i).map(x=>({d:x.d,on:!st.off.has(x.d.type)}));
+}
+function bundleMissing(job){if(job.custom)return [];const have=new Set(job.docs.map(d=>d.type));return bundleSt.order.filter(t=>!bundleSt.off.has(t)&&!have.has(t));}
+function bundlePlan(){const jobs=(bundleSt?bundleSt.jobs:[]).map(j=>({pr:j.pr,client:j.client,branch:j.branch,docs:bundleEff(j).filter(x=>x.on).map(x=>x.d)})).filter(j=>j.docs.length);return {jobs,count:jobs.reduce((s,j)=>s+j.docs.length,0)};}
+function bundleSaveRecipe(){const st=bundleSt;if(st)bundleLsSet(BUNDLE_LS_RECIPE,{order:st.order,off:[...st.off],preset:st.preset});}
+
+function bundleEnsureCss(){
+  if(document.getElementById('dbx-css'))return;
+  const s=document.createElement('style');s.id='dbx-css';
+  s.textContent=`
+#m-docbundle .dbx-modal{width:min(1280px,97vw);max-width:none;height:min(880px,94vh);max-height:none;display:flex;flex-direction:column;overflow:hidden;padding:0}
+.dbx-hd{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--border)}
+.dbx-title{font-size:17px;font-weight:800;white-space:nowrap}
+.dbx-hd .close-btn{margin-left:auto}
+.dbx-sub{color:var(--text3);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.dbx-recipe{padding:12px 20px;border-bottom:1px solid var(--border)}
+.dbx-rc-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.dbx-rc-top>b{font-size:13px;margin-right:4px}
+.dbx-preset{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;color:var(--text2);cursor:pointer;font-family:inherit;display:inline-flex;gap:6px;align-items:center}
+.dbx-preset.on{background:var(--text);border-color:var(--text);color:var(--surface)}
+.dbx-preset.add{border-style:dashed;color:var(--accent)}
+.dbx-preset i{font-style:normal;opacity:.65;padding:0 2px}
+.dbx-hint{margin-left:auto;color:var(--text3);font-size:12px}
+.dbx-types{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.dbx-tp{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:5px 8px;font-size:12.5px;font-weight:700;cursor:grab;user-select:none}
+.dbx-tp .n{min-width:19px;height:19px;border-radius:6px;background:var(--accent);color:#fff;font-size:11px;display:grid;place-items:center}
+.dbx-tp .sw{width:9px;height:9px;border-radius:3px}
+.dbx-tp.off{opacity:.45;background:var(--surface2)}.dbx-tp.off .n{background:var(--text3)}
+.dbx-tp button{border:0;background:transparent;cursor:pointer;font-size:13px;padding:0 0 0 2px;line-height:1}
+.dbx-tp.dragover,.dbx-row.dragover{outline:2px dashed var(--accent);outline-offset:2px}
+.dbx-row.dragging{opacity:.4}
+.dbx-arrow{color:var(--text3);font-size:11px}
+.dbx-main{flex:1;min-height:0;display:grid;grid-template-columns:280px minmax(0,1fr) 230px}
+.dbx-jobs,.dbx-docs,.dbx-strip{min-height:0;overflow:auto;padding:14px}
+.dbx-jobs{border-right:1px solid var(--border);background:var(--surface2)}
+.dbx-strip{border-left:1px solid var(--border)}
+.dbx-docs{padding:16px 20px}
+.dbx-sec{font-size:11.5px;font-weight:800;color:var(--text3);letter-spacing:.3px;margin:0 0 8px 2px}
+.dbx-add{display:flex;gap:6px;margin-bottom:10px}
+.dbx-add input{flex:1;min-width:0;border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text)}
+.dbx-job{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;position:relative}
+.dbx-job.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.dbx-job.loading{opacity:.6;cursor:default}
+.dbx-job .pr{font-weight:800;font-size:14px;padding-right:18px}
+.dbx-job .cl{color:var(--text2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dbx-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.dbx-chip{font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--surface2);color:var(--text2)}
+.dbx-chip.warn{background:var(--orange-dim);color:var(--orange)}
+.dbx-chip.own{background:var(--accent-dim);color:var(--accent)}
+.dbx-chip.ok{background:var(--green-dim);color:var(--green)}
+.dbx-job .rm{position:absolute;top:5px;right:6px;border:0;background:transparent;color:var(--text3);font-size:17px;cursor:pointer;border-radius:6px;padding:0 5px;line-height:1.3}
+.dbx-job .rm:hover{background:var(--red-dim);color:var(--red)}
+.dbx-djh{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.dbx-djh h3{margin:0;font-size:17px}
+.dbx-djh .cl{color:var(--text2);font-size:12.5px}
+.dbx-note{font-size:12.5px;border-radius:10px;padding:8px 12px;margin-bottom:10px;background:var(--accent-dim);color:var(--text2);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dbx-note.own{background:var(--orange-dim);color:var(--orange)}
+.dbx-row{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 12px;margin-bottom:7px}
+.dbx-row.off{background:var(--surface2)}.dbx-row.off .dbx-ic,.dbx-row.off .dbx-dn{opacity:.45}
+.dbx-row.miss{border-style:dashed;background:transparent}
+.dbx-grip{color:var(--text3);cursor:grab;letter-spacing:-2px;user-select:none}
+.dbx-pos{width:24px;height:24px;border-radius:7px;background:var(--text);color:var(--surface);font-size:12px;font-weight:800;display:grid;place-items:center;flex:none}
+.dbx-row.off .dbx-pos,.dbx-row.miss .dbx-pos{background:var(--border);color:var(--text3)}
+.dbx-ic{width:30px;height:40px;border-radius:3px;background:#fff;border:1px solid #d5dbe3;position:relative;flex:none;overflow:hidden}
+.dbx-ic::before{content:"";position:absolute;left:4px;right:4px;top:4px;height:5px;border-radius:1px;background:var(--c,#175fff)}
+.dbx-ic::after{content:"";position:absolute;left:4px;right:4px;top:13px;bottom:5px;background:repeating-linear-gradient(#e3e8ef 0 2px,transparent 2px 5px)}
+.dbx-ic.up{background:#f4f1ea}.dbx-ic.up::after{background:repeating-linear-gradient(#cfc8b8 0 1px,transparent 1px 4px)}
+.dbx-ic.ph::after{background:linear-gradient(90deg,#c9d6e8 0 46%,transparent 46% 54%,#d8e2cf 54%) 0 0/100% 45% no-repeat,linear-gradient(90deg,#e3d6c9 0 46%,transparent 46% 54%,#cbd9e4 54%) 0 100%/100% 45% no-repeat}
+.dbx-dn{flex:1;min-width:0}
+.dbx-dn b{font-size:13.5px;word-break:break-word}
+.dbx-dn .s{font-size:12px;color:var(--text3)}
+.dbx-src{font-size:10.5px;font-weight:800;border-radius:6px;padding:1px 6px;margin-left:6px;background:var(--surface2);color:var(--text2);white-space:nowrap}
+.dbx-src.up{background:var(--purple-dim);color:var(--purple)}
+.dbx-mv{display:flex;flex-direction:column;gap:2px}
+.dbx-mv button{border:1px solid var(--border);background:var(--surface);color:var(--text2);border-radius:6px;width:26px;height:19px;font-size:9.5px;padding:0;cursor:pointer}
+.dbx-mv button:disabled{opacity:.35;cursor:default}
+.dbx-sw{position:relative;width:38px;height:22px;flex:none;display:inline-block}
+.dbx-sw input{opacity:0;width:0;height:0}
+.dbx-sw span{position:absolute;inset:0;border-radius:999px;background:var(--border2);transition:.15s;cursor:pointer}
+.dbx-sw span::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:.15s}
+.dbx-sw input:checked+span{background:var(--accent)}
+.dbx-sw input:checked+span::after{transform:translateX(16px)}
+.dbx-miss-t{font-size:12.5px;color:var(--text3);margin:12px 0 6px 2px;font-weight:700}
+.dbx-st-job{margin-bottom:12px}
+.dbx-st-job .t{font-size:12px;font-weight:800;display:flex;justify-content:space-between;gap:6px;margin-bottom:3px}
+.dbx-st-job .t span{color:var(--text3);font-weight:600}
+.dbx-st-it{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:1px 0}
+.dbx-st-it .k{min-width:18px;color:var(--text3);font-size:11px;text-align:right}
+.dbx-st-it .sw{width:8px;height:8px;border-radius:2px;flex:none}
+.dbx-st-it .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dbx-ft{display:flex;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--border);flex-wrap:wrap}
+.dbx-tot{font-size:13.5px;white-space:nowrap}.dbx-tot b{font-size:15px}
+.dbx-msg{font-size:12.5px;color:var(--text3);flex:1;min-width:140px}
+.dbx-msg.err{color:var(--red)}
+.dbx-empty{color:var(--text3);font-size:13px;padding:20px 4px}
+@media (max-width:900px){
+  #m-docbundle .dbx-modal{height:94vh}
+  .dbx-main{display:block;overflow:auto}
+  .dbx-jobs{border-right:0;border-bottom:1px solid var(--border);overflow:visible}
+  #dbx-joblist{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+  .dbx-job{min-width:210px;margin:0}
+  .dbx-docs{overflow:visible;padding:14px}
+  .dbx-strip,.dbx-hint,.dbx-sub{display:none}
+  .dbx-grip{display:none}
+}`;
+  document.head.appendChild(s);
+}
+
+async function openDocBundle(prs){
+  prs=[...new Set((Array.isArray(prs)?prs:[prs]).map(p=>canonPR(p)||String(p||'').trim()).filter(Boolean))];
+  bundleEnsureCss();
   let ov=document.getElementById('m-docbundle');
   if(!ov){ov=document.createElement('div');ov.className='modal-overlay';ov.id='m-docbundle';document.body.appendChild(ov);}
-  ov.innerHTML='<div class="modal" style="max-width:480px;"><div class="modal-header"><div class="modal-title">ชุดเอกสาร '+esc(pr)+'</div><button class="close-btn" onclick="closeM(\'m-docbundle\')">×</button></div><div class="modal-body"><div id="docbundle-list" class="tm">กำลังโหลดรายการเอกสาร...</div><div class="flex g8" style="justify-content:flex-end;margin-top:14px;"><button class="btn btn-ghost" onclick="closeM(\'m-docbundle\')">ยกเลิก</button><button class="btn btn-primary" id="docbundle-go" disabled onclick="runDocBundle(\''+esc(pr)+'\')">รวม + เปิดพิมพ์</button></div></div>';
+  const saved=bundleLsGet(BUNDLE_LS_RECIPE,null),r=bundleRecipe(saved||BUNDLE_PRESETS.bill);
+  const st=bundleSt={jobs:[],sel:0,order:r.order,off:r.off,preset:saved?(saved.preset||''):'bill',busy:false,msg:'',err:false,loading:prs.slice()};
+  ov.innerHTML=`<div class="modal dbx-modal">
+    <div class="dbx-hd"><div class="dbx-title">📑 ดาวน์โหลดชุดเอกสาร</div><div class="dbx-sub" id="dbx-sub"></div><button class="close-btn" onclick="closeM('m-docbundle')">×</button></div>
+    <div class="dbx-recipe" id="dbx-recipe"></div>
+    <div class="dbx-main">
+      <div class="dbx-jobs"><div class="dbx-sec">งานในชุดนี้ <span id="dbx-jcount"></span></div>
+        <div class="dbx-add"><input id="dbx-add-in" list="dbx-pr-dl" autocomplete="off" placeholder="+ เพิ่มงาน: พิมพ์เลข PR" onkeydown="if(event.key==='Enter')bundleAddJob()"><datalist id="dbx-pr-dl"></datalist><button class="btn btn-ghost btn-sm" onclick="bundleAddJob()">เพิ่ม</button></div>
+        <div id="dbx-joblist"></div></div>
+      <div class="dbx-docs" id="dbx-docs"></div>
+      <div class="dbx-strip"><div class="dbx-sec">ลำดับในไฟล์</div><div id="dbx-strip"></div></div>
+    </div>
+    <div class="dbx-ft" id="dbx-ft"></div>
+  </div>`;
+  try{document.getElementById('dbx-pr-dl').innerHTML=liveJobs().slice().sort((a,c)=>String(c.id).localeCompare(String(a.id))).slice(0,1500).map(j=>`<option value="${esc(j.id)}">${esc([j.client,j.branch].filter(Boolean).join(' · '))}</option>`).join('');}catch(e){}
   openM('m-docbundle');
-  const docs=await collectPrDocs(pr);
-  window.__docBundle={pr,docs,order:docs.map((_,i)=>i),checked:new Set(docs.map((_,i)=>i))};
-  renderDocBundleList();
+  bundleRender();
+  try{await ensureAccountingLoaded();}catch(e){}
+  try{await ensureWorkOrdersLoaded();}catch(e){}
+  for(let i=0;i<prs.length;i++){
+    if(bundleSt!==st)return;
+    st.msg=prs.length>1?`กำลังโหลดเอกสาร ${i+1}/${prs.length} — ${prs[i]}`:'กำลังโหลดรายการเอกสาร...';bundleRenderFoot();
+    try{const job=await bundleCollectJob(prs[i]);if(bundleSt!==st)return;st.jobs.push(job);}catch(e){console.warn('โหลดเอกสารของงานไม่สำเร็จ',prs[i],e);}
+    st.loading=st.loading.filter(p=>p!==prs[i]);
+    bundleRender();
+  }
+  st.msg='';bundleRender();
 }
-function renderDocBundleList(){
-  const st=window.__docBundle,box=document.getElementById('docbundle-list');
-  if(!box||!st)return;
-  if(!st.docs.length){box.innerHTML='<div class="tm">ยังไม่มีเอกสารสำหรับงานนี้</div>';return;}
-  box.innerHTML='<div style="font-size:12px;color:var(--text3);margin-bottom:8px;">เลือกเอกสาร + จัดลำดับ (บนสุด = ขึ้นก่อน)</div><div style="display:flex;flex-direction:column;gap:6px;">'+st.order.map((di,pos)=>{const d=st.docs[di],ch=st.checked.has(di);return `<div class="flex g8" style="align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px 8px;"><input type="checkbox" ${ch?'checked':''} onchange="toggleDocBundle(${di},this.checked)"><span style="flex:1;font-size:13px;">${pos+1}. ${esc(d.label)}</span><button class="btn btn-ghost btn-sm" ${pos===0?'disabled':''} onclick="moveDocBundle(${pos},-1)">↑</button><button class="btn btn-ghost btn-sm" ${pos===st.order.length-1?'disabled':''} onclick="moveDocBundle(${pos},1)">↓</button></div>`;}).join('')+'</div>';
-  const go=document.getElementById('docbundle-go');if(go)go.disabled=false;
+async function bundleAddJob(){
+  const st=bundleSt,inp=document.getElementById('dbx-add-in');if(!st||!inp)return;
+  const v=canonPR(inp.value);if(!v)return;
+  const ex=st.jobs.findIndex(j=>sameJob(j.pr,v));
+  if(ex>=0){st.sel=ex;inp.value='';bundleRender();return;}
+  if(st.loading.some(p=>sameJob(p,v)))return;
+  inp.value='';st.loading.push(v);st.msg='กำลังโหลดเอกสาร '+v+'...';bundleRender();
+  try{const job=await bundleCollectJob(v);if(bundleSt!==st)return;st.jobs.push(job);st.sel=st.jobs.length-1;}catch(e){alert('โหลดเอกสารของ '+v+' ไม่สำเร็จ');}
+  st.loading=st.loading.filter(p=>p!==v);st.msg='';bundleRender();
 }
-function toggleDocBundle(di,ch){const st=window.__docBundle;if(!st)return;if(ch)st.checked.add(di);else st.checked.delete(di);}
-function moveDocBundle(pos,dir){const st=window.__docBundle;if(!st)return;const j=pos+dir;if(j<0||j>=st.order.length)return;const a=st.order,t=a[pos];a[pos]=a[j];a[j]=t;renderDocBundleList();}
-async function runDocBundle(pr){
-  const st=window.__docBundle;if(!st)return;
-  const picked=st.order.filter(di=>st.checked.has(di)).map(di=>st.docs[di]).filter(Boolean);
-  if(!picked.length){alert('เลือกเอกสารอย่างน้อย 1 ฉบับ');return;}
-  const go=document.getElementById('docbundle-go');if(go){go.disabled=true;go.textContent='กำลังรวม...';}
+
+function bundleRender(){
+  const st=bundleSt;if(!st||!document.getElementById('dbx-recipe'))return;
+  if(st.sel>=st.jobs.length)st.sel=Math.max(0,st.jobs.length-1);
+  // สูตร
+  const saved=bundleLsGet(BUNDLE_LS_SAVED,[]);
+  const presets=[...Object.entries(BUNDLE_PRESETS).map(([k,p])=>({k,name:p.name})),...(Array.isArray(saved)?saved:[]).map((p,i)=>({k:'s'+i,name:p.name,del:i}))];
+  const onList=st.order.filter(t=>!st.off.has(t));
+  document.getElementById('dbx-recipe').innerHTML=`<div class="dbx-rc-top"><b>สูตรชุดเอกสาร</b>${presets.map(p=>`<span class="dbx-preset ${st.preset===p.k?'on':''}" onclick="bundleUsePreset('${p.k}')">${esc(p.name)}${p.del!=null?`<i title="ลบสูตรนี้" onclick="event.stopPropagation();bundleDelPreset(${p.del})">×</i>`:''}</span>`).join('')}${st.preset?'':'<span class="dbx-preset on">ปรับเอง</span>'}<button class="dbx-preset add" onclick="bundleSavePreset()">+ บันทึกเป็นสูตร</button><span class="dbx-hint">ลากเพื่อเรียงลำดับ · กด 👁 เปิด/ปิดประเภท · ใช้กับทุกงานที่ไม่ได้ปรับเอง</span></div>
+  <div class="dbx-types">${st.order.map((t,i)=>{const off=st.off.has(t);return `${i?'<span class="dbx-arrow">›</span>':''}<div class="dbx-tp ${off?'off':''}" draggable="true" ondragstart="bundleTDrag(event,'${t}')" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="bundleTDrop(event,'${t}')"><span class="n">${off?'–':onList.indexOf(t)+1}</span><span class="sw" style="background:${BUNDLE_TYPES[t].c}"></span>${esc(BUNDLE_TYPES[t].name)}<button title="${off?'เปิด':'ปิด'}ประเภทนี้" onclick="bundleTToggle('${t}')">${off?'🚫':'👁'}</button></div>`;}).join('')}</div>`;
+  // รายการงาน
+  document.getElementById('dbx-jcount').textContent='· '+st.jobs.length+' งาน';
+  document.getElementById('dbx-sub').textContent=st.jobs.map(j=>j.pr).join(', ');
+  document.getElementById('dbx-joblist').innerHTML=st.jobs.map((j,i)=>{
+    const eff=bundleEff(j),n=eff.filter(x=>x.on).length,miss=bundleMissing(j);
+    return `<div class="dbx-job ${i===st.sel?'sel':''}" onclick="bundleSel(${i})"><button class="rm" title="เอาออกจากชุด" onclick="event.stopPropagation();bundleRemoveJob(${i})">×</button><div class="pr">${esc(j.pr)}</div><div class="cl">${esc([j.client,j.branch].filter(Boolean).join(' · ')||'—')}</div><div class="dbx-chips"><span class="dbx-chip">${n} ฉบับ</span>${j.custom?'<span class="dbx-chip own">ปรับเอง</span>':''}${miss.length?`<span class="dbx-chip warn" title="ขาด: ${esc(miss.map(t=>BUNDLE_TYPES[t].name).join(', '))}">ขาด ${miss.length}: ${esc(miss.slice(0,2).map(bundleTypeShort).join(', '))}${miss.length>2?'…':''}</span>`:(j.custom?'':'<span class="dbx-chip ok">ครบตามสูตร</span>')}</div></div>`;
+  }).join('')+st.loading.map(p=>`<div class="dbx-job loading"><div class="pr">${esc(p)}</div><div class="cl">กำลังโหลด...</div></div>`).join('')+(!st.jobs.length&&!st.loading.length?'<div class="dbx-empty">ยังไม่มีงาน — พิมพ์เลข PR ด้านบนเพื่อเพิ่ม</div>':'');
+  // เอกสารของงานที่เลือก
+  const job=st.jobs[st.sel],box=document.getElementById('dbx-docs');
+  if(!job){box.innerHTML=`<div class="dbx-empty">${st.loading.length?'กำลังโหลดรายการเอกสาร...':'เลือกหรือเพิ่มงานทางซ้าย'}</div>`;}
+  else{
+    const eff=bundleEff(job);let k=0;
+    const rows=eff.map((x,i)=>{const d=x.d,t=BUNDLE_TYPES[d.type]||{},pos=x.on?++k:'–';
+      return `<div class="dbx-row ${x.on?'':'off'}" draggable="true" ondragstart="bundleDDrag(event,'${d.id}')" ondragend="this.classList.remove('dragging')" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="bundleDDrop(event,'${d.id}')">
+        <span class="dbx-grip" title="ลากเพื่อเรียง">⋮⋮</span><span class="dbx-pos">${pos}</span><span class="dbx-ic ${t.up?'up':''} ${d.type==='photo'?'ph':''}" style="--c:${t.c}"></span>
+        <div class="dbx-dn"><b>${esc(d.label)}</b><span class="dbx-src ${t.up?'up':''}">${t.up?'ไฟล์อัปโหลด':'สร้างจากระบบ'}</span><div class="s">${esc([t.name,d.sub].filter(Boolean).join(' · '))}</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="bundleViewDoc('${d.id}')">ดู</button>
+        <div class="dbx-mv"><button ${i===0?'disabled':''} onclick="bundleDStep('${d.id}',-1)">▲</button><button ${i===eff.length-1?'disabled':''} onclick="bundleDStep('${d.id}',1)">▼</button></div>
+        <label class="dbx-sw" title="${x.on?'เอาออกจากชุด':'ใส่ในชุด'}"><input type="checkbox" ${x.on?'checked':''} onchange="bundleDToggle('${d.id}',this.checked)"><span></span></label>
+      </div>`;}).join('');
+    const miss=bundleMissing(job);
+    box.innerHTML=`<div class="dbx-djh"><div style="flex:1;min-width:0;"><h3>${esc(job.pr)}</h3><div class="cl">${esc([job.client,job.branch].filter(Boolean).join(' · '))}</div></div></div>`
+      +(job.custom?`<div class="dbx-note own">✋ งานนี้ปรับลำดับ/เลือกเอกสารเอง — ไม่เปลี่ยนตามสูตรด้านบน<span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="bundleResetJob()">↺ กลับไปใช้ตามสูตร</button></div>`
+        :`<div class="dbx-note">เรียงตามสูตรด้านบน — ลากแถว / กด ▲▼ / ปิดสวิตช์ ได้เลย (งานนี้จะเป็น “ปรับเอง” เฉพาะงานนี้)</div>`)
+      +(rows||'<div class="dbx-empty">ยังไม่มีเอกสารในงานนี้</div>')
+      +(miss.length?`<div class="dbx-miss-t">ยังไม่มีในงานนี้ (ตามสูตร)</div>`+miss.map(t=>`<div class="dbx-row miss"><span class="dbx-pos">–</span><div class="dbx-dn"><b style="color:var(--text3)">${esc(BUNDLE_TYPES[t].name)}</b><div class="s">${BUNDLE_TYPES[t].up?'ยังไม่ได้อัปโหลดไฟล์เข้าแฟ้มงาน':'ยังไม่ได้ออกเอกสาร / ยังไม่มีข้อมูล'}</div></div></div>`).join(''):'');
+  }
+  // ลำดับในไฟล์
+  let n=0;
+  document.getElementById('dbx-strip').innerHTML=st.jobs.map(j=>{const on=bundleEff(j).filter(x=>x.on);return `<div class="dbx-st-job"><div class="t">${esc(j.pr)}<span>${on.length} ฉบับ</span></div>${on.map(x=>`<div class="dbx-st-it"><span class="k">${++n}</span><span class="sw" style="background:${(BUNDLE_TYPES[x.d.type]||{}).c}"></span><span class="l" title="${esc(x.d.label)}">${esc(x.d.label)}</span></div>`).join('')||'<div class="dbx-st-it">—</div>'}</div>`;}).join('');
+  bundleRenderFoot();
+}
+function bundleRenderFoot(){
+  const st=bundleSt,ft=document.getElementById('dbx-ft');if(!st||!ft)return;
+  const plan=bundlePlan(),dis=st.busy||st.loading.length||!plan.count?'disabled':'';
+  ft.innerHTML=`<div class="dbx-tot"><b>${plan.jobs.length}</b> งาน · <b>${plan.count}</b> ฉบับ</div><div class="dbx-msg ${st.err?'err':''}">${esc(st.msg||'')}</div>
+    <button class="btn btn-ghost" onclick="closeM('m-docbundle')">ปิด</button>
+    <button class="btn btn-ghost" ${dis} onclick="bundleZip()" title="ได้ไฟล์ ZIP — แตกแล้วเป็นโฟลเดอร์ต่องาน ข้างในเป็น PDF แต่ละฉบับเรียงตามลำดับ">📦 ZIP แยกโฟลเดอร์ต่องาน</button>
+    <button class="btn btn-primary" ${dis} onclick="bundlePrint()">🖨 พิมพ์ / Save PDF</button>`;
+}
+function bundleMsg(m,err){if(!bundleSt)return;bundleSt.msg=m;bundleSt.err=!!err;bundleRenderFoot();}
+// ---- สูตร ----
+function bundleUsePreset(k){
+  const st=bundleSt;if(!st)return;
+  let p=BUNDLE_PRESETS[k];
+  if(!p&&/^s\d+$/.test(k)){const saved=bundleLsGet(BUNDLE_LS_SAVED,[]);p=Array.isArray(saved)?saved[+k.slice(1)]:null;}
+  if(!p)return;
+  const r=bundleRecipe(p);st.order=r.order;st.off=r.off;st.preset=k;bundleSaveRecipe();bundleRender();
+}
+function bundleSavePreset(){
+  const st=bundleSt;if(!st)return;
+  const name=(prompt('ตั้งชื่อสูตรชุดเอกสาร (เช่น วางบิล ESS)')||'').trim();if(!name)return;
+  let saved=bundleLsGet(BUNDLE_LS_SAVED,[]);if(!Array.isArray(saved))saved=[];
+  const i=saved.findIndex(p=>p.name===name),rec={name,order:st.order.slice(),off:[...st.off]};
+  if(i>=0)saved[i]=rec;else saved.push(rec);
+  bundleLsSet(BUNDLE_LS_SAVED,saved);st.preset='s'+(i>=0?i:saved.length-1);bundleSaveRecipe();bundleRender();
+}
+function bundleDelPreset(i){
+  let saved=bundleLsGet(BUNDLE_LS_SAVED,[]);if(!Array.isArray(saved)||!saved[i])return;
+  if(!confirm('ลบสูตร "'+saved[i].name+'" ?'))return;
+  saved.splice(i,1);bundleLsSet(BUNDLE_LS_SAVED,saved);
+  const st=bundleSt;if(st&&/^s\d+$/.test(st.preset)){const k=+st.preset.slice(1);st.preset=k===i?'':(k>i?'s'+(k-1):st.preset);bundleSaveRecipe();}
+  bundleRender();
+}
+function bundleTToggle(t){const st=bundleSt;if(!st)return;if(st.off.has(t))st.off.delete(t);else st.off.add(t);st.preset='';bundleSaveRecipe();bundleRender();}
+let bundleTDragT=null,bundleDDragId=null;
+function bundleTDrag(e,t){bundleTDragT=t;try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',t);}catch(x){}}
+function bundleTDrop(e,t){
+  e.preventDefault();const st=bundleSt,from=bundleTDragT;bundleTDragT=null;
+  if(!st||!from||from===t){bundleRender();return;}
+  const fi=st.order.indexOf(from),ti=st.order.indexOf(t),a=st.order.filter(x=>x!==from);
+  a.splice(a.indexOf(t)+(fi<ti?1:0),0,from);st.order=a;st.preset='';bundleSaveRecipe();bundleRender();
+}
+// ---- งาน / เอกสารรายงาน ----
+function bundleSel(i){if(bundleSt){bundleSt.sel=i;bundleRender();}}
+function bundleRemoveJob(i){const st=bundleSt;if(!st)return;st.jobs.splice(i,1);if(st.sel>i||st.sel>=st.jobs.length)st.sel=Math.max(0,st.sel-1);bundleRender();}
+function bundleCurJob(){return bundleSt&&bundleSt.jobs[bundleSt.sel];}
+function bundleEnsureCustom(job){if(!job.custom){const l=bundleEff(job);job.custom={order:l.map(x=>x.d.id),off:new Set(l.filter(x=>!x.on).map(x=>x.d.id))};}return job.custom;}
+function bundleDToggle(id,on){const job=bundleCurJob();if(!job)return;const c=bundleEnsureCustom(job);if(on)c.off.delete(id);else c.off.add(id);bundleRender();}
+function bundleDStep(id,dir){const job=bundleCurJob();if(!job)return;const c=bundleEnsureCustom(job);const o=bundleEff(job).map(x=>x.d.id),i=o.indexOf(id),k=i+dir;if(i<0||k<0||k>=o.length)return;[o[i],o[k]]=[o[k],o[i]];c.order=o;bundleRender();}
+function bundleDDrag(e,id){bundleDDragId=id;e.currentTarget.classList.add('dragging');try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',id);}catch(x){}}
+function bundleDDrop(e,id){
+  e.preventDefault();const job=bundleCurJob(),from=bundleDDragId;bundleDDragId=null;
+  if(!job||!from||from===id){bundleRender();return;}
+  const c=bundleEnsureCustom(job),o=bundleEff(job).map(x=>x.d.id),fi=o.indexOf(from);if(fi<0){bundleRender();return;}
+  o.splice(fi,1);o.splice(o.indexOf(id)+(fi<=o.indexOf(id)?1:0),0,from);c.order=o;bundleRender();
+}
+function bundleResetJob(){const job=bundleCurJob();if(job){job.custom=null;bundleRender();}}
+async function bundleViewDoc(id){
+  const job=bundleCurJob(),d=job&&job.docs.find(x=>x.id===id);if(!d)return;
+  if(d.kind==='file'){if(!window.open(d.url,'_blank'))alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+  try{generateDocWindow(await d.build());}catch(e){alert('เปิดเอกสารไม่สำเร็จ: '+(e.message||e));}
+}
+// ---- สร้างไฟล์ ----
+// PDF ที่อัปโหลด → ภาพทีละหน้า (pdf.js)
+async function bundlePdfPages(url){
+  const lib=await ensurePdfJs();
+  const res=await fetch(url);if(!res.ok)throw new Error('โหลดไฟล์ไม่สำเร็จ ('+res.status+')');
+  const pdf=await lib.getDocument({data:await res.arrayBuffer()}).promise,out=[];
+  for(let i=1;i<=pdf.numPages;i++){
+    const p=await pdf.getPage(i),v0=p.getViewport({scale:1}),sc=Math.min(2.5,1754/Math.max(v0.width,v0.height)),v=p.getViewport({scale:sc});
+    const c=document.createElement('canvas');c.width=Math.round(v.width);c.height=Math.round(v.height);
+    const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
+    await p.render({canvasContext:g,viewport:v}).promise;
+    out.push({img:c.toDataURL('image/jpeg',0.88),landscape:v.width>v.height*1.05});
+  }
+  return out;
+}
+function bundleImagePageHtml(src,landscape){
+  return `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:A4 ${landscape?'landscape':'portrait'};margin:0}body{margin:0;background:#fff}.upg{width:${landscape?297:210}mm;height:${landscape?209:296}mm;display:flex;align-items:center;justify-content:center;background:#fff;padding:5mm;box-sizing:border-box}.upg img{max-width:100%;max-height:100%;object-fit:contain;display:block}</style></head><body><div class="upg"><img src="${esc(src)}"></div></body></html>`;
+}
+async function bundleDocHtmls(d){
+  if(d.kind!=='file')return [await d.build()];
+  if(d.isPdf)return (await bundlePdfPages(d.url)).map(p=>bundleImagePageHtml(p.img,p.landscape));
+  const dim=await probeImageDims(d.url);
+  return [bundleImagePageHtml(d.url,!!(dim&&dim.w>dim.h*1.05))];
+}
+async function bundlePrint(){
+  const st=bundleSt;if(!st||st.busy)return;
+  const plan=bundlePlan();if(!plan.count){alert('ยังไม่ได้เลือกเอกสาร');return;}
+  // เปิดแท็บรอไว้ก่อน (ตอนกดปุ่ม) — เตรียมนานแล้วค่อยเปิด browser จะบล็อก popup
+  const w=window.open('','_blank');
+  try{if(w)w.document.write('<!doctype html><meta charset="utf-8"><title>กำลังเตรียมชุดเอกสาร</title><body style="font-family:sans-serif;padding:32px;color:#333">กำลังเตรียมชุดเอกสาร… (หน้านี้จะเปลี่ยนเป็นเอกสารเอง)</body>');}catch(e){}
+  st.busy=true;bundleRenderFoot();
+  const fails=[];
   try{
-    const htmls=[];
-    for(const d of picked){try{htmls.push(await d.build());}catch(e){console.warn('build doc failed',e);}}
-    if(!htmls.length){alert('สร้างเอกสารไม่สำเร็จ');}
-    else{closeM('m-docbundle');generateDocWindow(combineDocsHtml(pr,htmls));}
-  }catch(e){alert('รวมเอกสารไม่สำเร็จ: '+(e.message||e));}
-  if(go){go.disabled=false;go.textContent='รวม + เปิดพิมพ์';}
+    const htmls=[];let k=0;
+    for(const job of plan.jobs)for(const d of job.docs){
+      bundleMsg(`กำลังเตรียม ${++k}/${plan.count} — ${job.pr} · ${d.label}`);
+      try{htmls.push(...await bundleDocHtmls(d));}catch(e){console.warn('bundle doc failed',job.pr,d.label,e);fails.push(job.pr+' '+d.label);}
+    }
+    if(!htmls.length)throw new Error('สร้างเอกสารไม่สำเร็จ');
+    const html=combineDocsHtml(plan.jobs.length===1?plan.jobs[0].pr:plan.jobs.length+' งาน',htmls,plan.count-fails.length);
+    if(w&&!w.closed){const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));w.location.href=url;setTimeout(()=>URL.revokeObjectURL(url),120000);}
+    else generateDocWindow(html);
+    bundleMsg(fails.length?'สร้างไม่สำเร็จ: '+fails.join(', '):'เปิดหน้าพิมพ์แล้ว — กด “พิมพ์ / Save PDF” ที่แท็บใหม่',!!fails.length);
+    if(fails.length)alert('บางฉบับสร้างไม่สำเร็จ:\n'+fails.join('\n'));
+  }catch(e){
+    try{if(w&&!w.closed)w.close();}catch(x){}
+    bundleMsg('ไม่สำเร็จ: '+(e.message||e),true);alert('รวมเอกสารไม่สำเร็จ: '+(e.message||e));
+  }finally{st.busy=false;bundleRenderFoot();}
+}
+async function bundleZip(){
+  const st=bundleSt;if(!st||st.busy)return;
+  const plan=bundlePlan();if(!plan.count){alert('ยังไม่ได้เลือกเอกสาร');return;}
+  st.busy=true;bundleMsg('กำลังโหลดเครื่องมือสร้าง PDF...');
+  const fails=[];
+  try{
+    for(const src of BULK_PDF_LIBS)await loadScriptOnce(src);
+    const {jsPDF}=window.jspdf,zip=new JSZip(),usedFolders=new Set();let k=0,ok=0;
+    for(const job of plan.jobs){
+      const folder=zip.folder(bundleUniq(bundleSafeName([job.pr,job.branch||job.client].filter(Boolean).join('_')),usedFolders)),usedFiles=new Set();
+      for(let i=0;i<job.docs.length;i++){
+        const d=job.docs[i],pre=String(i+1).padStart(2,'0')+'_';
+        bundleMsg(`กำลังสร้างไฟล์ ${++k}/${plan.count} — ${job.pr} · ${d.label}`);
+        try{
+          if(d.kind==='file'){
+            // ไฟล์ที่อัปโหลด → ใส่ไฟล์ต้นฉบับตรง ๆ (คมชัดเท่าเดิม)
+            const res=await fetch(d.url);if(!res.ok)throw new Error('โหลดไฟล์ไม่สำเร็จ ('+res.status+')');
+            const blob=await res.blob();
+            const ext=d.isPdf?'pdf':((/\.([a-z0-9]{2,5})$/i.exec(d.fileName||'')||[])[1]||(blob.type.split('/')[1]||'jpg').replace('jpeg','jpg')).toLowerCase();
+            folder.file(bundleUniq(pre+bundleSafeName(bundleTypeShort(d.type)+'_'+job.pr),usedFiles)+'.'+ext,blob);
+          }else{
+            const pages=await renderDocPagesForPdf(await d.build(),{page:true});
+            if(!pages.length)throw new Error('ไม่มีหน้าเอกสาร');
+            const pdf=new jsPDF({orientation:pages[0].landscape?'landscape':'portrait',unit:'mm',format:'a4',compress:true});
+            addPagesToPdf(pdf,pages,true);
+            folder.file(bundleUniq(pre+bundleSafeName(bundleTypeShort(d.type)+'_'+(d.no||job.pr)),usedFiles)+'.pdf',pdf.output('blob'));
+          }
+          ok++;
+        }catch(e){console.warn('bundle zip failed',job.pr,d.label,e);fails.push(job.pr+' '+d.label);}
+      }
+    }
+    if(!ok)throw new Error('สร้างไฟล์ไม่สำเร็จเลย');
+    bundleMsg('กำลังบีบอัด ZIP...');
+    const name=plan.jobs.length===1?`ชุดเอกสาร_${bundleSafeName(plan.jobs[0].pr)}_${todayISO()}.zip`:`ชุดเอกสาร_${plan.jobs.length}งาน_${todayISO()}.zip`;
+    downloadBlob(await zip.generateAsync({type:'blob'}),name);
+    bundleMsg(fails.length?`ดาวน์โหลดแล้ว ${ok} ไฟล์ · ไม่สำเร็จ: ${fails.join(', ')}`:`ดาวน์โหลด ZIP แล้ว — ${plan.jobs.length} โฟลเดอร์ · ${ok} ไฟล์`,!!fails.length);
+    if(fails.length)alert('บางฉบับสร้างไม่สำเร็จ:\n'+fails.join('\n'));
+  }catch(e){bundleMsg('ไม่สำเร็จ: '+(e.message||e),true);alert('สร้าง ZIP ไม่สำเร็จ: '+(e.message||e));}
+  finally{st.busy=false;bundleRenderFoot();}
+}
+// หน้าเอกสารขาย: ติ๊กหลายใบ → ชุดเอกสารของทุกงานที่ผูกกับเอกสารที่เลือก
+function bundleFromSalesPick(){
+  const picked=pickedSalesDocs(),prs=[];
+  picked.forEach(d=>salesInvoiceJobs(d).forEach(p=>{p=canonPR(p);if(p&&!prs.some(x=>sameJob(x,p)))prs.push(p);}));
+  const noJob=picked.filter(d=>!salesInvoiceJobs(d).length).length;
+  if(!prs.length){alert('เอกสารที่เลือกยังไม่ได้ผูกกับเลขงาน (PR) — เปิดชุดเอกสารไม่ได้');return;}
+  if(noJob)alert(`มี ${noJob} ใบที่ยังไม่ได้ผูกเลขงาน — จะไม่อยู่ในชุดเอกสาร`);
+  openDocBundle(prs);
 }
 // scope CSS ของเอกสารแต่ละใบให้อยู่ใต้ #scope กันสไตล์ชนกันเวลารวมหลายเอกสารในหน้าเดียว
 function bundleScopeCss(css,scope){
@@ -11545,7 +11926,7 @@ function bundleScopeCss(css,scope){
   }
   return out;
 }
-function combineDocsHtml(pr,htmls){
+function combineDocsHtml(pr,htmls,count){
   let css='',bodyHtml='';
   htmls.forEach((h,idx)=>{
     const id='bd'+idx;
@@ -11568,9 +11949,10 @@ function combineDocsHtml(pr,htmls){
   @page portraitpg{size:A4 portrait;margin:0}
   @page landscapepg{size:A4 landscape;margin:0}
   ${css}
+  @media screen{body>section.bpage{margin:16px auto!important}}
   @media print{html,body{background:#fff}.bbar{display:none}.bpage{margin:0;box-shadow:none;overflow:visible;break-after:page}.bpage:last-child{break-after:auto}.bpage.portrait{page:portraitpg}.bpage.landscape{page:landscapepg}}
   </style></head><body>
-  <div class="bbar"><b>ชุดเอกสาร ${esc(pr)} · ${htmls.length} ฉบับ</b><div class="acts"><button class="bg" onclick="window.close()">ปิด</button><button class="bp" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
+  <div class="bbar"><b>ชุดเอกสาร ${esc(pr)} · ${count||htmls.length} ฉบับ</b><div class="acts"><button class="bg" onclick="window.close()">ปิด</button><button class="bp" onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
   ${bodyHtml}
   </body></html>`;
 }
