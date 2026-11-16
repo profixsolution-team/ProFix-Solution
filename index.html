@@ -11496,6 +11496,8 @@ function bundleRecipe(r){
   return {order,off:new Set([...((r&&r.off)||[])].filter(t=>BUNDLE_TYPES[t]))};
 }
 function bundleTypeShort(t){return (BUNDLE_TYPES[t]||{}).short||(BUNDLE_TYPES[t]||{}).name||'เอกสาร';}
+// ชื่อชุดเอกสารต่องาน: "PR-xxxxxx - ชื่อสาขา" (ไม่มีสาขา → ชื่อลูกค้า) — ตัดเฉพาะอักขระที่ตั้งชื่อไฟล์ไม่ได้
+function bundleJobName(job){const b=job.branch||job.client||'';return (String(job.pr||'')+(b?' - '+b:'')).replace(/[\\/:*?"<>|\u0000-\u001f]+/g,' ').replace(/\s+/g,' ').trim().slice(0,120).replace(/[ .]+$/,'')||'ชุดเอกสาร';}
 function bundleSafeName(s){return String(s||'').replace(/[\\/:*?"<>|\s]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,90)||'เอกสาร';}
 function bundleUniq(name,used){let n=name,i=2;while(used.has(n))n=name+'_'+(i++);used.add(n);return n;}
 function bundleDateTh(v){try{return v?new Date(v).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}):'';}catch(e){return '';}}
@@ -11843,7 +11845,7 @@ async function bundlePrint(){
       try{htmls.push(...await bundleDocHtmls(d));}catch(e){console.warn('bundle doc failed',job.pr,d.label,e);fails.push(job.pr+' '+d.label);}
     }
     if(!htmls.length)throw new Error('สร้างเอกสารไม่สำเร็จ');
-    const html=combineDocsHtml(plan.jobs.length===1?plan.jobs[0].pr:plan.jobs.length+' งาน',htmls,plan.count-fails.length);
+    const one=plan.jobs.length===1,html=combineDocsHtml(one?bundleJobName(plan.jobs[0]):plan.jobs.length+' งาน',htmls,plan.count-fails.length,one?bundleJobName(plan.jobs[0]):'');
     if(w&&!w.closed){const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));w.location.href=url;setTimeout(()=>URL.revokeObjectURL(url),120000);}
     else generateDocWindow(html);
     bundleMsg(fails.length?'สร้างไม่สำเร็จ: '+fails.join(', '):'เปิดหน้าพิมพ์แล้ว — กด “พิมพ์ / Save PDF” ที่แท็บใหม่',!!fails.length);
@@ -11862,7 +11864,7 @@ async function bundleZip(){
     for(const src of BULK_PDF_LIBS)await loadScriptOnce(src);
     const {jsPDF}=window.jspdf,zip=new JSZip(),usedFolders=new Set();let k=0,ok=0;
     for(const job of plan.jobs){
-      const folder=zip.folder(bundleUniq(bundleSafeName([job.pr,job.branch||job.client].filter(Boolean).join('_')),usedFolders)),usedFiles=new Set();
+      const folder=zip.folder(bundleUniq(bundleJobName(job),usedFolders)),usedFiles=new Set();
       for(let i=0;i<job.docs.length;i++){
         const d=job.docs[i],pre=String(i+1).padStart(2,'0')+'_';
         bundleMsg(`กำลังสร้างไฟล์ ${++k}/${plan.count} — ${job.pr} · ${d.label}`);
@@ -11886,7 +11888,7 @@ async function bundleZip(){
     }
     if(!ok)throw new Error('สร้างไฟล์ไม่สำเร็จเลย');
     bundleMsg('กำลังบีบอัด ZIP...');
-    const name=plan.jobs.length===1?`ชุดเอกสาร_${bundleSafeName(plan.jobs[0].pr)}_${todayISO()}.zip`:`ชุดเอกสาร_${plan.jobs.length}งาน_${todayISO()}.zip`;
+    const name=plan.jobs.length===1?`${bundleJobName(plan.jobs[0])}.zip`:`ชุดเอกสาร_${plan.jobs.length}งาน_${todayISO()}.zip`;
     downloadBlob(await zip.generateAsync({type:'blob'}),name);
     bundleMsg(fails.length?`ดาวน์โหลดแล้ว ${ok} ไฟล์ · ไม่สำเร็จ: ${fails.join(', ')}`:`ดาวน์โหลด ZIP แล้ว — ${plan.jobs.length} โฟลเดอร์ · ${ok} ไฟล์`,!!fails.length);
     if(fails.length)alert('บางฉบับสร้างไม่สำเร็จ:\n'+fails.join('\n'));
@@ -12000,7 +12002,7 @@ function bundleScopeCss(css,scope){
   }
   return out;
 }
-function combineDocsHtml(pr,htmls,count){
+function combineDocsHtml(pr,htmls,count,docTitle){
   let css='',bodyHtml='';
   htmls.forEach((h,idx)=>{
     const id='bd'+idx;
@@ -12010,7 +12012,7 @@ function combineDocsHtml(pr,htmls,count){
     css+='\n/* '+id+' */\n'+bundleScopeCss(styles,'#'+id);
     bodyHtml+=`<section id="${id}" class="bpage ${land?'landscape':'portrait'}">${body}</section>`;
   });
-  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ชุดเอกสาร ${esc(pr)}</title>
+  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(docTitle||('ชุดเอกสาร '+pr))}</title>
   <style>
   *{box-sizing:border-box}html,body{margin:0}
   body{background:#e8edf3;font-family:Arial,"Noto Sans Thai",sans-serif}
