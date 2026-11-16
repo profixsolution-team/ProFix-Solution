@@ -31,6 +31,9 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:'Anuphan',syste
 .pr{font-weight:700;font-size:16px;color:var(--blue);letter-spacing:.2px;}
 .chip{display:inline-block;font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 9px;background:var(--gray-dim);color:var(--text2);white-space:nowrap;}
 .chip.red{background:var(--red-dim);color:var(--red);}
+.bt-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;letter-spacing:.5px;color:#fff;padding:2px 9px 2px 3px;border-radius:999px;margin-right:6px;vertical-align:middle;white-space:nowrap;line-height:1.45}
+.bt-pill i{font-style:normal;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.28);display:inline-grid;place-items:center;font-size:10px;line-height:1}
+.bt-claim{background:#ea580c}.bt-charge{background:#175FFF}
 .chip.green{background:var(--green-dim);color:var(--green);}
 .chip.yellow{background:var(--yellow-dim);color:var(--yellow);}
 .chip.blue{background:var(--blue-dim);color:var(--blue);}
@@ -251,10 +254,12 @@ function jobActions(j){
   if(j.inProgress)return `<button class="btn warn" onclick="openSubmit('${esc(j.id)}','quote')">⏳ รอขออนุมัติ</button><button class="btn primary" onclick="openSubmit('${esc(j.id)}','done')">🔧 ส่งงาน</button>`+tel;
   return `<button class="btn ok" onclick="startJob('${esc(j.id)}',this)">▶️ เริ่มงาน</button>`+tel;
 }
+// Claim / Charge จากใบงาน (job.billType ← console) — แสดงหน้าเลข PR
+function btPill(j){const x=String(j&&j.billType||'').toLowerCase(),k=/claim|เคลม/.test(x)?'claim':/charge|คิดเงิน/.test(x)?'charge':'';return k?`<span class="bt-pill bt-${k}"><i>${k==='claim'?'🛡':'฿'}</i>${k.toUpperCase()}</span>`:'';}
 function card(j,cls){
   const lvl=j.level?`<span class="chip ${/1/.test(j.level)?'red':''}">${esc(String(j.level).replace(/^Level\s*/i,'L'))}</span> `:'';
   const acc=(j.started&&(j.inProgress||j.waitingAdmin))?`<div class="acc">▶️ เริ่มงานแล้ว · ${esc(j.started.by||'')} ${esc(thTime(j.started.at))}</div>`:'';
-  return `<div class="card ${cls||''}" onclick="openDetail('${esc(j.id)}')"><div class="row1"><div class="pr">${esc(j.id)}</div><div>${lvl}${statusChip(j)}</div></div>
+  return `<div class="card ${cls||''}" onclick="openDetail('${esc(j.id)}')"><div class="row1"><div class="pr">${btPill(j)}${esc(j.id)}</div><div>${lvl}${statusChip(j)}</div></div>
     <div class="branch">${esc(j.branch||'-')}</div><div class="meta">${esc(j.type||'')}${j.type?' · ':''}${esc(thDate(j.date))}${j.client?'<br>'+esc(j.client):''}</div>
     ${j.detail?`<div class="detail clamp">${esc(j.detail)}</div>`:''}${acc}
     <div class="more-link">ดูรายละเอียดเต็ม ›</div>
@@ -269,7 +274,7 @@ function openDetail(id,toDocs){
   const tIn=j.dateIn?`${esc(thDate(j.dateIn))} ${esc(j.timeIn||'')}`:'';
   const tDone=j.dateDone?`${esc(thDate(j.dateDone))} ${esc(j.timeDone||'')}`:'';
   $('detail').innerHTML=`<div class="d-head"><button class="d-close" onclick="closeDetail()" aria-label="ปิด">‹ กลับ</button><b>${esc(j.id)}</b><span></span></div>
-    <div class="d-body"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">${j.level?`<span class="chip ${/1/.test(j.level)?'red':''}">${esc(j.level)}</span>`:''}${statusChip(j)}</div>
+    <div class="d-body"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">${btPill(j)}${j.level?`<span class="chip ${/1/.test(j.level)?'red':''}">${esc(j.level)}</span>`:''}${statusChip(j)}</div>
       <div class="d-title">${esc(j.branch||'-')}</div><div class="meta" style="margin-bottom:12px;">${esc(j.client||'')}</div>
       ${j.reviewNote?`<div class="d-box warn"><b>หมายเหตุจากแอดมิน</b><br>${esc(j.reviewNote)}</div>`:''}
       ${docsHtml(j)}
@@ -335,8 +340,8 @@ function demoApi(action,extra){
       logs:[{done_at:addDays(t,-60)+'T10:00:00Z',kind:'pm',team:'ทีม1 - อำนวย',job_id:'PR430100',condition:'ต้องซ่อม',cause:'น้ำยารั่วที่แฟลร์',fix:'ขันแฟลร์ เติมน้ำยา',follow_up:true,follow_up_note:'เปลี่ยนคาปาซิเตอร์คอยล์ร้อนรอบหน้า',readings:{'แรงดันน้ำยา':'120 psi','กระแส':'6.2 A'},photos:[]},
             {done_at:addDays(t,-150)+'T10:00:00Z',kind:'pm',team:'ทีม2',job_id:'PR428000',condition:'ปกติ',readings:{},photos:[]}]});}
   const dJobs=[
-    {id:'PR431019',branch:'Pun Thai บางแวก (พุทธมณฑลสาย3)',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:addDays(t,-2),status:'รอช่างส่งงาน',level:'Level 1',detail:'- ตู้แช่เค้ก//ยี่ห้อ SYSTEMFORM\n- ตู้เค้กมีเสียงดังตลอดเวลา และไม่ทำความเย็น',phone:'061-0313386',branchPhone:'02-111-2233',docs:[{name:'PR431019.pdf',url:'https://example.com/PR431019.pdf',kind:'workorder'},{name:'อนุมัติอะไหล่.jpg',url:'https://example.com/a.jpg',kind:'approval',image:true}],waitingAdmin:false,inProgress:false,started:null},
-    {id:'PR431279',branch:'Pun Thai บางพระ1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:t,status:'ช่างกำลังเข้าซ่อม',level:'Level 1',detail:'แจ้งซ่อมหลอดไฟไม่ติดในตู้เค้ก และภายในตู้มีกลิ่นสารเคมี',phone:'0659424767',waitingAdmin:false,inProgress:true,started:{at:new Date().toISOString(),by:'ช่างอำนวย'}},
+    {id:'PR431019',billType:'claim',branch:'Pun Thai บางแวก (พุทธมณฑลสาย3)',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:addDays(t,-2),status:'รอช่างส่งงาน',level:'Level 1',detail:'- ตู้แช่เค้ก//ยี่ห้อ SYSTEMFORM\n- ตู้เค้กมีเสียงดังตลอดเวลา และไม่ทำความเย็น',phone:'061-0313386',branchPhone:'02-111-2233',docs:[{name:'PR431019.pdf',url:'https://example.com/PR431019.pdf',kind:'workorder'},{name:'อนุมัติอะไหล่.jpg',url:'https://example.com/a.jpg',kind:'approval',image:true}],waitingAdmin:false,inProgress:false,started:null},
+    {id:'PR431279',billType:'charge',branch:'Pun Thai บางพระ1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมตู้แช่',date:t,status:'ช่างกำลังเข้าซ่อม',level:'Level 1',detail:'แจ้งซ่อมหลอดไฟไม่ติดในตู้เค้ก และภายในตู้มีกลิ่นสารเคมี',phone:'0659424767',waitingAdmin:false,inProgress:true,started:{at:new Date().toISOString(),by:'ช่างอำนวย'}},
     {id:'PR430498',branch:'Lotus บางนา',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมแอร์',date:addDays(t,-2),status:'ช่างกำลังเข้าซ่อม',level:'2',detail:'แอร์ห้องเย็นน้ำแข็งเกาะคอยล์',phone:'',waitingAdmin:false,inProgress:true,started:{at:new Date(Date.now()-2*86400000).toISOString(),by:'ช่างอำนวย'}},
     {id:'PR430557',branch:'Max Mart ตลาดไท1',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:'ซ่อมแอร์',date:addDays(t,3),status:'รอช่างเข้าซ่อม',level:'3',detail:'แอร์เปิดแล้วสวิทซ์คัทเอาท์ดีด แอร์ตัวที่ 3 (อนุมัติอะไหล่แล้ว)',phone:'064-9342803',docs:[{name:'PR430557.pdf',url:'https://example.com/PR430557.pdf',kind:'workorder'}],waitingAdmin:false,inProgress:false,started:null},
     {id:'PR430492',branch:'Pun Thai พนมสารคาม5',client:'',type:'PM แอร์ และ ตู้แช่',date:'',status:'รอดำเนินการ',level:'3',detail:'PM โครงการ PM แอร์ / ตู้แช่ 2026 รอบที่ 2',phone:'',waitingAdmin:false,inProgress:false,started:null},
