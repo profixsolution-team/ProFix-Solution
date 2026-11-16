@@ -11500,19 +11500,21 @@ function bundleSafeName(s){return String(s||'').replace(/[\\/:*?"<>|\s]+/g,'-').
 function bundleUniq(name,used){let n=name,i=2;while(used.has(n))n=name+'_'+(i++);used.add(n);return n;}
 function bundleDateTh(v){try{return v?new Date(v).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}):'';}catch(e){return '';}}
 let bundleSt=null;
+function bundleDocKey(o){return o.type+'|'+(o.url||o.no||o.label||'');}
+function bundleFileDoc(type,x){
+  const url=x&&(x.url||x.fileUrl||x.dataUrl);if(!url)return null;
+  const isPdf=!String(x.type||'').startsWith('image/')&&!/^data:image\//i.test(url);
+  return {type,kind:'file',url,isPdf,mime:x.type||'',fileName:x.fileName||'',label:x.fileName||(bundleTypeShort(type)+(isPdf?' (PDF)':' (รูปภาพ)')),
+    sub:[x.uploadedAt?'อัปโหลด '+bundleDateTh(x.uploadedAt):'',isPdf?'PDF':'รูปภาพ'].filter(Boolean).join(' · ')};
+}
 
 // รวบรวมเอกสารทั้งหมดของงาน 1 งาน
 async function bundleCollectJob(pr){
   const b=workOrderBundle(pr),j=b.job,pd=workOrderPrimaryData(pr),docs=[];let seq=0;
-  const add=o=>docs.push(Object.assign({id:'d'+(++seq)},o));
+  const add=o=>{if(o)docs.push(Object.assign({id:'d'+(++seq),key:bundleDocKey(o)},o));};
   const jid=j?j.id:pr,jobLike=j||{id:pr,client:'',branch:''};
   // ไฟล์ที่อัปโหลดไว้ (ใบงาน / ใบอนุมัติ) — PDF หรือรูป
-  const fileDoc=(type,x)=>{
-    const url=x.url||x.fileUrl||x.dataUrl;if(!url)return;
-    const isPdf=!String(x.type||'').startsWith('image/')&&!/^data:image\//i.test(url);
-    add({type,kind:'file',url,isPdf,mime:x.type||'',fileName:x.fileName||'',label:x.fileName||(bundleTypeShort(type)+(isPdf?' (PDF)':' (รูปภาพ)')),
-      sub:[x.uploadedAt?'อัปโหลด '+bundleDateTh(x.uploadedAt):'',isPdf?'PDF':'รูปภาพ'].filter(Boolean).join(' · ')});
-  };
+  const fileDoc=(type,x)=>add(bundleFileDoc(type,x));
   b.workDocs.filter(x=>!isDeletedRecord(x)).forEach(x=>fileDoc('wo',x));
   b.approvals.filter(x=>!isDeletedRecord(x)).forEach(x=>fileDoc('appr',x));
   // เอกสารขาย (เทมเพลตเดียวกับที่พิมพ์จากหน้าเอกสารขาย)
@@ -11673,6 +11675,7 @@ async function openDocBundle(prs){
       <div class="dbx-strip"><div class="dbx-sec">ลำดับในไฟล์</div><div id="dbx-strip"></div></div>
     </div>
     <div class="dbx-ft" id="dbx-ft"></div>
+    <input type="file" id="dbx-file" accept="application/pdf,image/*" multiple style="display:none" onchange="bundleUploadFiles(this.files)">
   </div>`;
   try{document.getElementById('dbx-pr-dl').innerHTML=liveJobs().slice().sort((a,c)=>String(c.id).localeCompare(String(a.id))).slice(0,1500).map(j=>`<option value="${esc(j.id)}">${esc([j.client,j.branch].filter(Boolean).join(' · '))}</option>`).join('');}catch(e){}
   openM('m-docbundle');
@@ -11729,11 +11732,11 @@ function bundleRender(){
         <label class="dbx-sw" title="${x.on?'เอาออกจากชุด':'ใส่ในชุด'}"><input type="checkbox" ${x.on?'checked':''} onchange="bundleDToggle('${d.id}',this.checked)"><span></span></label>
       </div>`;}).join('');
     const miss=bundleMissing(job);
-    box.innerHTML=`<div class="dbx-djh"><div style="flex:1;min-width:0;"><h3>${esc(job.pr)}</h3><div class="cl">${esc([job.client,job.branch].filter(Boolean).join(' · '))}</div></div></div>`
+    box.innerHTML=`<div class="dbx-djh"><div style="flex:1;min-width:0;"><h3>${esc(job.pr)}</h3><div class="cl">${esc([job.client,job.branch].filter(Boolean).join(' · '))}</div></div><button class="btn btn-ghost btn-sm" ${job.refreshing?'disabled':''} onclick="bundleRefreshJob(${st.sel})" title="ดึงเอกสารของงานนี้ใหม่ (เช่น หลังออกเอกสารในแท็บอื่น)">${job.refreshing?'กำลังโหลด...':'↻ โหลดใหม่'}</button></div>`
       +(job.custom?`<div class="dbx-note own">✋ งานนี้ปรับลำดับ/เลือกเอกสารเอง — ไม่เปลี่ยนตามสูตรด้านบน<span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="bundleResetJob()">↺ กลับไปใช้ตามสูตร</button></div>`
         :`<div class="dbx-note">เรียงตามสูตรด้านบน — ลากแถว / กด ▲▼ / ปิดสวิตช์ ได้เลย (งานนี้จะเป็น “ปรับเอง” เฉพาะงานนี้)</div>`)
       +(rows||'<div class="dbx-empty">ยังไม่มีเอกสารในงานนี้</div>')
-      +(miss.length?`<div class="dbx-miss-t">ยังไม่มีในงานนี้ (ตามสูตร)</div>`+miss.map(t=>`<div class="dbx-row miss"><span class="dbx-pos">–</span><div class="dbx-dn"><b style="color:var(--text3)">${esc(BUNDLE_TYPES[t].name)}</b><div class="s">${BUNDLE_TYPES[t].up?'ยังไม่ได้อัปโหลดไฟล์เข้าแฟ้มงาน':'ยังไม่ได้ออกเอกสาร / ยังไม่มีข้อมูล'}</div></div></div>`).join(''):'');
+      +(miss.length?`<div class="dbx-miss-t">ยังไม่มีในงานนี้ (ตามสูตร)</div>`+miss.map(t=>{const a=BUNDLE_ADD[t]||{};return `<div class="dbx-row miss"><span class="dbx-pos">–</span><span class="dbx-ic ${BUNDLE_TYPES[t].up?'up':''}" style="--c:${BUNDLE_TYPES[t].c};opacity:.45"></span><div class="dbx-dn"><b style="color:var(--text3)">${esc(BUNDLE_TYPES[t].name)}</b><div class="s">${esc(a.hint||'')}</div></div>${a.btn?`<button class="btn btn-primary btn-sm" ${st.busy?'disabled':''} onclick="bundleAddMissing('${t}')">${esc(a.btn)}</button>`:''}</div>`;}).join(''):'');
   }
   // ลำดับในไฟล์
   let n=0;
@@ -11890,6 +11893,77 @@ async function bundleZip(){
   }catch(e){bundleMsg('ไม่สำเร็จ: '+(e.message||e),true);alert('สร้าง ZIP ไม่สำเร็จ: '+(e.message||e));}
   finally{st.busy=false;bundleRenderFoot();}
 }
+// ---- เพิ่มเอกสารที่ยังขาด ----
+const BUNDLE_ADD={
+  wo:{btn:'+ ใบงาน',hint:'ยังไม่ได้อัปโหลดไฟล์เข้าแฟ้มงาน — กดเพื่ออัปโหลด PDF / รูป'},
+  appr:{btn:'+ ใบอนุมัติ',hint:'ยังไม่ได้อัปโหลด — กดเพื่ออัปโหลด PDF / รูป'},
+  tax:{btn:'+ ใบกำกับภาษี',hint:'ยังไม่ได้ออก — กดแล้วเปิดแท็บออกเอกสาร (เสร็จแล้วกลับมากด ↻ โหลดใหม่)',doc:'tax_invoice'},
+  qt:{btn:'+ ใบเสนอราคา',hint:'ยังไม่ได้ออก — กดแล้วเปิดแท็บออกเอกสาร (เสร็จแล้วกลับมากด ↻ โหลดใหม่)',doc:'quotation'},
+  inv:{btn:'+ ใบแจ้งหนี้',hint:'ยังไม่ได้ออก — กดแล้วเปิดแท็บออกเอกสาร (เสร็จแล้วกลับมากด ↻ โหลดใหม่)',doc:'invoice'},
+  rcpt:{btn:'+ ใบเสร็จรับเงิน',hint:'ยังไม่ได้ออก — กดแล้วเปิดแท็บออกเอกสาร (เสร็จแล้วกลับมากด ↻ โหลดใหม่)',doc:'receipt'},
+  photo:{hint:'ยังไม่มีรูปจากช่าง (หรือติ๊กออกหมด) ในหน้ารายงานช่าง'},
+  accept:{hint:'ลูกค้ายังไม่ได้เซ็นตรวจรับงาน (เซ็นผ่านลิงก์ใบตรวจรับงาน)'},
+  checkin:{hint:'ยังไม่มีใบแจ้งเข้าซ่อม (ลูกค้าเซ็นผ่านลิงก์)'}
+};
+function bundleAddMissing(t){
+  const st=bundleSt,job=bundleCurJob(),a=BUNDLE_ADD[t];if(!st||!job||!a)return;
+  if(t==='wo'||t==='appr'){st.uploadType=t;st.uploadPr=job.pr;const inp=document.getElementById('dbx-file');if(inp){inp.value='';inp.click();}return;}
+  if(a.doc){openSalesInNewTab('',job.pr,a.doc);st.refreshOnFocus=st.refreshOnFocus||new Set();st.refreshOnFocus.add(job.pr);bundleMsg('เปิดแท็บออก'+BUNDLE_TYPES[t].name+'ของ '+job.pr+' แล้ว — บันทึกเสร็จกลับมาที่หน้านี้ ระบบจะโหลดเอกสารใหม่ให้');}
+}
+async function bundleUploadFiles(files){
+  const st=bundleSt;files=[...(files||[])];if(!st||!files.length)return;
+  const t=st.uploadType,pr=st.uploadPr,job=st.jobs.find(j=>j.pr===pr);if(!job||!t)return;
+  const bad=files.filter(f=>!isWorkOrderFileOk(f));
+  if(bad.length){alert('รองรับเฉพาะไฟล์ PDF หรือรูปภาพ: '+bad.map(f=>f.name).join(', '));return;}
+  st.busy=true;let ok=0;const errs=[];
+  for(const f of files){
+    bundleMsg(`กำลังอัปโหลด${bundleTypeShort(t)} ${ok+errs.length+1}/${files.length} — ${f.name||''}`);
+    try{
+      let rec;
+      if(t==='appr'){rec=await pfUploadApprovalFile(f,pr);await ensureWorkOrdersReadyForWrite();ensureDocsShape();docs.workOrders.unshift(rec);}
+      else{const data=await buildWorkOrderFileData(f,pr,'bundle-upload');await ensureWorkOrdersReadyForWrite();storeWorkOrderPdfData(pr,data,'bundle-upload');rec=data;}
+      const d=bundleFileDoc(t,rec);
+      if(d){d.id='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);d.key=bundleDocKey(d);job.docs.push(d);if(job.custom)bundleCustomInsert(job,d);}
+      ok++;
+    }catch(e){console.error(e);errs.push((f.name||'ไฟล์')+': '+(e&&e.message||e));}
+  }
+  st.busy=false;
+  if(ok){try{saveState();}catch(e){}try{pfApprRefresh();}catch(e){}try{renderWorkOrders();}catch(e){}}
+  bundleMsg(ok?`✓ อัปโหลด${bundleTypeShort(t)}เข้าแฟ้ม ${pr} แล้ว ${ok} ไฟล์`:'อัปโหลดไม่สำเร็จ',!ok);
+  bundleRender();
+  if(errs.length)alert('อัปโหลดไม่สำเร็จ:\n'+errs.join('\n'));
+}
+// งานที่ปรับเอง: เอกสารใหม่แทรกตามตำแหน่งในสูตร (ก่อนเอกสารแรกที่อยู่ลำดับหลังกว่าในสูตร)
+function bundleCustomInsert(job,d){
+  const o=job.custom.order,rk=t=>bundleSt.order.indexOf(t),by=new Map(job.docs.map(x=>[x.id,x]));
+  const at=o.findIndex(id=>{const x=by.get(id);return x&&rk(x.type)>rk(d.type);});
+  if(at<0)o.push(d.id);else o.splice(at,0,d.id);
+}
+// ดึงเอกสารของงานใหม่ (คงลำดับ/สวิตช์ที่ปรับเองไว้ โดยเทียบเอกสารเดิมด้วย key)
+async function bundleRefreshJob(i,silent){
+  const st=bundleSt,old=st&&st.jobs[i];if(!old||old.refreshing)return;
+  old.refreshing=true;if(!silent)bundleRender();
+  try{
+    try{await ensureAccountingLoaded(true);}catch(e){}
+    const nj=await bundleCollectJob(old.pr);if(bundleSt!==st)return;
+    if(old.custom){
+      const byKey=new Map(nj.docs.map(d=>[d.key,d.id])),oldKey=new Map(old.docs.map(d=>[d.id,d.key]));
+      const order=old.custom.order.map(id=>byKey.get(oldKey.get(id))).filter(Boolean);
+      nj.custom={order:[],off:new Set()};nj.custom.order=order;
+      nj.docs.forEach(d=>{if(!order.includes(d.id))bundleCustomInsert(nj,d);});
+      nj.custom={order,off:new Set([...old.custom.off].map(id=>byKey.get(oldKey.get(id))).filter(Boolean))};
+    }
+    const k=st.jobs.indexOf(old);if(k>=0)st.jobs[k]=nj;
+  }catch(e){old.refreshing=false;alert('โหลดเอกสารใหม่ไม่สำเร็จ: '+(e.message||e));}
+  bundleRender();
+}
+// กลับมาจากแท็บออกเอกสาร → โหลดเอกสารของงานนั้นใหม่อัตโนมัติ
+window.addEventListener('focus',()=>{
+  const st=bundleSt,ov=document.getElementById('m-docbundle');
+  if(!st||!st.refreshOnFocus||!st.refreshOnFocus.size||!ov||!ov.classList.contains('open'))return;
+  const prs=[...st.refreshOnFocus];st.refreshOnFocus.clear();
+  prs.forEach(pr=>{const i=st.jobs.findIndex(j=>j.pr===pr);if(i>=0)bundleRefreshJob(i);});
+});
 // หน้าเอกสารขาย: ติ๊กหลายใบ → ชุดเอกสารของทุกงานที่ผูกกับเอกสารที่เลือก
 function bundleFromSalesPick(){
   const picked=pickedSalesDocs(),prs=[];
