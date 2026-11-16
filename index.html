@@ -7044,6 +7044,7 @@ async function ensureAccountingLoaded(force=false){
     jobCostItems=costRows||[];
     salesInvoices=saleRows||[];
     salesInvoiceItems=saleItemRows||[];
+    try{hydrateBillingSourceIds();}catch(e){console.warn('hydrate billing source',e);}
     masterPriceItems=mpRows||[];
     accountingLoaded=true;
     accountingLoadError='';
@@ -7873,6 +7874,28 @@ function salesDocHtml(inv,items){
 <section class="signs"><div>ลงชื่อผู้มีอำนาจลงนาม<div class="signature-box">${sellerSignatureHtml}</div><div class="sign-line">( ${sellerSignName||'........................................'} )</div></div><div>ลงชื่อผู้อนุมัติ / ลูกค้า<div class="signature-box">${customerSignatureHtml}</div><div class="sign-line">( ${customerSignName||'........................................'} )</div></div></section>
 <div class="footer">${esc(company.displayName)} Team&nbsp;&nbsp;|&nbsp;&nbsp;ขอบคุณที่ใช้บริการ</div></div></body></html>`;
 }
+// ใบแจ้งหนี้: หาใบกำกับภาษีต้นทางของบรรทัด — source_doc_id ก่อน → เลขใบกำกับที่ snapshot ไว้ในบรรทัด (source_ref_id)
+// (sales_invoice_items เคยไม่มีคอลัมน์ source_doc_id → ตอนบันทึกถูกตัดทิ้ง ทำให้ PR เดียวมีหลายใบกำกับแล้วดึงใบแรกซ้ำทุกบรรทัด)
+function billingSrcTaxForItem(it,parent){
+  if(!it)return null;
+  const all=salesInvoices||[],live=x=>x&&x.doc_type==='tax_invoice'&&x.status!=='cancelled';
+  if(it.source_doc_id){const t=all.find(x=>live(x)&&String(x.id)===String(it.source_doc_id));if(t)return t;}
+  const ref=String(it.source_ref_id||'').trim();if(!ref)return null;
+  const c=all.filter(x=>live(x)&&String(x.doc_no||x.sales_invoice_no||'').trim()===ref);
+  if(c.length<2)return c[0]||null;
+  const pr=String(it.item_code||'').split(',')[0].trim(),co=String(parent&&parent.company_name||'');
+  const score=x=>(pr&&salesInvoiceMatchesJob(x,pr)?2:0)+(co&&String(x.company_name||'')===co?1:0);
+  return c.slice().sort((a,b)=>score(b)-score(a))[0];
+}
+// เติม source_doc_id (ในหน่วยความจำ) ให้บรรทัดใบแจ้งหนี้เก่าที่ถูกตัดทิ้งตอนบันทึก — ทุกจุดที่ใช้ source_doc_id จะได้ใบกำกับถูกใบ
+function hydrateBillingSourceIds(){
+  const byId=new Map((salesInvoices||[]).map(x=>[String(x.id),x]));
+  (salesInvoiceItems||[]).forEach(it=>{
+    if(!it||it.source_doc_id||!String(it.source_ref_id||'').trim())return;
+    const p=byId.get(String(it.sales_invoice_id));if(!p||p.doc_type!=='invoice')return;
+    const t=billingSrcTaxForItem(it,p);if(t)it.source_doc_id=t.id;
+  });
+}
 function salesTaxSummaryHtml(inv,items){
   const company=salesDocCompanyInfo(inv);
   const customer=salesDocCustomerInfo(inv);
@@ -7896,12 +7919,12 @@ function salesTaxSummaryHtml(inv,items){
     let po='', taxNo='', liveAmt=null;
     if(isInv){
       // ใบแจ้งหนี้: หาใบกำกับภาษีต้นทาง (จาก source_doc_id ก่อน ไม่งั้นจาก PR) → ดึง "PO รวม" จากบรรทัดของใบกำกับภาษีนั้น + เลขที่ใบกำกับ
-      let srcTax=(salesInvoices||[]).find(x=>x&&x.doc_type==='tax_invoice'&&x.status!=='cancelled'&&String(x.id)===String(it.source_doc_id));
+      let srcTax=billingSrcTaxForItem(it,inv);const exact=!!srcTax;
       if(!srcTax){const firstPr=pr.split(',')[0].trim();if(firstPr)srcTax=(salesInvoices||[]).find(x=>x&&x.doc_type==='tax_invoice'&&x.status!=='cancelled'&&salesInvoiceMatchesJob(x,firstPr));}
       if(srcTax){
         po=[...new Set((salesInvoiceItems||[]).filter(x=>x.sales_invoice_id===srcTax.id&&x.status!=='cancelled').map(x=>String(x.po||'').trim()).filter(Boolean))].join(', ');
         taxNo=String(srcTax.doc_no||srcTax.sales_invoice_no||'').trim();
-        if(String(it.source_doc_id||'')===String(srcTax.id))liveAmt=billingLineAmountFor(srcTax,invVatMode); // ยอดสดตามใบกำกับล่าสุด (ก่อน VAT ถ้าบวก VAT ท้ายบิล)
+        if(exact)liveAmt=billingLineAmountFor(srcTax,invVatMode); // ยอดสดตามใบกำกับล่าสุด (ก่อน VAT ถ้าบวก VAT ท้ายบิล)
       }
       if(!taxNo)taxNo=String(it.source_ref_id||'').trim();
     }else{
@@ -9552,7 +9575,7 @@ function salesRefreshBillingLinesForVat(){
   if((document.getElementById('sale-doc-type')?.value||'')!=='invoice')return;
   let changed=false;
   (salesDraftItems||[]).forEach(it=>{
-    const tx=it.source_doc_id?(salesInvoices||[]).find(x=>String(x.id)===String(it.source_doc_id)&&x.doc_type==='tax_invoice'&&x.status!=='cancelled'):null;
+    const tx=billingSrcTaxForItem(it,null);
     if(!tx)return;
     const qty=Number(it.quantity||1)||1;
     const amount=billingLineAmountFor(tx,salesVatMode);
