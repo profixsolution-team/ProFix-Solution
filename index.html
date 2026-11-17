@@ -17581,12 +17581,12 @@ function pmQrHtml(){
   const list=pm.assets.filter(a=>a.status!=='retired'&&(!pmAsset.client||a.client===pmAsset.client)&&(!pmAsset.branch||a.branch===pmAsset.branch));
   const brs=[...new Set(pm.assets.filter(a=>!pmAsset.client||a.client===pmAsset.client).map(a=>a.branch))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'th'));
   return `<div class="pm-grid2">
-    <section class="d2-box"><div class="d2-h"><div><div class="t">พิมพ์ QR ของเครื่องที่มีในทะเบียน</div><div class="s">เลือกเครื่องแล้วพิมพ์ลงกระดาษสติกเกอร์ A4 (แถวละ 4 · 36 ดวง/แผ่น · มีเส้นไดคัท)</div></div></div>
+    <section class="d2-box"><div class="d2-h"><div><div class="t">พิมพ์ QR ของเครื่องที่มีในทะเบียน</div><div class="s">เลือกเครื่องแล้วพิมพ์ลงกระดาษสติกเกอร์ A4 (แถวละ 4 · 40 ดวง/แผ่น · มีเส้นไดคัท)</div></div></div>
       <div class="d2-in d2-pad"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><select class="filter-select" onchange="pmAsset.client=this.value;pmAsset.branch='';pmQrPick.clear();renderPM()"><option value="">ลูกค้า: ทั้งหมด</option>${clientsAll.map(x=>`<option${x===pmAsset.client?' selected':''}>${esc(x)}</option>`).join('')}</select><select class="filter-select" onchange="pmAsset.branch=this.value;pmQrPick.clear();renderPM()"><option value="">สาขา: ทั้งหมด</option>${brs.map(x=>`<option${x===pmAsset.branch?' selected':''}>${esc(x)}</option>`).join('')}</select><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pmQrPickAll()">เลือกทั้งหมด (${list.length})</button><button class="btn btn-ghost btn-sm" onclick="pmQrPick.clear();renderPM()">ล้าง</button></div>
       <div class="pm-qrlist">${list.length?list.map(a=>`<label class="pm-ck"><input type="checkbox" ${pmQrPick.has(a.id)?'checked':''} onchange="this.checked?pmQrPick.add('${esc(a.id)}'):pmQrPick.delete('${esc(a.id)}');document.getElementById('pm-qr-n').textContent=pmQrPick.size"> <b class="mono">${esc(a.id)}</b> <span class="tm">${esc(a.branch)} · ${esc(a.asset_type)} ${esc(a.brand||'')} · ${esc(a.location||'')}</span></label>`).join(''):'<div class="tm">ยังไม่มีเครื่องในทะเบียน</div>'}</div>
       <button class="btn btn-primary" style="margin-top:12px" onclick="pmPrintStickers([...pmQrPick])">🖨 พิมพ์ที่เลือก (<span id="pm-qr-n">${pmQrPick.size}</span> ดวง)</button></div></section>
     <section class="d2-box"><div class="d2-h"><div><div class="t">สติกเกอร์เปล่า</div><div class="s">พิมพ์เตรียมไว้ให้ช่าง ไปติดแล้วผูกกับเครื่องตอนเข้า PM</div></div></div>
-      <div class="d2-in d2-pad"><div class="form-group"><label>จำนวน</label><select id="pm-blank-n" class="filter-select"><option>36</option><option selected>72</option><option>108</option><option>144</option></select></div>
+      <div class="d2-in d2-pad"><div class="form-group"><label>จำนวน</label><select id="pm-blank-n" class="filter-select"><option>40</option><option selected>80</option><option>120</option><option>160</option></select></div>
       <button class="btn btn-primary" onclick="pmPrintBlank()">🖨 จองเลขและพิมพ์สติกเกอร์เปล่า</button>
       <div class="tm" style="font-size:12.5px;line-height:1.7;margin-top:12px">• เลขเรียงต่อกัน PFQ-00001, 00002, ... ไม่ซ้ำแม้พิมพ์จากหลายเครื่อง<br>• ช่วงทดลอง: ติดสติกเกอร์แล้วใส่เลขสติกเกอร์ในช่อง "สติกเกอร์ QR" ของเครื่องได้เลย<br>• ช่วงที่ 2: ช่างสแกนสติกเกอร์เปล่าแล้วผูกกับเครื่องในฟอร์มได้เอง</div></div></section>
   </div>`;
@@ -17601,7 +17601,7 @@ async function pmPrintStickers(ids){
   }catch(e){w.document.body.innerHTML='สร้าง QR ไม่สำเร็จ: '+esc(e.message||e);}
 }
 async function pmPrintBlank(){
-  const n=+document.getElementById('pm-blank-n').value||72;
+  const n=+document.getElementById('pm-blank-n').value||80;
   if(!confirm(`จองเลขสติกเกอร์เปล่า ${n} ดวง แล้วพิมพ์?`))return;
   const w=window.open('','_blank');if(!w){alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
   w.document.write('<p style="font-family:sans-serif;padding:20px">กำลังจองเลขและสร้าง QR...</p>');
@@ -17612,11 +17612,11 @@ async function pmPrintBlank(){
     pmWriteSheet(w,labels);
   }catch(e){w.document.body.innerHTML='ไม่สำเร็จ: '+esc(e.message||e);}
 }
-// สติกเกอร์ QR (2026-11-17): แถวละ 4 ดวง · 9 แถว = 36 ดวง/แผ่น · ดวงละ 43×25 มม. · QR 20 มม. (ลิงก์ 66 ตัวอักษร = 37×37 จุด ≈ 0.5 มม./จุด)
-// พื้นที่พิมพ์รวม 181×251 มม. → ลงกระดาษ A4 ได้แม้เบราว์เซอร์/เครื่องพิมพ์เผื่อขอบ 12.7 มม. (ครึ่งนิ้ว) · แบ่งแผ่นละ 36 ดวงชัด ๆ (ขึ้นแผ่นใหม่ทุก 36)
+// สติกเกอร์ QR (2026-11-17): แถวละ 4 ดวง · 10 แถว = 40 ดวง/แผ่น · ดวงละ 43×24.5 มม. · QR 20 มม. (ลิงก์ 66 ตัวอักษร = 37×37 จุด ≈ 0.5 มม./จุด)
+// พื้นที่พิมพ์รวม 181×267.5 มม. → ลงกระดาษ A4 ได้แม้เบราว์เซอร์/เครื่องพิมพ์เผื่อขอบ 12.7 มม. (ครึ่งนิ้ว) · แบ่งแผ่นละ 40 ดวงชัด ๆ (ขึ้นแผ่นใหม่ทุก 40)
 // เขียนแค่รหัส + "Profix Solution" · มีเส้นไดคัทรอบดวง (กดซ่อนได้ ถ้าใช้กระดาษสติกเกอร์ที่ไดคัทมาแล้ว)
 function pmWriteSheet(w,labels){
-  const PER=36,pages=[];for(let i=0;i<labels.length;i+=PER)pages.push(labels.slice(i,i+PER));
+  const PER=40,pages=[];for(let i=0;i<labels.length;i+=PER)pages.push(labels.slice(i,i+PER));
   const html=`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>สติกเกอร์ QR ${labels.length} ดวง</title><link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@500;700&display=swap" rel="stylesheet"><style>
   @page{size:A4 portrait;margin:10mm}
   *{box-sizing:border-box}body{margin:0;font-family:Anuphan,sans-serif;color:#0b1220;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -17625,17 +17625,17 @@ function pmWriteSheet(w,labels){
   .bar small{color:#9fb0c8}
   .page{width:181mm;margin:0 auto;break-after:page;page-break-after:always}
   .page:last-child{break-after:auto;page-break-after:auto}
-  .sheet{display:grid;grid-template-columns:repeat(4,43mm);grid-auto-rows:25mm;column-gap:3.33mm;row-gap:3.25mm}
+  .sheet{display:grid;grid-template-columns:repeat(4,43mm);grid-auto-rows:24.5mm;column-gap:3.33mm;row-gap:2.5mm}
   .lb{display:flex;align-items:center;gap:2mm;padding:2mm;border:.25mm solid #8a94a6;border-radius:2.5mm;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
   body.nocut .lb{border-color:transparent}
   .lb svg{width:20mm;height:20mm;flex:none;display:block}
   .tx{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1.1mm}
   .tx b{display:block;font-size:8.8pt;font-weight:700;letter-spacing:.1px;line-height:1.1;white-space:nowrap}
   .tx span{display:block;font-size:6.3pt;font-weight:500;color:#334155;line-height:1.15;white-space:nowrap}
-  @media screen{body{background:#e5e9f0}.page{background:#fff;box-sizing:content-box;width:181mm;min-height:251mm;padding:10mm 14.5mm;margin:14px auto;box-shadow:0 6px 24px rgba(0,0,0,.12)}}
+  @media screen{body{background:#e5e9f0}.page{background:#fff;box-sizing:content-box;width:181mm;min-height:267.5mm;padding:10mm 14.5mm;margin:14px auto;box-shadow:0 6px 24px rgba(0,0,0,.12)}}
   @media print{.bar{display:none}}
   </style></head><body>
-  <div class="bar"><b>สติกเกอร์ QR ${labels.length} ดวง · ${pages.length} แผ่น</b><small>A4 · แถวละ 4 · 36 ดวง/แผ่น · ตอนพิมพ์ตั้งขนาด 100% (ไม่ใช่ "พอดีหน้า")</small><span style="flex:1"></span>
+  <div class="bar"><b>สติกเกอร์ QR ${labels.length} ดวง · ${pages.length} แผ่น</b><small>A4 · แถวละ 4 · 40 ดวง/แผ่น · ตอนพิมพ์ตั้งขนาด 100% (ไม่ใช่ "พอดีหน้า")</small><span style="flex:1"></span>
     <label><input type="checkbox" checked onchange="document.body.classList.toggle('nocut',!this.checked)"> เส้นไดคัท</label>
     <button onclick="window.close()">ปิด</button><button class="p" onclick="window.print()">พิมพ์</button></div>
   ${pages.map(pg=>`<div class="page"><div class="sheet">${pg.map(l=>`<div class="lb">${l.svg}<div class="tx"><b>${esc(l.code)}</b><span>Profix Solution</span></div></div>`).join('')}</div></div>`).join('')}</body></html>`;
