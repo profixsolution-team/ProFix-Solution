@@ -17916,9 +17916,9 @@ const PMS_CSS=`@font-face{font-family:PMSThai;font-weight:400;src:url(https://fo
 @font-face{font-family:PMSThai;font-weight:700;src:url(https://fonts.gstatic.com/s/sarabun/v17/DtVmJx26TKEr37c9YK5sik8s6yLUrwB0lw.woff2) format('woff2');unicode-range:U+0E01-0E5B}
 @font-face{font-family:PMSLat;font-weight:400;src:local('Times New Roman'),local('TimesNewRomanPSMT'),url(https://fonts.gstatic.com/s/tinos/v26/buE4poGnedXvwjX7fmRD8iI_.woff2) format('woff2')}
 @font-face{font-family:PMSLat;font-weight:700;src:local('Times New Roman Bold'),local('TimesNewRomanPS-BoldMT'),url(https://fonts.gstatic.com/s/tinos/v26/buE1poGnedXvwj1AW3Fu0C8V-txK.woff2) format('woff2')}
-.pms{position:relative;width:595.25pt;height:841.85pt;background:#fff;color:#000;font-family:PMSLat,PMSThai,serif;overflow:hidden;text-align:left}
+.pms{-webkit-print-color-adjust:exact;print-color-adjust:exact;position:relative;width:595.25pt;height:841.85pt;background:#fff;color:#000;font-family:PMSLat,PMSThai,serif;overflow:hidden;text-align:left}
 .pms div,.pms img{position:absolute;box-sizing:border-box;margin:0;padding:0}
-.pms .r{background:#000}
+.pms .r{background:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pms .t{white-space:nowrap;line-height:1;font-weight:400}
 .pms .t.b{font-weight:700}
 .pms .t.c{text-align:center}
@@ -18082,6 +18082,7 @@ async function pmPrintCheckSheet(jobId){
   .nt{font-size:11.5px;line-height:1.6;padding-top:5mm}.tm{color:#888}
   .page.pmsp{padding:0;width:595.25pt;height:841.85pt}
   ${PMS_CSS}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   @media print{body{background:#fff}.toolbar{display:none}.page{margin:0;box-shadow:none}}@page{size:A4 portrait;margin:0}</style></head><body>
   <div class="toolbar"><div><b>PM Check Sheet ${esc(j.id)}</b> · ${esc(j.branch||'')} · ${N} หน้า</div><div><button class="g" onclick="window.close()">ปิด</button><button onclick="window.print()">พิมพ์ / Save PDF</button></div></div>
   ${pages.map((pg,i)=>pg.sheet?`<div class="page pmsp">${pg.sheet(i,N)}</div>`:`<div class="page">${pg.html}<div class="ft"><span>${esc(j.id)}${pg.code?' · '+esc(pg.code):''}</span><span>หน้า ${i+1} / ${N}</span></div></div>`).join('')}

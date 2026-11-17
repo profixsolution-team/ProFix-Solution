@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>สรุปงานช่าง — ProFix</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2358a6ff'/><text x='50' y='72' font-size='60' font-family='Arial' font-weight='bold' fill='%230d1117' text-anchor='middle'>P</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -243,6 +243,15 @@ body.pm-t2 #pm-wrap{display:none!important;}
 .sl-mine{display:flex;gap:8px;overflow-x:auto;margin-bottom:10px}.sl-mine span{position:relative;flex:none}.sl-mine img{width:110px;height:110px;object-fit:cover;border-radius:10px;border:2px solid var(--green)}.sl-mine i{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.5);color:#fff;font-style:normal;border-radius:10px}.sl-mine button{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.75);color:#fff;font-size:15px;line-height:1}
 .sl-tpls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sl-tpls button{display:flex;align-items:center;gap:8px;padding:12px 10px;border-radius:12px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text);font-weight:700;font-family:inherit;font-size:13.5px;text-align:left}.sl-tpls span{font-size:20px}
 #slot-pop input{width:100%}
+
+/* ===== ใช้งานเหมือนแอป (2026-11-17): ไม่ซูมเองตอนแตะช่องกรอก · ไม่เลื่อนซ้าย-ขวา · ไม่ซูมเมื่อแตะ 2 ครั้ง ===== */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:hidden;}
+body{overflow-x:hidden;max-width:100vw;touch-action:manipulation;overscroll-behavior-x:none;}
+input,select,textarea{font-size:16px!important;max-width:100%;}
+img,video,canvas,table{max-width:100%;}
+.form-group,[style*="grid-template-columns"]>*{min-width:0;}
+input[type=date],input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;width:100%;min-height:46px;text-align:left;}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0;}
 </style>
 </head>
 <body>
@@ -2095,9 +2104,9 @@ const PMS_CSS=`@font-face{font-family:PMSThai;font-weight:400;src:url(https://fo
 @font-face{font-family:PMSThai;font-weight:700;src:url(https://fonts.gstatic.com/s/sarabun/v17/DtVmJx26TKEr37c9YK5sik8s6yLUrwB0lw.woff2) format('woff2');unicode-range:U+0E01-0E5B}
 @font-face{font-family:PMSLat;font-weight:400;src:local('Times New Roman'),local('TimesNewRomanPSMT'),url(https://fonts.gstatic.com/s/tinos/v26/buE4poGnedXvwjX7fmRD8iI_.woff2) format('woff2')}
 @font-face{font-family:PMSLat;font-weight:700;src:local('Times New Roman Bold'),local('TimesNewRomanPS-BoldMT'),url(https://fonts.gstatic.com/s/tinos/v26/buE1poGnedXvwj1AW3Fu0C8V-txK.woff2) format('woff2')}
-.pms{position:relative;width:595.25pt;height:841.85pt;background:#fff;color:#000;font-family:PMSLat,PMSThai,serif;overflow:hidden;text-align:left}
+.pms{-webkit-print-color-adjust:exact;print-color-adjust:exact;position:relative;width:595.25pt;height:841.85pt;background:#fff;color:#000;font-family:PMSLat,PMSThai,serif;overflow:hidden;text-align:left}
 .pms div,.pms img{position:absolute;box-sizing:border-box;margin:0;padding:0}
-.pms .r{background:#000}
+.pms .r{background:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pms .t{white-space:nowrap;line-height:1;font-weight:400}
 .pms .t.b{font-weight:700}
 .pms .t.c{text-align:center}
