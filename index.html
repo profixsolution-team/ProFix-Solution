@@ -1571,6 +1571,9 @@ button.pm-hc{cursor:pointer;}
 .pm-tch.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);}
 .pm-tch .jq-av,.pm-tch .avatar{flex:none;}
 .pm-dw{display:flex;gap:6px;flex-wrap:wrap;}
+.pm-zch{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.pm-zch button{border:1.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}.pm-zch button.on{background:var(--accent);border-color:var(--accent);color:#fff}.pm-zch button small{opacity:.7;font-weight:500;margin-left:3px}.pm-zch button:disabled{opacity:.4;cursor:default}
+.pm-tz{border:1px solid var(--border);border-radius:10px;padding:6px 10px;margin-top:6px;font-size:12.5px}.pm-tz-h{display:flex;align-items:center;gap:8px}.pm-tz-h b{flex:none}.pm-tz-h span{flex:1;min-width:0;color:var(--text2)}.pm-tz .pm-zch{margin:6px 0 2px}
+.pm-tch small{font-weight:500;color:var(--text2);font-size:11px}
 .pm-dw button{width:40px;height:34px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface);font-weight:600;font-size:12.5px;font-family:inherit;color:var(--text);cursor:pointer;}
 .pm-dw button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 .pm-dw button.off{color:var(--text3,#98a2b3);text-decoration:line-through;}
@@ -16998,7 +17001,8 @@ function pmBulkPlan(){
   const nFree=pmBulkSites('free').length,nSel=pmSel.size;
   if(!nFree&&!nSel){alert('ทุกสาขาในรอบนี้มีวันนัดแล้ว — ถ้าจะจัดใหม่ ให้ติ๊กเลือกสาขาก่อน');return;}
   const prev=pmBP||{};
-  pmBP={scope:nSel?'sel':'free',start:todayISO(),per:prev.per||2,teams:new Set(),off:prev.off||new Set([0]),ex:prev.ex||[],near:prev.near!==false};
+  pmBP={scope:nSel?'sel':'free',start:todayISO(),per:prev.per||2,teams:new Set(),off:prev.off||new Set([0]),ex:prev.ex||[],near:prev.near!==false,regions:new Set(prev.regions||(pmF.regions||[]).filter(x=>x!=='__none')),provs:new Set(prev.provs||(pmF.provs||[]).filter(x=>x!=='__none')),tzOpen:''};
+  pmTZLoad().then(()=>pmBPRender());
   const c=pmContract();
   pmModal(`จัดวันนัดรอบที่ ${pmRound}`,`${c.client} · ${c.name}`,'<div id="pmb-body"></div>',
     `<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" id="pmb-ok" onclick="pmBulkPlanSave()">✓ จัดวัน</button>`,true);
@@ -17010,28 +17014,64 @@ function pmBPSet(k,v){if(!pmBP)return;
   else if(k==='exAdd'){if(v&&!pmBP.ex.includes(v)){pmBP.ex.push(v);pmBP.ex.sort();}}
   else if(k==='exDel'){pmBP.ex=pmBP.ex.filter(x=>x!==v);}
   else if(k==='per'){pmBP.per=Math.max(1,Math.min(20,v));}
+  else if(k==='region'||k==='prov'){const S=pmBP[k+'s'];S.has(v)?S.delete(v):S.add(v);if(k==='region')pmBP.provs.forEach(p=>{if(pmBP.regions.size&&!pmBP.regions.has(PM_PROV_REGION.get(p)||''))pmBP.provs.delete(p);});}
+  else if(k==='zoneAll'){pmBP.regions.clear();pmBP.provs.clear();}
+  else if(k==='tzOpen'){pmBP.tzOpen=pmBP.tzOpen===v?'':v;}
   else pmBP[k]=v;
   pmBPRender();}
+// ===== โซน: กรองสาขาที่จะจัด + โซนประจำทีม (2026-11-16) =====
+// โซน = ภาค และ/หรือ จังหวัด (เลือกภาค = ทุกจังหวัดในภาค · เลือกจังหวัดด้วย = เฉพาะจังหวัดนั้น) — กติกาเดียวกับตัวกรองหน้า PM
+// โซนประจำทีม เก็บใน console_ui_settings key pm_team_zones {zones:{ทีม:{regions:[],provs:[]}}} (ทุกแอดมินเห็นเหมือนกัน) · ทีมที่ไม่ตั้ง = วิ่งได้ทุกโซน
+function pmZoneOk(z,s){if(!z)return true;const g=pmSiteGeo(s),R=z.regions||[],P=z.provs||[];if(!R.length&&!P.length)return true;
+  if(R.length&&!R.includes(g.region||''))return false;if(P.length&&!P.includes(g.prov||''))return false;return true;}
+function pmZoneLabel(z){const R=(z&&z.regions)||[],P=(z&&z.provs)||[];return P.length?P.join(', '):R.length?R.join(', '):'ทุกโซน';}
+async function pmTZLoad(){if(pm.teamZones)return pm.teamZones;try{const r=await sbFetchAllOptional('console_ui_settings','?select=value&key=eq.pm_team_zones');pm.teamZones=(r&&r[0]&&r[0].value&&r[0].value.zones)||{};}catch(e){pm.teamZones={};}return pm.teamZones;}
+function pmTZ(t){return (pm.teamZones||{})[t]||null;}
+var pmTZTimer=null;
+function pmTZSet(team,k,v){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  pm.teamZones=pm.teamZones||{};const z=pm.teamZones[team]=pm.teamZones[team]||{regions:[],provs:[]};
+  if(k==='all'){z.regions=[];z.provs=[];}else{const a=new Set(z[k]);a.has(v)?a.delete(v):a.add(v);z[k]=[...a];if(k==='regions'&&z.regions.length)z.provs=z.provs.filter(p=>z.regions.includes(PM_PROV_REGION.get(p)||''));}
+  if(!z.regions.length&&!z.provs.length)delete pm.teamZones[team];
+  pmBPRender();clearTimeout(pmTZTimer);pmTZTimer=setTimeout(pmTZSave,700);}
+async function pmTZSave(){
+  try{const r=await fetch(splitUrl('console_ui_settings','?on_conflict=key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify({key:'pm_team_zones',value:{zones:pm.teamZones||{}},updated_at:new Date().toISOString(),updated_by:getActorName()})});
+    if(!r.ok)throw new Error(await r.text());}catch(e){alert('บันทึกโซนของทีมไม่สำเร็จ: '+((e&&e.message)||e));}}
+// ชิปภาค / จังหวัด (นับจากสาขาที่จะจัด) — on(kind,v) = เลือกอยู่ไหม · fn = ฟังก์ชันที่เรียกเมื่อกด
+function pmZoneChips(sites,sel,click){
+  const regs=new Map(),provs=new Map();sites.forEach(s=>{const g=pmSiteGeo(s);if(g.region)regs.set(g.region,(regs.get(g.region)||0)+1);if(g.prov&&(!sel.regions.length||sel.regions.includes(g.region)))provs.set(g.prov,(provs.get(g.prov)||0)+1);});
+  const R=PM_REGIONS.map(([r])=>r).filter(r=>regs.has(r)||sel.regions.includes(r));
+  const P=[...new Set([...provs.keys(),...sel.provs])].sort((a,b)=>(provs.get(b)||0)-(provs.get(a)||0)||a.localeCompare(b,'th'));
+  const b=(kind,v,n,on)=>`<button type="button" class="${on?'on':''}" data-v="${esc(v)}" onclick="${click}('${kind}',this.dataset.v)">${esc(v)}${n!=null?`<small>${n}</small>`:''}</button>`;
+  return `<div class="pm-zch">${R.map(r=>b('regions',r,regs.get(r)||0,sel.regions.includes(r))).join('')}</div>${P.length>1||sel.provs.length?`<div class="pm-zch">${P.slice(0,40).map(p=>b('provs',p,provs.get(p)||0,sel.provs.includes(p))).join('')}</div>`:''}`;
+}
+function pmBPZone(kind,v){pmBPSet(kind==='regions'?'region':'prov',v);}
+function pmTZChip(kind,v){if(pmBP&&pmBP.tzOpen)pmTZSet(pmBP.tzOpen,kind,v);}
 function pmBPRender(){
   const el=document.getElementById('pmb-body');if(!el||!pmBP)return;
   const B=pmBP,nFree=pmBulkSites('free').length,nSel=pmSel.size;
-  const {out,err}=pmBulkCompute();
+  const {out,err,none=[]}=pmBulkCompute();
   const days=[...new Set(out.map(x=>x.date))];
+  const allSites=pmBulkSites(B.scope),zSel={regions:[...B.regions],provs:[...B.provs]},zSites=pmBPSites(),noProv=allSites.filter(x=>!pmSiteGeo(x).prov).length;
+  const contractSites=pmSitesOf(pmContract().id);
+  const tzRow=t=>{const z=pmTZ(t),open=B.tzOpen===t;return `<div class="pm-tz"><div class="pm-tz-h"><b>${esc(t)}</b><span>วิ่งโซน: ${esc(pmZoneLabel(z))}</span><button type="button" class="btn btn-ghost btn-xs" data-t="${esc(t)}" onclick="pmBPSet('tzOpen',this.dataset.t)">${open?'เสร็จ':'✎ ตั้งโซน'}</button></div>${open?`${pmZoneChips(contractSites,{regions:(z&&z.regions)||[],provs:(z&&z.provs)||[]},'pmTZChip')}<div class="tm" style="font-size:11.5px">ไม่เลือก = วิ่งได้ทุกโซน · บันทึกให้อัตโนมัติ (แอดมินทุกคนเห็นเหมือนกัน)${z?` · <a href="#" data-t="${esc(t)}" onclick="event.preventDefault();pmTZSet(this.dataset.t,'all')">ล้างโซนทีมนี้</a>`:''}</div>`:''}</div>`;};
   const byDay=days.map(d=>{const its=out.filter(x=>x.date===d);const lanes=[...new Set(its.map(x=>x.team||''))];return {d,its,lanes:lanes.map(t=>{const os=its.filter(x=>(x.team||'')===t).map(x=>x.s);return {t,ss:os.map(x=>x.branch),span:os.length>1?pmGroupSpan(os):undefined};})};});
   const dname=d=>{const x=calDate(d);return `${PM_DOW[x.getDay()]}. ${pmThDateY(d)}`;};
   el.innerHTML=`<div class="pm-bp"><div>
     <div class="sec"><div class="lbl">สาขาที่จะจัด</div><div class="pm-seg2">${nFree?`<button type="button" class="${B.scope==='free'?'on':''}" onclick="pmBPSet('scope','free')">ยังไม่มีวันนัด <small>(${nFree})</small></button>`:''}${nSel?`<button type="button" class="${B.scope==='sel'?'on':''}" onclick="pmBPSet('scope','sel')">ที่ติ๊กไว้ <small>(${nSel})</small></button>`:''}</div></div>
+    <div class="sec"><div class="lbl">โซน <span>— ${B.regions.size||B.provs.size?`จัดเฉพาะ ${esc(pmZoneLabel(zSel))} · ${zSites.length}/${allSites.length} สาขา · <a href="#" onclick="event.preventDefault();pmBPSet('zoneAll')">ทุกโซน</a>`:`ทุกโซน (${allSites.length} สาขา) — กดเลือกภาค/จังหวัดเพื่อจัดเฉพาะโซน`}${noProv?` · ไม่รู้จังหวัด ${noProv} สาขา`:''}</span></div>${pmZoneChips(allSites,zSel,'pmBPZone')}</div>
     <div class="sec two"><div><div class="lbl">เริ่มวันที่</div><input type="date" class="filter-input" style="width:100%" value="${esc(B.start)}" onchange="pmBPSet('start',this.value)"></div>
       <div><div class="lbl">วันละกี่สาขา / ทีม</div><div class="pm-stp"><button type="button" onclick="pmBPSet('per',${B.per-1})">−</button><b>${B.per}</b><button type="button" onclick="pmBPSet('per',${B.per+1})">＋</button></div></div></div>
-    <div class="sec"><div class="lbl">ลำดับสาขา <span>— ${(()=>{const ss=pmBulkSites(B.scope),k=ss.filter(pmSiteLL).length;return `มีพิกัด ${k}/${ss.length} สาขา`;})()}</span></div><div class="pm-seg2"><button type="button" class="${B.near?'on':''}" onclick="pmBPSet('near',true)">📍 จับกลุ่มสาขาใกล้กัน</button><button type="button" class="${B.near?'':'on'}" onclick="pmBPSet('near',false)">ตามลำดับในรายการ</button></div></div>
+    <div class="sec"><div class="lbl">ลำดับสาขา <span>— ${(()=>{const ss=zSites,k=ss.filter(pmSiteLL).length;return `มีพิกัด ${k}/${ss.length} สาขา`;})()}</span></div><div class="pm-seg2"><button type="button" class="${B.near?'on':''}" onclick="pmBPSet('near',true)">📍 จับกลุ่มสาขาใกล้กัน</button><button type="button" class="${B.near?'':'on'}" onclick="pmBPSet('near',false)">ตามลำดับในรายการ</button></div></div>
     <div class="sec"><div class="lbl">ทีมช่าง <span>— เลือกหลายทีม = วิ่งพร้อมกันวันเดียวกัน · ไม่เลือก = คงทีมเดิมของสาขา</span></div>
-      <div class="pm-tchs">${(teams||[]).map(t=>`<button type="button" class="pm-tch${B.teams.has(t.name)?' on':''}" onclick="pmBPSet('team',this.dataset.t)" data-t="${esc(t.name)}">${typeof jqTeamAvatar==='function'?jqTeamAvatar(t.name):''}${esc(t.name)}</button>`).join('')||'<span class="tm">ยังไม่มีทีม</span>'}</div></div>
+      <div class="pm-tchs">${(teams||[]).map(t=>`<button type="button" class="pm-tch${B.teams.has(t.name)?' on':''}" onclick="pmBPSet('team',this.dataset.t)" data-t="${esc(t.name)}">${typeof jqTeamAvatar==='function'?jqTeamAvatar(t.name):''}${esc(t.name)}${pmTZ(t.name)?` <small>· ${esc(pmZoneLabel(pmTZ(t.name)))}</small>`:''}</button>`).join('')||'<span class="tm">ยังไม่มีทีม</span>'}</div>${B.teams.size?[...B.teams].map(tzRow).join(''):''}</div>
     <div class="sec"><div class="lbl">วันทำงาน <span>— กดเพื่อปิด/เปิดวัน</span></div>
       <div class="pm-dw">${PM_DOW.map((d,i)=>`<button type="button" class="${B.off.has(i)?'off':'on'}" onclick="pmBPSet('dow',${i})">${d}</button>`).join('')}</div></div>
     <div class="sec"><div class="lbl">ยกเว้นวันที่ <span>— วันหยุดนักขัตฤกษ์ / ช่างติดงาน (กดที่วันเพื่อลบ)</span></div>
       <div class="pm-exl">${B.ex.map(d=>`<span class="pm-tag" style="--c:#64748b" onclick="pmBPSet('exDel','${d}')">${esc(pmThDateY(d))} ✕</span>`).join('')}<input type="date" class="filter-input" style="width:auto;padding:5px 8px" title="เพิ่มวันยกเว้น" onchange="pmBPSet('exAdd',this.value)"></div></div>
   </div><div>
     <div class="lbl">ตัวอย่างแผน</div>
+    ${none.length?`<div class="tp-note warn" style="margin-bottom:8px;font-size:12.5px">⚠ ${none.length} สาขาไม่มีทีมที่เลือกวิ่งโซนนั้น — ยังไม่จัด: ${none.slice(0,8).map(x=>esc(x.branch)+' ('+esc(pmSiteGeo(x).prov||'ไม่รู้จังหวัด')+')').join(', ')}${none.length>8?' …':''}</div>`:''}
     ${err?`<div class="tm">${esc(err)}</div>`:out.length?`<div class="pm-kpi" style="margin-top:0"><div><b>${out.length}</b>สาขา</div><div><b>${days.length}</b>วันทำงาน</div><div><b>${esc(pmThDateY(days[0]))} – ${esc(pmThDateY(days[days.length-1]))}</b>ช่วงวัน</div></div>
       <div style="max-height:46vh;overflow:auto">${byDay.slice(0,14).map(x=>`<div class="pm-day"><h5>${esc(dname(x.d))}<span class="tm">${x.its.length} สาขา</span></h5>${x.lanes.map(l=>`<div><b>${esc(l.t||'ทีมเดิม')}</b><span>${l.ss.map(esc).join(', ')}${l.span===undefined?'':l.span===null?' <small class="tm">· บางสาขายังไม่มีพิกัด</small>':` <small style="color:${l.span<=15?'var(--green)':l.span<=40?'#d97706':'var(--red)'}">· ห่างกันสุด ${l.span<10?l.span.toFixed(1):Math.round(l.span)} กม.</small>`}</span></div>`).join('')}</div>`).join('')}${byDay.length>14?`<div class="tm" style="font-size:12px">… อีก ${byDay.length-14} วัน</div>`:''}</div>
       <div class="tm" style="font-size:12px;margin-top:6px">${B.near?'จับกลุ่มตามพิกัด: สาขาในวันเดียวกันของแต่ละทีมอยู่ใกล้กัน · สาขาที่ยังไม่มีพิกัด จัดกลุ่มตามจังหวัดไว้ท้าย (ปักหมุดได้ที่แท็บแผนที่)':'สาขาเรียงตามลำดับในรายการ — ติ๊กสาขาที่อยู่ใกล้กันก่อนแล้วค่อยจัด ทีมจะได้สาขาติดกัน'}</div>`:'<div class="tm">ไม่มีสาขาให้จัด</div>'}
@@ -17062,19 +17102,30 @@ function pmNearGroups(sites,n){
 }
 // ระยะห่างมากสุดระหว่างสาขาในกลุ่ม (กม.) · null = มีสาขาไม่มีพิกัด
 function pmGroupSpan(ss){const gs=ss.map(pmSiteLL);if(gs.some(g=>!g))return null;let m=0;for(let i=0;i<gs.length;i++)for(let k=i+1;k<gs.length;k++)m=Math.max(m,pmKm(gs[i],gs[k]));return m;}
+function pmBPSites(){const B=pmBP,z={regions:[...B.regions],provs:[...B.provs]};return pmBulkSites(B.scope).filter(s=>pmZoneOk(z,s));}
 // คำนวณแผน: แต่ละวันทำงาน ทีมแรกได้ N สาขาแรก ทีมถัดไปได้ N สาขาถัดไป ... ข้ามวันที่ปิด/วันยกเว้น
 function pmBulkCompute(){
   const B=pmBP;if(!B)return {out:[]};
-  const raw=pmBulkSites(B.scope),out=[];if(!B.start)return {out,err:'เลือกวันเริ่มก่อน'};
-  const groups=B.near?pmNearGroups(raw,B.per):raw.reduce((a,s,i)=>{if(i%B.per===0)a.push([]);a[a.length-1].push(s);return a;},[]);
-  if(B.off.size>=7)return {out,err:'ปิดทุกวันอยู่ — เปิดวันทำงานอย่างน้อย 1 วัน'};
-  const ex=new Set(B.ex),lanes=B.teams.size?[...B.teams]:[null];let d=calDate(B.start),i=0,guard=0;
-  while(i<groups.length&&guard++<2000){
+  const raw=pmBPSites(),out=[],none=[];if(!B.start)return {out,none,err:'เลือกวันเริ่มก่อน'};
+  if(B.off.size>=7)return {out,none,err:'ปิดทุกวันอยู่ — เปิดวันทำงานอย่างน้อย 1 วัน'};
+  const lanes=B.teams.size?[...B.teams]:[null];
+  const mk=list=>B.near?pmNearGroups(list,B.per):list.reduce((a,s,i)=>{if(i%B.per===0)a.push([]);a[a.length-1].push(s);return a;},[]);
+  // แยกสาขาตาม "ทีมที่รับโซนนี้ได้" แล้วจับกลุ่มในแต่ละชุด → 1 กลุ่ม = 1 ทีม 1 วัน ที่ทีมนั้นวิ่งได้แน่นอน
+  const parts=new Map();
+  raw.forEach(s=>{const can=lanes.filter(t=>t===null||pmZoneOk(pmTZ(t),s));if(!can.length){none.push(s);return;}const k=can.join('\u0001');if(!parts.has(k))parts.set(k,{can,ss:[]});parts.get(k).ss.push(s);});
+  const groups=[];parts.forEach(p=>mk(p.ss).forEach(g=>groups.push({g,can:new Set(p.can),c:(()=>{const ls=g.map(pmSiteLL).filter(Boolean);return ls.length?[ls.reduce((x,l)=>x+l[0],0)/ls.length,ls.reduce((x,l)=>x+l[1],0)/ls.length]:null;})()})));
+  // แต่ละทีมแต่ละวัน: เลือกกลุ่มที่ทีมนี้วิ่งได้ — กลุ่มที่มีทีมรับได้น้อยที่สุดก่อน (กันทีมวิ่งได้ทุกโซนแย่งงานทีมเฉพาะโซน) แล้วเอากลุ่มที่ใกล้กลุ่มเมื่อวานของทีมนั้นที่สุด
+  const ex=new Set(B.ex),last=new Map(),left=new Set(groups.map((_,i)=>i));let d=calDate(B.start),guard=0;
+  while(left.size&&guard++<2000){
     const iso=dateLocalISO(d);
-    if(!B.off.has(d.getDay())&&!ex.has(iso)){for(const t of lanes){if(i>=groups.length)break;groups[i++].forEach(s=>out.push({s,date:iso,team:t}));}}
+    if(!B.off.has(d.getDay())&&!ex.has(iso)){for(const t of lanes){
+      let best=-1,bs=Infinity,bd=Infinity;
+      for(const i of left){const G=groups[i];if(!G.can.has(t))continue;const sz=G.can.size,lc=last.get(t),dd=lc&&G.c?pmKm(lc,G.c):(lc?1e6:i);
+        if(sz<bs||(sz===bs&&dd<bd)){best=i;bs=sz;bd=dd;}}
+      if(best<0)continue;const G=groups[best];left.delete(best);if(G.c)last.set(t,G.c);G.g.forEach(s=>out.push({s,date:iso,team:t}));}}
     d.setDate(d.getDate()+1);
   }
-  return {out};
+  return {out,none};
 }
 async function pmBulkPlanSave(){
   if(typeof guardEdit==='function'&&!guardEdit())return;
