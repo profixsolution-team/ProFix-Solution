@@ -13210,19 +13210,19 @@ function rptSlotHtml(j){
 // รูปสาขา (หน้าร้าน/หลังร้าน) ใส่ซ้ำทุกหน้า · ไม่มีจุดนั้น/ไม่บังคับ = N/A · ช่องบังคับที่ขาด = ว่าง (ถามก่อน)
 const SLOT_PDF_HEAD={pm_air:['ประเภทแอร์','แอร์ตัวที่'],pm_fridge:['ประเภทตู้แช่','ตู้แช่ตัวที่'],pm_filter:['ประเภทเครื่องกรอง','เครื่องกรองตัวที่']};
 const SLOT_PDF_KIND={pm_air:'แอร์',pm_fridge:'ตู้แช่',pm_filter:'เครื่องกรองน้ำดื่ม'};
-const SLOT_PDF_CSS=`@page{size:A4 portrait;margin:9mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+const SLOT_PDF_CSS=`@page{size:A4 portrait;margin:9mm 9mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{margin:0;background:#e9edf3;font-family:Tahoma,'Noto Sans Thai',sans-serif;color:#000}
 .tb{position:sticky;top:0;z-index:5;background:#0b1220;color:#fff;padding:8px 14px;display:flex;align-items:center;gap:10px;font-size:13px}.tb span{flex:1}.tb button{border:0;border-radius:6px;padding:7px 14px;font-family:inherit;cursor:pointer}.tb .p{background:#175fff;color:#fff}
-.pg{width:192mm;min-height:279mm;margin:12px auto;background:#fff;padding:0;box-shadow:0 8px 26px rgba(15,23,42,.16);page-break-after:always;break-after:page}
+.pg{width:210mm;min-height:297mm;margin:12px auto;background:#fff;padding:11mm 12mm;box-shadow:0 8px 26px rgba(15,23,42,.16);page-break-after:always;break-after:page}
 .pg:last-child{page-break-after:auto;break-after:auto}
 .hd{width:100%;border-collapse:collapse;font-weight:700;font-size:11.5pt}.hd td{padding:1.2mm 1mm}.hd .r{text-align:right}
 h2{margin:3mm 0 3mm;text-align:center;font-size:15pt}
 .gr{display:grid;grid-template-columns:repeat(3,1fr);border-top:.3mm solid #000;border-left:.3mm solid #000}
 .c{border-right:.3mm solid #000;border-bottom:.3mm solid #000;display:flex;flex-direction:column}
 .c .lb{height:10mm;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;font-size:9.5pt;line-height:1.2;padding:0 1.5mm;border-bottom:.3mm solid #000}
-.c .im{height:52mm;display:flex;align-items:center;justify-content:center;padding:1mm;font-weight:700;font-size:11pt}
+.c .im{height:50mm;display:flex;align-items:center;justify-content:center;padding:1mm;font-weight:700;font-size:11pt}
 .c .im img{max-width:100%;max-height:100%;object-fit:contain;display:block}
-@media print{body{background:#fff}.tb{display:none}.pg{margin:0;box-shadow:none;width:auto;min-height:0}}`;
+@media print{body{background:#fff}.tb{display:none}.pg{margin:0;box-shadow:none;width:auto;min-height:0;padding:2mm 3mm}}`;
 function slotPdfHtml(j,M,title){
   const units=M.units,site=M.sections.find(x=>x.key==='site'),siteCell=k=>site&&site.phases[0].cells.find(c=>c.id==='site.'+k);
   const pages=[];
