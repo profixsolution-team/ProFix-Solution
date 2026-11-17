@@ -13203,7 +13203,75 @@ function rptSlotHtml(j){
     :`<div class="rs-c ${c.opt?'opt':'miss'}"><span class="i">${c.opt?'ไม่บังคับ':'ขาด'}</span><span>${esc(slotShort(c.label))}</span></div>`;
   const sec=x=>{const m=x.phases.reduce((a,p)=>a+p.cells.filter(c=>!c.opt&&!c.ims.length&&!c.na).length,0);
     return `<details class="rs-u"${m?' open':''}><summary>${esc(x.title)} <span class="rs-pill ${m?'bad':'ok'}">${m?'ขาด '+m:'ครบ'}</span></summary><div class="rs-ph">${x.phases.map(p=>{const pm=p.cells.filter(c=>!c.opt&&!c.ims.length&&!c.na).length;return `<div><h6>${esc(p.l)} <span class="rs-pill ${pm?'bad':'ok'}">${p.cells.filter(c=>c.ims.length||c.na).length}/${p.cells.length}</span></h6><div class="rs-cells">${p.cells.map(cellHtml).join('')}</div></div>`;}).join('')}</div></details>`;};
-  return `<div class="rs-wrap"><div class="rs-top"><b>📷 รูปแยกช่อง</b><span class="rs-pill ${M.miss?'bad':'ok'}">${M.miss?`ขาด ${M.miss} จาก ${M.total} ช่อง`:`ครบ ${M.total} ช่อง`}</span><span class="tm" style="font-size:12px">${M.units.length} เครื่อง · กดรูปเพื่อดูเต็ม</span></div>${M.sections.map(sec).join('')}</div>`;
+  return `<div class="rs-wrap"><div class="rs-top"><b>📷 รูปแยกช่อง</b><span class="rs-pill ${M.miss?'bad':'ok'}">${M.miss?`ขาด ${M.miss} จาก ${M.total} ช่อง`:`ครบ ${M.total} ช่อง`}</span><span class="tm" style="font-size:12px">${M.units.length} เครื่อง · กดรูปเพื่อดูเต็ม</span><span style="flex:1"></span><button type="button" class="btn btn-ghost btn-sm" id="rs-xlsx-btn" data-id="${esc(j.id)}" onclick="slotExportXlsx(this.dataset.id)">⬇ Excel แบบลูกค้า</button></div>${M.sections.map(sec).join('')}</div>`;
+}
+// ===== Excel แบบลูกค้า (2026-11-17) — หน้าตาตามไฟล์ตัวอย่าง "ตัวอย่าง เก็บรูปภาพ PM แอร์/ตู้แช่/ไส้กรอง.xlsx" =====
+// 1 ชีตต่อ 1 เครื่อง × 1 ช่วง · คอลัมน์ A–C กว้าง 42 · หัว ID / ประเภท / ชื่อไซต์ / ตัวที่ · แถว 4 ชื่อช่วง (รวม A4:C4)
+// แถวคู่ 6,8,10,12 = ชื่อช่อง · แถวคี่ 7,9,11,13 = รูป (สูง 170.1) · ช่องแรก ๆ = รูปสาขา (หน้าร้าน/หลังร้าน) ใส่ซ้ำทุกชีต · ไม่มีรูป = N/A
+const SLOT_XLSX_LIB='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+const SLOT_XLSX_HEAD={pm_air:['ประเภทแอร์','แอร์ตัวที่'],pm_fridge:['ประเภทตู้แช่','ตู้แช่ตัวที่'],pm_filter:['ประเภทเครื่องกรอง','เครื่องกรองตัวที่'],repair_air:['ประเภทงาน','แอร์ตัวที่'],repair_fridge:['ประเภทงาน','ตู้แช่ตัวที่'],repair_other:['ประเภทงาน','เครื่องตัวที่']};
+const SLOT_XLSX_KIND={pm_air:'แอร์',pm_fridge:'ตู้แช่',pm_filter:'เครื่องกรองน้ำดื่ม',repair_air:'ซ่อมแอร์',repair_fridge:'ซ่อมตู้แช่ / ตู้เย็น',repair_other:'ซ่อม'};
+// โหลดรูป → ย่อให้พอดีช่อง (คมพอพิมพ์) → base64 + ขนาด
+async function slotXlsxImg(url,cache){
+  if(cache.has(url))return cache.get(url);
+  const p=(async()=>{
+    const r=await fetch(url,{mode:'cors'});if(!r.ok)throw new Error('โหลดรูปไม่ได้ '+r.status);
+    const bmp=await createImageBitmap(await r.blob());
+    const k=Math.min(1,900/Math.max(bmp.width,bmp.height)),w=Math.round(bmp.width*k),h=Math.round(bmp.height*k);
+    const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(bmp,0,0,w,h);
+    return {b64:c.toDataURL('image/jpeg',.82).split(',')[1],w,h};
+  })();
+  cache.set(url,p);return p;
+}
+async function slotExportXlsx(jobId){
+  const j=jobs.find(x=>sameJob(x.id,jobId)&&!isDeletedRecord(x));const M=j&&slotJobModel(j);
+  if(!M){alert('งานนี้ยังไม่มีรูปแยกช่องจากช่าง');return;}
+  if(M.miss&&!confirm(`ยังขาดรูป ${M.miss} ช่อง — ช่องที่ขาดจะเว้นว่างใน Excel\nออก Excel ต่อไหม?`))return;
+  const btn=document.getElementById('rs-xlsx-btn');const old=btn&&btn.textContent;if(btn){btn.disabled=true;btn.textContent='กำลังสร้าง Excel...';}
+  try{
+    await loadScriptOnce(SLOT_XLSX_LIB);
+    const wb=new ExcelJS.Workbook();wb.creator='ProFix Console';
+    const cache=new Map(),idOf=new Map(),fails=[];
+    const site=M.sections.find(x=>x.key==='site'),siteCell=k=>site&&site.phases[0].cells.find(c=>c.id==='site.'+k);
+    const used=new Set(),sheetName=n=>{let b=String(n).replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,28).trim(),x=b,i=2;while(used.has(x))x=(b.slice(0,25)+' '+i++);used.add(x);return x;};
+    const F=(sz,b)=>({name:'Tahoma',size:sz,bold:!!b});
+    const units=M.units,multi=M.sections.length>2;
+    for(const sec of M.sections.filter(x=>x.key!=='site')){
+      const u=sec.unit,t=slotTplOf(u),H=SLOT_XLSX_HEAD[u.tpl]||SLOT_XLSX_HEAD.repair_other;
+      const no=units.filter(x=>slotTplOf(x).unit===t.unit).indexOf(u)+1;
+      for(const ph of sec.phases){
+        const ws=wb.addWorksheet(sheetName(multi?`${slotUnitName(units,u)} ${ph.l}`:ph.l),{views:[{state:'normal',zoomScale:80}],pageSetup:{paperSize:9,orientation:'portrait',scale:67,margins:{left:.7,right:.7,top:.75,bottom:.75,header:.3,footer:.3}}});
+        ws.columns=[{width:42},{width:42},{width:42}];
+        ws.getCell('A1').value=`ID: ${j.id}`;ws.getCell('A1').font=F(12,1);
+        ws.getCell('C1').value=`${H[0]}: ${u.name||SLOT_XLSX_KIND[u.tpl]||t.l}`;ws.getCell('C1').font=F(12,1);ws.getCell('C1').alignment={horizontal:'right'};
+        ws.getCell('A2').value=`ชื่อไซต์: ${j.branch||''}`;ws.getCell('A2').font=F(12,1);
+        ws.getCell('C2').value=`${H[1]}: ${no}`;ws.getCell('C2').font=F(12,1);ws.getCell('C2').alignment={horizontal:'right'};
+        [1,2].forEach(r=>ws.getRow(r).height=15);
+        ws.mergeCells('A4:C4');ws.getCell('A4').value=ph.l;ws.getCell('A4').font=F(16,1);ws.getCell('A4').alignment={horizontal:'center',vertical:'middle'};ws.getRow(4).height=30;
+        const cells=[...(t.site||['front']).map(siteCell).filter(Boolean),...ph.cells];
+        for(let i=0;i<cells.length;i++){
+          const c=cells[i],col=i%3,lr=6+Math.floor(i/3)*2,ir=lr+1;
+          ws.getRow(lr).height=24.95;ws.getRow(ir).height=170.1;
+          const lc=ws.getCell(lr,col+1);lc.value=c.label;lc.font=F(11,1);lc.alignment={horizontal:'center',vertical:'middle',wrapText:true};
+          const ic=ws.getCell(ir,col+1);const th={style:'thin',color:{argb:'FF000000'}};ic.border={top:th,left:th,bottom:th,right:th};
+          if(c.ims.length){
+            try{
+              const im=await slotXlsxImg(c.ims[0].url,cache);
+              let id=idOf.get(c.ims[0].url);if(id==null){id=wb.addImage({base64:im.b64,extension:'jpeg'});idOf.set(c.ims[0].url,id);}
+              const bw=290,bh=217,k=Math.min(bw/im.w,bh/im.h),w=Math.round(im.w*k),h=Math.round(im.h*k);
+              const colPx=42*7+5,rowPx=170.1*96/72;
+              ws.addImage(id,{tl:{nativeCol:col,nativeColOff:Math.round((colPx-w)/2*9525),nativeRow:ir-1,nativeRowOff:Math.round((rowPx-h)/2*9525)},ext:{width:w,height:h},editAs:'oneCell'});
+            }catch(e){fails.push(c.label);ic.value='(โหลดรูปไม่ได้)';ic.alignment={horizontal:'center',vertical:'middle'};}
+          }else{ic.value=(c.na||c.opt)?'N/A':'';ic.font=F(11,1);ic.alignment={horizontal:'center',vertical:'middle'};}
+        }
+      }
+    }
+    const buf=await wb.xlsx.writeBuffer();
+    const name=(typeof bundleJobName==='function'?bundleJobName({pr:j.id,branch:j.branch,client:j.client}):j.id)+' - รูปถ่าย.xlsx';
+    downloadBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),name);
+    if(fails.length)setTimeout(()=>alert(`โหลดรูปไม่ได้ ${fails.length} ช่อง: ${fails.slice(0,5).join(', ')}`),50);
+  }catch(e){alert('สร้าง Excel ไม่สำเร็จ: '+((e&&e.message)||e));}
+  finally{if(btn){btn.disabled=false;btn.textContent=old;}}
 }
 function slotGuessTpl(j){const t=String((j&&j.type)||'')+' '+String((j&&j.note)||'');const pm=/(^|[^a-z])pm([^a-z]|$)|บำรุง/i.test(t);
   if(/กรอง/.test(t))return 'pm_filter';if(/ตู้/.test(t))return pm?'pm_fridge':'repair_fridge';if(/แอร์/.test(t))return pm?'pm_air':'repair_air';return pm?'pm_air':'repair_other';}
