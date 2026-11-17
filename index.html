@@ -10712,7 +10712,7 @@ function deleteFixedExpense(i){if(confirm('ลบรายจ่าย Fixed น
 var techPay={loaded:false,loading:null,missing:false,error:'',payouts:[],items:[],payees:{},settings:{start_date:'2026-10-16',wht_rate:3,payer_company:'profix'}};
 var tpState={period:'',team:'',excluded:new Set(),adjust:{},adjustNote:{}};
 // สถานะที่ถือว่าช่างทำงานเสร็จแล้ว (จ่ายค่าแรงได้) — งานที่ยังรออนุมัติอะไหล่/รอ PO/ยังไม่ส่งงาน ยังไม่เข้างวด
-const TP_DONE_STATUSES=new Set(['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รอออกใบกำกับภาษี','รอวางบิล','ปิดงาน','ดำเนินการแล้ว','ปิดงานสำรวจ']);
+const TP_DONE_STATUSES=new Set(['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','เสร็จงาน','รอออกใบกำกับภาษี','รอทำใบกำกับภาษี','รอวางบิล','รอจ่าย','รอจ่ายช่าง','ปิดงาน','ดำเนินการแล้ว','ปิดงานสำรวจ']);
 const TP_TH_MONTH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const tpKey=v=>String(v||'').trim().toUpperCase();
 const tpRound=n=>Math.round((Number(n)||0)*100)/100;
@@ -14327,7 +14327,7 @@ async function initApp(){
 }
 
 // ===== ตัวเลขสรุปบนหัวหน้า (ตาม mockup) — คำนวณจากข้อมูลที่โหลดอยู่แล้ว ไม่ยิงข้อมูลเพิ่ม =====
-const PH_AFTER_TECH=new Set(['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รออนุมัติอะไหล่','รอเปิด PO','รอออกใบกำกับภาษี','รอวางบิล','ปิดงาน','ดำเนินการแล้ว','ปิดงานสำรวจ']);
+const PH_AFTER_TECH=new Set(['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รออนุมัติอะไหล่','รอเปิด PO','รอออกใบกำกับภาษี','รอวางบิล','ปิดงาน','ดำเนินการแล้ว','ปิดงานสำรวจ','รอขออนุมัติ','รอส่งขออนุมัติ','ออกใบเสนอราคาแล้ว','เสร็จงาน','รอทำใบกำกับภาษี','รอจ่าย','รอจ่ายช่าง','ยกเลิก','Reject']);
 function phSet(page,items,title,sub){
   const ph=document.querySelector('#page-'+page+' .page-header');if(!ph)return;
   if(title!=null){const t=ph.querySelector('.page-title');if(t)t.textContent=title;}
@@ -14513,7 +14513,7 @@ function jqUntag(k){
 }
 
 // ----- สรุปทีม (ปริมาณงาน) -----
-var JQ_AFTER_TECH=new Set(['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รออนุมัติอะไหล่','รอเปิด PO','รอออกใบกำกับภาษี','รอวางบิล','ปิดงาน','ดำเนินการแล้ว','ปิดงานสำรวจ']);
+var JQ_AFTER_TECH=new Set(['ช่างส่งงานแล้ว','แอดมินตรวจแล้ว','รออนุมัติอะไหล่','รอเปิด PO','รอออกใบกำกับภาษี','รอวางบิล','ปิดงาน','ดำเนินการแล้ว','ปิดงานสำรวจ','รอขออนุมัติ','รอส่งขออนุมัติ','ออกใบเสนอราคาแล้ว','เสร็จงาน','รอทำใบกำกับภาษี','รอจ่าย','รอจ่ายช่าง','ยกเลิก','Reject']);
 function jqEnsureModal(id,inner){let m=document.getElementById(id);if(!m){m=document.createElement('div');m.className='modal-overlay';m.id=id;m.addEventListener('click',e=>{if(e.target===m)closeM(id);});document.body.appendChild(m);}m.innerHTML=inner;return m;}
 function openJobTeamSummary(){
   const base=(liveJobs()||[]).filter(j=>companyMatch('jobs',()=>jobCompanyId(j))&&inDateScope(j,'jobs'));
