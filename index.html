@@ -7,6 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/profix-icon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="photo-slots.js"></script>
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--surface2:#1f2937;--surface3:#273344;--border:#30363d;--border2:#3d4754;--accent:#58a6ff;--accent-dim:#1a3a5c;--green:#3fb950;--green-dim:#1a3a1f;--yellow:#d29922;--yellow-dim:#3a2a0a;--red:#f85149;--red-dim:#3a0f0f;--purple:#bc8cff;--purple-dim:#2d1f4e;--orange:#f0883e;--orange-dim:#3a1e0a;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--mono:"IBM Plex Mono",monospace;--sans:"Noto Sans Thai",sans-serif;}
 body[data-theme="light"]{--bg:#f5f7fb;--surface:#ffffff;--surface2:#eef3f8;--surface3:#e3ebf4;--border:#d7e0ea;--border2:#bac8d8;--accent:#175fff;--accent-dim:#e7efff;--green:#138a3d;--green-dim:#e7f6ec;--yellow:#9a6700;--yellow-dim:#fff4d6;--red:#cf222e;--red-dim:#ffebe9;--purple:#8250df;--purple-dim:#f2eafd;--orange:#bc4c00;--orange-dim:#fff1e5;--text:#16202d;--text2:#536173;--text3:#7b8795;}
@@ -315,6 +316,16 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .tech-update-row.draft-update:hover td{background:rgba(210,153,34,.1);}
 .new-pill{display:inline-flex;align-items:center;background:linear-gradient(135deg,#1a4a1a,#0f2a1f);border:1px solid #3fb950;color:#3fb950;font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.5px;animation:np 2s infinite;}
 .queue-pill{display:inline-flex;align-items:center;background:var(--yellow-dim);border:1px solid var(--yellow);color:var(--yellow);font-size:9px;font-weight:800;padding:1px 7px;border-radius:10px;font-family:var(--mono);letter-spacing:.3px;margin-left:4px;}
+.rs-wrap{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--surface)}
+.rs-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}.rs-top b{font-size:14px}
+.rs-pill{font-size:11px;font-weight:800;border-radius:999px;padding:2px 9px}.rs-pill.ok{background:var(--green-dim);color:var(--green)}.rs-pill.bad{background:var(--red-dim);color:var(--red)}
+.rs-u{border-top:1px solid var(--border);padding-top:8px;margin-top:8px}.rs-u>summary{cursor:pointer;font-weight:700;font-size:13px;display:flex;gap:8px;align-items:center;list-style:none}.rs-u>summary::-webkit-details-marker{display:none}
+.rs-ph{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:8px}.rs-ph h6{margin:0 0 6px;font-size:12px;color:var(--text2);display:flex;gap:6px}
+.rs-cells{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.rs-c{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:10.5px;line-height:1.25;color:var(--text);text-decoration:none;background:var(--surface2,#fff)}
+.rs-c .i{height:62px;background:center/cover no-repeat var(--surface2,#f1f5f9);display:grid;place-items:center;font-weight:800;font-size:11px;position:relative}.rs-c .i i{position:absolute;right:3px;bottom:3px;font-style:normal;background:rgba(0,0,0,.65);color:#fff;border-radius:6px;padding:0 5px;font-size:10px}
+.rs-c>span:last-child{padding:3px 5px;min-height:28px}
+.rs-c.miss{border:1.5px solid var(--red)}.rs-c.miss .i{background:var(--red-dim);color:var(--red)}.rs-c.na .i{color:var(--text3)}.rs-c.opt .i{color:var(--text3)}
 .bt-pill{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:800;letter-spacing:.5px;color:#fff;padding:2px 8px 2px 3px;border-radius:999px;margin-right:6px;vertical-align:middle;line-height:1.45;white-space:nowrap;font-family:inherit}
 .bt-pill i{font-style:normal;width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,.28);display:inline-grid;place-items:center;font-size:9px;line-height:1}
 .bt-claim{background:#ea580c}.bt-charge{background:#175FFF}
@@ -1857,7 +1868,7 @@ body.pfpv-lock{overflow:hidden;}
 <div class="page" id="page-jobs">
   <div class="page-header">
     <div><div class="page-title">คิวช่าง</div><div class="page-sub">งานที่ assign ทีมช่างแล้ว — ปรับสถานะได้ inline</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-ghost" onclick="openJobTeamSummary()">📊 สรุปทีม</button><button class="btn btn-ghost" onclick="openJobExport()">⬇ Export</button><button class="btn btn-primary" onclick="openJobModal()">+ เปิดงานใหม่</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-ghost" onclick="createSlotTestJobs()" title="สร้างงานทดสอบระบบรูปแยกช่อง 3 งาน">🧪 งานทดสอบรูป</button><button class="btn btn-ghost" onclick="openJobTeamSummary()">📊 สรุปทีม</button><button class="btn btn-ghost" onclick="openJobExport()">⬇ Export</button><button class="btn btn-primary" onclick="openJobModal()">+ เปิดงานใหม่</button></div>
   </div>
   <div class="filter-bar" id="job-fbar"></div>
   <div class="content" style="padding-top:16px;">
@@ -13170,11 +13181,70 @@ function reportImages(j){
 function reportDocumentImages(j){
   return Array.isArray(j?.technicianReport?.documentImages)?j.technicianReport.documentImages:[];
 }
+// ===== รูปแยกช่อง (2026-11-17 · ทดสอบ) — แม่แบบอยู่ใน photo-slots.js =====
+function slotTplOf(u){return (typeof SLOT_TPL!=='undefined'&&(SLOT_TPL[u&&u.tpl]||SLOT_TPL.repair_other))||null;}
+function slotUnitName(units,u){const t=slotTplOf(u);if(u.name)return u.name;const same=units.filter(x=>slotTplOf(x).unit===t.unit);return `${t.unit}ตัวที่ ${same.indexOf(u)+1}`;}
+function slotShort(l){return String(l||'').replace(/^รูปถ่าย|^รูป/,'').trim();}
+// สรุปช่องของงาน: [{key,title,phases:[{l,cells:[{id,label,opt,ims,na}]}]}] + จำนวนช่องที่ขาด
+function slotJobModel(j){
+  const r=j&&j.technicianReport||{},S=r.slots;if(!S||!Array.isArray(S.units)||typeof SLOT_TPL==='undefined')return null;
+  const by=new Map();reportImages(j).forEach(im=>{if(im&&im.slot&&im.url){if(!by.has(im.slot))by.set(im.slot,[]);by.get(im.slot).push(im);}});
+  const na=S.na||{},units=S.units,quote=!!r.needQuote;let miss=0,total=0;
+  const cell=(id,s)=>{const c={id,label:s.l,opt:!!s.opt,ims:by.get(id)||[],na:na[id]||''};if(!c.opt){total++;if(!c.ims.length&&!c.na)miss++;}return c;};
+  const siteKeys=[...new Set(units.flatMap(u=>slotTplOf(u).site||[]))];if(!siteKeys.length)siteKeys.push('front');
+  const out=[{key:'site',title:'🏪 รูปสาขา',phases:[{l:'ถ่ายครั้งเดียว ใช้ทุกเครื่อง',cells:['front','back'].filter(k=>siteKeys.includes(k)).map(k=>cell('site.'+k,SLOT_SITE[k]))}]}];
+  units.forEach(u=>{const t=slotTplOf(u);out.push({key:u.id,title:`${t.ic} ${slotUnitName(units,u)} · ${t.l}${u.loc?' · '+u.loc:''}`,unit:u,phases:t.phases.filter(p=>!quote||p.cat==='before'||p.k==='r').map(p=>({l:p.l,k:p.k,cells:p.slots.map(s=>cell(`${u.id}.${p.k}.${s.k}`,s))}))});});
+  return {sections:out,miss,total,units};
+}
+function rptSlotHtml(j){
+  const M=slotJobModel(j);if(!M)return '';
+  const cellHtml=c=>c.ims.length?`<a class="rs-c" href="${esc(c.ims[0].url)}" target="_blank" title="${esc(c.label)}"><span class="i" style="background-image:url('${esc(c.ims[0].url)}')">${c.ims.length>1?`<i>${c.ims.length} รูป</i>`:''}</span><span>${esc(slotShort(c.label))}</span></a>`
+    :c.na?`<div class="rs-c na"><span class="i">N/A</span><span>${esc(slotShort(c.label))} · ${esc(c.na)}</span></div>`
+    :`<div class="rs-c ${c.opt?'opt':'miss'}"><span class="i">${c.opt?'ไม่บังคับ':'ขาด'}</span><span>${esc(slotShort(c.label))}</span></div>`;
+  const sec=x=>{const m=x.phases.reduce((a,p)=>a+p.cells.filter(c=>!c.opt&&!c.ims.length&&!c.na).length,0);
+    return `<details class="rs-u"${m?' open':''}><summary>${esc(x.title)} <span class="rs-pill ${m?'bad':'ok'}">${m?'ขาด '+m:'ครบ'}</span></summary><div class="rs-ph">${x.phases.map(p=>{const pm=p.cells.filter(c=>!c.opt&&!c.ims.length&&!c.na).length;return `<div><h6>${esc(p.l)} <span class="rs-pill ${pm?'bad':'ok'}">${p.cells.filter(c=>c.ims.length||c.na).length}/${p.cells.length}</span></h6><div class="rs-cells">${p.cells.map(cellHtml).join('')}</div></div>`;}).join('')}</div></details>`;};
+  return `<div class="rs-wrap"><div class="rs-top"><b>📷 รูปแยกช่อง</b><span class="rs-pill ${M.miss?'bad':'ok'}">${M.miss?`ขาด ${M.miss} จาก ${M.total} ช่อง`:`ครบ ${M.total} ช่อง`}</span><span class="tm" style="font-size:12px">${M.units.length} เครื่อง · กดรูปเพื่อดูเต็ม</span></div>${M.sections.map(sec).join('')}</div>`;
+}
+function slotGuessTpl(j){const t=String((j&&j.type)||'')+' '+String((j&&j.note)||'');const pm=/(^|[^a-z])pm([^a-z]|$)|บำรุง/i.test(t);
+  if(/กรอง/.test(t))return 'pm_filter';if(/ตู้/.test(t))return pm?'pm_fridge':'repair_fridge';if(/แอร์/.test(t))return pm?'pm_air':'repair_air';return pm?'pm_air':'repair_other';}
+async function slotToggleJob(id){
+  if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
+  const on=!(j.photoSlots&&j.photoSlots.on);
+  if(!confirm(on?`เปิดโหมด "รูปแยกช่อง" (ทดสอบ) ให้งาน ${id}?\n\nช่างที่เปิดลิงก์ส่งงานของงานนี้จะเห็นช่องรูปแบบใหม่แทนแบบเดิม\nเริ่มต้นด้วย 1 เครื่อง (${SLOT_TPL[slotGuessTpl(j)].l}) — ช่างเพิ่ม/ลบเครื่องเองได้`:`ปิดโหมดรูปแยกช่องของงาน ${id}? (กลับไปใช้ฟอร์มรูปแบบเดิม · รูปที่อัปแล้วยังอยู่)`))return;
+  const photoSlots={on,units:(j.photoSlots&&j.photoSlots.units&&j.photoSlots.units.length)?j.photoSlots.units:[{id:'u1',tpl:slotGuessTpl(j)}]};
+  const before=clonePlain(j);
+  try{await patchJobFieldsOnServer(j.id,{photoSlots});}catch(e){alert('บันทึกไม่สำเร็จ: '+e.message);return;}
+  writeAuditLog('job_photo_slots_toggle','job',j.id,before,{photoSlots},clonePlain(j));
+  try{openDet(j.id);}catch(e){}
+}
+// งานทดสอบ 3 งาน (ทีม "ทดสอบ" = ไม่มีช่างจริงได้รับแจ้ง) — ลบทิ้งได้หลังทดสอบ
+async function createSlotTestJobs(){
+  if(!guardEdit())return;
+  const defs=[
+    {id:'TEST-SLOT-1',type:'PM แอร์',branch:'สาขาทดสอบ 1 · PM แอร์ 2 เครื่อง',units:[{id:'u1',tpl:'pm_air'},{id:'u2',tpl:'pm_air'}]},
+    {id:'TEST-SLOT-2',type:'PM ตู้แช่',branch:'สาขาทดสอบ 2 · PM ตู้แช่ + ไส้กรองน้ำ',units:[{id:'u1',tpl:'pm_fridge'},{id:'u2',tpl:'pm_filter'}]},
+    {id:'TEST-SLOT-3',type:'ซ่อมแอร์',branch:'สาขาทดสอบ 3 · ซ่อมแอร์',units:[{id:'u1',tpl:'repair_air'}]}];
+  const live=defs.filter(d=>liveJobs().some(j=>normalizePR(j.id)===normalizePR(d.id)));
+  const todo=defs.filter(d=>!live.includes(d));
+  if(!todo.length){alert('มีงานทดสอบครบ 3 งานแล้ว: '+defs.map(d=>d.id).join(', ')+'\nค้นหา "TEST-SLOT" ในคิวช่าง');return;}
+  if(!confirm(`สร้างงานทดสอบ "รูปแยกช่อง" ${todo.length} งาน?\n\n${todo.map(d=>'• '+d.id+' — '+d.branch).join('\n')}\n\nทีมช่าง = "ทดสอบ" (ไม่มีช่างจริงได้รับแจ้ง) · ลบทิ้งได้หลังทดสอบเสร็จ`))return;
+  const now=todayISO();
+  todo.forEach((d,i)=>{
+    const old=jobs.find(j=>normalizePR(j.id)===normalizePR(d.id));
+    const row={id:d.id,client:'ทดสอบระบบ (ไม่ใช่งานจริง)',ref:d.id,branch:d.branch,type:d.type,team:'ทดสอบ',date:now,status:'จัดช่างแล้ว',level:'',billType:'',note:'งานทดสอบรูปแยกช่อง — ลบได้หลังทดสอบ',company:'',pc:0,pt:0,assignedAt:now,partC:0,partR:0,fuel:0,report:'',isNew:false,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()+i,photoSlots:{on:true,units:d.units},isTest:true};
+    if(old){Object.keys(old).forEach(k=>delete old[k]);Object.assign(old,row);}else jobs.unshift(row);
+    writeAuditLog('create_slot_test_job','job',d.id,null,row,row);
+  });
+  ensureJobStatus('จัดช่างแล้ว');saveState();renderJobs();renderDash();
+  todo.forEach(d=>{try{verifyJobPersisted(d.id);}catch(e){}});
+  setTimeout(()=>alert(`สร้างงานทดสอบแล้ว ${todo.length} งาน\n\nวิธีทดสอบ: เปิดงาน → แท็บ "ลิงก์ช่าง / ลูกค้า" → เปิดลิงก์ส่งงานของช่างบนมือถือ\nหลังส่งงาน ดูผลได้ที่ "ตรวจรายงานช่าง" ของงานนั้น`),50);
+}
 function renderReportImages(j){
   const imgs=reportImages(j),docs=reportDocumentImages(j);
-  if(!imgs.length&&!docs.length)return '<div class="text-box">ยังไม่มีรูปจากช่าง</div>';
+  const slotHtml=rptSlotHtml(j);
+  if(!imgs.length&&!docs.length)return slotHtml+'<div class="text-box">ยังไม่มีรูปจากช่าง</div>';
   if(imgs.some(im=>im&&im.url&&!(Number(im.width)>0&&Number(im.height)>0)))setTimeout(()=>fillReportImageDims(j).then(()=>rptGalRerender(j)).catch(()=>{}),0);
-  return `<div id="rpt-gal">${rptGalleryHtml(j)}</div>`;
+  return slotHtml+`<div id="rpt-gal">${rptGalleryHtml(j)}</div>`;
 }
 // ===== จัดเรียง/ขนาดรูปในใบงานรูปภาพ (2026-11-14) =====
 // ขนาด: s=เล็ก (3/แถว) · m=กลาง (2/แถว) · l=ใหญ่ (เต็มแถว) ; ไม่ได้ตั้ง = อัตโนมัติ (แนวตั้ง→เล็ก, แนวนอน→กลาง)
@@ -14487,7 +14557,7 @@ function openDet(id){
   document.getElementById('det-body').innerHTML=`<div class="dw-h">
     <div class="dw-top"><span class="dw-pr">${esc(j.id)}</span>${billTypeBadge(j,true)}<button class="btn btn-ghost btn-xs" title="คัดลอกเลขงาน" onclick="navigator.clipboard&&navigator.clipboard.writeText('${jid}')">📋</button>${pfSheetBtn(j.id,'','l')}${pfApprSlot(j.id)}<span style="flex:1"></span>${pfSheetBtn(j.id,'','r')}
       <button class="dw-ib" title="งานก่อนหน้า" ${pos>0?'':'disabled'} onclick="dwGo(-1)">‹</button><button class="dw-ib" title="งานถัดไป" ${pos>=0&&pos<ids.length-1?'':'disabled'} onclick="dwGo(1)">›</button>
-      <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button></div></div>
+      <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button><button onclick="slotToggleJob('${jid}')">📷 รูปแยกช่อง (ทดสอบ): ${j.photoSlots&&j.photoSlots.on?'ปิด':'เปิด'}</button></div></div>
       <button class="dw-ib" title="ปิด (Esc)" onclick="closeM('m-detail')">✕</button></div>
     <div class="dw-title">${esc(j.branch||'-')}</div><div class="tm dw-sub">${esc(j.client||'')}${j.type?' · '+esc(j.type):''}</div>
     <div class="dw-status">${statusSel}${isLevel1(j)?level1Badge(j):''}${techAcceptPill(j)?techAcceptPill(j):''}<span style="flex:1"></span>${dwNext(j)}</div>

@@ -7,6 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2358a6ff'/><text x='50' y='72' font-size='60' font-family='Arial' font-weight='bold' fill='%230d1117' text-anchor='middle'>P</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="photo-slots.js"></script>
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--surface2:#1f2937;--surface3:#273344;--border:#30363d;--border2:#3d4754;--accent:#58a6ff;--accent-dim:#1a3a5c;--green:#3fb950;--green-dim:#1a3a1f;--yellow:#d29922;--yellow-dim:#3a2a0a;--red:#f85149;--red-dim:#3a0f0f;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--mono:"IBM Plex Mono",monospace;--sans:"Noto Sans Thai",sans-serif;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -208,6 +209,39 @@ body.pm-t2 #pm-wrap{display:none!important;}
 .pm-pad-wrap label{color:#e5e7eb!important;}
 .pm-signed{display:flex;align-items:center;gap:10px;margin:0 0 10px;font-size:13px;}
 .pm-signed img{height:48px;max-width:120px;object-fit:contain;background:#fff;border-radius:6px;padding:2px 6px;}
+.sl-test{font-size:10px;font-weight:800;background:var(--yellow-dim);color:var(--yellow);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+.sl-h{font-weight:700;font-size:13.5px;margin:6px 0 8px}.sl-h small{font-weight:500;color:var(--text3);font-size:11.5px;margin-left:4px}
+.sl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.sl-slot{display:flex;flex-direction:column;text-align:left;background:var(--surface2);border:1.5px solid var(--border2);border-radius:12px;overflow:hidden;padding:0;color:var(--text);font-family:inherit;cursor:pointer}
+.sl-slot.empty{border-style:dashed;border-color:var(--text3)}.sl-slot.done{border-color:var(--green)}.sl-slot.na{border-color:var(--border)}.sl-slot.opt.empty{border-color:var(--border2)}
+.sl-im{position:relative;display:grid;place-items:center;height:96px;background:var(--surface3) center/cover no-repeat;font-size:13px;font-weight:800;color:var(--text3)}
+.sl-slot.empty .sl-im::before{content:"";position:absolute;inset:0;background:rgba(13,17,23,.55)}
+.sl-im b{position:relative;font-size:26px}.sl-ex{position:absolute;top:5px;left:5px;z-index:1;font-style:normal;font-size:9.5px;font-weight:800;background:rgba(0,0,0,.7);color:#fff;border-radius:6px;padding:1px 6px}
+.sl-ok{position:absolute;top:5px;right:5px;width:21px;height:21px;border-radius:50%;background:var(--green);color:#fff;font-style:normal;font-size:12px;display:grid;place-items:center}
+.sl-n{position:absolute;bottom:5px;right:5px;font-style:normal;font-size:10.5px;background:rgba(0,0,0,.7);color:#fff;border-radius:8px;padding:0 6px}
+.sl-busy{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);color:#fff;font-style:normal}
+.sl-lb{font-size:12px;font-weight:600;line-height:1.35;padding:6px 8px 8px;min-height:40px}.sl-lb small{color:var(--text3);font-weight:500}
+.sl-unit{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:10px;margin-bottom:8px;color:var(--text);font-family:inherit;cursor:pointer}
+.sl-uic{width:38px;height:38px;border-radius:10px;background:var(--accent-dim);display:grid;place-items:center;font-size:19px;flex:none}
+.sl-um{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}.sl-um b{font-size:14px}.sl-um small{font-size:11.5px;color:var(--text2)}
+.sl-bar{height:5px;border-radius:9px;background:var(--surface3);overflow:hidden;margin-top:4px}.sl-bar i{display:block;height:100%}
+.sl-pill{font-size:11px;font-weight:800;border-radius:999px;padding:3px 9px;background:var(--surface3);color:var(--text2);flex:none}.sl-pill.ok{background:var(--green-dim);color:var(--green)}.sl-pill.w{background:var(--yellow-dim);color:var(--yellow)}
+.sl-add{width:100%;padding:11px;border-radius:12px;border:1.5px dashed var(--border2);background:none;color:var(--accent);font-weight:700;font-family:inherit;font-size:14px;cursor:pointer}
+.sl-empty{font-size:13px;color:var(--text3);padding:8px 0}
+.sl-tabs{display:flex;background:var(--surface2);border-radius:12px;padding:3px;gap:3px;margin-bottom:12px}.sl-tabs button{flex:1;border:0;background:none;color:var(--text2);font-family:inherit;font-weight:700;font-size:13px;border-radius:10px;padding:7px 0;cursor:pointer}.sl-tabs button small{display:block;font-size:11px;font-weight:600}.sl-tabs button.on{background:var(--surface3);color:var(--text)}
+.sl-ph{font-weight:800;font-size:15px;margin-bottom:10px}
+.sl-foot{margin-top:16px}.sl-btn{display:block;width:100%;padding:13px;border:0;border-radius:12px;background:var(--accent);color:#0d1117;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
+.sl-del{border:1px solid var(--red);background:none;color:var(--red);border-radius:9px;padding:6px 10px;font-family:inherit;font-size:12px;font-weight:700;flex:none}
+.sl-pop{position:fixed;inset:0;z-index:260;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
+.sl-pop-in{width:100%;max-width:560px;max-height:92vh;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:14px 16px 22px}
+.sl-pop-h{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}.sl-pop-h>div,.sl-pop-h>b{flex:1}.sl-pop-h b{font-size:16px;display:block}.sl-pop-h small{font-size:12px;color:var(--text2)}.sl-pop-h button{border:0;background:var(--surface2);color:var(--text);width:32px;height:32px;border-radius:9px;font-size:15px;flex:none}
+.sl-exbig{height:230px;border-radius:12px;background:var(--surface2) center/cover no-repeat;position:relative}.sl-exbig i{position:absolute;top:8px;left:8px;font-style:normal;font-size:11px;font-weight:800;background:rgba(0,0,0,.72);color:#fff;border-radius:7px;padding:2px 8px}
+.sl-tip{font-size:13px;line-height:1.6;background:var(--surface2);border-radius:10px;padding:8px 10px;margin-top:8px}
+.sl-lnk{border:0;background:none;color:var(--accent);font-family:inherit;font-weight:700;text-decoration:underline}
+.sl-two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.sl-two button{padding:11px 6px;border-radius:12px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text);font-weight:700;font-family:inherit;font-size:13.5px}
+.sl-mine{display:flex;gap:8px;overflow-x:auto;margin-bottom:10px}.sl-mine span{position:relative;flex:none}.sl-mine img{width:110px;height:110px;object-fit:cover;border-radius:10px;border:2px solid var(--green)}.sl-mine i{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.5);color:#fff;font-style:normal;border-radius:10px}.sl-mine button{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.75);color:#fff;font-size:15px;line-height:1}
+.sl-tpls{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sl-tpls button{display:flex;align-items:center;gap:8px;padding:12px 10px;border-radius:12px;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text);font-weight:700;font-family:inherit;font-size:13.5px;text-align:left}.sl-tpls span{font-size:20px}
+#slot-pop input{width:100%}
 </style>
 </head>
 <body>
@@ -335,6 +369,9 @@ body.pm-t2 #pm-wrap{display:none!important;}
       </label>
     </div>
 
+    <!-- รูปแยกช่อง (เฉพาะงานที่เปิดโหมดนี้) -->
+    <div id="slot-wrap" class="card hidden"></div>
+
     <!-- PHOTO UPLOAD -->
     <div class="card">
       <div class="sec-title">📷 อัปโหลดรูป</div>
@@ -393,6 +430,10 @@ body.pm-t2 #pm-wrap{display:none!important;}
     <div id="pm-wrap" class="hidden"></div>
     <div id="pm-sheet" class="pm-sheet hidden"></div>
     <div id="pm-scan" class="pm-sheet pm-scan hidden"></div>
+    <div id="slot-sheet" class="pm-sheet hidden"></div>
+    <div id="slot-pop" class="sl-pop hidden" onclick="if(event.target===this)slotPopClose()"></div>
+    <input type="file" id="slot-cam" accept="image/*" capture="environment" class="hidden" onchange="slotAddFiles(this.files)">
+    <input type="file" id="slot-gal" accept="image/*" multiple class="hidden" onchange="slotAddFiles(this.files)">
     <div id="pm-doc" class="pm-sheet pm-doc hidden"></div>
     <div id="pm-pad" class="pm-sheet pm-padw hidden"></div>
 
@@ -1090,7 +1131,7 @@ async function saveLocalDraftNow(){
     const local=[];
     for(const cat of Object.keys(photos)) for(const p of photos[cat]) if(!p.existing && p.status==='ready' && (p.compressed||p.file)) local.push({cat,p});
     const draft={ v:1, savedAt:new Date().toISOString(), fields:{}, checks:{}, parts:techPartRows, photoIds:local.map(x=>x.p.id) };
-    draft.pm=pmSnapshot();
+    draft.pm=pmSnapshot(); draft.slots=slotSnapshot();
     LOCAL_DRAFT_FIELDS.forEach(id=>{ const el=document.getElementById(id); if(el) draft.fields[id]=el.value; });
     LOCAL_DRAFT_CHECKS.forEach(id=>{ const el=document.getElementById(id); if(el) draft.checks[id]=!!el.checked; });
     localStorage.setItem(localDraftKey(), JSON.stringify(draft));
@@ -1099,7 +1140,7 @@ async function saveLocalDraftNow(){
       const keep=new Set(local.map(x=>prefix+x.p.id));
       const rq=st.getAllKeys();
       rq.onsuccess=()=>{ (rq.result||[]).forEach(k=>{ if(String(k).startsWith(prefix)&&!keep.has(k)) st.delete(k); }); };
-      local.forEach(({cat,p})=>{ if(!p._localSaved){ st.put({cat,id:p.id,blob:p.compressed||p.file,width:p.width||0,height:p.height||0,fileKey:p.fileKey||'',name:p.file?.name||''}, prefix+p.id); p._localSaved=true; } });
+      local.forEach(({cat,p})=>{ if(!p._localSaved){ st.put({cat,id:p.id,blob:p.compressed||p.file,width:p.width||0,height:p.height||0,fileKey:p.fileKey||'',name:p.file?.name||'',slot:p.slot||''}, prefix+p.id); p._localSaved=true; } });
     }).catch(e=>console.warn('local draft photos save failed',e));
     const hint=document.getElementById('local-draft-hint');
     if(hint){ hint.textContent='💾 บันทึกร่างในเครื่องอัตโนมัติ '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+' น.'; hint.style.display=''; }
@@ -1120,6 +1161,7 @@ async function restoreLocalDraft(){
       Object.entries(draft.checks||{}).forEach(([id,v])=>{ const el=document.getElementById(id); if(el) el.checked=!!v; });
       if(Array.isArray(draft.parts)&&draft.parts.length) setTechPartRows(draft.parts);
       if(draft.pm&&pmCtx&&draft.pm.visit_id===pmCtx.visit.id){ pmApplySnapshot(draft.pm); pmRender(); pmSignRender(); }
+      if(draft.slots) slotApplySnapshot(draft.slots);
       try{ toggleNoParts(); }catch(e){}
       let restored=0;
       try{
@@ -1128,7 +1170,7 @@ async function restoreLocalDraft(){
         (rows||[]).forEach(r=>{
           if(!r||!r.blob||!photos[r.cat]||!(draft.photoIds||[]).includes(r.id)) return;
           if(photos[r.cat].some(p=>p.id===r.id)) return;
-          photos[r.cat].push({ id:r.id, file:null, fileKey:r.fileKey, compressed:r.blob, dataUrl:URL.createObjectURL(r.blob), width:r.width, height:r.height, status:'ready', _localSaved:true });
+          photos[r.cat].push({ id:r.id, file:null, fileKey:r.fileKey, compressed:r.blob, dataUrl:URL.createObjectURL(r.blob), width:r.width, height:r.height, status:'ready', _localSaved:true, ...(r.slot?{slot:r.slot}:{}) });
           restored++;
         });
       }catch(e){ console.warn('local draft photos restore failed', e); }
@@ -1137,6 +1179,7 @@ async function restoreLocalDraft(){
       if(bar){ bar.innerHTML=`♻️ กู้คืนข้อมูลที่กรอกค้างไว้ในเครื่องนี้ (${esc(t)} น.${restored?` · รูป ${restored} รูป`:''}) <button type="button" onclick="discardLocalDraft()" style="margin-left:6px;border:1px solid currentColor;background:transparent;color:inherit;border-radius:8px;padding:2px 8px;font:inherit;font-size:12px;">ทิ้งร่างนี้</button>`; bar.style.display=''; }
     }
   }
+  if(slotOn()) slotRender();
   localDraftEnabled=true;
 }
 async function discardLocalDraft(){
@@ -1181,7 +1224,7 @@ async function showForm(){
   const oldImages = Array.isArray(jobData.technicianReport?.images) ? jobData.technicianReport.images : [];
   oldImages.forEach(im=>{
     if(!photos[im.category])return;
-    photos[im.category].push({id:im.id||('old-'+Math.random().toString(36).slice(2)),existing:true,uploadedMeta:im,dataUrl:im.url,url:im.url,status:'ready',width:im.width||0,height:im.height||0,fileKey:im.name||im.url});
+    photos[im.category].push({id:im.id||('old-'+Math.random().toString(36).slice(2)),existing:true,uploadedMeta:im,dataUrl:im.url,url:im.url,status:'ready',width:im.width||0,height:im.height||0,fileKey:im.name||im.url,...slotPick(im)});
   });
   const oldDocumentImages = Array.isArray(jobData.technicianReport?.documentImages) ? jobData.technicianReport.documentImages : [];
   oldDocumentImages.forEach(im=>{
@@ -1192,6 +1235,7 @@ async function showForm(){
   await loadCheckinSurveyPhotos(jobData.id || JOB_ID); // ดึงรูปสำรวจจากหน้าแจ้งเข้าซ่อม → รูปก่อนดำเนินการ
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
   renderThumbs('documents');
+  slotInit(); // รูปแยกช่อง (เฉพาะงานที่แอดมินเปิดโหมดนี้)
   await pmInit(); // งาน PM → แสดงส่วนเครื่องในสาขา (งานปกติไม่เปลี่ยน)
   await restoreLocalDraft(); // ร่างในเครื่อง (ถ้าใหม่กว่าข้อมูลบนระบบ) — ต้องทำก่อน toggle เพื่อให้ช่อง/โหมดตรงกับที่กรอกค้างไว้
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
@@ -1212,7 +1256,7 @@ async function loadExistingPhotosIntoForm(jobId){
       const url = row.url || im.url || '';
       if(!url) return;
       if(photos[cat].some(p=>(p.url||p.fileKey)===url)) return; // กันซ้ำกับรูปที่มีอยู่แล้ว
-      photos[cat].push({ id: row.id || im.id || ('old-'+Math.random().toString(36).slice(2)), existing:true, uploadedMeta:im, dataUrl:url, url, status:'ready', width:im.width||0, height:im.height||0, fileKey: im.name || url });
+      photos[cat].push({ id: row.id || im.id || ('old-'+Math.random().toString(36).slice(2)), existing:true, uploadedMeta:im, dataUrl:url, url, status:'ready', width:im.width||0, height:im.height||0, fileKey: im.name || url, ...slotPick(im) });
     });
   }catch(e){ console.warn('load existing photos failed', e); }
 }
@@ -1242,6 +1286,194 @@ async function loadCheckinSurveyPhotos(jobId){
 // ============================================================
 // PHOTO HANDLING + COMPRESSION
 // ============================================================
+// ============================================================
+// รูปแยกช่อง (2026-11-17 · ทดสอบ) — เปิดเฉพาะงานที่แอดมินตั้ง job.photoSlots.on = true
+//  - รูปสาขา (หน้าร้าน / หลังร้าน) ถ่ายครั้งเดียวต่องาน · แต่ละเครื่องมีช่องตามแม่แบบ แยก ก่อน / ขณะ / หลัง
+//  - ทุกช่องมีรูปตัวอย่าง (photo-examples/) + คำแนะนำ · กด N/A ได้ถ้าเครื่องไม่มีจุดนั้น (ใส่เหตุผล)
+//  - รูปยังเก็บใน photos.before/during/after เหมือนเดิม (ระบบหลังบ้าน/เอกสารรูปเดิมใช้ต่อได้) + ติดป้าย slot/unit ไว้ในข้อมูลรูป
+//  - ลายน้ำ วันเวลา · สาขา · PR · เครื่อง · ช่อง ใส่ในรูปให้อัตโนมัติ
+// ============================================================
+// แม่แบบช่องรูป (SLOT_SITE / SLOT_TPL) อยู่ในไฟล์กลาง photo-slots.js — ใช้ร่วมกับคอนโซลแอดมิน
+let slotState = null;          // { units:[{id,tpl,name,loc}], na:{slotId:reason} }
+let slotCur = { unit:'', phase:'', slot:'' };
+function slotOn(){ return !!slotState; }
+function slotTpl(u){ return SLOT_TPL[u&&u.tpl] || SLOT_TPL.repair_other; }
+function slotUnitLabel(u){ const t=slotTpl(u); const same=slotState.units.filter(x=>slotTpl(x).unit===t.unit); return u.name || `${t.unit}ตัวที่ ${same.indexOf(u)+1}`; }
+function slotSiteKeys(){ const s=new Set(); (slotState?.units||[]).forEach(u=>(slotTpl(u).site||[]).forEach(k=>s.add(k))); if(!s.size) s.add('front'); return ['front','back'].filter(k=>s.has(k)); }
+function slotPhotosOf(id){ return ['before','during','after'].flatMap(c=>(photos[c]||[]).filter(p=>p.slot===id&&p.status!=='error')); }
+function slotDone(id){ return slotPhotosOf(id).length>0 || !!(slotState.na||{})[id]; }
+function slotPhasesFor(u){ const needQuote=document.getElementById('f-need-quote')?.checked; return slotTpl(u).phases.filter(p=>!needQuote||p.cat==='before'||p.k==='r'); }
+function slotReqList(u){ const out=[]; slotPhasesFor(u).forEach(p=>p.slots.forEach(s=>{ if(!s.opt) out.push({id:`${u.id}.${p.k}.${s.k}`,p,s}); })); return out; }
+function slotMissing(){ // [{id,label,unit}]
+  if(!slotOn()) return [];
+  const m=[];
+  slotSiteKeys().forEach(k=>{ const id='site.'+k; if(!slotDone(id)) m.push({id,label:SLOT_SITE[k].l,unit:'รูปสาขา'}); });
+  slotState.units.forEach(u=>slotReqList(u).forEach(x=>{ if(!slotDone(x.id)) m.push({id:x.id,label:x.s.l,unit:slotUnitLabel(u),u,p:x.p}); }));
+  return m;
+}
+function slotFind(id){ // → {u,p,s,cat,label,unitLabel}
+  if(id.startsWith('site.')){ const k=id.slice(5); return { site:true, s:{k,...SLOT_SITE[k]}, cat:'before', label:SLOT_SITE[k].l, unitLabel:'รูปสาขา' }; }
+  const [uid,pk,sk]=id.split('.'); const u=slotState.units.find(x=>x.id===uid); if(!u) return null;
+  const p=slotTpl(u).phases.find(x=>x.k===pk); const s=p&&p.slots.find(x=>x.k===sk); if(!s) return null;
+  return { u,p,s,cat:s.cat||p.cat,label:s.l,unitLabel:slotUnitLabel(u) };
+}
+function slotPick(im){ return im&&im.slot?{ slot:im.slot, slotLabel:im.slotLabel||'', unitLabel:im.unitLabel||'', unitTpl:im.unitTpl||'' }:{}; }
+function slotMetaOf(p){ if(!p||!p.slot) return {}; const f=slotFind(p.slot); return { slot:p.slot, slotLabel:f?f.label:(p.slotLabel||''), unitLabel:f?f.unitLabel:(p.unitLabel||''), unitTpl:f&&f.u?f.u.tpl:'', phaseLabel:f&&f.p?f.p.l:'' }; }
+function slotSnapshot(){ return slotOn()?{ v:1, units:slotState.units.map(u=>({...u})), na:{...(slotState.na||{})} }:undefined; }
+function slotInit(){
+  const cfg=jobData&&jobData.photoSlots;
+  if(!(cfg&&cfg.on)) { slotState=null; return; }
+  const saved=jobData.technicianReport&&jobData.technicianReport.slots;
+  const src=(saved&&Array.isArray(saved.units)&&saved.units.length)?saved:{ units:(cfg.units||[]), na:{} };
+  slotState={ units:(src.units||[]).map((u,i)=>({ id:u.id||('u'+(i+1)), tpl:SLOT_TPL[u.tpl]?u.tpl:'repair_other', name:u.name||'', loc:u.loc||'' })), na:{...(src.na||{})} };
+  ['before','during','after'].forEach(c=>{ const g=document.getElementById('inp-'+c)?.closest('.up-group'); if(g) g.classList.add('hidden'); });
+  document.getElementById('slot-wrap').classList.remove('hidden');
+  slotRender();
+}
+function slotApplySnapshot(s){ if(!slotOn()||!s||!Array.isArray(s.units)) return; slotState.units=s.units.map(u=>({...u})); slotState.na={...(s.na||{})}; slotRender(); }
+function slotThumb(id,big){
+  const ps=slotPhotosOf(id), f=slotFind(id), na=(slotState.na||{})[id];
+  const ex=f&&f.s.ex?SLOT_EX_BASE+f.s.ex+'.jpg':'';
+  const img=ps[0]?(ps[0].dataUrl||ps[0].url):'';
+  const busy=ps.some(p=>p.status==='compressing');
+  const cls=na?'na':img?'done':'empty';
+  return `<button type="button" class="sl-slot ${cls}${f&&f.s.opt?' opt':''}" onclick="slotOpen('${id}')">
+    <span class="sl-im" style="${img?`background-image:url('${esc(img)}')`:ex&&!na?`background-image:url('${esc(ex)}')`:''}">${na?'N/A':!img?(ex?'<i class="sl-ex">ตัวอย่าง</i><b>📷</b>':'<b>📷</b>'):''}${busy?'<i class="sl-busy">...</i>':''}${img?'<i class="sl-ok">✓</i>':''}${ps.length>1?`<i class="sl-n">${ps.length}</i>`:''}</span>
+    <span class="sl-lb">${esc(f?f.label.replace(/^รูปถ่าย|^รูป/,'').trim():id)}${f&&f.s.opt?' <small>(ไม่บังคับ)</small>':''}${na?`<small> · ${esc(na)}</small>`:''}</span></button>`;
+}
+function slotRender(){
+  const el=document.getElementById('slot-wrap'); if(!el||!slotOn()) return;
+  const miss=slotMissing();
+  const site=slotSiteKeys();
+  const unitRow=u=>{ const t=slotTpl(u), req=slotReqList(u), done=req.filter(x=>slotDone(x.id)).length, pct=req.length?Math.round(done/req.length*100):0;
+    const ph=slotPhasesFor(u).map(p=>{const r=p.slots.filter(s=>!s.opt),d=r.filter(s=>slotDone(`${u.id}.${p.k}.${s.k}`)).length;return `${p.l.replace('ดำเนินการ','')} ${d===r.length?'✓':d+'/'+r.length}`;}).join(' · ');
+    return `<button type="button" class="sl-unit" onclick="slotOpenUnit('${u.id}')"><span class="sl-uic">${t.ic}</span><span class="sl-um"><b>${esc(slotUnitLabel(u))}</b><small>${esc(t.l)}${u.loc?' · '+esc(u.loc):''}</small><small>${esc(ph)}</small><span class="sl-bar"><i style="width:${pct}%;background:${pct===100?'var(--green)':'var(--yellow)'}"></i></span></span><span class="sl-pill ${pct===100?'ok':done?'w':''}">${pct===100?'ครบ':`${done}/${req.length}`}</span></button>`; };
+  el.innerHTML=`<div class="sec-title">📷 รูปแยกช่อง <span class="sl-test">ทดสอบ</span></div>
+    <div class="sec-sub">กดช่องว่างเพื่อดูรูปตัวอย่างแล้วถ่าย · ระบบใส่วันเวลา/สาขาในรูปให้ · ${miss.length?`<b style="color:var(--yellow)">ยังขาด ${miss.length} ช่อง</b>`:'<b style="color:var(--green)">ครบทุกช่อง ✓</b>'}</div>
+    <div class="sl-h">🏪 รูปสาขา <small>ถ่ายครั้งเดียว ใช้กับทุกเครื่อง</small></div>
+    <div class="sl-grid">${site.map(k=>slotThumb('site.'+k)).join('')}</div>
+    <div class="sl-h" style="margin-top:14px">🔧 เครื่องในงานนี้ <small>${slotState.units.length} เครื่อง</small></div>
+    ${slotState.units.map(unitRow).join('')||'<div class="sl-empty">ยังไม่มีเครื่อง — กด "＋ เพิ่มเครื่อง"</div>'}
+    <button type="button" class="sl-add" onclick="slotAddUnitAsk()">＋ เพิ่มเครื่อง</button>`;
+  if(slotCur.unit) slotRenderUnit();
+}
+function slotAddUnitAsk(){
+  const box=document.getElementById('slot-pop');
+  box.innerHTML=`<div class="sl-pop-in"><div class="sl-pop-h"><b>เพิ่มเครื่อง</b><button type="button" onclick="slotPopClose()">✕</button></div>
+    <div class="sl-tpls">${Object.entries(SLOT_TPL).map(([k,t])=>`<button type="button" onclick="slotAddUnit('${k}')"><span>${t.ic}</span>${esc(t.l)}</button>`).join('')}</div>
+    <label style="margin-top:10px;display:block">ตำแหน่ง (ไม่บังคับ)</label><input id="slot-new-loc" placeholder="เช่น หน้าร้าน / ห้องเก็บของ"></div>`;
+  box.classList.remove('hidden');
+}
+function slotAddUnit(tpl){
+  const loc=(document.getElementById('slot-new-loc')?.value||'').trim();
+  let n=slotState.units.length+1; while(slotState.units.some(u=>u.id==='u'+n)) n++;
+  slotState.units.push({ id:'u'+n, tpl, name:'', loc });
+  slotPopClose(); slotRender(); scheduleLocalDraftSave();
+}
+function slotDelUnit(uid){
+  const u=slotState.units.find(x=>x.id===uid); if(!u) return;
+  const n=['before','during','after'].reduce((a,c)=>a+photos[c].filter(p=>p.slot&&p.slot.startsWith(uid+'.')).length,0);
+  if(!confirm(`ลบ ${slotUnitLabel(u)}${n?` และรูป ${n} รูปของเครื่องนี้`:''}?`)) return;
+  ['before','during','after'].forEach(c=>{ photos[c]=photos[c].filter(p=>!(p.slot&&p.slot.startsWith(uid+'.'))); });
+  Object.keys(slotState.na).forEach(k=>{ if(k.startsWith(uid+'.')) delete slotState.na[k]; });
+  slotState.units=slotState.units.filter(x=>x.id!==uid); slotCloseUnit(); slotRender(); scheduleLocalDraftSave();
+}
+function slotOpenUnit(uid,phase){
+  const u=slotState.units.find(x=>x.id===uid); if(!u) return;
+  const ps=slotPhasesFor(u);
+  const firstMissing=ps.find(p=>p.slots.some(s=>!s.opt&&!slotDone(`${uid}.${p.k}.${s.k}`)));
+  slotCur={ unit:uid, phase:phase||(firstMissing||ps[0]).k, slot:'' };
+  document.getElementById('slot-sheet').classList.remove('hidden'); document.body.style.overflow='hidden';
+  slotRenderUnit(true);
+}
+function slotCloseUnit(){ slotCur={unit:'',phase:'',slot:''}; document.getElementById('slot-sheet').classList.add('hidden'); document.body.style.overflow=''; slotRender(); }
+function slotRenderUnit(top){
+  const sh=document.getElementById('slot-sheet'); const u=slotState.units.find(x=>x.id===slotCur.unit); if(!sh||!u) return;
+  const keep=top?0:sh.scrollTop; const t=slotTpl(u), ps=slotPhasesFor(u), p=ps.find(x=>x.k===slotCur.phase)||ps[0];
+  const tab=x=>{const r=x.slots.filter(s=>!s.opt),d=r.filter(s=>slotDone(`${u.id}.${x.k}.${s.k}`)).length;return `<button type="button" class="${x.k===p.k?'on':''}" onclick="slotCur.phase='${x.k}';slotRenderUnit(true)">${esc(x.l.replace('ดำเนินการ','')||x.l)}<small>${d===r.length?'✓ ':''}${d}/${r.length}</small></button>`;};
+  const idx=ps.indexOf(p), next=ps[idx+1];
+  sh.innerHTML=`<div class="pm-sh-top"><button type="button" class="pm-back" onclick="slotCloseUnit()">‹</button><div style="min-width:0;flex:1"><div class="pm-sh-t">${t.ic} ${esc(slotUnitLabel(u))}</div><div class="pm-sh-s">${esc(t.l)}${u.loc?' · '+esc(u.loc):''}</div></div><button type="button" class="sl-del" onclick="slotDelUnit('${u.id}')">ลบเครื่อง</button></div>
+    <div class="wrap" style="padding-top:12px">
+      ${ps.length>1?`<div class="sl-tabs">${ps.map(tab).join('')}</div>`:''}
+      <div class="sl-ph">${esc(p.l)}</div>
+      <div class="sl-grid">${p.slots.map(s=>slotThumb(`${u.id}.${p.k}.${s.k}`)).join('')}</div>
+      <div class="sl-foot">${next?`<button type="button" class="sl-btn" onclick="slotCur.phase='${next.k}';slotRenderUnit(true)">ถัดไป: ${esc(next.l)} ›</button>`:`<button type="button" class="sl-btn" onclick="slotCloseUnit()">เสร็จเครื่องนี้ ✓</button>`}</div>
+    </div>`;
+  sh.scrollTop=keep;
+}
+function slotOpen(id){
+  const f=slotFind(id); if(!f) return; slotCur.slot=id;
+  const ps=slotPhotosOf(id), na=(slotState.na||{})[id], ex=f.s.ex?SLOT_EX_BASE+f.s.ex+'.jpg':'';
+  const box=document.getElementById('slot-pop');
+  box.innerHTML=`<div class="sl-pop-in"><div class="sl-pop-h"><div style="min-width:0"><b>${esc(f.label)}</b><small>${esc(f.unitLabel)}${f.p?' · '+esc(f.p.l):''}${f.s.opt?' · ไม่บังคับ':''}</small></div><button type="button" onclick="slotPopClose()">✕</button></div>
+    ${ps.length?`<div class="sl-mine">${ps.map(p=>`<span><img src="${esc(p.dataUrl||p.url)}" onclick="window.open(this.src,'_blank')">${p.status==='compressing'?'<i>...</i>':''}<button type="button" onclick="slotRemove('${p.id}')">×</button></span>`).join('')}</div>`:''}
+    ${ex?`<div class="sl-exbig" style="background-image:url('${esc(ex)}')"><i>รูปตัวอย่าง</i></div>`:''}
+    ${f.s.tip?`<div class="sl-tip">💡 ${esc(f.s.tip)}</div>`:''}
+    ${na?`<div class="sl-tip" style="color:var(--yellow)">ตั้งเป็น N/A แล้ว: ${esc(na)} <button type="button" class="sl-lnk" onclick="slotNA('${id}',false)">ยกเลิก N/A</button></div>`:''}
+    <button type="button" class="sl-btn" style="margin-top:10px" onclick="document.getElementById('slot-cam').click()">📷 ถ่ายรูป${ps.length?'เพิ่ม':''}</button>
+    <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 เลือกจากเครื่อง</button>${na?'':`<button type="button" onclick="slotNA('${id}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
+  box.classList.remove('hidden');
+}
+function slotPopClose(){ document.getElementById('slot-pop').classList.add('hidden'); slotCur.slot=''; }
+function slotNA(id,on){
+  if(on){ const r=prompt('เหตุผลที่ไม่มีรูปช่องนี้ (เช่น ไม่มีปั๊มน้ำทิ้ง / ไม่ได้เปลี่ยนอะไหล่)','ไม่มีจุดนี้'); if(r===null) return; slotState.na[id]=r.trim()||'ไม่มีจุดนี้'; }
+  else delete slotState.na[id];
+  slotPopClose(); slotRender(); scheduleLocalDraftSave();
+}
+function slotRemove(pid){
+  ['before','during','after'].forEach(c=>{ photos[c]=photos[c].filter(p=>p.id!==pid); });
+  const id=slotCur.slot; slotRender(); scheduleLocalDraftSave(); if(id) slotOpen(id);
+}
+function slotStampLines(f){
+  const d=new Date(), th=d.toLocaleString('th-TH',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  return [th+' น.', (jobData?.branch||'')+(jobData?.client?' · '+jobData.client:''), `${jobData?.id||JOB_ID} · ${f.unitLabel}`, f.label.replace(/^รูปถ่าย|^รูป/,'').trim()].filter(x=>String(x).trim());
+}
+function slotCompress(file, lines, maxW=1280, quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const img=new Image(), reader=new FileReader();
+    reader.onload=e=>{ img.src=e.target.result; }; reader.onerror=reject;
+    img.onload=()=>{
+      let { width, height }=img; const lim=Math.max(width,height);
+      if(lim>maxW){ const k=maxW/lim; width=Math.round(width*k); height=Math.round(height*k); }
+      const c=document.createElement('canvas'); c.width=width; c.height=height; const g=c.getContext('2d');
+      g.drawImage(img,0,0,width,height);
+      const fs=Math.max(13,Math.round(Math.min(width,height)*0.032)), pad=Math.round(fs*0.6), lh=Math.round(fs*1.3);
+      g.font=`600 ${fs}px "Noto Sans Thai",sans-serif`; g.textAlign='right'; g.textBaseline='bottom';
+      const bw=Math.min(width-pad*2,Math.max(...lines.map(t=>g.measureText(t).width))+pad*2), bh=lines.length*lh+pad;
+      g.fillStyle='rgba(0,0,0,.45)'; g.fillRect(width-bw-pad,height-bh-pad,bw+pad,bh+pad);
+      g.fillStyle='#fff'; lines.forEach((t,i)=>g.fillText(t,width-pad*1.5,height-pad-(lines.length-1-i)*lh,width-pad*3));
+      c.toBlob(blob=>resolve({ blob, dataUrl:c.toDataURL('image/jpeg',quality), width, height }),'image/jpeg',quality);
+    };
+    img.onerror=reject; reader.readAsDataURL(file);
+  });
+}
+async function slotAddFiles(files){
+  const id=slotCur.slot; const f=id&&slotFind(id); if(!f) return;
+  const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/'));
+  document.getElementById('slot-cam').value=''; document.getElementById('slot-gal').value='';
+  if(!list.length) return;
+  if((slotState.na||{})[id]) delete slotState.na[id];
+  const entries=list.map(file=>{ const e={ id:Date.now()+'-'+Math.random().toString(36).slice(2,7), file, fileKey:`${file.name}|${file.size}|${file.lastModified}`, compressed:null, dataUrl:null, status:'compressing', slot:id }; photos[f.cat].push(e); return e; });
+  slotRender(); slotOpen(id);
+  for(const e of entries){
+    try{ const r=await slotCompress(e.file, slotStampLines(f)); Object.assign(e,{ compressed:r.blob, dataUrl:r.dataUrl, width:r.width, height:r.height, status:'ready' }); }
+    catch(err){ e.status='error'; }
+    slotRender(); if(slotCur.slot===id) slotOpen(id);
+  }
+  scheduleLocalDraftSave();
+  // ถ่ายเสร็จ 1 รูป → ปิดหน้าต่างให้เลย (ถ่ายเพิ่มได้โดยกดช่องเดิม)
+  if(slotCur.slot===id && entries.every(e=>e.status==='ready')) slotPopClose();
+}
+function slotValidate(){
+  const miss=slotMissing();
+  if(!slotState.units.length){ alert('ยังไม่มีเครื่องในงานนี้ — กด "＋ เพิ่มเครื่อง" ในส่วนรูปแยกช่อง'); document.getElementById('slot-wrap').scrollIntoView({behavior:'smooth'}); return false; }
+  if(!miss.length) return true;
+  const g={}; miss.forEach(m=>{ (g[m.unit]=g[m.unit]||[]).push(m.label.replace(/^รูปถ่าย|^รูป/,'').trim()); });
+  alert(`ยังขาดรูป ${miss.length} ช่อง (ถ้าไม่มีจุดนั้นให้กด N/A)\n\n`+Object.entries(g).map(([u,l])=>`• ${u}: ${l.slice(0,4).join(', ')}${l.length>4?` และอีก ${l.length-4}`:''}`).join('\n'));
+  const first=miss[0]; if(first.u) slotOpenUnit(first.u.id, first.p.k); else document.getElementById('slot-wrap').scrollIntoView({behavior:'smooth'});
+  return false;
+}
+
 async function addPhotos(cat, files){
   const max = PHOTO_MAX[cat] ?? Infinity;
   let remaining = Number.isFinite(max) ? max - photos[cat].length : Infinity;
@@ -1319,6 +1551,7 @@ function toggleNoPhotos(cat, clear=true){
 }
 
 function toggleQuoteMode(){
+  if(slotOn()) setTimeout(slotRender,0);
   const needQuote = document.getElementById('f-need-quote').checked;
   const dateDone = document.getElementById('f-date-done');
   const timeDone = document.getElementById('f-time-done');
@@ -1396,7 +1629,8 @@ function collectReportDraft(){
     note: document.getElementById('f-note').value.trim(),
     needQuote: document.getElementById('f-need-quote').checked,
     noPhoto: { ...noPhoto },
-    pm: pmSnapshot()
+    pm: pmSnapshot(),
+    slots: slotSnapshot()
   };
 }
 
@@ -1427,7 +1661,7 @@ async function collectUploadedImages(report, cats=['before','during','after']){
   for(const cat of cats){
     for(const p of photos[cat]){
       if(p.existing){
-        uploadedImages.push({ order: order++, ...(p.uploadedMeta || {id:p.id,category:cat,label:CAT_LABEL[cat],url:p.url||p.dataUrl||'',uploadedAt:new Date().toISOString(),storage:'external'}) });
+        uploadedImages.push({ order: order++, ...(p.uploadedMeta || {id:p.id,category:cat,label:CAT_LABEL[cat],url:p.url||p.dataUrl||'',uploadedAt:new Date().toISOString(),storage:'external'}), ...slotMetaOf(p) });
         continue;
       }
       uploadTasks.push({ order: order++, cat, p });
@@ -1452,7 +1686,8 @@ async function collectUploadedImages(report, cats=['before','during','after']){
         roundType: report.needQuote ? 'survey' : 'repair',
         roundLabel: report.needQuote ? 'สำรวจ' : 'ซ่อมจริง',
         uploadedAt: new Date().toISOString(),
-        storage: uploaded.storage
+        storage: uploaded.storage,
+        ...slotMetaOf(p)
       };
       p.existing = true;
       p.uploadedMeta = meta;
@@ -1584,8 +1819,9 @@ async function submitJob(){
   if(!report.fix){ alert('กรุณากรอกวิธีแก้ไข'); document.getElementById('f-fix').focus(); return; }
   if(!report.noParts && !report.parts){ alert('กรุณากรอกอะไหล่ที่ใช้ หรือติ๊ก "ไม่มีการใช้อะไหล่"'); document.getElementById('f-parts').focus(); return; }
 
-  // validate photo minimums
-  for(const cat of ['before','during','after']){
+  // validate photo minimums (โหมดรูปแยกช่อง: ตรวจทุกช่องที่บังคับแทน)
+  if(slotOn()){ if(!slotValidate()) return; }
+  else for(const cat of ['before','during','after']){
     if(report.needQuote && cat !== 'before') continue;
     if(noPhoto[cat]) continue;
     if(photos[cat].length < PHOTO_MIN[cat]){
