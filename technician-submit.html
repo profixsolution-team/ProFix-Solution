@@ -157,7 +157,8 @@ body.pm-lock{overflow:hidden;}
 .pm-tab small{display:block;font-size:11px;font-weight:600;color:var(--text3);}
 .pm-tab.on{background:var(--accent-dim);color:#cfe5ff;box-shadow:inset 0 0 0 1px var(--accent);}
 .pm-tab.dn,.pm-tab.dn small{color:var(--green);}
-body.pm-t1 #step-work-detail>*:not(#pm-wrap):not(#pm-sheet):not(#pm-scan){display:none!important;}
+body.pm-t1 #step-work-detail>*:not(#pm-wrap):not(#pm-sheet):not(#pm-scan):not(#slot-pop):not(#slot-sheet){display:none!important;}
+body.pm-t1 #slot-pop.hidden,body.pm-t1 #slot-sheet.hidden{display:none!important;}
 body.pm-t2 #pm-wrap{display:none!important;}
 .pm-cl-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 6px;font-size:12.5px;color:var(--text2);}
 .pm-allok{border:1px solid #2f5f3a;background:var(--green-dim);color:#9be9a8;border-radius:8px;padding:8px 10px;font:700 12.5px var(--sans);cursor:pointer;flex:none;}
@@ -1223,7 +1224,7 @@ async function showForm(){
   document.getElementById('f-no-after').checked = noPhoto.after;
   const oldImages = Array.isArray(jobData.technicianReport?.images) ? jobData.technicianReport.images : [];
   oldImages.forEach(im=>{
-    if(!photos[im.category])return;
+    if(!photos[im.category]||im.pmItem)return; // รูปรายเครื่อง PM (แยกช่อง) อยู่ใน pmItems แล้ว
     photos[im.category].push({id:im.id||('old-'+Math.random().toString(36).slice(2)),existing:true,uploadedMeta:im,dataUrl:im.url,url:im.url,status:'ready',width:im.width||0,height:im.height||0,fileKey:im.name||im.url,...slotPick(im)});
   });
   const oldDocumentImages = Array.isArray(jobData.technicianReport?.documentImages) ? jobData.technicianReport.documentImages : [];
@@ -1235,8 +1236,8 @@ async function showForm(){
   await loadCheckinSurveyPhotos(jobData.id || JOB_ID); // ดึงรูปสำรวจจากหน้าแจ้งเข้าซ่อม → รูปก่อนดำเนินการ
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
   renderThumbs('documents');
-  slotInit(); // รูปแยกช่อง (เฉพาะงานที่แอดมินเปิดโหมดนี้)
   await pmInit(); // งาน PM → แสดงส่วนเครื่องในสาขา (งานปกติไม่เปลี่ยน)
+  slotInit(); // รูปแยกช่อง (เฉพาะงานที่แอดมินเปิดโหมดนี้) — หลัง pmInit: งาน PM ใช้ช่องรูปในหน้ารายเครื่อง
   await restoreLocalDraft(); // ร่างในเครื่อง (ถ้าใหม่กว่าข้อมูลบนระบบ) — ต้องทำก่อน toggle เพื่อให้ช่อง/โหมดตรงกับที่กรอกค้างไว้
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
   renderThumbs('documents');
@@ -1251,6 +1252,7 @@ async function loadExistingPhotosIntoForm(jobId){
     const rows = await r.json();
     rows.forEach(row=>{
       const im = row.data || {};
+      if(im.pmItem) return; // รูปรายเครื่อง PM (แยกช่อง) อยู่ใน pmItems แล้ว
       const cat = row.category || im.category || (im.documentOnly ? 'documents' : 'before');
       if(!photos[cat]) return;
       const url = row.url || im.url || '';
@@ -1299,7 +1301,7 @@ let slotCur = { unit:'', phase:'', slot:'' };
 function slotOn(){ return !!slotState; }
 function slotTpl(u){ return SLOT_TPL[u&&u.tpl] || SLOT_TPL.repair_other; }
 function slotUnitLabel(u){ const t=slotTpl(u); const same=slotState.units.filter(x=>slotTpl(x).unit===t.unit); return u.name || `${t.unit}ตัวที่ ${same.indexOf(u)+1}`; }
-function slotSiteKeys(){ const s=new Set(); (slotState?.units||[]).forEach(u=>(slotTpl(u).site||[]).forEach(k=>s.add(k))); if(!s.size) s.add('front'); return ['front','back'].filter(k=>s.has(k)); }
+function slotSiteKeys(){ const s=new Set(); (slotState?.units||[]).forEach(u=>(slotTpl(u).site||[]).forEach(k=>s.add(k))); if(slotState?.pm) pmItems.forEach(it=>{ const t=SLOT_TPL[pmSlotTpl(it)]; (t?t.site:['front']).forEach(k=>s.add(k)); }); if(!s.size) s.add('front'); return ['front','back'].filter(k=>s.has(k)); }
 function slotPhotosOf(id){ return ['before','during','after'].flatMap(c=>(photos[c]||[]).filter(p=>p.slot===id&&p.status!=='error')); }
 function slotDone(id){ return slotPhotosOf(id).length>0 || !!(slotState.na||{})[id]; }
 function slotPhasesFor(u){ const needQuote=document.getElementById('f-need-quote')?.checked; return slotTpl(u).phases.filter(p=>!needQuote||p.cat==='before'||p.k==='r'); }
@@ -1319,18 +1321,25 @@ function slotFind(id){ // → {u,p,s,cat,label,unitLabel}
 }
 function slotPick(im){ return im&&im.slot?{ slot:im.slot, slotLabel:im.slotLabel||'', unitLabel:im.unitLabel||'', unitTpl:im.unitTpl||'' }:{}; }
 function slotMetaOf(p){ if(!p||!p.slot) return {}; const f=slotFind(p.slot); return { slot:p.slot, slotLabel:f?f.label:(p.slotLabel||''), unitLabel:f?f.unitLabel:(p.unitLabel||''), unitTpl:f&&f.u?f.u.tpl:'', phaseLabel:f&&f.p?f.p.l:'' }; }
-function slotSnapshot(){ return slotOn()?{ v:1, units:slotState.units.map(u=>({...u})), na:{...(slotState.na||{})} }:undefined; }
+function slotSnapshot(){
+  if(!slotOn()) return undefined;
+  if(slotState.pm){ const units=[], na={...(slotState.na||{})};
+    pmItems.forEach(it=>{ const tpl=pmSlotTpl(it); if(!tpl) return; units.push({ id:it.key, tpl, kind:it.asset_type||'', name:'', loc:[it.asset_id,it.location].filter(Boolean).join(' · ') }); Object.entries(it.slot_na||{}).forEach(([k,v])=>{ na[`${it.key}.${k}`]=v; }); });
+    return { v:1, pm:true, units, na }; }
+  return { v:1, units:slotState.units.map(u=>({...u})), na:{...(slotState.na||{})} };
+}
 function slotInit(){
   const cfg=jobData&&jobData.photoSlots;
   if(!(cfg&&cfg.on)) { slotState=null; return; }
   const saved=jobData.technicianReport&&jobData.technicianReport.slots;
   const src=(saved&&Array.isArray(saved.units)&&saved.units.length)?saved:{ units:(cfg.units||[]), na:{} };
-  slotState={ units:(src.units||[]).map((u,i)=>({ id:u.id||('u'+(i+1)), tpl:SLOT_TPL[u.tpl]?u.tpl:'repair_other', name:u.name||'', loc:u.loc||'' })), na:{...(src.na||{})} };
+  const pmMode=!!pmCtx;
+  slotState={ pm:pmMode, units:pmMode?[]:(src.units||[]).filter(u=>!/^repair_/.test(u.tpl)).map((u,i)=>({ id:u.id||('u'+(i+1)), tpl:SLOT_TPL[u.tpl]?u.tpl:'pm_air', name:u.name||'', loc:u.loc||'' })), na:Object.fromEntries(Object.entries(src.na||{}).filter(([k])=>!pmMode||k.startsWith('site.'))) };
   ['before','during','after'].forEach(c=>{ const g=document.getElementById('inp-'+c)?.closest('.up-group'); if(g) g.classList.add('hidden'); });
   document.getElementById('slot-wrap').classList.remove('hidden');
   slotRender();
 }
-function slotApplySnapshot(s){ if(!slotOn()||!s||!Array.isArray(s.units)) return; slotState.units=s.units.map(u=>({...u})); slotState.na={...(s.na||{})}; slotRender(); }
+function slotApplySnapshot(s){ if(!slotOn()||!s||!Array.isArray(s.units)) return; if(slotState.pm){ slotState.na=Object.fromEntries(Object.entries(s.na||{}).filter(([k])=>k.startsWith('site.'))); slotRender(); return; } slotState.units=s.units.filter(u=>!/^repair_/.test(u.tpl)).map(u=>({...u})); slotState.na={...(s.na||{})}; slotRender(); }
 function slotThumb(id,big){
   const ps=slotPhotosOf(id), f=slotFind(id), na=(slotState.na||{})[id];
   const ex=f&&f.s.ex?SLOT_EX_BASE+f.s.ex+'.jpg':'';
@@ -1352,15 +1361,15 @@ function slotRender(){
     <div class="sec-sub">กดช่องว่างเพื่อดูรูปตัวอย่างแล้วถ่าย · ระบบใส่วันเวลา/สาขาในรูปให้ · ${miss.length?`<b style="color:var(--yellow)">ยังขาด ${miss.length} ช่อง</b>`:'<b style="color:var(--green)">ครบทุกช่อง ✓</b>'}</div>
     <div class="sl-h">🏪 รูปสาขา <small>ถ่ายครั้งเดียว ใช้กับทุกเครื่อง</small></div>
     <div class="sl-grid">${site.map(k=>slotThumb('site.'+k)).join('')}</div>
-    <div class="sl-h" style="margin-top:14px">🔧 เครื่องในงานนี้ <small>${slotState.units.length} เครื่อง</small></div>
+    ${slotState.pm?'<div class="sl-empty" style="margin-top:10px">📋 รูปของแต่ละเครื่อง ถ่ายในหน้า "บันทึก PM รายเครื่อง" ด้านล่าง (กดที่เครื่อง → ส่วน 📸 รูปของเครื่องนี้)</div>':`<div class="sl-h" style="margin-top:14px">🔧 เครื่องในงานนี้ <small>${slotState.units.length} เครื่อง</small></div>
     ${slotState.units.map(unitRow).join('')||'<div class="sl-empty">ยังไม่มีเครื่อง — กด "＋ เพิ่มเครื่อง"</div>'}
-    <button type="button" class="sl-add" onclick="slotAddUnitAsk()">＋ เพิ่มเครื่อง</button>`;
+    <button type="button" class="sl-add" onclick="slotAddUnitAsk()">＋ เพิ่มเครื่อง</button>`}`;
   if(slotCur.unit) slotRenderUnit();
 }
 function slotAddUnitAsk(){
   const box=document.getElementById('slot-pop');
   box.innerHTML=`<div class="sl-pop-in"><div class="sl-pop-h"><b>เพิ่มเครื่อง</b><button type="button" onclick="slotPopClose()">✕</button></div>
-    <div class="sl-tpls">${Object.entries(SLOT_TPL).map(([k,t])=>`<button type="button" onclick="slotAddUnit('${k}')"><span>${t.ic}</span>${esc(t.l)}</button>`).join('')}</div>
+    <div class="sl-tpls">${Object.entries(SLOT_TPL).filter(([k])=>k.startsWith('pm_')).map(([k,t])=>`<button type="button" onclick="slotAddUnit('${k}')"><span>${t.ic}</span>${esc(t.l)}</button>`).join('')}</div>
     <label style="margin-top:10px;display:block">ตำแหน่ง (ไม่บังคับ)</label><input id="slot-new-loc" placeholder="เช่น หน้าร้าน / ห้องเก็บของ"></div>`;
   box.classList.remove('hidden');
 }
@@ -1402,7 +1411,7 @@ function slotRenderUnit(top){
   sh.scrollTop=keep;
 }
 function slotOpen(id){
-  const f=slotFind(id); if(!f) return; slotCur.slot=id;
+  const f=slotFind(id); if(!f) return; slotCur.slot=id; pmSlotKey='';
   const ps=slotPhotosOf(id), na=(slotState.na||{})[id], ex=f.s.ex?SLOT_EX_BASE+f.s.ex+'.jpg':'';
   const box=document.getElementById('slot-pop');
   box.innerHTML=`<div class="sl-pop-in"><div class="sl-pop-h"><div style="min-width:0"><b>${esc(f.label)}</b><small>${esc(f.unitLabel)}${f.p?' · '+esc(f.p.l):''}${f.s.opt?' · ไม่บังคับ':''}</small></div><button type="button" onclick="slotPopClose()">✕</button></div>
@@ -1414,7 +1423,7 @@ function slotOpen(id){
     <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 เลือกจากเครื่อง</button>${na?'':`<button type="button" onclick="slotNA('${id}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
   box.classList.remove('hidden');
 }
-function slotPopClose(){ document.getElementById('slot-pop').classList.add('hidden'); slotCur.slot=''; }
+function slotPopClose(){ document.getElementById('slot-pop').classList.add('hidden'); slotCur.slot=''; pmSlotKey=''; }
 function slotNA(id,on){
   if(on){ const r=prompt('เหตุผลที่ไม่มีรูปช่องนี้ (เช่น ไม่มีปั๊มน้ำทิ้ง / ไม่ได้เปลี่ยนอะไหล่)','ไม่มีจุดนี้'); if(r===null) return; slotState.na[id]=r.trim()||'ไม่มีจุดนี้'; }
   else delete slotState.na[id];
@@ -1448,6 +1457,7 @@ function slotCompress(file, lines, maxW=1280, quality=0.72){
   });
 }
 async function slotAddFiles(files){
+  if(!slotCur.slot&&pmSlotKey&&pmCur){ const fl=Array.from(files||[]); document.getElementById('slot-cam').value=''; document.getElementById('slot-gal').value=''; return pmSlotAdd(fl); }
   const id=slotCur.slot; const f=id&&slotFind(id); if(!f) return;
   const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/'));
   document.getElementById('slot-cam').value=''; document.getElementById('slot-gal').value='';
@@ -1464,7 +1474,69 @@ async function slotAddFiles(files){
   // ถ่ายเสร็จ 1 รูป → ปิดหน้าต่างให้เลย (ถ่ายเพิ่มได้โดยกดช่องเดิม)
   if(slotCur.slot===id && entries.every(e=>e.status==='ready')) slotPopClose();
 }
+// ---------- รูปแยกช่องในหน้า "บันทึก PM รายเครื่อง" (งาน PM ที่ผูกแผน) ----------
+// แต่ละเครื่อง (pmItems) ใช้แม่แบบตามชนิด: แอร์ → pm_air · ตู้แช่ → pm_fridge · ไส้กรอง → pm_filter · อื่น ๆ → รูปก่อน/หลังแบบเดิม
+// รูปเก็บใน it.photos.before/during/after (อัปโหลดทันทีเหมือนเดิม) + p.slot = "<ช่วง>.<ช่อง>" · N/A เก็บใน it.slot_na
+// รูปสาขา (หน้าร้าน/หลังร้าน) อยู่การ์ด "รูปแยกช่อง" ด้านบน ถ่ายครั้งเดียวต่องาน
+function slotPmOn(){ return !!(pmCtx && jobData && jobData.photoSlots && jobData.photoSlots.on); }
+function pmSlotTpl(it){ if(!slotPmOn()||!it||!it.asset_type) return ''; const g=pmType(it.asset_type).g; return g==='air'?'pm_air':g==='fridge'?'pm_fridge':g==='filter'?'pm_filter':''; }
+function pmSlotFind(it,key){ const t=SLOT_TPL[pmSlotTpl(it)]; if(!t) return null; const [pk,sk]=String(key).split('.'); const p=t.phases.find(x=>x.k===pk); const sl=p&&p.slots.find(x=>x.k===sk); return sl?{p,s:sl,cat:sl.cat||p.cat}:null; }
+function pmSlotLabel(it,key){ const f=pmSlotFind(it,key); return f?f.s.l:''; }
+function pmSlotPhotos(it,key){ return ['before','during','after'].flatMap(c=>(it.photos?.[c]||[]).filter(p=>p.slot===key&&p.status!=='error')); }
+function pmSlotPhases(it){ const t=SLOT_TPL[pmSlotTpl(it)]; return t?t.phases:[]; }
+function pmSlotMissing(it){ const out=[]; pmSlotPhases(it).forEach(p=>p.slots.forEach(sl=>{ const k=p.k+'.'+sl.k; if(!sl.opt&&!pmSlotPhotos(it,k).length&&!(it.slot_na||{})[k]) out.push(k); })); return out; }
+function pmItemName(it){ return [it.asset_id||'เครื่องใหม่', it.asset_type].filter(Boolean).join(' · '); }
+let pmSlotPh='', pmSlotKey='';
+function pmSlotCardHtml(it){
+  const ps=pmSlotPhases(it); if(!ps.some(p=>p.k===pmSlotPh)) pmSlotPh=(ps.find(p=>p.slots.some(sl=>!sl.opt&&!pmSlotPhotos(it,p.k+'.'+sl.k).length&&!(it.slot_na||{})[p.k+'.'+sl.k]))||ps[0]).k;
+  const p=ps.find(x=>x.k===pmSlotPh), miss=pmSlotMissing(it).length;
+  const tab=x=>{ const r=x.slots.filter(sl=>!sl.opt), d=r.filter(sl=>{const k=x.k+'.'+sl.k;return pmSlotPhotos(it,k).length||(it.slot_na||{})[k];}).length; return `<button type="button" class="${x.k===p.k?'on':''}" onclick="pmSlotPh='${x.k}';pmSheetRender()">${esc(x.l.replace('ดำเนินการ','')||x.l)}<small>${d===r.length?'✓ ':''}${d}/${r.length}</small></button>`; };
+  const cell=sl=>{ const k=p.k+'.'+sl.k, ph=pmSlotPhotos(it,k), na=(it.slot_na||{})[k], img=ph[0]?(ph[0].dataUrl||ph[0].url):'', ex=sl.ex?SLOT_EX_BASE+sl.ex+'.jpg':'', busy=ph.some(x=>x.status==='uploading'||x.status==='compressing'), err=(['before','during','after'].flatMap(c=>it.photos?.[c]||[])).some(x=>x.slot===k&&x.status==='error');
+    return `<button type="button" class="sl-slot ${na?'na':img?'done':'empty'}${sl.opt?' opt':''}" onclick="pmSlotOpen('${k}')"><span class="sl-im" style="${img?`background-image:url('${esc(img)}')`:ex&&!na?`background-image:url('${esc(ex)}')`:''}">${na?'N/A':!img?(ex?'<i class="sl-ex">ตัวอย่าง</i><b>📷</b>':'<b>📷</b>'):''}${busy?'<i class="sl-busy">กำลังอัป…</i>':''}${err?'<i class="sl-busy" style="background:rgba(248,81,73,.6)">อัปไม่สำเร็จ</i>':''}${img&&!busy?'<i class="sl-ok">✓</i>':''}${ph.length>1?`<i class="sl-n">${ph.length}</i>`:''}</span><span class="sl-lb">${esc(sl.l.replace(/^รูปถ่าย|^รูป/,'').trim())}${sl.opt?' <small>(ไม่บังคับ)</small>':''}${na?`<small> · ${esc(na)}</small>`:''}</span></button>`; };
+  return `<div class="card"><div class="sec-title">📸 รูปของเครื่องนี้ <span class="req-star">*</span> <span class="sl-test">แยกช่อง</span></div>
+    <div class="sec-sub">กดช่องเพื่อดูรูปตัวอย่างแล้วถ่าย · ไม่มีจุดนั้นกด N/A · ${miss?`<b style="color:var(--yellow)">ยังขาด ${miss} ช่อง</b>`:'<b style="color:var(--green)">ครบทุกช่อง ✓</b>'}</div>
+    ${ps.length>1?`<div class="sl-tabs">${ps.map(tab).join('')}</div>`:''}<div class="sl-ph">${esc(p.l)}</div>
+    <div class="sl-grid">${p.slots.map(cell).join('')}</div></div>`;
+}
+function pmSlotOpen(k){
+  const it=pmCur, f=pmSlotFind(it,k); if(!f) return; pmSlotKey=k; slotCur.slot='';
+  const ph=pmSlotPhotos(it,k), na=(it.slot_na||{})[k], ex=f.s.ex?SLOT_EX_BASE+f.s.ex+'.jpg':'';
+  const box=document.getElementById('slot-pop');
+  box.innerHTML=`<div class="sl-pop-in"><div class="sl-pop-h"><div style="min-width:0"><b>${esc(f.s.l)}</b><small>${esc(pmItemName(it))} · ${esc(f.p.l)}${f.s.opt?' · ไม่บังคับ':''}</small></div><button type="button" onclick="slotPopClose()">✕</button></div>
+    ${ph.length?`<div class="sl-mine">${ph.map(x=>`<span><img src="${esc(x.dataUrl||x.url)}" onclick="window.open(this.src,'_blank')">${x.status==='uploading'||x.status==='compressing'?'<i>…</i>':''}<button type="button" onclick="pmSlotRemove('${x.id}')">×</button></span>`).join('')}</div>`:''}
+    ${ex?`<div class="sl-exbig" style="background-image:url('${esc(ex)}')"><i>รูปตัวอย่าง</i></div>`:''}
+    ${f.s.tip?`<div class="sl-tip">💡 ${esc(f.s.tip)}</div>`:''}
+    ${na?`<div class="sl-tip" style="color:var(--yellow)">ตั้งเป็น N/A แล้ว: ${esc(na)} <button type="button" class="sl-lnk" onclick="pmSlotNA('${k}',false)">ยกเลิก N/A</button></div>`:''}
+    <button type="button" class="sl-btn" style="margin-top:10px" onclick="document.getElementById('slot-cam').click()">📷 ถ่ายรูป${ph.length?'เพิ่ม':''}</button>
+    <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 เลือกจากเครื่อง</button>${na?'':`<button type="button" onclick="pmSlotNA('${k}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
+  box.classList.remove('hidden');
+}
+function pmSlotNA(k,on){ const it=pmCur; if(!it) return; it.slot_na=it.slot_na||{};
+  if(on){ const r=prompt('เหตุผลที่ไม่มีรูปช่องนี้ (เช่น ไม่มีปั๊มน้ำทิ้ง)','ไม่มีจุดนี้'); if(r===null) return; it.slot_na[k]=r.trim()||'ไม่มีจุดนี้'; } else delete it.slot_na[k];
+  slotPopClose(); pmSheetRender(); scheduleLocalDraftSave(); }
+function pmSlotRemove(pid){ const it=pmCur; if(!it) return; ['before','during','after'].forEach(c=>{ it.photos[c]=(it.photos[c]||[]).filter(x=>x.id!==pid); }); pmSheetRender(); scheduleLocalDraftSave(); if(pmSlotKey) pmSlotOpen(pmSlotKey); }
+async function pmSlotAdd(files){
+  const it=pmCur, k=pmSlotKey, f=it&&pmSlotFind(it,k); if(!f) return;
+  const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/')); if(!list.length) return;
+  it.photos[f.cat]=it.photos[f.cat]||[]; if((it.slot_na||{})[k]) delete it.slot_na[k];
+  const lines=[new Date().toLocaleString('th-TH',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+' น.', (jobData?.branch||''), `${jobData?.id||JOB_ID} · ${pmItemName(it)}`, f.s.l.replace(/^รูปถ่าย|^รูป/,'').trim()].filter(x=>String(x).trim());
+  const entries=list.map(()=>{ const e={ id:Date.now()+'-'+Math.random().toString(36).slice(2,7), status:'compressing', slot:k }; it.photos[f.cat].push(e); return e; });
+  pmSheetRender(); slotPopClose();
+  for(let i=0;i<list.length;i++){ const e=entries[i];
+    try{ const c=await slotCompress(list[i], lines); e.blob=c.blob; e.dataUrl=c.dataUrl; }catch(err){ e.status='error'; pmRefreshPhotos(); continue; }
+    pmUploadEntry(e, f.cat);
+  }
+}
+// ตอนบันทึกร่าง/ส่งงาน: รูปรายเครื่องแบบแยกช่อง → ใส่ในรูปของงานด้วย (หน้าตรวจรูป/ใบงานรูปภาพ/PDF ของแอดมินเห็นครบ)
+function pmSlotJobImages(){
+  if(!slotPmOn()) return [];
+  const out=[];
+  pmItems.forEach(it=>{ if(!pmSlotTpl(it)) return; ['before','during','after'].forEach(c=>(it.photos?.[c]||[]).forEach(p=>{ if(!p.url||!p.slot) return; const f=pmSlotFind(it,p.slot);
+    out.push({ id:'pm-'+p.id, category:c, label:CAT_LABEL[c], url:p.url, storage:'r2', uploadedAt:new Date().toISOString(), slot:`${it.key}.${p.slot}`, slotLabel:f?f.s.l:'', unitLabel:pmItemName(it), unitTpl:pmSlotTpl(it), phaseLabel:f?f.p.l:'', pmItem:it.key }); })); });
+  return out;
+}
 function slotValidate(){
+  if(slotState&&slotState.pm){ const m=slotMissing(); if(!m.length) return true; alert('ยังขาดรูปสาขา: '+m.map(x=>x.label.replace(/^รูปถ่าย|^รูป/,'').trim()).join(', ')); document.getElementById('slot-wrap').scrollIntoView({behavior:'smooth'}); return false; }
   const miss=slotMissing();
   if(!slotState.units.length){ alert('ยังไม่มีเครื่องในงานนี้ — กด "＋ เพิ่มเครื่อง" ในส่วนรูปแยกช่อง'); document.getElementById('slot-wrap').scrollIntoView({behavior:'smooth'}); return false; }
   if(!miss.length) return true;
@@ -1744,7 +1816,7 @@ async function saveDraft(){
   document.getElementById('upload-detail').textContent = allPhotos.length ? 'กำลังอัปโหลดรูปที่เพิ่มไว้' : '';
   document.getElementById('overlay-upload').classList.add('show');
   try{
-    const uploadedImages = await collectUploadedImages(report);
+    const uploadedImages = [...await collectUploadedImages(report), ...pmSlotJobImages()];
     const uploadedDocumentImages = await collectUploadedImages(report, ['documents']);
     if(pmCtx){ document.getElementById('upload-status').textContent = 'กำลังบันทึกเครื่องเข้าทะเบียน...'; await pmRegisterServer(); report.pm = pmSnapshot(); }
     document.getElementById('upload-status').textContent = 'กำลังบันทึกข้อมูล...';
@@ -1842,7 +1914,7 @@ async function submitJob(){
 
   try{
     // 1. upload photos (ผ่าน Cloudflare Worker → R2)
-    const uploadedImages = await collectUploadedImages(report);
+    const uploadedImages = [...await collectUploadedImages(report), ...pmSlotJobImages()];
     const uploadedDocumentImages = await collectUploadedImages(report, ['documents']);
     // 1.5 งาน PM: บันทึกผลรายเครื่องลงทะเบียนเครื่อง (ส่งซ้ำได้ — แทนที่ผลเดิมของรอบนี้)
     if(pmCtx && !report.needQuote){ document.getElementById('upload-status').textContent = 'กำลังบันทึกผล PM รายเครื่อง...'; await pmSaveServer(); report.pm = pmSnapshot(); }
@@ -2172,7 +2244,7 @@ function pmSnapshot(){
     items: pmItems.map(({ _rmk, ...it })=>({ ...it,
       sheet_rows: pmType(it.asset_type).g==='air' ? pmSheetRows(it) : null,
       label_photo: it.label_photo&&it.label_photo.url ? { url:it.label_photo.url } : null,
-      photos: { before:(it.photos?.before||[]).filter(p=>p.url).map(p=>({id:p.id,url:p.url})), after:(it.photos?.after||[]).filter(p=>p.url).map(p=>({id:p.id,url:p.url})) }
+      photos: { before:(it.photos?.before||[]).filter(p=>p.url).map(p=>({id:p.id,url:p.url,...(p.slot?{slot:p.slot}:{})})),during:(it.photos?.during||[]).filter(p=>p.url).map(p=>({id:p.id,url:p.url,...(p.slot?{slot:p.slot}:{})})),after:(it.photos?.after||[]).filter(p=>p.url).map(p=>({id:p.id,url:p.url,...(p.slot?{slot:p.slot}:{})})) }
     }))
   };
 }
@@ -2182,7 +2254,7 @@ function pmApplySnapshot(s){
   if(s.sign) pmSign = { ...s.sign, status: s.sign.url?'ready':'' };
   pmItems = s.items.map(({ sheet_rows, ...it })=>({ ...it, sheet:it.sheet||{}, sheet_rmk:it.sheet_rmk||{}, readings:it.readings||{}, checklist:it.checklist||{},
     label_photo: it.label_photo&&it.label_photo.url ? { url:it.label_photo.url, status:'ready' } : null,
-    photos: { before:(it.photos?.before||[]).map(p=>({ ...p, status:'ready' })), after:(it.photos?.after||[]).map(p=>({ ...p, status:'ready' })) }
+    photos: { before:(it.photos?.before||[]).map(p=>({ ...p, status:'ready' })), during:(it.photos?.during||[]).map(p=>({ ...p, status:'ready' })), after:(it.photos?.after||[]).map(p=>({ ...p, status:'ready' })) }, slot_na:{...(it.slot_na||{})}
   }));
 }
 function pmAllAssets(){ const seen=new Set(); return [...(pmCtx?.assets||[]), ...pmExtraAssets].filter(a=>!seen.has(a.id)&&seen.add(a.id)); }
@@ -2191,21 +2263,24 @@ function pmNewItem(a){
   return { key:a?a.id:('new-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)), asset_id:a?a.id:'', has_qr:!!(a&&a.qr_code), qr_code:'', scanned:false,
     asset_type:a?a.asset_type:'', brand:a?.brand||'', model:a?.model||'', capacity:a?.capacity||'', serial_no:a?.serial_no||'', no_label:false, location:a?.location||'', refrigerant:a?.refrigerant||'',
     label_photo:a?.label_photo_url?{url:a.label_photo_url,status:'ready'}:null, last:a?.last||null, other_branch:a&&a.branch&&pmCtx&&a._other?a.branch:'',
-    checklist:{}, readings:{}, sheet:{}, sheet_rmk:{}, photos:{before:[],after:[]}, condition:'', cause:'', fix:'', follow_up:false, follow_up_note:'' };
+    checklist:{}, readings:{}, sheet:{}, sheet_rmk:{}, photos:{before:[],during:[],after:[]}, slot_na:{}, condition:'', cause:'', fix:'', follow_up:false, follow_up_note:'' };
 }
 function pmMissing(it){
   const m=[]; const t=pmType(it.asset_type);
   if(!it.asset_type || t.legacy) m.push('ประเภทเครื่อง');
   if(!it.no_label && !String(it.serial_no||'').trim()) m.push('Serial No.');
   if(it.asset_type && t.g==='air') m.push(...pmSheetMissing(it));
+  if(pmSlotTpl(it)){ const n=pmSlotMissing(it).length; if(n) m.push(`รูป ${n} ช่อง`); }
+  else{
   if(!(it.photos?.before||[]).length) m.push('รูปก่อนทำ');
   if(!(it.photos?.after||[]).length) m.push('รูปหลังทำ');
+  }
   if(!it.condition) m.push('สภาพเครื่อง');
   if(it.follow_up && !String(it.follow_up_note||'').trim()) m.push('รายละเอียดงานต่อเนื่อง');
   return m;
 }
-function pmUploading(it){ return [it.label_photo, ...(it.photos?.before||[]), ...(it.photos?.after||[])].filter(Boolean).filter(p=>p.status==='uploading'||p.status==='compressing'); }
-function pmFailed(it){ return [it.label_photo, ...(it.photos?.before||[]), ...(it.photos?.after||[])].filter(Boolean).filter(p=>p.status==='error'); }
+function pmUploading(it){ return [it.label_photo, ...(it.photos?.before||[]), ...(it.photos?.during||[]), ...(it.photos?.after||[])].filter(Boolean).filter(p=>p.status==='uploading'||p.status==='compressing'); }
+function pmFailed(it){ return [it.label_photo, ...(it.photos?.before||[]), ...(it.photos?.during||[]), ...(it.photos?.after||[])].filter(Boolean).filter(p=>p.status==='error'); }
 function pmQtyRows(){
   return PM_TYPES.filter(t=>t.g!=='other'||pmItems.some(it=>pmType(it.asset_type).k===t.k)).map(t=>{
     const its=pmItems.filter(it=>pmType(it.asset_type).k===t.k && !pmMissing(it).length);
@@ -2310,11 +2385,11 @@ function pmSheetRender(scrollTop){
       <div class="sec-title">📏 ${g==='filter'?'จำนวนไส้กรอง':'ค่าที่วัด'}</div>
       ${PM_READ[g].map(([k,l,u])=>`<div class="pm-rd"><div class="pm-rdn">${esc(l)}</div><input data-k="r-${k}" type="number" inputmode="decimal" step="any" value="${esc(it.readings[k]??'')}" oninput="pmRead('${k}',this.value)"><div class="pm-un">${esc(u)}</div></div>`).join('')}
     </div>`:''}`}
-    <div class="card">
+    ${pmSlotTpl(it)?pmSlotCardHtml(it):`<div class="card">
       <div class="sec-title">📸 รูปของเครื่องนี้ <span class="req-star">*</span></div>
       <div class="sec-sub">ก่อนทำ และ หลังทำ อย่างน้อยอย่างละ 1 รูป</div>
       <div class="pm-ph2">${photoRow('before','ก่อนทำ','color-before')}${photoRow('after','หลังทำ','color-after')}</div>
-    </div>
+    </div>`}
     <div class="card">
       <label>สาเหตุ</label><textarea data-k="cause" oninput="pmF('cause',this.value)" placeholder="เช่น คอมเพรสเซอร์กินกระแสสูง / ฟิลเตอร์ตัน">${esc(it.cause)}</textarea>
       <label style="margin-top:12px">การแก้ไข</label><textarea data-k="fix" oninput="pmF('fix',this.value)" placeholder="เช่น ล้างทำความสะอาดทั้งชุด ขันขั้วสายใหม่">${esc(it.fix)}</textarea>
@@ -2446,7 +2521,7 @@ function pmSetType(k){ if(!pmCur) return; pmCur.asset_type=k; pmSheetRender(); s
 function pmClose(){
   const sh=document.getElementById('pm-sheet'); if(sh){ sh.classList.add('hidden'); sh.innerHTML=''; }
   document.body.classList.remove('pm-lock');
-  pmDropIfUntouched(pmCur); pmCur=null; pmRender(); scheduleLocalDraftSave();
+  pmDropIfUntouched(pmCur); pmCur=null; pmRender(); if(slotOn()) slotRender(); scheduleLocalDraftSave();
 }
 function pmNext(){
   const cur=pmCur;
@@ -2609,7 +2684,7 @@ function pmValidateForSubmit(){
 }
 async function pmRetryFailedUploads(){
   for(const it of pmItems){
-    for(const p of pmFailed(it)){ if(p.blob){ const cat=(it.photos.after||[]).includes(p)?'after':'before'; await pmUploadEntry(p,cat); } }
+    for(const p of pmFailed(it)){ if(p.blob){ const cat=['before','during','after'].find(c=>(it.photos[c]||[]).includes(p))||'before'; await pmUploadEntry(p,cat); } }
     if(pmFailed(it).length) throw new Error(`อัปโหลดรูปของเครื่อง ${it.asset_id||'เครื่องใหม่'} ไม่สำเร็จ — เช็กอินเทอร์เน็ตแล้วลองใหม่`);
   }
 }
@@ -2628,7 +2703,7 @@ async function pmSaveServer(){
       key:it.key, asset_id:it.asset_id||null, qr_code:it.qr_code||null, asset_type:it.asset_type, brand:it.brand, model:it.model, capacity:it.capacity,
       serial_no:it.no_label?'':it.serial_no, location:it.location, label_photo_url:it.label_photo?.url||'', refrigerant:air?(it.refrigerant||''):'',
       checklist:air?pmSheetRows(it):(PM_CHECK[g]||[]).map(c=>({item:c,done:!!it.checklist?.[c]})), readings,
-      photos:[...(it.photos.before||[]).filter(p=>p.url).map(p=>({cat:'before',url:p.url})), ...(it.photos.after||[]).filter(p=>p.url).map(p=>({cat:'after',url:p.url}))],
+      photos:['before','during','after'].flatMap(c=>(it.photos[c]||[]).filter(p=>p.url).map(p=>({cat:c,url:p.url,...(p.slot?{slot:p.slot,label:pmSlotLabel(it,p.slot)}:{})}))),
       condition:it.condition, cause:it.cause, fix:it.fix, follow_up:!!it.follow_up, follow_up_note:it.follow_up?it.follow_up_note:''
     };
   });

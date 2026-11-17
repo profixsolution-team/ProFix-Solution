@@ -13203,109 +13203,85 @@ function rptSlotHtml(j){
     :`<div class="rs-c ${c.opt?'opt':'miss'}"><span class="i">${c.opt?'ไม่บังคับ':'ขาด'}</span><span>${esc(slotShort(c.label))}</span></div>`;
   const sec=x=>{const m=x.phases.reduce((a,p)=>a+p.cells.filter(c=>!c.opt&&!c.ims.length&&!c.na).length,0);
     return `<details class="rs-u"${m?' open':''}><summary>${esc(x.title)} <span class="rs-pill ${m?'bad':'ok'}">${m?'ขาด '+m:'ครบ'}</span></summary><div class="rs-ph">${x.phases.map(p=>{const pm=p.cells.filter(c=>!c.opt&&!c.ims.length&&!c.na).length;return `<div><h6>${esc(p.l)} <span class="rs-pill ${pm?'bad':'ok'}">${p.cells.filter(c=>c.ims.length||c.na).length}/${p.cells.length}</span></h6><div class="rs-cells">${p.cells.map(cellHtml).join('')}</div></div>`;}).join('')}</div></details>`;};
-  return `<div class="rs-wrap"><div class="rs-top"><b>📷 รูปแยกช่อง</b><span class="rs-pill ${M.miss?'bad':'ok'}">${M.miss?`ขาด ${M.miss} จาก ${M.total} ช่อง`:`ครบ ${M.total} ช่อง`}</span><span class="tm" style="font-size:12px">${M.units.length} เครื่อง · กดรูปเพื่อดูเต็ม</span><span style="flex:1"></span><button type="button" class="btn btn-ghost btn-sm" id="rs-xlsx-btn" data-id="${esc(j.id)}" onclick="slotExportXlsx(this.dataset.id)">⬇ Excel แบบลูกค้า</button></div>${M.sections.map(sec).join('')}</div>`;
+  return `<div class="rs-wrap"><div class="rs-top"><b>📷 รูปแยกช่อง</b><span class="rs-pill ${M.miss?'bad':'ok'}">${M.miss?`ขาด ${M.miss} จาก ${M.total} ช่อง`:`ครบ ${M.total} ช่อง`}</span><span class="tm" style="font-size:12px">${M.units.length} เครื่อง · กดรูปเพื่อดูเต็ม</span><span style="flex:1"></span><button type="button" class="btn btn-ghost btn-sm" id="rs-pdf-btn" data-id="${esc(j.id)}" onclick="slotPrintPdf(this.dataset.id)">🖨 PDF รูปถ่าย (แบบลูกค้า)</button></div>${M.sections.map(sec).join('')}</div>`;
 }
-// ===== Excel แบบลูกค้า (2026-11-17) — หน้าตาตามไฟล์ตัวอย่าง "ตัวอย่าง เก็บรูปภาพ PM แอร์/ตู้แช่/ไส้กรอง.xlsx" =====
-// 1 ชีตต่อ 1 เครื่อง × 1 ช่วง · คอลัมน์ A–C กว้าง 42 · หัว ID / ประเภท / ชื่อไซต์ / ตัวที่ · แถว 4 ชื่อช่วง (รวม A4:C4)
-// แถวคู่ 6,8,10,12 = ชื่อช่อง · แถวคี่ 7,9,11,13 = รูป (สูง 170.1) · ช่องแรก ๆ = รูปสาขา (หน้าร้าน/หลังร้าน) ใส่ซ้ำทุกชีต · ไม่มีรูป = N/A
-const SLOT_XLSX_LIB='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
-const SLOT_XLSX_HEAD={pm_air:['ประเภทแอร์','แอร์ตัวที่'],pm_fridge:['ประเภทตู้แช่','ตู้แช่ตัวที่'],pm_filter:['ประเภทเครื่องกรอง','เครื่องกรองตัวที่'],repair_air:['ประเภทงาน','แอร์ตัวที่'],repair_fridge:['ประเภทงาน','ตู้แช่ตัวที่'],repair_other:['ประเภทงาน','เครื่องตัวที่']};
-const SLOT_XLSX_KIND={pm_air:'แอร์',pm_fridge:'ตู้แช่',pm_filter:'เครื่องกรองน้ำดื่ม',repair_air:'ซ่อมแอร์',repair_fridge:'ซ่อมตู้แช่ / ตู้เย็น',repair_other:'ซ่อม'};
-// โหลดรูป → ย่อให้พอดีช่อง (คมพอพิมพ์) → base64 + ขนาด
-async function slotXlsxImg(url,cache){
-  if(cache.has(url))return cache.get(url);
-  const p=(async()=>{
-    const r=await fetch(url,{mode:'cors'});if(!r.ok)throw new Error('โหลดรูปไม่ได้ '+r.status);
-    const bmp=await createImageBitmap(await r.blob());
-    const k=Math.min(1,900/Math.max(bmp.width,bmp.height)),w=Math.round(bmp.width*k),h=Math.round(bmp.height*k);
-    const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(bmp,0,0,w,h);
-    return {b64:c.toDataURL('image/jpeg',.82).split(',')[1],w,h};
-  })();
-  cache.set(url,p);return p;
+// ===== PDF รูปถ่ายแบบลูกค้า (2026-11-17) — หน้าตาตามไฟล์ตัวอย่าง "ตัวอย่าง เก็บรูปภาพ PM แอร์/ตู้แช่/ไส้กรอง.xlsx" =====
+// 1 หน้า A4 ต่อ 1 เครื่อง × 1 ช่วง · หัว ID / ประเภท / ชื่อไซต์ / ตัวที่ · ชื่อช่วง · ตาราง 3 คอลัมน์ (ชื่อช่องบน รูปล่าง)
+// รูปสาขา (หน้าร้าน/หลังร้าน) ใส่ซ้ำทุกหน้า · ไม่มีจุดนั้น/ไม่บังคับ = N/A · ช่องบังคับที่ขาด = ว่าง (ถามก่อน)
+const SLOT_PDF_HEAD={pm_air:['ประเภทแอร์','แอร์ตัวที่'],pm_fridge:['ประเภทตู้แช่','ตู้แช่ตัวที่'],pm_filter:['ประเภทเครื่องกรอง','เครื่องกรองตัวที่']};
+const SLOT_PDF_KIND={pm_air:'แอร์',pm_fridge:'ตู้แช่',pm_filter:'เครื่องกรองน้ำดื่ม'};
+const SLOT_PDF_CSS=`@page{size:A4 portrait;margin:9mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;background:#e9edf3;font-family:Tahoma,'Noto Sans Thai',sans-serif;color:#000}
+.tb{position:sticky;top:0;z-index:5;background:#0b1220;color:#fff;padding:8px 14px;display:flex;align-items:center;gap:10px;font-size:13px}.tb span{flex:1}.tb button{border:0;border-radius:6px;padding:7px 14px;font-family:inherit;cursor:pointer}.tb .p{background:#175fff;color:#fff}
+.pg{width:192mm;min-height:279mm;margin:12px auto;background:#fff;padding:0;box-shadow:0 8px 26px rgba(15,23,42,.16);page-break-after:always;break-after:page}
+.pg:last-child{page-break-after:auto;break-after:auto}
+.hd{width:100%;border-collapse:collapse;font-weight:700;font-size:11.5pt}.hd td{padding:1.2mm 1mm}.hd .r{text-align:right}
+h2{margin:3mm 0 3mm;text-align:center;font-size:15pt}
+.gr{display:grid;grid-template-columns:repeat(3,1fr);border-top:.3mm solid #000;border-left:.3mm solid #000}
+.c{border-right:.3mm solid #000;border-bottom:.3mm solid #000;display:flex;flex-direction:column}
+.c .lb{height:10mm;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;font-size:9.5pt;line-height:1.2;padding:0 1.5mm;border-bottom:.3mm solid #000}
+.c .im{height:52mm;display:flex;align-items:center;justify-content:center;padding:1mm;font-weight:700;font-size:11pt}
+.c .im img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+@media print{body{background:#fff}.tb{display:none}.pg{margin:0;box-shadow:none;width:auto;min-height:0}}`;
+function slotPdfHtml(j,M,title){
+  const units=M.units,site=M.sections.find(x=>x.key==='site'),siteCell=k=>site&&site.phases[0].cells.find(c=>c.id==='site.'+k);
+  const pages=[];
+  M.sections.filter(x=>x.key!=='site').forEach(sec=>{
+    const u=sec.unit,t=slotTplOf(u),H=SLOT_PDF_HEAD[u.tpl]||['ประเภท','เครื่องตัวที่'];
+    const no=units.filter(x=>slotTplOf(x).unit===t.unit).indexOf(u)+1;
+    sec.phases.forEach(ph=>{
+      const cells=[...(t.site||['front']).map(siteCell).filter(Boolean),...ph.cells];
+      pages.push(`<section class="pg"><table class="hd"><tr><td>ID: ${esc(j.id)}</td><td class="r">${esc(H[0])}: ${esc(u.kind||u.name||SLOT_PDF_KIND[u.tpl]||t.l)}</td></tr><tr><td>ชื่อไซต์: ${esc(j.branch||'')}</td><td class="r">${esc(H[1])}: ${no}${u.loc?` <span style="font-weight:400;font-size:9pt">(${esc(u.loc)})</span>`:''}</td></tr></table>
+        <h2>${esc(ph.l)}</h2><div class="gr">${cells.map(c=>`<div class="c"><div class="lb">${esc(c.label)}</div><div class="im">${c.ims.length?`<img src="${esc(c.ims[0].url)}" alt="">`:(c.na||c.opt)?'N/A':''}</div></div>`).join('')}</div></section>`);
+    });
+  });
+  return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>${esc(title)}</title><style>${SLOT_PDF_CSS}</style></head><body><div class="tb"><span>${esc(title)} · ${pages.length} หน้า</span><button onclick="window.close()">ปิด</button><button class="p" onclick="window.print()">พิมพ์ / Save PDF</button></div>${pages.join('')}</body></html>`;
 }
-async function slotExportXlsx(jobId){
+function slotPrintPdf(jobId){
   const j=jobs.find(x=>sameJob(x.id,jobId)&&!isDeletedRecord(x));const M=j&&slotJobModel(j);
-  if(!M){alert('งานนี้ยังไม่มีรูปแยกช่องจากช่าง');return;}
-  if(M.miss&&!confirm(`ยังขาดรูป ${M.miss} ช่อง — ช่องที่ขาดจะเว้นว่างใน Excel\nออก Excel ต่อไหม?`))return;
-  const btn=document.getElementById('rs-xlsx-btn');const old=btn&&btn.textContent;if(btn){btn.disabled=true;btn.textContent='กำลังสร้าง Excel...';}
-  try{
-    await loadScriptOnce(SLOT_XLSX_LIB);
-    const wb=new ExcelJS.Workbook();wb.creator='ProFix Console';
-    const cache=new Map(),idOf=new Map(),fails=[];
-    const site=M.sections.find(x=>x.key==='site'),siteCell=k=>site&&site.phases[0].cells.find(c=>c.id==='site.'+k);
-    const used=new Set(),sheetName=n=>{let b=String(n).replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,28).trim(),x=b,i=2;while(used.has(x))x=(b.slice(0,25)+' '+i++);used.add(x);return x;};
-    const F=(sz,b)=>({name:'Tahoma',size:sz,bold:!!b});
-    const units=M.units,multi=M.sections.length>2;
-    for(const sec of M.sections.filter(x=>x.key!=='site')){
-      const u=sec.unit,t=slotTplOf(u),H=SLOT_XLSX_HEAD[u.tpl]||SLOT_XLSX_HEAD.repair_other;
-      const no=units.filter(x=>slotTplOf(x).unit===t.unit).indexOf(u)+1;
-      for(const ph of sec.phases){
-        const ws=wb.addWorksheet(sheetName(multi?`${slotUnitName(units,u)} ${ph.l}`:ph.l),{views:[{state:'normal',zoomScale:80}],pageSetup:{paperSize:9,orientation:'portrait',scale:67,margins:{left:.7,right:.7,top:.75,bottom:.75,header:.3,footer:.3}}});
-        ws.columns=[{width:42},{width:42},{width:42}];
-        ws.getCell('A1').value=`ID: ${j.id}`;ws.getCell('A1').font=F(12,1);
-        ws.getCell('C1').value=`${H[0]}: ${u.name||SLOT_XLSX_KIND[u.tpl]||t.l}`;ws.getCell('C1').font=F(12,1);ws.getCell('C1').alignment={horizontal:'right'};
-        ws.getCell('A2').value=`ชื่อไซต์: ${j.branch||''}`;ws.getCell('A2').font=F(12,1);
-        ws.getCell('C2').value=`${H[1]}: ${no}`;ws.getCell('C2').font=F(12,1);ws.getCell('C2').alignment={horizontal:'right'};
-        [1,2].forEach(r=>ws.getRow(r).height=15);
-        ws.mergeCells('A4:C4');ws.getCell('A4').value=ph.l;ws.getCell('A4').font=F(16,1);ws.getCell('A4').alignment={horizontal:'center',vertical:'middle'};ws.getRow(4).height=30;
-        const cells=[...(t.site||['front']).map(siteCell).filter(Boolean),...ph.cells];
-        for(let i=0;i<cells.length;i++){
-          const c=cells[i],col=i%3,lr=6+Math.floor(i/3)*2,ir=lr+1;
-          ws.getRow(lr).height=24.95;ws.getRow(ir).height=170.1;
-          const lc=ws.getCell(lr,col+1);lc.value=c.label;lc.font=F(11,1);lc.alignment={horizontal:'center',vertical:'middle',wrapText:true};
-          const ic=ws.getCell(ir,col+1);const th={style:'thin',color:{argb:'FF000000'}};ic.border={top:th,left:th,bottom:th,right:th};
-          if(c.ims.length){
-            try{
-              const im=await slotXlsxImg(c.ims[0].url,cache);
-              let id=idOf.get(c.ims[0].url);if(id==null){id=wb.addImage({base64:im.b64,extension:'jpeg'});idOf.set(c.ims[0].url,id);}
-              const bw=290,bh=217,k=Math.min(bw/im.w,bh/im.h),w=Math.round(im.w*k),h=Math.round(im.h*k);
-              const colPx=42*7+5,rowPx=170.1*96/72;
-              ws.addImage(id,{tl:{nativeCol:col,nativeColOff:Math.round((colPx-w)/2*9525),nativeRow:ir-1,nativeRowOff:Math.round((rowPx-h)/2*9525)},ext:{width:w,height:h},editAs:'oneCell'});
-            }catch(e){fails.push(c.label);ic.value='(โหลดรูปไม่ได้)';ic.alignment={horizontal:'center',vertical:'middle'};}
-          }else{ic.value=(c.na||c.opt)?'N/A':'';ic.font=F(11,1);ic.alignment={horizontal:'center',vertical:'middle'};}
-        }
-      }
-    }
-    const buf=await wb.xlsx.writeBuffer();
-    const name=(typeof bundleJobName==='function'?bundleJobName({pr:j.id,branch:j.branch,client:j.client}):j.id)+' - รูปถ่าย.xlsx';
-    downloadBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),name);
-    if(fails.length)setTimeout(()=>alert(`โหลดรูปไม่ได้ ${fails.length} ช่อง: ${fails.slice(0,5).join(', ')}`),50);
-  }catch(e){alert('สร้าง Excel ไม่สำเร็จ: '+((e&&e.message)||e));}
-  finally{if(btn){btn.disabled=false;btn.textContent=old;}}
+  if(!M||M.sections.length<2){alert('งานนี้ยังไม่มีรูปแยกช่องจากช่าง');return;}
+  if(M.miss&&!confirm(`ยังขาดรูป ${M.miss} ช่อง — ช่องที่ขาดจะเว้นว่างใน PDF\nเปิดหน้าพิมพ์ต่อไหม?`))return;
+  const title=(typeof bundleJobName==='function'?bundleJobName({pr:j.id,branch:j.branch,client:j.client}):j.id)+' - รูปถ่าย PM';
+  const w=window.open('','_blank');if(!w){alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
+  w.document.open();w.document.write(slotPdfHtml(j,M,title));w.document.close();
 }
-function slotGuessTpl(j){const t=String((j&&j.type)||'')+' '+String((j&&j.note)||'');const pm=/(^|[^a-z])pm([^a-z]|$)|บำรุง/i.test(t);
-  if(/กรอง/.test(t))return 'pm_filter';if(/ตู้/.test(t))return pm?'pm_fridge':'repair_fridge';if(/แอร์/.test(t))return pm?'pm_air':'repair_air';return pm?'pm_air':'repair_other';}
+function slotGuessTpl(j){const t=String((j&&j.type)||'')+' '+String((j&&j.note)||'');if(/กรอง/.test(t))return 'pm_filter';if(/ตู้/.test(t))return 'pm_fridge';return 'pm_air';}
 async function slotToggleJob(id){
   if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   const on=!(j.photoSlots&&j.photoSlots.on);
-  if(!confirm(on?`เปิดโหมด "รูปแยกช่อง" (ทดสอบ) ให้งาน ${id}?\n\nช่างที่เปิดลิงก์ส่งงานของงานนี้จะเห็นช่องรูปแบบใหม่แทนแบบเดิม\nเริ่มต้นด้วย 1 เครื่อง (${SLOT_TPL[slotGuessTpl(j)].l}) — ช่างเพิ่ม/ลบเครื่องเองได้`:`ปิดโหมดรูปแยกช่องของงาน ${id}? (กลับไปใช้ฟอร์มรูปแบบเดิม · รูปที่อัปแล้วยังอยู่)`))return;
+  if(!confirm(on?`เปิดโหมด "รูปแยกช่อง" (ทดสอบ) ให้งาน ${id}?\n\nใช้กับงาน PM เท่านั้น (งานซ่อมใช้ฟอร์มเดิม)\n• งานที่ผูกแผน PM: ช่องรูปอยู่ในหน้า "บันทึก PM รายเครื่อง" ของแต่ละเครื่อง\n• งานที่ยังไม่ผูกแผน: ช่องรูปแยกตามเครื่อง เริ่มที่ ${SLOT_TPL[slotGuessTpl(j)].l} 1 เครื่อง`:`ปิดโหมดรูปแยกช่องของงาน ${id}? (กลับไปใช้ฟอร์มรูปแบบเดิม · รูปที่อัปแล้วยังอยู่)`))return;
   const photoSlots={on,units:(j.photoSlots&&j.photoSlots.units&&j.photoSlots.units.length)?j.photoSlots.units:[{id:'u1',tpl:slotGuessTpl(j)}]};
   const before=clonePlain(j);
   try{await patchJobFieldsOnServer(j.id,{photoSlots});}catch(e){alert('บันทึกไม่สำเร็จ: '+e.message);return;}
   writeAuditLog('job_photo_slots_toggle','job',j.id,before,{photoSlots},clonePlain(j));
   try{openDet(j.id);}catch(e){}
 }
-// งานทดสอบ 3 งาน (ทีม "ทดสอบ" = ไม่มีช่างจริงได้รับแจ้ง) — ลบทิ้งได้หลังทดสอบ
+// งานทดสอบ 3 งาน (ทีม "ทดสอบ" = ไม่มีช่างจริงได้รับแจ้ง) ผูกกับแผน PM ทดสอบ (สัญญา "ทดสอบรูปแยกช่อง") — ลบทิ้งได้หลังทดสอบ
+// ฟอร์มช่างจะแสดง "บันทึก PM รายเครื่อง" ให้งานเหล่านี้ได้ แม้สวิตช์ฟอร์มช่าง PM ปิดอยู่ (ต้องรัน console_pm_tech_test_jobs.sql)
+const SLOT_TEST_CLIENT='ทดสอบระบบ (ไม่ใช่งานจริง)',SLOT_TEST_CONTRACT='PMC-TESTSLOT';
 async function createSlotTestJobs(){
   if(!guardEdit())return;
   const defs=[
-    {id:'TEST-SLOT-1',type:'PM แอร์',branch:'สาขาทดสอบ 1 · PM แอร์ 2 เครื่อง',units:[{id:'u1',tpl:'pm_air'},{id:'u2',tpl:'pm_air'}]},
-    {id:'TEST-SLOT-2',type:'PM ตู้แช่',branch:'สาขาทดสอบ 2 · PM ตู้แช่ + ไส้กรองน้ำ',units:[{id:'u1',tpl:'pm_fridge'},{id:'u2',tpl:'pm_filter'}]},
-    {id:'TEST-SLOT-3',type:'ซ่อมแอร์',branch:'สาขาทดสอบ 3 · ซ่อมแอร์',units:[{id:'u1',tpl:'repair_air'}]}];
-  const live=defs.filter(d=>liveJobs().some(j=>normalizePR(j.id)===normalizePR(d.id)));
-  const todo=defs.filter(d=>!live.includes(d));
-  if(!todo.length){alert('มีงานทดสอบครบ 3 งานแล้ว: '+defs.map(d=>d.id).join(', ')+'\nค้นหา "TEST-SLOT" ในคิวช่าง');return;}
-  if(!confirm(`สร้างงานทดสอบ "รูปแยกช่อง" ${todo.length} งาน?\n\n${todo.map(d=>'• '+d.id+' — '+d.branch).join('\n')}\n\nทีมช่าง = "ทดสอบ" (ไม่มีช่างจริงได้รับแจ้ง) · ลบทิ้งได้หลังทดสอบเสร็จ`))return;
-  const now=todayISO();
-  todo.forEach((d,i)=>{
+    {id:'TEST-SLOT-1',type:'PM แอร์',branch:'สาขาทดสอบ 1 · PM แอร์'},
+    {id:'TEST-SLOT-2',type:'PM ตู้แช่',branch:'สาขาทดสอบ 2 · PM ตู้แช่'},
+    {id:'TEST-SLOT-3',type:'PM ไส้กรองน้ำ',branch:'สาขาทดสอบ 3 · PM ไส้กรองน้ำ'}];
+  const have=defs.filter(d=>liveJobs().some(j=>normalizePR(j.id)===normalizePR(d.id)));
+  if(!confirm(`สร้าง${have.length?'ใหม่ (รีเซ็ต)':''}งานทดสอบ "รูปแยกช่อง" 3 งาน?\n\n${defs.map(d=>'• '+d.id+' — '+d.branch).join('\n')}\n\n• ผูกกับแผน PM ทดสอบ (สัญญา "ทดสอบรูปแยกช่อง") ช่างจะเห็นหน้า "บันทึก PM รายเครื่อง" + ช่องรูป\n• ทีมช่าง = "ทดสอบ" (ไม่มีช่างจริงได้รับแจ้ง)${have.length?'\n• งานทดสอบเดิม '+have.length+' งานจะถูกล้างรายงาน/รูปเดิม':''}\n\nลบทิ้งได้หลังทดสอบเสร็จ (งาน + สัญญาทดสอบในหน้า PM)`))return;
+  const now=todayISO(),by=getActorName(),ts=new Date().toISOString();
+  try{
+    await pmUpsert('pm_contracts',[{id:SLOT_TEST_CONTRACT,client:SLOT_TEST_CLIENT,name:'ทดสอบรูปแยกช่อง',year:+now.slice(0,4),rounds:1,status:'active',note:'สัญญาทดสอบ — ลบได้หลังทดสอบ',updated_at:ts,updated_by:by}]);
+    await pmUpsert('pm_sites',defs.map((d,i)=>({id:'PMS-TESTSLOT-'+(i+1),contract_id:SLOT_TEST_CONTRACT,branch:d.branch,address:'',sort_no:i,status:'active',updated_at:ts})));
+    await pmUpsert('pm_visits',defs.map((d,i)=>({id:'PMV-TESTSLOT-'+(i+1),contract_id:SLOT_TEST_CONTRACT,round_no:1,site_id:'PMS-TESTSLOT-'+(i+1),branch:d.branch,planned_date:now,team:'ทดสอบ',job_id:d.id,status:'planned',updated_at:ts,updated_by:by})));
+  }catch(e){alert('สร้างแผน PM ทดสอบไม่สำเร็จ: '+((e&&e.message)||e)+'\n(งานทดสอบยังสร้างได้ แต่ช่างจะไม่เห็นหน้าบันทึก PM รายเครื่อง)');}
+  defs.forEach((d,i)=>{
     const old=jobs.find(j=>normalizePR(j.id)===normalizePR(d.id));
-    const row={id:d.id,client:'ทดสอบระบบ (ไม่ใช่งานจริง)',ref:d.id,branch:d.branch,type:d.type,team:'ทดสอบ',date:now,status:'จัดช่างแล้ว',level:'',billType:'',note:'งานทดสอบรูปแยกช่อง — ลบได้หลังทดสอบ',company:'',pc:0,pt:0,assignedAt:now,partC:0,partR:0,fuel:0,report:'',isNew:false,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()+i,photoSlots:{on:true,units:d.units},isTest:true};
-    if(old){Object.keys(old).forEach(k=>delete old[k]);Object.assign(old,row);}else jobs.unshift(row);
-    writeAuditLog('create_slot_test_job','job',d.id,null,row,row);
+    const row={id:d.id,client:SLOT_TEST_CLIENT,ref:d.id,branch:d.branch,type:d.type,team:'ทดสอบ',date:now,status:'จัดช่างแล้ว',level:'',billType:'',note:'งานทดสอบรูปแยกช่อง — ลบได้หลังทดสอบ',company:'',pc:0,pt:0,assignedAt:now,partC:0,partR:0,fuel:0,report:'',isNew:false,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()+i,photoSlots:{on:true,units:[]},isTest:true};
+    if(old){const before=clonePlain(old);Object.keys(old).forEach(k=>delete old[k]);Object.assign(old,row);writeAuditLog('reset_slot_test_job','job',d.id,before,row,row);}
+    else{jobs.unshift(row);writeAuditLog('create_slot_test_job','job',d.id,null,row,row);}
   });
   ensureJobStatus('จัดช่างแล้ว');saveState();renderJobs();renderDash();
-  todo.forEach(d=>{try{verifyJobPersisted(d.id);}catch(e){}});
-  setTimeout(()=>alert(`สร้างงานทดสอบแล้ว ${todo.length} งาน\n\nวิธีทดสอบ: เปิดงาน → แท็บ "ลิงก์ช่าง / ลูกค้า" → เปิดลิงก์ส่งงานของช่างบนมือถือ\nหลังส่งงาน ดูผลได้ที่ "ตรวจรายงานช่าง" ของงานนั้น`),50);
+  defs.forEach(d=>{try{verifyJobPersisted(d.id);}catch(e){}});
+  setTimeout(()=>alert(`พร้อมทดสอบ 3 งาน (TEST-SLOT-1 ถึง 3)\n\nวิธีทดสอบ: เปิดงาน → แท็บ "ลิงก์ช่าง / ลูกค้า" → เปิดลิงก์ส่งงานของช่างบนมือถือ\n→ ถ่ายรูปหน้าร้าน/หลังร้าน → แท็บ ① บันทึกรายเครื่อง → เพิ่มเครื่อง → ส่วน 📸 รูปของเครื่องนี้\nหลังส่งงาน: "ตรวจรายงานช่าง" → 🖨 PDF รูปถ่าย`),50);
 }
 function renderReportImages(j){
   const imgs=reportImages(j),docs=reportDocumentImages(j);
