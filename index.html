@@ -3112,7 +3112,12 @@ function markTechUpdateSeen(jobId,{save=true}={}){
   if(save)saveState();
 }
 function adminNeedsQueueBadge(t){return !t?.jobId||!liveJobs().some(j=>sameJob(j.id,t.jobId));}
-function isClosedAdminTask(t){return isDeletedRecord(t)||['เสร็จแล้ว','ปิดงาน','Reject'].includes(t?.status);}
+// งาน Admin ที่ผ่านขั้นช่าง/แอดมินแล้ว → ไม่นับเป็นงานค้าง / ไม่ขึ้นเลยกำหนด (2026-11-18: เดิมนับแค่ เสร็จแล้ว/ปิดงาน/Reject → งาน "รอจ่ายช่าง" ขึ้นเลยกำหนด)
+// รอจ่ายช่าง = เหลือแค่จ่ายเงินช่าง (ทำในหน้า การเงิน & จ่ายช่าง) · Job Done = สถานะเก่า · ยกเลิก/ปิดงานสำรวจ/ดำเนินการแล้ว = จบงาน
+const ADMIN_TASK_DONE_ST=['เสร็จแล้ว','ปิดงาน','Reject','รอจ่ายช่าง','รอจ่าย','Job Done','ยกเลิก','ปิดงานสำรวจ','ดำเนินการแล้ว','รอวางบิล','รอออกใบกำกับภาษี','รอทำใบกำกับภาษี'];
+// ขั้นวางบิล/ออกใบกำกับ ก็ไม่นับเป็นงานค้าง (ผู้ใช้ยืนยัน 2026-11-18) — จับจากคำด้วย เหมือน isJobAfterSubmit
+function isAdminTaskDoneSt(s){s=String(s||'').trim();return ADMIN_TASK_DONE_ST.includes(s)||/วางบิล|ใบกำกับ|จ่ายช่าง|^รอจ่าย|^รอเก็บเงิน/.test(s);}
+function isClosedAdminTask(t){return isDeletedRecord(t)||isAdminTaskDoneSt(t?.status);}
 function isClosedJob(j){return isDeletedRecord(j)||['ปิดงาน','Reject','ปิดงานสำรวจ'].includes(j?.status);}
 function activeAdminCount(){return liveAdminTasks().filter(t=>!isClosedAdminTask(t)).length;}
 function activeJobCount(){return liveJobs().filter(j=>!isClosedJob(j)).length;}
@@ -14351,7 +14356,7 @@ function updateHeaderStats(page){
       const pend=open.filter(isJobPendingWork);
       phSet('jobs',[['งานค้าง',pend.length],['เลยวันนัด',late,late?'bad':''],['นัด 7 วันข้างหน้า',open.filter(j=>{const x=String(j.date||'').slice(0,10);return x>=today&&x<=in7&&!PH_AFTER_TECH.has(j.status)&&isJobPendingWork(j);}).length]]);
     }else if(page==='admin-tracker'){
-      const t=(adminTasks||[]).filter(x=>!isDeletedRecord(x)&&!['เสร็จแล้ว','ปิดงาน','Reject'].includes(x.status));
+      const t=(adminTasks||[]).filter(x=>!isDeletedRecord(x)&&!isAdminTaskDoneSt(x.status));
       const od=t.filter(x=>x.due&&String(x.due).slice(0,10)<today).length;
       phSet('admin-tracker',[['งานค้าง',t.length],['เลยกำหนด',od,od?'bad':''],['ครบกำหนดวันนี้',t.filter(x=>String(x.due||'').slice(0,10)===today).length]]);
     }
@@ -14687,7 +14692,7 @@ var JQ_AV_COLORS=['#175FFF','#0ea5e9','#16a34a','#d97706','#9333ea','#db2777','#
 var dash2Day='today';
 var D2_WAIT_TECH=['รอเปิดงาน','รอดำเนินการ','รอจัดช่าง','จัดช่างแล้ว','รอช่างเข้าซ่อม','ช่างออกงาน'];
 var D2_DOCS=['รอออกใบกำกับภาษี','รอวางบิล'];
-var D2_TASK_DONE=['เสร็จแล้ว','ปิดงาน','Reject'];
+var D2_TASK_DONE=ADMIN_TASK_DONE_ST;
 function d2Go(statuses){goTo('jobs');try{setJobStatusSel(statuses);}catch(e){}}
 function d2Txt(id){const el=document.getElementById(id);return el?String(el.textContent||'').trim():'';}
 function renderDashV2(){
@@ -14709,7 +14714,7 @@ function renderDashV2(){
       +(idle.length?`<div class="d2-idle">ว่าง${dash2Day==='today'?'วันนี้':'พรุ่งนี้'}: ${idle.map(esc).join(' · ')}</div>`:'')
       :`<div class="d2-empty">ยังไม่มีงานนัด${dash2Day==='today'?'วันนี้':'พรุ่งนี้'}${idle.length?` · ทุกทีมว่าง`:''}</div>`;
     // ----- ต้องทำวันนี้ (Admin Tracker: ครบกำหนดวันนี้ + เลยกำหนด) -----
-    const tasks=(adminTasks||[]).filter(t=>!isDeletedRecord(t)&&!D2_TASK_DONE.includes(t.status)&&t.due&&String(t.due).slice(0,10)<=today)
+    const tasks=(adminTasks||[]).filter(t=>!isDeletedRecord(t)&&!isAdminTaskDoneSt(t.status)&&t.due&&String(t.due).slice(0,10)<=today)
       .sort((a,b)=>String(a.due).localeCompare(String(b.due))).slice(0,8);
     const todoHtml=tasks.length?tasks.map(t=>{const od=String(t.due).slice(0,10)<today;return `<button type="button" class="d2-todo" onclick="openAdminDetail('${esc(t.id).replace(/'/g,'&#39;')}')"><span class="d2-ck ${od?'late':''}"></span><span class="d2-two"><b>${esc(t.detail||t.type||t.id)}</b><small>${esc([t.jobId,t.client||t.customer].filter(Boolean).join(' · '))}${od?` · <em>เลยกำหนด ${esc(jqThDate(t.due))}</em>`:' · วันนี้'}</small></span></button>`;}).join('')
       :'<div class="d2-empty">ไม่มีงานที่ครบกำหนดวันนี้ ✓</div>';
@@ -14756,14 +14761,14 @@ function renderDashV2(){
 // =====================================================================
 var adminQuick=(()=>{try{return localStorage.getItem('profix_admin_quick')||'all';}catch(e){return 'all';}})();
 var adminAssignFilter='',adminTypeFilter='';
-var AT_DONE=['เสร็จแล้ว','ปิดงาน','Reject'];
-function atIsLate(t){return !!(t.due&&String(t.due).slice(0,10)<todayISO()&&!AT_DONE.includes(t.status));}
+var AT_DONE=ADMIN_TASK_DONE_ST;
+function atIsLate(t){return !!(t.due&&String(t.due).slice(0,10)<todayISO()&&!isAdminTaskDoneSt(t.status));}
 function atIsMine(t){const me=String((AUTH&&AUTH.display_name)||'').trim();const a=String(t.assign||'').trim();return !!(me&&a&&(me.includes(a)||a.includes(me)||a==='ทั้งคู่'));}
 function atQuickMatch(t,q){const today=todayISO();
   if(q==='mine')return atIsMine(t);
   if(q==='late')return atIsLate(t);
-  if(q==='today')return String(t.due||'').slice(0,10)===today&&!AT_DONE.includes(t.status);
-  if(q==='done')return AT_DONE.includes(t.status);
+  if(q==='today')return String(t.due||'').slice(0,10)===today&&!isAdminTaskDoneSt(t.status);
+  if(q==='done')return isAdminTaskDoneSt(t.status);
   return true;}
 function setAdminQuick(q){adminQuick=q;try{localStorage.setItem('profix_admin_quick',q);}catch(e){}renderAdmin();saveUIState();}
 function buildAdminControls(counts){
@@ -14812,7 +14817,7 @@ function atUntag(k){const all=k==='*';
   renderAdmin();saveUIState();}
 function atPriDot(t){const p=String(t.pri||'');const c=p==='เร่งด่วนมาก'?'#dc2626':p==='ด่วน'?'#f59e0b':'#cbd5e1';return `<span class="at-pri" style="background:${c}" title="ความสำคัญ: ${esc(p||'ปกติ')}"></span>`;}
 function atDueHtml(t){const d=String(t.due||'').slice(0,10);if(!d)return '<span class="tm">—</span>';const today=todayISO();
-  if(!AT_DONE.includes(t.status)&&d<today){const n=Math.round((new Date(today)-new Date(d))/864e5);return `<span class="jq-late">${esc(jqThDate(d))} · เลย ${n} วัน</span>`;}
+  if(!isAdminTaskDoneSt(t.status)&&d<today){const n=Math.round((new Date(today)-new Date(d))/864e5);return `<span class="jq-late">${esc(jqThDate(d))} · เลย ${n} วัน</span>`;}
   if(d===today)return `<b style="color:var(--accent)">วันนี้</b>`;return esc(jqThDate(d));}
 
 // ----- แผงรายละเอียดงาน Admin (ใช้แผงเดียวกับคิวช่าง) -----
