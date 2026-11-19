@@ -509,7 +509,6 @@ function openManualJob(){
 }
 
 let jobData = null;
-let appState = null;
 let jobStorageMode = 'app_state';
 let photos = { before: [], during: [], after: [], documents: [] };
 let noPhoto = { during: false, after: false };
@@ -555,7 +554,24 @@ async function loadLatestReportState(jobId){
   }catch(e){ console.warn('latest report state fetch failed', e); }
   return null;
 }
+// งาน 1 งานจากเลข PR ผ่าน RPC (ข้อมูลไม่มีราคา) — คืน undefined ถ้ายังไม่ได้รัน SQL Phase 20 (ให้ใช้วิธีเดิม)
+async function fetchPubJob(code){
+  for(let attempt=0; attempt<2; attempt++){
+    try{
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_pub_job`, { method:'POST', headers: sbHeaders(), body: JSON.stringify({ p_code: code }) });
+      if(r.ok) return (await r.json()) || null;
+      if(r.status === 404) return undefined;
+    }catch(e){ console.warn('profix_pub_job failed', e); }
+    await new Promise(res=>setTimeout(res, 500));
+  }
+  return undefined;
+}
 async function loadJobRecord(jobId){
+  const pub = await fetchPubJob(String(jobId||'').trim());
+  if(pub !== undefined){ jobStorageMode = 'split'; return pub; }
+  return await loadJobRecordLegacy(jobId);
+}
+async function loadJobRecordLegacy(jobId){
   const cleanJobId = String(jobId||'').trim();
   // ลองหาในตาราง jobs แบบ exact match — retry กัน fetch พลาดชั่วคราว (กันขึ้น "ไม่พบงาน" ทั้งที่งานมีจริง)
   for(let attempt=0; attempt<2; attempt++){
@@ -598,49 +614,18 @@ async function loadJobRecord(jobId){
       }
     }
   }catch(e){ console.warn('Split fuzzy job load failed, falling back to app_state', e); }
-  try{
-    const rr = await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_get_job_from_app_state`, {
-      method: 'POST',
-      headers: sbHeaders(),
-      body: JSON.stringify({ p_key: STATE_KEY, p_job_id: jobId })
-    });
-    if(rr.ok){
-      const job = await rr.json();
-      if(job){
-        jobStorageMode = 'app_state';
-        return job;
-      }
-    }
-  }catch(e){ console.warn('Single job RPC load failed, falling back to full app_state', e); }
-  const data = await loadAppState();
-  appState = data || {};
-  jobStorageMode = 'app_state';
-  return (appState.jobs || []).find(j => sameJobId(j.id, cleanJobId)) || null;
-}
-
-async function loadAppState(){
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/app_state?key=eq.${encodeURIComponent(STATE_KEY)}&select=data`, { headers: sbHeaders() });
-  if(!r.ok) throw new Error(await r.text());
-  const rows = await r.json();
-  return rows?.[0]?.data || null;
-}
-
-async function saveAppState(data){
-  const body = JSON.stringify({ key: STATE_KEY, data, updated_at: new Date().toISOString() });
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/app_state`, {
-    method: 'POST',
-    headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-    body
-  });
-  if(!r.ok) throw new Error(await r.text());
+  return null;
 }
 
 function reportTableId(jobId){ return `${normJobId(jobId)}:latest`; }
 function eventId(prefix){ return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
 async function loadMasterPartOptions(){
   try{
-    const partRows=await fetch(`${SUPABASE_URL}/rest/v1/parts?select=id,data,updated_at&order=updated_at.desc`,{headers:sbHeaders()})
-      .then(async r=>r.ok?await r.json():[]);
+    // Phase 20: รายการอะไหล่ผ่าน RPC (ไม่มีราคา) — ถ้ายังไม่ได้รัน SQL ใช้วิธีเดิม
+    let partRows=null;
+    const pr=await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_pub_parts`,{method:'POST',headers:sbHeaders(),body:'{}'});
+    if(pr.ok) partRows=await pr.json();
+    else if(pr.status===404) partRows=await fetch(`${SUPABASE_URL}/rest/v1/parts?select=id,data,updated_at&order=updated_at.desc`,{headers:sbHeaders()}).then(async r=>r.ok?await r.json():[]);
     masterPartOptions=(partRows||[]).map(r=>{
       const x=r.data||{};
       return {
@@ -650,35 +635,11 @@ async function loadMasterPartOptions(){
         category:x.cat||x.category||'อะไหล่',
         unit:x.unit||'',
         brand:x.brand||x.spec||'',
-        supplier:x.sup||x.supplier||'',
+        supplier:'',
         aliases:Array.isArray(x.aliases)?x.aliases:String(x.aliases||'').split(/[,\n]/).map(t=>t.trim()).filter(Boolean),
         source:'parts'
       };
     }).filter(x=>String(x.name||'').trim());
-    if(!masterPartOptions.length){
-      const stockRows=await fetch(`${SUPABASE_URL}/rest/v1/stock_items?select=id,sku,item_name,category,unit,is_active&is_active=eq.true&order=item_name.asc`,{headers:sbHeaders()})
-        .then(async r=>r.ok?await r.json():[]);
-      masterPartOptions=(stockRows||[]).map(x=>({
-        id:x.id||'',
-        code:x.sku||'',
-        name:x.item_name||'',
-        category:x.category||'อะไหล่/สต็อก',
-        unit:x.unit||'',
-        source:'stock'
-      })).filter(x=>String(x.name||'').trim());
-    }
-    if(!masterPartOptions.length){
-      const priceRows=await fetch(`${SUPABASE_URL}/rest/v1/master_price_items?select=id,item_code,item_name,category,default_unit&is_active=eq.true&order=category.asc,item_name.asc`,{headers:sbHeaders()})
-        .then(async r=>r.ok?await r.json():[]);
-      masterPartOptions=(priceRows||[]).filter(x=>/อะไหล่|part|spare|material|วัสดุ/i.test(`${x.category||''} ${x.item_name||''}`)).map(x=>({
-        id:x.id||'',
-        code:x.item_code||'',
-        name:x.item_name||'',
-        category:x.category||'',
-        unit:x.default_unit||'',
-        source:'master_price'
-      })).filter(x=>String(x.name||'').trim());
-    }
   }catch(e){
     console.warn('load master part options failed',e);
     masterPartOptions=[];
@@ -1211,115 +1172,6 @@ async function patchJobAfterTechReport(jobId, patch, { statuses=[], adminTaskNot
     })
   });
   if(!pr.ok) throw new Error('อัปเดตสถานะงานไม่สำเร็จ: ' + await pr.text());
-}
-
-async function saveJobRecord(job, { adminTaskNote='', savedAt=new Date().toISOString(), statuses=[] } = {}){
-  const targetJobId = job?.id || JOB_ID;
-  if(jobStorageMode === 'split'){
-    try{
-      const jobBody = JSON.stringify({ id: targetJobId, data: job, updated_at: savedAt });
-      const jr = await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
-        method: 'POST',
-        headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-        body: jobBody
-      });
-      if(!jr.ok) throw new Error(await jr.text());
-      await updateRelatedSplitRows(job, { jobId: targetJobId, adminTaskNote, savedAt, statuses });
-      return;
-    }catch(e){
-      console.warn('Split job save failed, falling back to app_state RPC', e);
-    }
-  }
-
-  const rpcPayload = {
-    p_key: STATE_KEY,
-    p_job_id: targetJobId,
-    p_job: job,
-    p_statuses: statuses,
-    p_admin_task_note: adminTaskNote,
-    p_saved_at: savedAt
-  };
-  const rr = await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_update_job_in_app_state`, {
-    method: 'POST',
-    headers: sbHeaders(),
-    body: JSON.stringify(rpcPayload)
-  });
-  if(rr.ok) return;
-  console.warn('RPC save failed, falling back to full app_state save', await rr.text());
-
-  const latestState = await loadAppState();
-  if(!latestState || !Array.isArray(latestState.jobs)) throw new Error('ไม่พบข้อมูลระบบหลักใน Supabase');
-  const latestJob = latestState.jobs.find(j => sameJobId(j.id, targetJobId));
-  if(!latestJob) throw new Error('ไม่พบงานนี้ในระบบหลัก');
-  Object.assign(latestJob, job);
-  statuses.forEach(s=>{
-    if(Array.isArray(latestState.J_ST) && !latestState.J_ST.includes(s)) latestState.J_ST.push(s);
-    if(Array.isArray(latestState.A_ST) && !latestState.A_ST.includes(s)) latestState.A_ST.push(s);
-  });
-  if(Array.isArray(latestState.adminTasks)){
-    latestState.adminTasks.forEach(t=>{
-      if(sameJobId(t.jobId, targetJobId)){
-        t.status = job.status || t.status;
-        t.techUpdateUnread = !!job.techUpdateUnread;
-        t.techUpdateAt = job.techUpdateAt || savedAt;
-        t.techUpdateType = job.techUpdateType || '';
-        if(adminTaskNote){
-          t.reportReviewNote = adminTaskNote;
-          t.reportReviewedAt = savedAt;
-        }
-      }
-    });
-  }
-  latestState.lastDataUpdatedAt = savedAt;
-  await saveAppState(latestState);
-}
-
-async function updateRelatedSplitRows(job, { jobId=JOB_ID, adminTaskNote='', savedAt, statuses=[] }){
-  const [taskRes, metaRes] = await Promise.all([
-    fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?select=id,data&data->>jobId=eq.${encodeURIComponent(jobId)}`, { headers: sbHeaders() }),
-    fetch(`${SUPABASE_URL}/rest/v1/system_data?id=eq.main&select=data`, { headers: sbHeaders() })
-  ]);
-  if(taskRes.ok){
-    let rows = await taskRes.json();
-    if(!rows.length){
-      try{
-        const fallbackRes = await fetch(`${SUPABASE_URL}/rest/v1/admin_tasks?select=id,data&limit=1000`, { headers: sbHeaders() });
-        if(fallbackRes.ok){
-          rows = (await fallbackRes.json()).filter(row=>sameJobId(row?.data?.jobId, jobId));
-        }
-      }catch(e){ console.warn('Admin task fallback lookup failed', e); }
-    }
-    for(const row of rows){
-      const task = { ...(row.data || {}) };
-      task.status = job.status || task.status;
-      task.techUpdateUnread = !!job.techUpdateUnread;
-      task.techUpdateAt = job.techUpdateAt || savedAt;
-      task.techUpdateType = job.techUpdateType || '';
-      if(adminTaskNote){
-        task.reportReviewNote = adminTaskNote;
-        task.reportReviewedAt = savedAt;
-      }
-      await fetch(`${SUPABASE_URL}/rest/v1/admin_tasks`, {
-        method: 'POST',
-        headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-        body: JSON.stringify({ id: row.id, data: task, updated_at: savedAt })
-      });
-    }
-  }
-  if(metaRes.ok){
-    const rows = await metaRes.json();
-    const meta = { ...(rows?.[0]?.data || {}) };
-    statuses.forEach(s=>{
-      if(Array.isArray(meta.J_ST) && !meta.J_ST.includes(s)) meta.J_ST.push(s);
-      if(Array.isArray(meta.A_ST) && !meta.A_ST.includes(s)) meta.A_ST.push(s);
-    });
-    meta.lastDataUpdatedAt = savedAt;
-    await fetch(`${SUPABASE_URL}/rest/v1/system_data`, {
-      method: 'POST',
-      headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
-      body: JSON.stringify({ id:'main', data: meta, updated_at: savedAt })
-    });
-  }
 }
 
 function showError(title, msg){

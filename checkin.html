@@ -267,9 +267,23 @@ function toggleDoneFields(){
 }
 
 // ---------- โหลดข้อมูลงาน (read-only, ค้นหาแบบยืดหยุ่นเหมือนฟอร์มช่าง) ----------
+// งาน 1 งานจากเลข PR ผ่าน RPC (ข้อมูลไม่มีราคา) — คืน undefined ถ้ายังไม่ได้รัน SQL Phase 20 (ให้ใช้วิธีเดิม)
+async function fetchPubJob(code){
+  for(let attempt=0; attempt<2; attempt++){
+    try{
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_pub_job`, { method:'POST', headers: sbHeaders(), body: JSON.stringify({ p_code: code }) });
+      if(r.ok) return (await r.json()) || null;
+      if(r.status === 404) return undefined;
+    }catch(e){ console.warn('profix_pub_job failed', e); }
+    await new Promise(res=>setTimeout(res, 500));
+  }
+  return undefined;
+}
 async function findJobById(id){
   const clean = String(id||'').trim();
   if(!clean) return null;
+  const pub = await fetchPubJob(clean);
+  if(pub !== undefined) return pub;
   try{
     const r = await fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${encodeURIComponent(clean)}&select=id,data`, { headers: sbHeaders() });
     if(r.ok){ const rows = await r.json(); if(rows?.[0]?.data) return rows[0].data; }
