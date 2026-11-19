@@ -74,7 +74,7 @@ textarea{resize:vertical;min-height:80px;}
 .part-hint{font-size:11px;color:var(--text3);line-height:1.45;}
 @media(max-width:430px){.part-row{grid-template-columns:1fr 70px 70px 34px;gap:5px;padding:7px;}.part-row input{font-size:13px;padding:9px 8px;}}
 .part-name-wrap{position:relative;min-width:0;}
-.part-dd{position:absolute;left:0;right:0;top:calc(100% + 3px);z-index:60;max-height:240px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.45);}
+.part-dd{position:absolute;left:0;width:min(440px,calc(100vw - 56px));top:calc(100% + 3px);z-index:60;max-height:320px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.45);}
 .part-dd-row{padding:9px 11px;cursor:pointer;border-bottom:1px solid var(--border);}
 .part-dd-row:last-child{border-bottom:0;}
 .part-dd-row:active{background:var(--surface3);}
@@ -82,6 +82,10 @@ textarea{resize:vertical;min-height:80px;}
 .part-dd-sub{font-size:11px;color:var(--text3);margin-top:1px;}
 .part-dd-empty{padding:11px;font-size:12px;color:var(--text3);text-align:center;line-height:1.5;}
 .part-custom-tag{display:inline-block;font-size:10px;color:var(--yellow);background:var(--yellow-dim);border-radius:4px;padding:1px 7px;margin-top:5px;}
+.part-dd-custom{background:var(--surface3);}
+.part-dd-custom .part-dd-name{color:var(--text2);font-size:13px;}
+.part-dd-head{padding:6px 11px;font-size:11px;font-weight:700;color:var(--text3);background:var(--surface3);}
+.part-research{border:0;background:none;color:var(--accent,#4F86FF);font-size:11px;font-weight:700;padding:3px 4px;cursor:pointer;}
 .part-add.alt{background:var(--yellow-dim);color:var(--yellow);border-color:var(--yellow);}
 /* PM (งานที่ผูกแผน PM) */
 .pm-chip{display:inline-block;background:#2a1f4a;color:#c4b5fd;border:1px solid #5b4b9a;border-radius:20px;font-size:11px;font-weight:700;padding:2px 9px;margin-left:8px;vertical-align:4px;font-family:var(--sans);}
@@ -359,10 +363,9 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
         <div class="parts-editor" id="tech-parts-editor"></div>
         <div class="part-tools">
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="button" class="part-add" onclick="addTechPartRow()">+ เพิ่มอะไหล่จากระบบ</button>
-            <button type="button" class="part-add alt" onclick="addCustomTechPartRow()">+ อื่นๆ (พิมพ์เอง)</button>
+            <button type="button" class="part-add" onclick="addTechPartRow()">+ เพิ่มอะไหล่</button>
           </div>
-          <div class="part-hint">พิมพ์เพื่อค้นหาแล้วเลือกอะไหล่จากระบบ — ถ้าไม่มีในระบบ กด "อื่นๆ" เพื่อพิมพ์เอง · ราคาไม่แสดงให้ช่างเห็น</div>
+          <div class="part-hint">พิมพ์ชื่อที่เรียกกันได้เลย ไทยหรืออังกฤษ เช่น แคปรัน, คอมแอร์, ไดเออร์, R32 แล้วแตะเลือก · 1 แถวต่อ 1 อย่าง · ถ้าไม่มีในรายการจริง ๆ เลือกบรรทัดล่างสุด "ใช้ตามที่พิมพ์" · ราคาไม่แสดงให้ช่างเห็น</div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
           <input type="checkbox" id="f-noparts" onchange="toggleNoParts()" style="width:18px;height:18px;flex:0 0 auto;">
@@ -648,6 +651,7 @@ async function loadMasterPartOptions(){
         unit:x.unit||'',
         brand:x.brand||x.spec||'',
         supplier:x.sup||x.supplier||'',
+        aliases:Array.isArray(x.aliases)?x.aliases:String(x.aliases||'').split(/[,\n]/).map(t=>t.trim()).filter(Boolean),
         source:'parts'
       };
     }).filter(x=>String(x.name||'').trim());
@@ -679,6 +683,15 @@ async function loadMasterPartOptions(){
     console.warn('load master part options failed',e);
     masterPartOptions=[];
   }
+  // ช่างเห็นเฉพาะอะไหล่/วัสดุ — ซ่อนค่าแรง/ค่าบริการ และชื่อซ้ำ
+  const seenPart=new Set();
+  masterPartOptions=masterPartOptions.filter(p=>{
+    const k=String(p.name||'').trim().toLowerCase();
+    if(!k||PART_LABOR_RE.test(p.name)||seenPart.has(k)) return false;
+    seenPart.add(k); return true;
+  });
+  masterPartOptions.forEach(p=>{ try{ p.ix=partIndex(p); }catch(e){ p.ix=null; } });
+  loadPartUsage();
   renderTechPartOptions();
 }
 function renderTechPartOptions(){
@@ -718,8 +731,8 @@ function renderTechPartRows(){
   const box=document.getElementById('tech-parts-editor');if(!box)return;
   box.innerHTML=techPartRows.map((r,i)=>{
     const nameCell = r.custom
-      ? `<input value="${esc(r.name||'')}" placeholder="พิมพ์ชื่ออะไหล่เอง (นอกระบบ)" autocomplete="off" oninput="updateTechPartRow(${i},'name',this.value)"><div class="part-custom-tag">อื่นๆ (พิมพ์เอง)</div>`
-      : `<input value="${esc(r.name||'')}" placeholder="ค้นหาอะไหล่จากระบบ" autocomplete="off" onfocus="openTechPartDropdown(${i},this.value)" oninput="openTechPartDropdown(${i},this.value)" onblur="revertTechPartInput(${i})" onkeydown="techPartKeydown(event,${i})"><div class="part-dd" id="part-dd-${i}" style="display:none;"></div>`;
+      ? `<input value="${esc(r.name||'')}" placeholder="พิมพ์ชื่ออะไหล่เอง (นอกระบบ)" autocomplete="off" oninput="updateTechPartRow(${i},'name',this.value)"><div class="part-custom-tag">นอกระบบ (พิมพ์เอง)</div> <button type="button" class="part-research" onclick="backToTechPartSearch(${i})">↺ ค้นหาจากระบบ</button>`
+      : `<input value="${esc(r.name||'')}" placeholder="พิมพ์ชื่ออะไหล่ เช่น แคปรัน, คอมแอร์" autocomplete="off" onfocus="openTechPartDropdown(${i},this.value)" oninput="openTechPartDropdown(${i},this.value)" onblur="revertTechPartInput(${i})" onkeydown="techPartKeydown(event,${i})"><div class="part-dd" id="part-dd-${i}" style="display:none;"></div>`;
     return `<div class="part-row">
       <div class="part-name-wrap">${nameCell}</div>
       <input type="number" min="0" step="any" value="${esc(r.qty??1)}" placeholder="จำนวน" oninput="updateTechPartRow(${i},'qty',this.value)">
@@ -737,27 +750,231 @@ function updateTechPartRow(i,field,value){
 }
 // ===== dropdown ค้นหาอะไหล่จากระบบ (เลือกได้อย่างเดียว) =====
 let techPartDropdownList = {}; // เก็บรายการที่กรองไว้ต่อแถว → เลือกด้วย index กัน bug escaping id
-function techPartMatches(query){
-  const q=String(query||'').replace(/\s+/g,' ').trim().toLowerCase();
-  let list=masterPartOptions;
-  if(q){
-    const tokens=q.split(' ').filter(Boolean);
-    list=list.filter(p=>{const hay=[p.name,p.code,p.category,p.brand,p.supplier].map(v=>String(v||'').toLowerCase()).join(' ');return tokens.every(t=>hay.includes(t));});
+// ===== PART-SEARCH-START: ค้นหาอะไหล่อัจฉริยะ (ศัพท์ช่าง · ไทย↔อังกฤษ · พิมพ์ผิด) =====
+// พจนานุกรม: "กลุ่มความหมาย: คำที่ช่างใช้,..."  (กลุ่มที่มี + = คำนั้นมีหลายความหมาย เช่น แคปรัน = คาปาซิเตอร์ + รัน)
+// กลุ่มที่ขึ้นต้นด้วย ~ = คำขยาย (ประเภท/ตำแหน่ง/ยี่ห้อ) ใช้จัดอันดับ ไม่ใช่ตัวอะไหล่หลัก
+// เพิ่มคำได้เรื่อย ๆ — หรือใส่ data.aliases ในรายการอะไหล่ (console) ก็ได้
+const PART_DICT_SRC = `
+compressor: คอมเพรสเซอร์,คอมเพสเซอร์,คอมเพรซเซอร์,คอมเพลสเซอร์,คอมเพรสเซอ,คอมเพสเซอ,คอมเพรส,คอมเพส,คอมฯ,คอม,compressor,compresser,compessor,comp,rotary,โรตารี่,scroll,สโครล,ลูกสูบ
+compressor+~air: คอมแอร์
+compressor+~fridge: คอมตู้แช่,คอมตู้เย็น
+~air: แอร์,เครื่องปรับอากาศ,ปรับอากาศ,air,aircon,btu,บีทียู
+~fridge: ตู้แช่,ตู้เย็น,ตู้ชิว,ตู้ฟรีส,ตู้แข็ง,ตู้เค้ก,ตู้เคาท์เตอร์,ตู้เคาน์เตอร์,ตู้open,freezer,chiller,showcase,fridge
+~coldroom: ห้องเย็น,coldroom
+capacitor: คาปาซิเตอร์,คาปาซิเตอ,คาปาซิสเตอร์,คาปาซิสเตอ,คาปาซิส,คาปา,แคปาซิเตอร์,แคป,แค็ป,capacitor,capa,cap,uf,mfd,ไมโครฟารัด,ไมโคร
+capacitor+~run: แคปรัน,แค็ปรัน,รันคาปาซิเตอร์,รันคาปา,รันแคป,runcapacitor,runcap,caprun
+capacitor+~start: แคปสตาร์ท,แค็ปสตาร์ท,แคปสตาท,แคปสตาร์ต,สตาร์ทคาปาซิเตอร์,สตาร์ทคาปา,สตาร์ทแคป,startcapacitor,startcap,capstart
+~run: รัน,run
+~start: สตาร์ท,สตาท,start
+starter: สตาร์ทเตอร์,สตาร์ตเตอร์,starter
+capillary: แคปทิ้ว,แคปทิว,แค็ปทิ้ว,แคปทิ้ว,ทิ้วฉีด,ทิวฉีด,ทิ้วขีด,คิ้วฉีด,ทิ้ว,ทิว,capillary,captube,capillarytube
+dryer: ดรายเออร์,ดรายเออ,ดรายเยอร์,ดรายเยอ,ไดเออร์,ไดเออ,ไดรเออร์,ไดร์เออร์,ไดรเออ,ดรายเอ้อ,dryer,drier,filterdrier,filterdryer,ไส้กรองน้ำยา
+waterfilter: ไส้กรองน้ำ,ไส้กรอง,กรองน้ำ,waterfilter,filter
+flush: น้ำยาล้างระบบ,ล้างระบบ,flush
+flush+~f11: f11,เอฟ11,m11,เอ็ม11,f-11,ฟอร์11
+flush+~f10000: f10000
+nitrogen: ไนโตรเจน,ไนโตร,ไนรโตร,ในโตร,ไม่โต,nitrogen,nitro,n2,ก๊าซไนโตรเจน,ชุดอัดไนโตร,ชุดเชื่อม
+cleaner: น้ำยาล้างแผง,น้ำยาล้างคอยล์,น้ำยาล้างคอย,น้ำยาล้างแอร์,น้ำยาล้างฟิลคอยล์,น้ำยาล้าง,น้ำยาทำความสะอาด,ล้างแผง,superclean,ซุปเปอร์คลีน,ซูเปอร์คลีน,มาจิคลีน,เมจิคลีน,magicclean,coilcleaner,cleaner
+~refrigerant: น้ำยาแอร์,สารทำความเย็น,น้ำยา,refrigerant,ฟรีออน,freon,แก๊สแอร์,เติมน้ำยา
+~refrigerant+~r22: r22,อาร์22,น้ำยา22
+~refrigerant+~r32: r32,อาร์32,น้ำยา32,32r
+~refrigerant+~r134: r134a,r134,134a,อาร์134,น้ำยา134
+~refrigerant+~r404: r404a,r404,404a,อาร์404,น้ำยา404
+~refrigerant+~r410: r410a,r410,410a,อาร์410,น้ำยา410
+~refrigerant+~r290: r290,อาร์290,น้ำยา290
+~refrigerant+~r600: r600a,r600,600a,น้ำยา600
+motor: มอเตอร์,มอเตอ,มอเตอร,มอร์เตอร์,motor
+~fan: พัดลม,fan,ระบายความร้อน,ระบายเหงื่อ
+motor+~fan: มอเตอร์พัดลม,fanmotor
+motor+~ec: ecmotor,มอเตอร์ec,อีซีมอเตอร์
+motor+~blower: กรงกระรอก,โบลเวอร์,blower
+motor+~swing: มอเตอร์สวิง,มอเตอร์บานสวิง,swingmotor,สเต็ปมอเตอร์,steppingmotor
+blade: ใบพัดลม,ใบพัด,fanblade,blade
+~hot: คอยล์ร้อน,คอยร้อน,คอยล์ร้อ,คอนเดนซิ่ง,condensingunit,condenser,คอนเดนเซอร์,cdu,outdoor,ตัวนอก,ภายนอก
+~cold: คอยล์เย็น,คอยเย็น,fcu,fancoil,evaporator,อีวาพอเรเตอร์,indoor,ตัวใน,ภายใน
+coil: แผงคอยล์,แผงคอย,แผงรังผึ้ง,รังผึ้ง,coil
+coil+~hot: แผงคอยล์ร้อน,แผงคอยร้อน,แผงร้อน
+coil+~cold: แผงคอยล์เย็น,แผงคอยเย็น,แผงเย็น
+board: แผงบอร์ด,แผงบอด,แผงบรอด,บอร์ด,บอด,บรอด,แผงวงจร,แผงpcb,pcb,printedcircuit,circuit,คอนโทรลบอร์ด
+~inverter: อินเวอร์เตอร์,อินเวอเตอร์,inverter
+controller: รูมดิจิตอล,รูมดิจิทัล,roomdigital,room,รูม,ดิจิตอลคอนโทรลเลอร์,ดิจิตอลคอนโทรล,ดิจิตอลควบคุม,ดิจิตอล,ดิจิทัล,digital,รวมดิจิตอล,กลุ่มดิจิตอล,โดมดิจิตอล,คอนโทรลเลอร์,controller,carel,คาเรล,แคเรล,dixell,ดิกเซล,ตัวควบคุมอุณหภูมิ,กล่องคอนโทรล
+thermostat: เทอร์โมสตัท,เทอร์โมสแตท,เทอร์โมสแต็ท,เทอร์โมสตัด,thermostat
+sensor: เซ็นเซอร์,เซนเซอร์,เซ็นเซอร,เซนเซอ,sensor,probe,โพรบ,เทอร์มิสเตอร์,thermistor,สายเซ็นเซอร์,สายเซนเซอร์,sensorprobe
+~defrost: ละลายน้ำแข็ง,น้ำแข็ง,defrost,hotgas,ฮอตแก๊ส
+heater: ฮีตเตอร์,ฮีทเตอร์,ฮิตเตอร์,ฮีตเตอ,heater
+timer: นาฬิกาตั้งเวลา,ไทม์เมอร์,ทามเมอร์,ไทเมอร์,timer,นาฬิกา
+gasket: ขอบยางลูกศร,ขอบยางศรกด,ขอบยางศร,ขอบยาง,ยางขอบประตู,ยางประตู,ยางลิ้น,ลิ้นใหญ่,gasket,doorgasket
+solenoid: โซลินอยด์,โซลีนอยด์,โซลินอย,solenoid,คอยล์โซลินอยด์
+expansion: เอ็กซ์แพนชั่นวาล์ว,เอ็กแพนชั่นวาล์ว,เอ็กซ์แพนชั่น,เอ็กแพนชั่น,เอ็กแพน,expansionvalve,expansion,expand,xpand,ev วาล์ว,evวาล์ว,evวาว,txv,ทีเอ็กวาล์ว,ev
+orifice: ออริฟิส,ออริฟิซ,orifice
+valvecore: ไส้ศร,ไส้ไก่,valvecore
+accessvalve: วาล์วหัวศร,หัวศร,บ่าศร,บ่าวศร,accessvalve,ช่องเติมน้ำยา
+servicevalve: เซอร์วิสวาล์ว,เซอวิสวาล์ว,servicevalve
+~valve: วาล์ว,วาว,valve
+sightglass: ตาแมวน้ำยา,ตาแมว,sightglass
+pressureswitch: สวิตช์แรงดัน,สวิทช์แรงดัน,สวิทซ์แรงดัน,เพรสเชอร์สวิตช์,เพรชเชอร์สวิตช์,pressureswitch,pressure,hilow,ไฮโลว์,kp15,kp1,ชุดควบคุมแรงดัน
+switch: สวิตช์,สวิทช์,สวิตซ์,สวิทซ์,switch
+switch+~door: สวิตช์ประตู,สวิทช์ประตู,สวิทซ์ประตู,สวิตซ์ประตู,doorswitch
+switch+~rocker: สวิตช์กระดก,สวิทช์กระดก,rockerswitch,rocker
+~door: ประตู,door
+magnetic: แมกเนติกคอนแทคเตอร์,แมกเนติก,แม็กเนติก,แมกเนติค,แม็กเนติค,magnetic,คอนแทคเตอร์,contactor,แมก
+overload: โอเวอร์โหลด,โอเวอโหลด,โอเวอร์โหลดรีเลย์,overload
+relay: รีเลย์,รีเลย,relay,ptc,โปเทนเชียล,potential
+breaker: เบรกเกอร์,เบรคเกอร์,เบรกเกอ,breaker,เซฟตี้เบรกเกอร์,safetybreaker,เซอร์กิตเบรกเกอร์,circuitbreaker,ลูกย่อย
+phaseprotect: เฟสโปรเทคชั่น,เฟสโปรเทค,เฟสprotection,phaseprotection,phaseprotect,ป้องกันเฟส,ป้องกันไฟตก
+fuse: ฟิวส์,ฟิว,fuse
+wire: สายไฟ,wire,cable,vct,thw
+plug: ปลั๊ก,ปลั๊กเสียบ,plug
+terminal: เทอร์มินอลบล็อก,เทอร์มินอล,terminal,หางปลา
+powersupply: สวิตชิ่งพาวเวอร์ซัพพลาย,สวิตชิ่งพาวเวอร์,สวิทชิ่ง,สวิตชิ่ง,switching,พาวเวอร์ซัพพลาย,powersupply,switchpower,ประวิทย์พาวเวอร์,หม้อแปลงไฟ,หม้อแปลง,transformer,leddriver,ไดรเวอร์,driver
+lamp: หลอดไฟ,หลอดled,ไฟled,led,แอลอีดี,lamp,t8,ฟลูออเรสเซนต์,นีออน
+ballast: บัลลาสต์,บัลลาส,ballast
+pilotlamp: ไพลอตแลมป์,ไพลอต,ไฟสถานะ,pilotlamp,pilot
+copperpipe+~pipe: ท่อทองแดง,ท่อน้ำยา,ท่อแข็ง
+copperpipe: copperpipe,coppertube,copper,ทองแดง
+fitting: ข้อต่อทองแดง,ข้อต่อ,ข้องอ,สามทาง,fitting,fittings
+drain+~pipe: ท่อน้ำทิ้ง,ท่อpvc,ท่อฟ้า,ท่ออ่อน
+drain: น้ำทิ้ง,pvc,drain
+~pipe: ท่อ,pipe,tube
+tray+drain: ถาดน้ำทิ้ง,ถาดรองน้ำทิ้ง,ถาดรองน้ำ,ถาดน้ำ,draintray
+pump+drain: ปั๊มน้ำทิ้ง,ปั้มน้ำทิ้ง,ปั้มน้ำทิ้อง,กาลักน้ำ,กาลักนำ,สายกาลักน้ำ,drainpump,kingpump,hippo,winmax
+pump: ปั๊ม,ปั้ม,ป้ำ,pump
+insulation: ฉนวนหุ้มท่อ,ฉนวนยางดำ,ฉนวน,aeroflex,แอโรเฟล็กซ์,แอร์โรเฟล็กซ์,armaflex,insulation
+tape+~aero: แอโร่เทป,แอร์โร่เทป,แอโรเทป,แอร์โรเทป,aerotape,aerotap,aero,แอโร่,แอร์โร่
+tape: เทปพันท่อ,ผ้าพันท่อ,เทปเทา,เทปพันสายไฟ,เทปอลูมิเนียม,เทปฟอยล์,เทป,tape
+glue: กาวยาง,กาวร้อน,กาวผ่าท่อ,กาว,adhesive,glue
+thermalpaste: ซิลิโคนทาแผงบอร์ด,ซิลิโคนทาบอร์ด,ซิลิโคนทาซิ้ง,ซิลิโคนทาซิงค์,ซิลิโคนซิงค์,ซิลิโคนระบายความร้อน,ซิลิโคนกันความร้อน,ซิ้งค์,ซิงค์,heatsink,thermalpaste,tg3g
+silicone: ซิลิโคน,ซิลิโคล,silicone
+foam: พียูโฟม,โฟม,pufoam,foam
+weldrod: ลวดเชื่อมเงิน,ลวดเชื่อมทองแดง,ลวดเชื่อม,ลวดเชื่อ,ลวดเงิน,silverrod,weldingrod,brazingrod
+gascan: แก๊สกระป๋อง,แก๊สเชื่อม,gascan
+oil: น้ำมันคอมเพรสเซอร์,น้ำมันคอม,น้ำมันอเนกประสงค์,น้ำมัน,oil,wd40,sonax,โซแน็กซ์
+screw: สกรูเกลียวปล่อย,สกรู,น็อต,น๊อต,นอต,screw,bolt
+cabletie: เคเบิ้ลไทร์,เคเบิลไทร์,เคเบิ้ลไท,cabletie
+strap: สายรัด,strap
+disc: ใบตัดเหล็ก,ใบตัด,ใบเจียร,ใบเจีย
+wheel: ล้อตู้แช่,ล้อ,wheel,caster
+hinge: บานพับ,hinge
+handle: มือจับประตู,มือจับ,handle
+lock: กุญแจล็อค,กุญแจ,ล็อค,ล๊อค,lock
+clip: ตัวรับชั้นวาง,ชั้นวาง,กิ๊บ,clip
+receiver: ตัวรับสัญญาณ,ตัวรับรีโมท,รีโมท,receiver,remote
+reactor: reactor,รีแอคเตอร์,รีแอกเตอร์
+bracket: ขาแขวนคอยล์ร้อน,ขาแขวน,ขายึด,โครงยึด,ฐานซัพพอร์ต,bracket
+rubberpad: ยางแผ่นรองขา,ยางรองขา,ยางรอง
+~danfoss: danfoss,แดนฟอส,แดนฟอร์ส
+~daikin: daikin,ไดกิ้น,ไดกิน
+~carrier: carrier,แคเรียร์,แคร์เรีย
+~embraco: embraco,เอ็มบราโก,เอมบราโก้
+~kulthorn: kulthorn,กุลธร
+~elco: elco,เอลโก้,เอลโก
+~schneider: schneider,ชไนเดอร์,ชไนเดอ
+~mitsubishi: mitsubishi,มิตซูบิชิ,มิตซู
+~omron: omron,ออมรอน
+`;
+const PART_FILLER = /จำนวน|ประมาณ|และ|กับ|ขนาด|เบอร์|รุ่น|เปลี่ยน|ใหม่|เก่า|เสีย|ทั้ง|นะครับ|ครับ|ค่ะ|คะ|อะไหล่|สำหรับ|ใช้|แบบ|ชนิด|ของ/g;
+const PART_QTY = /\d+(?:\.\d+)?\s*(?:ตัว|อัน|ชิ้น|ลูก|ขวด|หลอด|กระป๋อง|ม้วน|ถัง|เส้น|แผ่น|ชุด|ใบ|กล่อง|ถุง|เครื่อง|แผง)(?![ก-๙])/g;
+function pnorm(s){
+  s=String(s||'').toLowerCase().replace(/[\u0E47-\u0E4C]/g,''); // ตัดวรรณยุกต์ ็ ่ ้ ๊ ๋ ์ → พิมพ์ผิดวรรณยุกต์ยังเจอ
+  s=s.replace(/(\d)\s*(?:วัตต|วัต|watt|w)(?![a-z])/g,'$1w').replace(/(\d)\s*(?:ไมโครฟารัด|ไมโคร|uf|mfd)(?![a-z])/g,'$1uf');
+  s=s.replace(/(^|[^a-z])([a-z]{1,2})\s*[-_]?\s*(\d)/g,'$1$2$3'); // R-290 / R 290 / F 11 → r290 f11
+  return s;
+}
+const pcompact = s=>String(s||'').replace(/[^\p{L}\p{M}\p{N}]/gu,'');
+const PART_DICT = (()=>{
+  const out=[]; const mods=new Set();
+  PART_DICT_SRC.split('\n').map(l=>l.trim()).filter(Boolean).forEach(l=>{
+    const i=l.indexOf(':'); if(i<0) return;
+    const cs=l.slice(0,i).split('+').map(x=>x.trim()); cs.forEach(c=>{ if(c[0]==='~') mods.add(c); });
+    l.slice(i+1).split(',').map(t=>pcompact(pnorm(t))).filter(Boolean).forEach(t=>out.push({t,c:cs,b:/^[a-z0-9]{1,3}$/.test(t)}));
+  });
+  out.sort((a,b)=>b.t.length-a.t.length);
+  return {terms:out,mods};
+})();
+function pbigrams(s){ const b=new Set(); for(let i=0;i<s.length-1;i++) b.add(s.slice(i,i+2)); return b; }
+// แยกข้อความ → กลุ่มความหมาย + ตัวเลข + เศษคำที่เหลือ
+function partAnalyze(text){
+  let n=pnorm(String(text||'').replace(PART_QTY,' ').replace(PART_FILLER,' '));
+  let c=pcompact(n); const concepts=new Set();
+  for(const d of PART_DICT.terms){
+    let from=0, k;
+    while((k=c.indexOf(d.t,from))>=0){
+      const pv=c[k-1]||'', nx=c[k+d.t.length]||'';
+      if(d.b && (/[a-z]/.test(pv)||/[a-z]/.test(nx)||(/^\d/.test(d.t)&&/\d/.test(pv))||(/\d$/.test(d.t)&&/\d/.test(nx)))){ from=k+1; continue; }
+      d.c.forEach(x=>concepts.add(x)); c=c.slice(0,k)+'|'+c.slice(k+d.t.length); from=k+1;
+    }
   }
-  return list.slice(0,200); // แสดงได้มากขึ้น (เดิม 40 ทำให้บางรายการไม่ขึ้น)
+  const nums=[], ranges=[];
+  n.replace(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/g,(m,a,b)=>{ranges.push([+a,+b]);return m;});
+  (n.match(/\d+(?:\.\d+)?/g)||[]).forEach(x=>nums.push(+x));
+  const resid=c.split('|').map(x=>x.replace(/\d+/g,'')).filter(x=>x.length>=3);
+  return {concepts, nums, ranges, resid, compact:pcompact(n)};
+}
+function partIndex(p){
+  const a=partAnalyze([p.name,p.brand,(p.aliases||[]).join(' ')].join(' '));
+  const full=pcompact(pnorm([p.name,p.brand,p.code,(p.aliases||[]).join(' ')].join(' ')));
+  const cat=pcompact(pnorm(p.category||''));
+  const prim=new Set([...a.concepts].filter(c=>!PART_DICT.mods.has(c)));
+  return {concepts:a.concepts, prim, nums:a.nums, ranges:a.ranges, text:full, bg:pbigrams(full), cat, catBg:pbigrams(cat)};
+}
+function partScore(q, ix){
+  const cover=(b)=>{ if(!b.size) return 0; let h=0; b.forEach(x=>{ if(ix.bg.has(x)) h++; }); return h/b.size; };
+  // 1) ตรงตัวอักษร / คล้าย (พิมพ์ผิด)
+  let best = q.compact.length>=2 && ix.text.includes(q.compact) ? 1 : cover(q.bg)*0.92;
+  // ชื่อหมวด ช่วยได้แต่ให้น้ำหนักต่ำ (กันหมวด "Capacitor/Relay" ดึงรีเลย์ขึ้นมาตอนค้น capacitor)
+  if(q.compact.length>=2 && ix.cat){ let h=0; q.bg.forEach(x=>{ if(ix.catBg.has(x)) h++; }); best=Math.max(best, (ix.cat.includes(q.compact)?1:(q.bg.size?h/q.bg.size:0))*0.55); }
+  // 2) ตามความหมาย (ศัพท์ช่าง ไทย↔อังกฤษ)
+  if(q.prim.length||q.mod.length){
+    const ph=q.prim.filter(c=>ix.concepts.has(c)).length, mh=q.mod.filter(c=>ix.concepts.has(c)).length;
+    let cs;
+    if(q.prim.length) cs = ph ? 0.55+0.45*(ph+0.4*mh)/(q.prim.length+0.4*q.mod.length) : 0;
+    else cs = mh/q.mod.length;
+    if(cs>0){
+      // เศษคำที่เหลือ + ตัวเลข (16W, 5uF, R-404) ใช้ปรับอันดับเล็กน้อย ไม่ตัดทิ้ง
+      let sc = cs + (q.residBg.size ? 0.08*cover(q.residBg) : 0);
+      if(q.nums.length && ix.nums.length) sc += q.nums.some(v=>ix.nums.includes(v)||ix.ranges.some(r=>v>=r[0]&&v<=r[1])) ? 0.06 : -0.1;
+      sc -= 0.06*Math.min(3,[...ix.prim].filter(c=>!q.prim.includes(c)).length);
+      best=Math.max(best,sc);
+    }
+  }
+  return best;
+}
+function partQuery(text){
+  const a=partAnalyze(text);
+  const prim=[...a.concepts].filter(c=>!PART_DICT.mods.has(c)), mod=[...a.concepts].filter(c=>PART_DICT.mods.has(c));
+  const residBg=new Set(); a.resid.forEach(r=>pbigrams(r).forEach(x=>residBg.add(x)));
+  return {prim, mod, nums:a.nums, compact:a.compact, bg:pbigrams(a.compact), residBg};
+}
+// ===== PART-SEARCH-END =====
+const PART_LABOR_RE=/^\s*(\[[a-z0-9]+\]\s*)?(ค่า|งาน|ล้าง)/i;
+let partUsage={};
+async function loadPartUsage(){
+  try{
+    const rows=await fetch(`${SUPABASE_URL}/rest/v1/technician_used_parts?select=master_price_item_id&is_custom=eq.false&limit=5000`,{headers:sbHeaders()}).then(r=>r.ok?r.json():[]);
+    const u={}; (rows||[]).forEach(r=>{ const k=r.master_price_item_id; if(k) u[k]=(u[k]||0)+1; }); partUsage=u;
+  }catch(e){}
+}
+const partUseBoost=p=>Math.min(0.12,Math.log2(1+(partUsage[p.id]||0))*0.03);
+function techPartMatches(query){
+  const q=String(query||'').trim();
+  if(!q) return masterPartOptions.slice().sort((a,b)=>(partUsage[b.id]||0)-(partUsage[a.id]||0)).slice(0,80);
+  const pq=partQuery(q);
+  return masterPartOptions.map(p=>({p,s:p.ix?partScore(pq,p.ix):0})).filter(x=>x.s>=0.5)
+    .sort((a,b)=>(b.s+partUseBoost(b.p))-(a.s+partUseBoost(a.p))||a.p.name.length-b.p.name.length).slice(0,15).map(x=>x.p);
 }
 function openTechPartDropdown(i,query){
   const dd=document.getElementById('part-dd-'+i);if(!dd)return;
-  if(!masterPartOptions.length){
-    techPartDropdownList[i]=[];
-    dd.innerHTML='<div class="part-dd-empty">ยังไม่มีรายการอะไหล่ในระบบ<br>กด "+ อื่นๆ" เพื่อพิมพ์เอง</div>';
-    dd.style.display='';return;
-  }
-  const list=techPartMatches(query);
+  const q=String(query||'').trim();
+  const list=masterPartOptions.length?techPartMatches(q):[];
   techPartDropdownList[i]=list;
-  dd.innerHTML=list.length
-    ? list.map((p,idx)=>`<div class="part-dd-row" onmousedown="event.preventDefault();pickTechPart(${i},${idx})"><div class="part-dd-name">${esc(p.name)}</div>${[p.category,p.code,p.brand,p.supplier].filter(Boolean).length?`<div class="part-dd-sub">${esc([p.category,p.code,p.brand,p.supplier].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')
-    : '<div class="part-dd-empty">ไม่พบอะไหล่ที่ตรงกับคำค้น<br>กด "+ อื่นๆ" เพื่อพิมพ์เอง</div>';
+  // พิมพ์เองได้เฉพาะหลังพิมพ์แล้ว และอยู่บรรทัดล่างสุดเสมอ → ช่างเห็นตัวเลือกจากระบบก่อน
+  const customRow = q.length>=2
+    ? `<div class="part-dd-row part-dd-custom" onmousedown="event.preventDefault();pickTechPartCustom(${i})"><div class="part-dd-name">${list.length?'ไม่ใช่ทั้งหมดนี้':'ไม่พบในรายการ'} — ใช้ “${esc(q)}” ตามที่พิมพ์</div><div class="part-dd-sub">ระบบจะส่งให้แอดมินตรวจ</div></div>`
+    : '';
+  dd.innerHTML = (list.length
+    ? (!q&&Object.keys(partUsage).length?'<div class="part-dd-head">ใช้บ่อย</div>':'')+list.map((p,idx)=>`<div class="part-dd-row" onmousedown="event.preventDefault();pickTechPart(${i},${idx})"><div class="part-dd-name">${esc(p.name)}</div>${[p.category,p.code,p.brand].filter(Boolean).length?`<div class="part-dd-sub">${esc([p.category,p.code,p.brand].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')
+    : (q.length<2?'<div class="part-dd-empty">พิมพ์ชื่ออะไหล่ เช่น แคปรัน, คอมแอร์, ไดเออร์</div>':''))
+    + customRow;
   dd.style.display='';
 }
 function closeTechPartDropdown(i){const dd=document.getElementById('part-dd-'+i);if(dd)dd.style.display='none';}
@@ -783,9 +1000,21 @@ function revertTechPartInput(i){
     if(input && techPartRows[i] && !techPartRows[i].custom) input.value=techPartRows[i].name||'';
   },200);
 }
+function pickTechPartCustom(i){
+  const box=document.getElementById('tech-parts-editor'); const input=box?box.querySelectorAll('.part-name-wrap > input')[i]:null;
+  const name=String(input?input.value:'').trim(); if(!name||!techPartRows[i]) return;
+  Object.assign(techPartRows[i],{masterId:'',code:'',category:'',supplier:'',name,custom:true});
+  closeTechPartDropdown(i); renderTechPartRows();
+}
+function backToTechPartSearch(i){
+  if(!techPartRows[i]) return; const q=techPartRows[i].name||'';
+  Object.assign(techPartRows[i],{custom:false,masterId:'',name:''}); renderTechPartRows();
+  const box=document.getElementById('tech-parts-editor'); const input=box?box.querySelectorAll('.part-name-wrap > input')[i]:null;
+  if(input){ input.value=q; input.focus(); openTechPartDropdown(i,q); }
+}
 function techPartKeydown(e,i){
   if(e.key==='Escape'){ closeTechPartDropdown(i); }
-  else if(e.key==='Enter'){ e.preventDefault(); openTechPartDropdown(i,e.target.value); if((techPartDropdownList[i]||[]).length) pickTechPart(i,0); }
+  else if(e.key==='Enter'){ e.preventDefault(); openTechPartDropdown(i,e.target.value); if((techPartDropdownList[i]||[]).length) pickTechPart(i,0); else if(String(e.target.value||'').trim().length>=2) pickTechPartCustom(i); }
 }
 function addTechPartRow(){
   techPartRows.push({masterId:'',name:'',qty:1,unit:'',custom:false});
