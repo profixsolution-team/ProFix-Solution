@@ -17141,7 +17141,11 @@ async function pmXSave(){
       try{const [sv]=await pmPatch('pm_sites',x.site.id,f);if(sv)Object.assign(x.site,sv);}catch(e){console.warn(e);}
     }
     const useDone=pmX.useDone;const vrows=pmX.rows.filter(x=>x.site&&x.res!=='dupname'&&(x.pr||x.date||x.team||(x.done&&useDone))).map(x=>{const v=pmVisit(c.id,pmRound,x.site.id);
-      return {...pmVBase(v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:x.site.id,branch:x.site.branch,status:'planned'}),...(x.pr?{job_id:x.pr}:{}),...(x.date?{planned_date:x.date}:{}),...(x.team?{team:x.team}:{}),...(x.done&&useDone?{status:'done'}:{}),updated_at:now,updated_by:getActorName()};});
+      const row={...pmVBase(v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:x.site.id,branch:x.site.branch,status:'planned'}),...(x.pr?{job_id:x.pr}:{}),...(x.date?{planned_date:x.date}:{}),...(x.team?{team:x.team}:{}),...(x.done&&useDone?{status:'done'}:{}),updated_at:now,updated_by:getActorName()};
+      // ไฟล์ที่อัปล่าสุดชนะ: วันนัด/ทีมในไฟล์ → ดันไปที่งานในคิวช่างด้วย (ไม่งั้นตอนรีเฟรช ระบบซิงก์จะดึงวัน/ทีมเดิมจากคิวช่างกลับมาทับแผน)
+      // วันนัดเปลี่ยนได้เฉพาะงานที่ช่างยังไม่เริ่ม (pmJobOpenFor) · ทีมเปลี่ยนได้ทุกสถานะ เหมือนแก้ในหน้า PM
+      if(x.date)pmPushIds.add(row.id);if(x.team)pmTeamPushIds.add(row.id);
+      return row;});
     for(let i=0;i<vrows.length;i+=200){const part=await pmUpsert('pm_visits',vrows.slice(i,i+200));(part&&part.length?part:vrows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(v=>v.id===r.id);if(k>=0)pm.visits[k]={...pm.visits[k],...r};else pm.visits.push(r);});}
     closeM('m-pm');renderPM();alert(`เพิ่ม ${newRows.length} สาขา · อัปเดตแผนรอบ ${pmRound} ${vrows.length} สาขา`);
   }catch(e){pmErr(e);if(btn){btn.disabled=false;btn.textContent=pmXBtnText();}}

@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="photo-slots.js"></script>
 <style>
 /* ===== งานของฉัน v5 (2026-11-17) — แบบแอป · ป้ายสถานะสีทึบ · ไอคอนเส้น ===== */
 :root{--brand:#175FFF;--brand2:#4F86FF;--ink:#0f172a;--ink2:#5b6476;--ink3:#9aa3b2;--line:#edf0f5;--bg:#f5f7fb;--card:#fff;
@@ -237,6 +238,37 @@ label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 .sh-row{display:flex;gap:8px;margin-top:12px;flex:0 0 auto}
 .qd{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.qd button{border:0;background:#eef3ff;color:var(--brand);border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
 #sheet input[type=date]{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;-webkit-appearance:none;appearance:none;min-height:48px}
+
+/* ===== แอดมินตรวจงาน (มือถือ) ===== */
+.rc{background:#fff;border-radius:18px;padding:12px 12px 12px 15px;margin-bottom:10px;box-shadow:0 2px 10px rgba(15,23,42,.04);position:relative;overflow:hidden;cursor:pointer}
+.rc:before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:var(--c,var(--done))}
+.rc .r1{display:flex;align-items:center;gap:6px;min-width:0}.rc .pr{font-size:12.5px;color:var(--ink2);font-weight:600}
+.rc .r1 .st{margin-left:auto}
+.rc .br{font-size:15.5px;font-weight:700;margin:6px 0 3px;word-break:break-word}
+.rc .mt{font-size:12px;color:var(--ink2);display:flex;gap:5px 8px;flex-wrap:wrap;align-items:center}
+.pl{font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;white-space:nowrap}
+.pl.g{background:var(--green-dim);color:var(--done)}.pl.r{background:var(--red-dim);color:var(--late)}.pl.y{background:var(--yellow-dim);color:#b45309}.pl.n{background:var(--gray-dim);color:var(--ink2)}
+.thumbs{display:flex;gap:5px;margin-top:9px}.thumbs img,.thumbs span{width:48px;height:48px;border-radius:9px;object-fit:cover;background:#eef1f5;flex:0 0 auto}
+.thumbs span{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--ink2)}
+.b.ok{background:var(--done);color:#fff}.b.rj{background:var(--red-dim);color:var(--late)}.b.pa{background:var(--send);color:#fff}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px}.kv div{background:var(--bg);border-radius:11px;padding:7px 10px;font-size:11.5px;color:var(--ink2)}.kv b{display:block;font-size:13.5px;color:var(--ink);word-break:break-word}
+.rv-sec{margin:16px 2px 8px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}.rv-sec small{margin-left:auto;font-size:12px;font-weight:700}
+.rv-tabs{display:flex;gap:6px;overflow-x:auto;margin:0 -16px 8px;padding:0 16px;scrollbar-width:none}.rv-tabs::-webkit-scrollbar{display:none}
+.rv-tabs button{flex:0 0 auto;border:0;border-radius:10px;padding:6px 11px;font:inherit;font-size:12.5px;font-weight:700;background:#fff;color:var(--ink2);cursor:pointer}
+.rv-tabs button.on{background:var(--ink);color:#fff}
+.rv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.rv-ph{aspect-ratio:1;border-radius:10px;background:#dfe4ee center/cover no-repeat;position:relative;overflow:hidden;border:0;padding:0;cursor:pointer}
+.rv-ph i{position:absolute;left:0;right:0;bottom:0;font-style:normal;font-size:10px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.7));padding:12px 5px 4px;font-weight:600;text-align:left;line-height:1.25}
+.rv-txt p{margin:0}.rv-txt p+p{margin-top:6px}.rv-txt b{color:var(--ink2);font-weight:600}
+.prt{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.5px}.prt:last-child{border:0}
+.sigimg{width:120px;height:56px;object-fit:contain;border:1px dashed #cbd5e1;border-radius:10px;background:#fff}
+.rs{display:flex;flex-wrap:wrap;gap:6px}.rs button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font:inherit;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer}
+.rs button.on{border-color:var(--late);color:var(--late);background:var(--red-dim)}
+#sheet textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px;margin-top:10px;min-height:76px;font-family:inherit;resize:vertical}
+.tick{display:flex;align-items:center;gap:9px;font-size:13.5px;margin-top:10px;color:var(--ink2);cursor:pointer}.tick input{width:20px;height:20px;accent-color:var(--brand)}
+#imgv{position:fixed;inset:0;z-index:60;background:rgba(5,8,15,.94);display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px 10px}
+#imgv.open{display:flex}#imgv img{max-width:100%;max-height:78vh;border-radius:8px}#imgv p{color:#fff;font-size:13px;margin-top:10px;text-align:center}
+#imgv .x{position:absolute;top:calc(12px + env(safe-area-inset-top));right:14px;width:42px;height:42px;border-radius:14px;border:0;background:rgba(255,255,255,.15);color:#fff;font-size:20px}
 </style>
 </head>
 <body>
@@ -281,6 +313,7 @@ label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 <div class="wrap" id="app"><div class="loading"><div class="spin"></div>กำลังเปิด...</div></div>
 <nav class="tabbar" id="tabbar" style="display:none"></nav>
 <div id="sheet"></div>
+<div id="imgv" onclick="this.classList.remove('open')"><button class="x" aria-label="ปิด">✕</button><img alt=""><p></p></div>
 <div id="detail"></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -1039,11 +1072,131 @@ function admActions(j,compact){
   const ppl=admPeople(j.team),call=ppl.length===1?`<a class="b adm" href="${telHref(ppl[0].phone)}">${I('phone')}${compact?'โทรทีม':'โทรหัวหน้าทีม'}</a>`:ppl.length?`<button class="b adm" onclick="admCallSheet('${esc(j.team)}')">${I('phone')}${compact?'โทรทีม':'โทรหาทีม'}</button>`:'';
   return `${call}<button class="b adm" onclick="admDateSheet('${esc(j.id)}')">${I('cal')}เลื่อนนัด</button><button class="b adm p" onclick="admTeamSheet('${esc(j.id)}')">${I('move')}ย้ายทีม</button>`;
 }
+// ===== รอตรวจ: ตรวจรายงานจากมือถือ (ผ่าน / ตีกลับ / อนุมัติอะไหล่) =====
+let REV={meta:{},loading:false,f:'all',cur:null};
+const REV_SUB='ช่างส่งงานแล้ว',REV_PARTS=['รอขออนุมัติ','รออนุมัติอะไหล่'];
+const revKind=j=>j.status===REV_SUB?'sub':REV_PARTS.includes(j.status)?'parts':'other';
+// ความครบของรูปแยกช่อง (ใช้แม่แบบเดียวกับฟอร์มช่าง photo-slots.js) → null = งานแบบเดิม (ไม่มีช่อง)
+function revSlotStat(slots,keys,needQuote){
+  if(!slots||!Array.isArray(slots.units)||typeof SLOT_TPL==='undefined')return null;
+  const have=new Set(keys||[]),na=slots.na||{},site=new Set(),req=[];
+  slots.units.forEach(u=>{const t=SLOT_TPL[u.tpl];if(!t)return;(t.site||['front']).forEach(k=>site.add(k));
+    t.phases.filter(p=>!needQuote||p.cat==='before'||p.k==='r').forEach(p=>p.slots.forEach(sl=>{if(!sl.opt)req.push({id:`${u.id}.${p.k}.${sl.k}`,l:sl.l,unit:u.kind||t.unit||''});}));});
+  if(slots.units.length&&!site.size)site.add('front');
+  site.forEach(k=>req.unshift({id:'site.'+k,l:(SLOT_SITE[k]||{}).l||k,unit:'รูปสาขา'}));
+  if(!req.length)return null;
+  const miss=req.filter(x=>!have.has(x.id)&&!na[x.id]);
+  return {need:req.length,done:req.length-miss.length,miss};
+}
+async function revLoadMeta(force){
+  const ids=classify(admJobsOf(null)).done.map(j=>j.id).filter(id=>force||!REV.meta[id]);
+  if(!ids.length||REV.loading)return;
+  REV.loading=true;
+  try{const d=await api('admin_review_list',{ids});Object.assign(REV.meta,d.items||{});}catch(e){toast(e.message);}
+  REV.loading=false;if(admTab==='review')admRender();
+}
+function revPills(j,m){
+  const out=[];
+  if(!m)return '<span class="pl n">กำลังโหลด…</span>';
+  const st=revSlotStat(m.slots,m.slotKeys,m.needQuote);
+  if(st)out.push(st.miss.length?`<span class="pl r">รูปขาด ${st.miss.length} ช่อง</span>`:`<span class="pl g">รูปครบ ${st.done}/${st.need}</span>`);
+  else out.push(`<span class="pl ${m.photos?'n':'r'}">รูป ${m.photos} รูป</span>`);
+  if(m.signed)out.push('<span class="pl g">ลูกค้าเซ็นแล้ว</span>');
+  if(m.custom)out.push(`<span class="pl y">อะไหล่พิมพ์เอง ${m.custom}</span>`);
+  if(m.round>1)out.push(`<span class="pl n">ส่งรอบที่ ${m.round}</span>`);
+  return out.join('');
+}
+function revReady(j,m){if(!m||revKind(j)!=='sub')return false;const st=revSlotStat(m.slots,m.slotKeys,m.needQuote);return st?!st.miss.length:m.photos>0;}
+function revCard(j){
+  const m=REV.meta[j.id],k=revKind(j);
+  const col=k==='parts'?'var(--send)':k==='other'?'var(--next)':'var(--done)';
+  const pill=k==='parts'?`<span class="st send">ขออนุมัติอะไหล่</span>`:k==='other'?`<span class="st next">${esc(j.status)}</span>`:`<span class="st done">ส่ง ${esc(j.techSubmittedAt?hm(j.techSubmittedAt):'')}</span>`;
+  const th=m&&m.thumbs&&m.thumbs.length?`<div class="thumbs">${m.thumbs.map(u=>`<img src="${esc(u)}" loading="lazy" alt="">`).join('')}${m.photos>m.thumbs.length?`<span>+${m.photos-m.thumbs.length}</span>`:''}</div>`:'';
+  const acts=k==='sub'?`<button class="b ghost" onclick="openReview('${esc(j.id)}')">ดูรายละเอียด</button>${revReady(j,m)?`<button class="b ok" onclick="revDecide('${esc(j.id)}','approve')">${I('check')}ผ่านเลย</button>`:`<button class="b start" onclick="openReview('${esc(j.id)}')">ตรวจ</button>`}`
+    :k==='parts'?`<button class="b ghost" onclick="revDecide('${esc(j.id)}','deny_parts')">ไม่อนุมัติ</button><button class="b pa" onclick="revDecide('${esc(j.id)}','approve_parts')">อนุมัติอะไหล่</button>`
+    :`<button class="b ghost" onclick="openReview('${esc(j.id)}')">ดูรายละเอียด</button>`;
+  return `<div class="rc" style="--c:${col}" onclick="openReview('${esc(j.id)}')">
+    <div class="r1"><span class="pr">${esc(j.id)}</span><span class="ttag">${esc(tShort(j.team))}</span>${j.type?`<span class="ttag" style="background:#f1f4f9;color:var(--ink2)">${esc(j.type)}</span>`:''}${pill}</div>
+    <div class="br">${esc(j.branch||'-')}</div><div class="mt">${revPills(j,m)}</div>${th}
+    <div class="act" onclick="event.stopPropagation()">${acts}</div></div>`;
+}
 function admViewReview(){
-  const c=classify(admJobsOf(null));
-  return `<div class="tbar"><b>รอตรวจ</b><button class="ibtn rf" onclick="loadAdmin(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
-    <div class="mnote" style="margin:0 0 12px">ช่างส่งงานแล้ว รอแอดมินตรวจรายงานใน console · ${admTeams().length} ทีมที่ดูแล</div>
-    ${c.done.length?c.done.map(j=>{const sv=admTeam;admTeam=null;const h=admCard(j);admTeam=sv;return h;}).join(''):'<div class="empty">ไม่มีงานรอตรวจ</div>'}`;
+  const all=classify(admJobsOf(null)).done,cnt=f=>all.filter(j=>f==='all'||revKind(j)===f).length;
+  const list=all.filter(j=>REV.f==='all'||revKind(j)===REV.f);
+  if(all.some(j=>!REV.meta[j.id]))setTimeout(()=>revLoadMeta(),0);
+  const ch=(f,l)=>`<button class="chip${REV.f===f?' on done':''}" onclick="REV.f='${f}';admRender()">${l} <em>${cnt(f)}</em></button>`;
+  return `<div class="tbar"><b>รอตรวจ</b><button class="ibtn rf" onclick="REV.meta={};loadAdmin(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
+    <div class="chips" style="margin-top:0">${ch('all','ทั้งหมด')}${ch('sub','ส่งงาน')}${ch('parts','ขออนุมัติอะไหล่')}${cnt('other')?ch('other','อื่น ๆ'):''}</div>
+    ${list.length?list.map(revCard).join(''):'<div class="empty">ไม่มีงานรอตรวจ</div>'}
+    <div class="mnote">${admTeams().length} ทีมที่ดูแล · กดผ่าน/ตีกลับที่นี่ = กดในหน้ารายงานช่างของ console</div>`;
+}
+// ---------- หน้าตรวจรายงาน (เต็มจอ) ----------
+async function openReview(id){
+  const j=findJob(id);
+  $('detail').innerHTML=`<div class="d-head"><button class="d-close" onclick="closeDetail()" aria-label="กลับ">${I('back')}</button><b>ตรวจรายงาน ${esc(id)}</b></div><div class="d-body"><div class="loading"><div class="spin"></div>กำลังโหลดรายงาน...</div></div>`;
+  const wasOpen=$('detail').classList.contains('open');$('detail').classList.add('open');document.body.style.overflow='hidden';
+  if(wasOpen)history.replaceState({detail:id},'');else history.pushState({detail:id},'');
+  try{const d=await api('admin_report',{jobId:id});REV.cur={r:d.report,g:0};revRender();}
+  catch(e){$('detail').querySelector('.d-body').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
+}
+function revGroups(r){
+  const order={'ก่อนดำเนินการ':0,'ขณะดำเนินการ':1,'หลังดำเนินการ':2},CAT={before:'ก่อน',during:'ขณะ',after:'หลัง'};
+  const g=new Map();
+  r.images.forEach(im=>{const k=im.slot?(im.slot.startsWith('site.')?'รูปสาขา':`${im.unitLabel||'เครื่อง'} · ${(im.phaseLabel||CAT[im.cat]||'').replace('ดำเนินการ','')}`):(CAT[im.cat]||'อื่น ๆ');
+    if(!g.has(k))g.set(k,{k,items:[],o:(im.slot&&im.slot.startsWith('site.'))?-1:(order[im.phaseLabel]??['before','during','after'].indexOf(im.cat))});g.get(k).items.push(im);});
+  return [...g.values()];
+}
+function revRender(){
+  const {r}=REV.cur,j=findJob(r.id)||{},k=revKind({status:r.status});
+  const st=revSlotStat(r.slots,r.images.map(x=>x.slot).filter(Boolean),r.needQuote),G=revGroups(r);if(REV.cur.g>=G.length)REV.cur.g=0;
+  const g=G[REV.cur.g];
+  const tIn=r.dateIn?`${esc(thDate(r.dateIn))} ${esc(r.timeIn||'')}`:'-',tOut=r.dateDone?`${esc(thDate(r.dateDone))} ${esc(r.timeDone||'')}`:'-';
+  const pmSum=r.pm&&r.pm.items.length?(()=>{const c={};r.pm.items.forEach(x=>{const t=x.type||'เครื่อง';c[t]=(c[t]||0)+1;});const bad=r.pm.items.filter(x=>/ซ่อม|เสีย/.test(x.condition)).length;return Object.entries(c).map(([t,n])=>`${t} ${n}`).join(' · ')+(bad?` · ควรซ่อม ${bad}`:'');})():'';
+  const txt=[['อาการ',r.symptom],['สาเหตุ',r.cause],['ทำอะไร',r.fix],['แนะนำ',r.recommendation],['หมายเหตุช่าง',r.note2]].filter(x=>String(x[1]||'').trim());
+  const parts=r.parts.length?r.parts.map(p=>`<div class="prt"><span>${esc(p.name)} ${p.custom?'<span class="pl y">พิมพ์เอง</span>':'<span class="pl g">ในระบบ</span>'}</span><b>${esc(p.qty)} ${esc(p.unit||'')}</b></div>`).join(''):(r.partsUsed?`<p style="white-space:pre-wrap">${esc(r.partsUsed)}</p>`:'<div class="tm" style="color:var(--ink3)">ไม่มีการใช้อะไหล่</div>');
+  const foot=k==='sub'?`<button class="b rj" onclick="revDecide('${esc(r.id)}','reject')">ตีกลับให้แก้</button><button class="b ok" style="flex:1.4" onclick="revDecide('${esc(r.id)}','approve')">${I('check')}ผ่าน</button>`
+    :k==='parts'?`<button class="b ghost" onclick="revDecide('${esc(r.id)}','deny_parts')">ไม่อนุมัติ</button><button class="b rj" onclick="revDecide('${esc(r.id)}','reject')">ตีกลับ</button><button class="b pa" style="flex:1.3" onclick="revDecide('${esc(r.id)}','approve_parts')">อนุมัติอะไหล่</button>`:'';
+  $('detail').innerHTML=`<div class="d-head"><button class="d-close" onclick="closeDetail()" aria-label="กลับ">${I('back')}</button><b>ตรวจรายงาน ${esc(r.id)}</b></div>
+    <div class="d-body">
+      <div class="dh"><div class="tags"><span class="ttag">${esc(tLabel(r.team))}</span>${r.type?`<span class="ttag" style="background:#f1f4f9;color:var(--ink2)">${esc(r.type)}${r.pm&&r.pm.round_no?' รอบ '+esc(r.pm.round_no):''}</span>`:''}${k==='parts'?'<span class="st send" style="margin-left:auto">ขออนุมัติอะไหล่</span>':st?(st.miss.length?`<span class="pl r" style="margin-left:auto">ขาด ${st.miss.length} ช่อง</span>`:'<span class="pl g" style="margin-left:auto">ครบทุกช่อง</span>'):''}</div>
+        <div class="br">${esc(r.branch||'-')}</div><div class="sub">${esc(r.client||'')}</div>
+        <div class="kv"><div>เข้างาน<b>${tIn}</b></div><div>เสร็จงาน<b>${tOut}</b></div><div>ส่งรายงาน<b>${r.techSubmittedAt?esc(thTime(r.techSubmittedAt)):'-'}${r.round>1?` · รอบที่ ${r.round}`:''}</b></div><div>${pmSum?'เครื่อง':'สถานะ'}<b>${esc(pmSum||r.status)}</b></div></div>
+        ${r.reviewNote?`<div class="warn y">${I('note')}<span><b>หมายเหตุเดิมของแอดมิน</b><br>${esc(r.reviewNote)}</span></div>`:''}</div>
+      <div class="rv-sec">สรุปงาน</div>
+      <div class="box rv-txt">${txt.length?txt.map(x=>`<p><b>${x[0]}:</b> ${esc(x[1])}</p>`).join(''):'<p style="color:var(--ink3)">ช่างไม่ได้กรอกสรุป</p>'}</div>
+      <div class="rv-sec">${I('img')}รูปถ่าย <small style="color:${st&&st.miss.length?'var(--late)':'var(--done)'}">${st?`${st.done}/${st.need} ช่อง`:`${r.images.length} รูป`}</small></div>
+      ${st&&st.miss.length?`<div class="warn r" style="margin:0 0 8px">${I('alert')}<span><b>ยังขาด:</b> ${st.miss.slice(0,6).map(x=>esc(x.l.replace(/^รูปถ่าย|^รูป/,'').trim())).join(', ')}${st.miss.length>6?` และอีก ${st.miss.length-6}`:''}</span></div>`:''}
+      ${G.length?`<div class="rv-tabs">${G.map((x,i)=>`<button class="${i===REV.cur.g?'on':''}" onclick="REV.cur.g=${i};revRender()">${esc(x.k)} (${x.items.length})</button>`).join('')}</div>
+        <div class="rv-grid">${g.items.map((im,i)=>`<button class="rv-ph" style="background-image:url('${esc(im.url)}')" onclick="revImg(${REV.cur.g},${i})">${im.slotLabel?`<i>${esc(im.slotLabel.replace(/^รูปถ่าย|^รูป/,'').trim())}</i>`:''}</button>`).join('')}</div>`:'<div class="empty">ไม่มีรูป</div>'}
+      <div class="rv-sec">อะไหล่ที่ใช้</div><div class="box">${parts}</div>
+      ${r.pm&&r.pm.sign?`<div class="rv-sec">ลายเซ็นลูกค้า</div><div class="box" style="display:flex;gap:12px;align-items:center">${r.pm.sign.url?`<img class="sigimg" src="${esc(r.pm.sign.url)}" alt="">`:''}<div>${esc(r.pm.sign.name||'-')}<br><span style="color:var(--ink2);font-size:12.5px">${r.pm.sign.at?esc(thTime(r.pm.sign.at)):''}</span></div></div>`:''}
+    </div>
+    ${foot?`<div class="d-foot">${foot}</div>`:''}`;
+}
+function revImg(gi,i){const G=revGroups(REV.cur.r),im=G[gi]&&G[gi].items[i];if(!im)return;const v=$('imgv');v.querySelector('img').src=im.url;v.querySelector('p').textContent=[im.unitLabel,im.phaseLabel,im.slotLabel].filter(Boolean).join(' · ');v.classList.add('open');}
+// ---------- ตัดสิน ----------
+const REV_REASONS=['รูปไม่ครบ','รูปไม่ชัด','ถ่ายป้ายฉลากใหม่','กรอกสาเหตุ/วิธีแก้เพิ่ม','อะไหล่ไม่ตรง','ยังไม่มีลายเซ็นลูกค้า'];
+function revDecide(id,dec){
+  const j=findJob(id)||{},T={approve:['ผ่านรายงาน','สถานะงานจะเป็น "แอดมินตรวจแล้ว"','✓ ผ่าน','ok'],reject:['ตีกลับให้ทีมแก้ไข','สถานะงานจะเป็น "ต้องแก้ไข" · ช่างเห็นหมายเหตุนี้บนการ์ดงานใน LINE','ส่งกลับให้แก้','rj2'],
+    approve_parts:['อนุมัติอะไหล่','สถานะงานจะเป็น "รอช่างเข้าซ่อม" · ช่างเข้าซ่อมต่อได้','อนุมัติอะไหล่','pa'],deny_parts:['ไม่อนุมัติซ่อมต่อ','ปิดเป็นงานสำรวจ (สถานะ "ปิดงานสำรวจ")','ไม่อนุมัติ','rj2']}[dec];
+  const lead=admPeople(j.team).length;
+  sheet(`<h4>${T[0]} ${esc(id)}</h4><div class="sub">${esc(j.branch||'')} · ${esc(tLabel(j.team))}<br>${T[1]}</div>
+    ${dec==='reject'?`<div class="rs" id="rv-rs">${REV_REASONS.map(x=>`<button onclick="this.classList.toggle('on');revReasonSync()">${esc(x)}</button>`).join('')}</div>`:''}
+    <textarea id="rv-note" placeholder="${dec==='reject'?'บอกช่างว่าต้องแก้อะไร':'หมายเหตุ (ไม่บังคับ)'}"></textarea>
+    ${dec!=='approve'&&lead?`<label class="tick"><input type="checkbox" id="rv-notify" checked>แจ้งหัวหน้า${esc(tShort(j.team))} ใน LINE ด้วย</label>`:''}
+    <div class="sh-row"><button class="b ghost" onclick="sheetClose()">ยกเลิก</button><button class="b ${T[3]==='ok'?'ok':T[3]==='pa'?'pa':'rj'}" id="rv-go" style="${T[3]==='rj2'?'background:var(--late);color:#fff':''}" onclick="revSend('${esc(id)}','${dec}')">${T[2]}</button></div>`);
+}
+function revReasonSync(){const t=$('rv-note'),last=t.dataset.c||'';let rest=t.value;if(last&&rest.startsWith(last))rest=rest.slice(last.length).replace(/^\s*—\s*/,'');rest=rest.trim();const on=[...document.querySelectorAll('#rv-rs button.on')].map(b=>b.textContent).join(' · ');t.dataset.c=on;t.value=on?on+(rest?' — '+rest:''):rest;}
+async function revSend(id,dec){
+  const note=($('rv-note')||{}).value||'',nt=$('rv-notify'),b=$('rv-go');
+  if(dec==='reject'&&!note.trim()){toast('เลือกเหตุผลหรือพิมพ์บอกช่างก่อน');return;}
+  b.disabled=true;
+  try{const d=await api('admin_review',{jobId:id,decision:dec,note:note.trim(),notify:nt?nt.checked:false});
+    sheetClose();if($('detail').classList.contains('open'))closeDetail();
+    const j=findJob(id);if(j){j.status=d.status;j.waitingAdmin=false;j.done=['แอดมินตรวจแล้ว','ปิดงานสำรวจ'].includes(d.status);j.inProgress=d.status==='ต้องแก้ไข';}
+    delete REV.meta[id];admRender();
+    toast({approve:'ผ่านรายงาน ',reject:'ตีกลับ ',approve_parts:'อนุมัติอะไหล่ ',deny_parts:'ปิดงานสำรวจ '}[dec]+id+(d.notified?` · แจ้งหัวหน้าทีมแล้ว`:''));}
+  catch(e){b.disabled=false;toast(e.message);}
 }
 function admViewFeed(){
   const now=Date.now(),ev=[];
@@ -1118,6 +1271,19 @@ function demoAdminApi(action,extra){
   if(action==='me')return Promise.resolve({ok:true,line:{name:'Orn',picture:''},tech});
   if(action==='admin_watch'){demoAdminApi.w=extra.teams||[];return Promise.resolve({ok:true,watch_teams:demoAdminApi.w});}
   if(action==='admin_update')return Promise.resolve({ok:true,job:{id:extra.jobId}});
+  if(action==='admin_review')return Promise.resolve({ok:true,status:{approve:'แอดมินตรวจแล้ว',reject:'ต้องแก้ไข',approve_parts:'รอช่างเข้าซ่อม',deny_parts:'ปิดงานสำรวจ'}[extra.decision],notified:extra.notify?1:0});
+  if(action==='admin_review_list'||action==='admin_report'){
+    const ph=['air-b-r7c0','air-b-r7c1','air-b-r7c2','air-b-r9c0','air-b-r9c1','air-b-r9c2','air-b-r11c0','air-b-r11c1','air-d-r9c0','air-d-r9c1','air-a-r7c2','air-a-r9c1'].map(x=>'photo-examples/'+x+'.jpg');
+    const mk=(id,i)=>{const pm=i%3===0,miss=i%3===2;const units=pm?[{id:'U1',tpl:'pm_air',kind:'แอร์'}]:null;
+      const keys=pm?['site.front','site.back',...SLOT_TPL.pm_air.phases.flatMap(p=>p.slots.filter(s=>!s.opt).map(s=>`U1.${p.k}.${s.k}`))]:[];
+      return {slots:units?{units,na:{}}:null,keys:miss?[]:keys,photos:pm?keys.length:miss?2:6,signed:pm,custom:i%2,round:i===4?2:1};};
+    if(action==='admin_review_list'){const items={};(extra.ids||[]).forEach((id,i)=>{const m=mk(id,i);items[id]={slots:m.slots,needQuote:false,signed:m.signed,signName:'คุณอรอนงค์',custom:m.custom,round:m.round,photos:m.photos,thumbs:ph.slice(i%4,i%4+4),slotKeys:m.keys};});return Promise.resolve({ok:true,items});}
+    const i=Math.max(0,(demoAdminApi.ids||[]).indexOf(extra.jobId)),m=mk(extra.jobId,i);
+    const imgs=m.slots?m.keys.map((k,n)=>{const [u,pk,sk]=k.split('.');if(u==='site')return {cat:'before',url:ph[n%ph.length],slot:k,slotLabel:SLOT_SITE[pk].l,unitLabel:'รูปสาขา',phaseLabel:''};const p=SLOT_TPL.pm_air.phases.find(x=>x.k===pk),s=p.slots.find(x=>x.k===sk);return {cat:p.cat,url:ph[n%ph.length],slot:k,slotLabel:s.l,unitLabel:'แอร์ตัวที่ 1',phaseLabel:p.l};})
+      :ph.slice(0,m.photos).map((u,n)=>({cat:['before','during','after'][n%3],url:u,slot:'',slotLabel:'',unitLabel:'',phaseLabel:''}));
+    return Promise.resolve({ok:true,report:{id:extra.jobId,team:'ทีม1 - อำนวย',status:'ช่างส่งงานแล้ว',client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',branch:'Pun Thai บางพระ 2',type:m.slots?'PM แอร์':'ซ่อมแอร์',symptom:'PM ตามรอบ',cause:'',fix:'ล้างคอยล์ร้อน/เย็น วัดกระแส เติมน้ำยา R32 0.3 กก.',recommendation:'แอร์ตัวที่ 3 คาปาซิเตอร์เสื่อม ควรเปลี่ยนรอบหน้า',note2:'',partsUsed:'',parts:[{name:'น้ำยาแอร์ R-32 (ต่อ กก.)',qty:0.3,unit:'กก.',custom:false},{name:'ซิลิโคน',qty:1,unit:'หลอด',custom:true}],
+      dateIn:t,timeIn:'09:12',dateDone:t,timeDone:'10:08',techSubmittedAt:H(2),reviewNote:'',round:m.round,needQuote:false,slots:m.slots,pm:m.signed?{round_no:2,contract:'PM 2026',sign:{name:'คุณอรอนงค์ (ผู้จัดการร้าน)',url:'',at:H(2.1)},items:[{type:'แอร์ผนัง',condition:'ดี ใช้งานปกติ'},{type:'แอร์ผนัง',condition:'ดี ใช้งานปกติ'},{type:'แอร์ผนัง',condition:'ควรซ่อม'}]}:null,images:imgs}});
+  }
   const T=['ทีม1 - อำนวย','ทีม2 - สมชาย','ทีม3 - ธนา','ทีม4 - ประเสริฐ','ทีม5 - ชัยวัฒน์','ทีม6 - วิชัย'];
   const B=['Pun Thai บางพระ1','Pun Thai ชลบุรี7','Max Mart หนองมน','Lotus บางนา','ร้านกาแฟ สาขาบางแสน','Pun Thai ลาดกระบัง2','Max Mart ตลาดไท1','Pun Thai พนมสารคาม5','MAGURO RAMA 3','Pun Thai รังสิต','Pun Thai บางคล้า3','Max Mart กบินทร์บุรี8'];
   const TY=['ซ่อมแอร์','ซ่อมตู้แช่','PM แอร์ และ ตู้แช่','PM แอร์'];
@@ -1132,6 +1298,7 @@ function demoAdminApi(action,extra){
     if(k==='done'){j.waitingAdmin=true;j.status='ช่างส่งงานแล้ว';j.date=addDays(t,-i);j.techSubmittedAt=H(2+i*7);j.started={at:H(5+i*7),by:'ช่าง'};if(ti===3&&i===0){j.status='รอขออนุมัติ';j.techUpdateType='parts_quote_needed';j.techUpdateAt=H(3);}}
     jobs.push(j);}});
   const ppl={'ทีม1 - อำนวย':[{name:'ช่างอำนวย',phone:'081-111-1111',leader:true}],'ทีม2 - สมชาย':[{name:'ช่างสมชาย',phone:'081-222-2222',leader:true},{name:'ช่างเอ',phone:'089-000-0000',leader:false}],'ทีม4 - ประเสริฐ':[{name:'ช่างประเสริฐ',phone:'081-444-4444',leader:true}],'ทีม6 - วิชัย':[{name:'ช่างวิชัย',phone:'081-666-6666',leader:true}]};
+  demoAdminApi.ids=jobs.filter(j=>j.waitingAdmin).map(j=>j.id);
   return Promise.resolve({ok:true,tech,jobs,teams:T.map(x=>({name:x,people:ppl[x]||[]}))});
 }
 // ===== ข้อมูลตัวอย่าง (?demo=1) =====
