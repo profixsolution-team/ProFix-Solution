@@ -1691,6 +1691,20 @@ body.pfpv-lock{overflow:hidden;}
 .rpm-sign{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-top:8px;}.rpm-sign img{height:38px;background:#fff;border:1px solid var(--border);border-radius:6px;padding:2px 6px;}
 .pm-lbl{display:block;margin-top:8px;width:132px;border-radius:8px;overflow:hidden;border:1px solid var(--border);text-decoration:none;}
 .pm-lbl img{width:100%;height:80px;object-fit:cover;display:block;}.pm-lbl span{display:block;font-size:11px;text-align:center;color:var(--text2);padding:2px 0;}
+
+/* ===== การเงินคำนวณสด (2026-11-24) ===== */
+.fin-st{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;white-space:nowrap;margin-top:3px}
+.fin-st-ok{background:color-mix(in srgb,#12A150 14%,transparent);color:#12A150}.fin-st-ov{background:color-mix(in srgb,#7c3aed 14%,transparent);color:#7c3aed}
+.fin-st-bad{background:color-mix(in srgb,#E5383B 14%,transparent);color:#E5383B}.fin-st-warn{background:color-mix(in srgb,#d97706 16%,transparent);color:#b45309}.fin-st-wait{background:color-mix(in srgb,#64748b 14%,transparent);color:#64748b}
+.inline-input.fin-ov,#m-finance-edit input.fin-ov{color:#7c3aed!important;border-color:color-mix(in srgb,#7c3aed 55%,transparent)!important}
+.fin-src{font-size:11.5px;color:var(--text3,#8b93a1);margin-top:4px;line-height:1.45}.fin-src a{color:var(--accent,#175FFF);margin-left:4px}.fin-ovt{color:#7c3aed;font-weight:700}
+.fin-note{font-size:12.5px;margin:0 0 12px;line-height:1.6}
+.fin-view{display:flex;gap:6px;flex-wrap:wrap}
+.fin-view button{border:1.5px solid var(--border,#e5e7eb);background:var(--surface,#fff);color:var(--text2,#5b6476);border-radius:999px;padding:4px 11px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.fin-view button.on{border-color:var(--c);color:var(--c)}.fin-view button em{font-style:normal;margin-left:4px;font-size:11px}
+.fin-legacy{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:color-mix(in srgb,#7c3aed 9%,transparent);border:1px solid color-mix(in srgb,#7c3aed 30%,transparent);border-radius:10px;padding:9px 12px;margin:0 12px 10px;font-size:13px}
+.fin-lg-row{display:grid;grid-template-columns:1.1fr 1.6fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border,#eee)}
+.fin-lg-row .v b{color:#7c3aed}.fin-lg-row .v i{font-style:normal;color:var(--accent,#175FFF);font-weight:700}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1919,7 +1933,8 @@ body.pfpv-lock{overflow:hidden;}
     </div>
     <div class="filter-bar" id="fin-fbar" style="margin-bottom:16px;border-radius:8px;border:1px solid var(--border);"></div>
     <div class="table-wrap mobile-list mb16">
-      <div class="table-header"><div class="table-title" id="fin-tbl-title">P&L ต่องาน</div><div class="flex g8" style="align-items:center;"><button class="btn btn-primary btn-sm" id="fin-bulk-pull" onclick="bulkMatchFinanceFromSales()">💰 ดึงราคาเข้าการเงิน (ทั้งชุด)</button><span class="mono tm" style="font-size:11px;" id="fin-cnt"></span></div></div>
+      <div class="table-header"><div class="table-title" id="fin-tbl-title">P&L ต่องาน</div><div class="flex g8" style="align-items:center;"><div class="fin-view" id="fin-view"></div><span class="mono tm" style="font-size:11px;" id="fin-cnt"></span></div></div>
+      <div id="fin-legacy"></div>
       <table><thead><tr><th>PR</th><th>สาขา</th><th>ทีม</th><th>รายรับ</th><th>จ่ายช่าง</th><th>ต้นทุนอะไหล่</th><th>กำไร</th><th>สถานะเงิน</th><th></th></tr></thead><tbody id="fin-tbody"></tbody></table>
     </div>
     <div class="table-wrap">
@@ -2732,15 +2747,16 @@ body.pfpv-lock{overflow:hidden;}
 <!-- FINANCE EDIT MODAL -->
 <div class="modal-overlay" id="m-finance-edit">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">แก้ไขการเงินงาน</div><button class="close-btn" onclick="closeM('m-finance-edit')">×</button></div>
+    <div class="modal-header"><div class="modal-title">การเงินของงาน <span class="tm" style="font-size:12px;font-weight:500">· คำนวณจากเอกสารอัตโนมัติ</span></div><button class="close-btn" onclick="closeM('m-finance-edit')">×</button></div>
     <div class="modal-body">
       <input type="hidden" id="ff-id">
-      <div class="form-row"><div class="form-group"><label>รายรับงาน (฿)</label><input type="number" id="ff-pc"></div><div class="form-group"><label>ขายอะไหล่ (฿)</label><input type="number" id="ff-partR"></div></div>
-      <div class="form-row"><div class="form-group"><label>จ่ายช่าง (฿)</label><input type="number" id="ff-pt"></div><div class="form-group"><label>ต้นทุนอะไหล่ (฿)</label><input type="number" id="ff-partC"></div></div>
-      <div class="form-row"><div class="form-group"><label>ค่าเดินทาง (เก็บลูกค้า) (฿)</label><input type="number" id="ff-fuel"></div><div class="form-group"><label>สถานะเงิน</label><div class="select-tools"><select id="ff-pay"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('payStatuses')" type="button">จัดการ</button></div></div></div>
+      <div class="fin-note" id="ff-state"></div>
+      <div class="form-row"><div class="form-group"><label>ค่าแรง / รายรับงาน (฿)</label><input type="number" id="ff-pc"><div class="fin-src" id="ff-src-pc"></div></div><div class="form-group"><label>ขายอะไหล่ (฿)</label><input type="number" id="ff-partR"><div class="fin-src" id="ff-src-partR"></div></div></div>
+      <div class="form-row"><div class="form-group"><label>จ่ายช่าง (฿)</label><input type="number" id="ff-pt"><div class="fin-src" id="ff-src-pt"></div></div><div class="form-group"><label>ต้นทุนอะไหล่ (฿)</label><input type="number" id="ff-partC"><div class="fin-src" id="ff-src-partC"></div></div></div>
+      <div class="form-row"><div class="form-group"><label>ค่าเดินทาง (เก็บลูกค้า) (฿)</label><input type="number" id="ff-fuel"><div class="fin-src" id="ff-src-fuel"></div></div><div class="form-group"><label>สถานะเงิน</label><div class="select-tools"><select id="ff-pay"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('payStatuses')" type="button">จัดการ</button></div></div></div>
       <div class="form-group"><label>รายละเอียดการเงิน</label><textarea id="ff-note" placeholder="หมายเหตุการเก็บเงิน / ใบแจ้งหนี้"></textarea></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeM('m-finance-edit')">ยกเลิก</button><button class="btn btn-primary" onclick="saveFinanceEdit()">✓ บันทึก</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" id="ff-reset" onclick="finEditResetAll()">↺ ใช้ตามเอกสารทุกช่อง</button><span style="flex:1"></span><button class="btn btn-ghost" onclick="closeM('m-finance-edit')">ยกเลิก</button><button class="btn btn-primary" onclick="saveFinanceEdit()">✓ บันทึก</button></div>
   </div>
 </div>
 
@@ -2886,8 +2902,8 @@ let editClientIndex='', editTeamIndex='', editBranchIndex='', editSupplierIndex=
 let listDraft=[];
 
 // ค่าเดินทาง (fuel) = เงินที่เก็บจากลูกค้าโดยตรง จึงเป็น "รายรับ" ไม่ใช่ต้นทุน
-const gp = j => (j.pc - j.pt) + (j.partR - j.partC) + Number(j.fuel||0);
-const jobIncome = j => Number(j.pc||0) + Number(j.partR||0) + Number(j.fuel||0);
+const gp = j => finIncome(j) - finCost(j);           // การเงินคำนวณสดจากเอกสาร (finOf) — ดู "การเงินคำนวณสดจากเอกสาร"
+const jobIncome = j => finIncome(j);
 // กลุ่มสถานะงานที่ใช้สรุปตัวเลขหน้าแดชบอร์ด/จ่ายช่าง — ต้องตรงกับสถานะจริงใน J_ST
 // (ของเดิมกรองด้วยชื่อสถานะที่ไม่มีอยู่จริง เช่น 'รอเปิดงาน'/'Reject'/'เสร็จงาน' → การ์ดเลยขึ้น 0 ตลอด)
 const JOB_DONE_STATUSES=new Set(['ปิดงาน','แอดมินตรวจแล้ว','ดำเนินการแล้ว','ปิดงานสำรวจ']);
@@ -4027,6 +4043,13 @@ function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
   const images=imageRows===null?(Array.isArray(prevTr.images)?prevTr.images:(Array.isArray(data.images)?data.images:[])):imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>({...(r.data||{}),_row:r.id,category:(r.data||{}).category||r.category||'before'})).filter(Boolean);
   const documentImages=imageRows===null?(Array.isArray(prevTr.documentImages)?prevTr.documentImages:(Array.isArray(data.documentImages)?data.documentImages:[])):imageRows.filter(r=>(r.data||{}).documentOnly||r.category==='documents').map(r=>({...(r.data||{}),_row:r.id})).filter(Boolean);
   // รูปที่ไม่มีหมวด (เช่นรูปตรวจเช็คที่ดึงจากตอนเช็คอิน) = 'ก่อนดำเนินการ' — ตรงกับที่ฟอร์มช่างแสดง
+  // แอดมินแก้รายงานในหน้า "รายงานช่าง" หลังช่างบันทึก/ส่งครั้งล่าสุด → ค่าที่แอดมินแก้ชนะ (เดิมรายงานต้นฉบับของช่างทับทุกครั้งที่โหลด = แก้แล้วไม่บันทึก)
+  // ช่างส่ง/บันทึกใหม่ภายหลัง (submitted_at / draft_saved_at ใหม่กว่า) → ใช้ของช่างตามเดิม
+  const techAt=Math.max(Date.parse(reportRow.submitted_at||'')||0,Date.parse(reportRow.draft_saved_at||'')||0,Date.parse(data.submittedAt||'')||0,Date.parse(data.draftSavedAt||'')||0);
+  const admAt=Date.parse(prevTr.adminEditedAt||'')||0;
+  if(admAt&&admAt>techAt){
+    ['dateIn','timeIn','dateDone','timeDone','symptom','cause','fix','parts','recommendation','note'].forEach(k=>{if(prevTr[k]!==undefined)data[k]=prevTr[k];});
+  }
   const tr={...(job.technicianReport||{}),...data,images:images.map(im=>im&&!im.category&&!im.documentOnly?{...im,category:'before'}:im),documentImages,reviewStatus:reportRow.review_status||data.reviewStatus||job.technicianReport?.reviewStatus,isDraft:!!reportRow.is_draft,submittedAt:reportRow.submitted_at||data.submittedAt||job.technicianReport?.submittedAt,draftSavedAt:reportRow.draft_saved_at||data.draftSavedAt||job.technicianReport?.draftSavedAt,reportId};
   return {
     ...job,
@@ -4039,6 +4062,7 @@ function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
     fix:data.fix||job.fix,
     report:data.fix||job.report,
     partsUsed:data.parts||job.partsUsed,
+    recommendation:data.recommendation||job.recommendation,
     note2:data.note||job.note2,
     techSubmittedAt:reportRow.submitted_at||job.techSubmittedAt,
     reportReviewStatus:reportRow.review_status||job.reportReviewStatus,
@@ -5168,10 +5192,12 @@ function renderDashTrends(jRows,owedTotal){
   set('ds-new-meta',pending.length?`ค้างอยู่ ${pending.length} งาน — รอจัดคิวช่าง`:'ไม่มีงานค้าง');
   const problem=jRows.filter(j=>JOB_PROBLEM_STATUSES.has(j.status));
   set('ds-reject-meta',problem.length?`${problem.length} งานต้องแก้ไข`:'ไม่มีงานติดปัญหา ✅');
-  const teamsOwed=new Set(jRows.filter(j=>Number(j.pt||0)>0&&!JOB_PROBLEM_STATUSES.has(j.status)).map(j=>j.team).filter(Boolean));
+  const teamsOwed=new Set(jRows.filter(j=>finOf(j).pt>0&&!JOB_PROBLEM_STATUSES.has(j.status)).map(j=>j.team).filter(Boolean));
   set('ds-owe-meta',owedTotal>0?`${teamsOwed.size} ทีม`:'ไม่มียอดค้าง');
 }
 function renderDash(){
+  // ยอดเงินในภาพรวมคำนวณจากเอกสาร → โหลดเอกสารครั้งแรกเบื้องหลัง (ระหว่างนี้ใช้ยอดที่บันทึกไว้)
+  if(typeof accountingLoaded!=='undefined'&&!accountingLoaded&&!accountingLoadingPromise&&isHydrated&&!window.__dashAccWait){window.__dashAccWait=true;setTimeout(()=>ensureAccountingLoaded().then(()=>{if(document.getElementById('page-dashboard')?.classList.contains('active'))renderDash();}).catch(()=>{}),1500);}
   updateNavBadges();
   const dsc=document.getElementById('dash-company');if(dsc)dsc.innerHTML=companyFilterOptionsHtml('dash');
   companyEnsureSales('dash');
@@ -5187,7 +5213,7 @@ function renderDash(){
   const pd=jRows.filter(j=>payLabel(j.pay)==='เก็บแล้ว');
   const ua=unp.reduce((s,j)=>s+jobIncome(j),0);
   const pa=pd.reduce((s,j)=>s+jobIncome(j),0);
-  const ow=(typeof techPay!=='undefined'&&techPay&&techPay.loaded)?tpOweJobs().reduce((s,j)=>s+tpTechTotal(j),0):jRows.filter(j=>!JOB_PROBLEM_STATUSES.has(j.status)).reduce((s,j)=>s+Number(j.pt||0),0);
+  const ow=(typeof techPay!=='undefined'&&techPay&&techPay.loaded)?tpOweJobs().reduce((s,j)=>s+tpTechTotal(j),0):jRows.filter(j=>!JOB_PROBLEM_STATUSES.has(j.status)).reduce((s,j)=>s+finOf(j).pt,0);
   document.getElementById('ds-unpaid').textContent='฿'+ua.toLocaleString();
   document.getElementById('ds-unpaid-c').textContent=unp.length+' รายการ';
   document.getElementById('ds-paid').textContent='฿'+pa.toLocaleString();
@@ -6617,13 +6643,16 @@ function goFinanceForJob(id){closeM('m-detail');finFilter='ทั้งหมด
 
 // FINANCE
 function setFinFilter(f){finFilter=f;renderFin();}
+var finView='all'; // all | need (ไม่มีใบเสนอราคา / ต้องแบ่งยอด) | ov (มีแก้เอง/ยอดเดิม)
+function setFinView(v){finView=v;renderFin();}
 function renderFin(){
   // การ์ดสรุป + ตาราง scope ตามเดือน/ทีมที่เลือก (ค่าเริ่มต้น = เดือนปัจจุบัน)
   companyEnsureSales('fin');
+  if(!accountingLoaded&&!accountingLoadingPromise)ensureAccountingLoaded().then(()=>{if(document.getElementById('fin-tbody')?.offsetParent)renderFin();}).catch(()=>{}); // P&L อยู่ในแท็บ ภาพรวมการเงิน ของหน้า การเงิน & จ่ายช่าง
   const jRows=liveJobs().filter(j=>(!financeMonthFilter||String(j.date||j.assignedAt||'').slice(0,7)===financeMonthFilter)&&(financeTeamFilter==='ทั้งหมด'||j.team===financeTeamFilter)&&companyMatch('fin',()=>jobCompanyId(j)));
   const fixed=fixedExpenses.reduce((s,x)=>s+x.amount,0);
   const inc=jRows.reduce((s,j)=>s+jobIncome(j),0);
-  const exp=jRows.reduce((s,j)=>s+Number(j.pt||0)+Number(j.partC||0),0);
+  const exp=jRows.reduce((s,j)=>s+finCost(j),0);
   const pro=inc-exp-fixed;
   const ar=jRows.filter(j=>payLabel(j.pay)==='รอเก็บเงิน'&&(j.status==='ปิดงาน'||j.status==='เสร็จงาน'||j.status==='รอจ่าย'));
   const arA=ar.reduce((s,j)=>s+jobIncome(j),0);
@@ -6636,20 +6665,51 @@ function renderFin(){
   const cnts={'ทั้งหมด':jRows.length};
   payStatuses.forEach(s=>{const c=jRows.filter(j=>payLabel(j.pay)===s).length;if(c)cnts[s]=c;});
   buildFinanceControls(cnts);
-  let fil=finFilter==='ทั้งหมด'?jRows:jRows.filter(j=>payLabel(j.pay)===finFilter);
-  if(financeDateFilter)fil=fil.filter(j=>(j.date||j.assignedAt||'')===financeDateFilter);
+  // มุมมอง "ต้องดู" / "มีแก้เอง" = ทุกเดือน (ตามทีม/บริษัทที่เลือก) — ไม่ให้งานเดือนก่อนตกหล่น
+  const allScope=liveJobs().filter(j=>(financeTeamFilter==='ทั้งหมด'||j.team===financeTeamFilter)&&companyMatch('fin',()=>jobCompanyId(j)));
+  const isNeed=j=>{const st=finOf(j).state;return st==='nodoc'||st==='split';},isOv=j=>finOf(j).state==='ov';
+  const vb=document.getElementById('fin-view');
+  if(vb){const ready=finReady(),nN=ready?allScope.filter(isNeed).length:0,nO=ready?allScope.filter(isOv).length:0;
+    vb.innerHTML=ready?[['all','ทั้งหมด','',jRows.length,'var(--text,#111)'],['need','ต้องดู','ทุกเดือน: ช่างส่งงานแล้วแต่ยังไม่มีใบเสนอราคา / ใบรวมหลายงานที่ต้องแบ่งยอด',nN,'#E5383B'],['ov','มีแก้เอง','ทุกเดือน: งานที่มีตัวเลขแก้เอง หรือยอดเดิมที่ไม่ตรงเอกสาร',nO,'#7c3aed']]
+      .map(([k,l,t,n,c])=>`<button type="button" class="${finView===k?'on':''}" style="--c:${c}" title="${esc(t)}" onclick="setFinView('${k}')">${l}<em>${n}</em></button>`).join(''):'<span class="tm" style="font-size:12px">กำลังโหลดเอกสารเพื่อคำนวณยอด…</span>';}
+  const lgb=document.getElementById('fin-legacy');
+  if(lgb){const lg=finLegacyJobs().filter(j=>allScope.includes(j));lgb.innerHTML=lg.length?`<div class="fin-legacy"><span>✎ <b>ยอดเดิมไม่ตรงเอกสาร ${lg.length} งาน</b> — ระบบยังใช้ยอดเดิมอยู่ (ตัวเลขไม่เปลี่ยน) เลือกได้ว่าจะใช้ตามเอกสาร หรือคงยอดเดิม</span><span style="flex:1"></span><button class="btn btn-primary btn-sm" onclick="openFinLegacy()">ตรวจ / เลือก</button></div>`:'';}
+  let fil=finView!=='all'&&finReady()?allScope.filter(finView==='need'?isNeed:isOv):(finFilter==='ทั้งหมด'?jRows:jRows.filter(j=>payLabel(j.pay)===finFilter));
+  if(financeDateFilter&&finView==='all')fil=fil.filter(j=>(j.date||j.assignedAt||'')===financeDateFilter);
   // ค่าเริ่มต้น: ซ่อนงานปิด + งานเก็บเงินแล้ว (เฉพาะหน้าการเงิน) — จะขึ้นเมื่อเลือก filter สถานะเงินนั้น หรือค้นหา
-  if(finFilter==='ทั้งหมด'&&!financeSearch.trim())fil=fil.filter(j=>j.status!=='ปิดงาน'&&payLabel(j.pay)!=='เก็บแล้ว');
+  if(finView==='all'&&finFilter==='ทั้งหมด'&&!financeSearch.trim())fil=fil.filter(j=>j.status!=='ปิดงาน'&&payLabel(j.pay)!=='เก็บแล้ว');
   fil=sortByActivity(fil.filter(j=>matchText(j,['id','ref','branch','client','team','type','date','status','pay','financeNote'],financeSearch)),'desc');
   document.getElementById('fin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('fin-tbl-title').textContent='P&L ต่องาน - '+finFilter+(financeDateFilter?' / '+financeDateFilter:'')+(financeSearch?' / ค้นหา: '+financeSearch:'');
-  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openDet('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg" type="number" value="${jobIncome(j)}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.pt}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr" type="number" value="${j.partC}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="matchFinanceFromSales('${j.id}')">🔗 ดึงข้อมูลจากใบเสนอราคา/บิล</button><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button><button onclick="deleteJob('${j.id}')" style="color:var(--red);">ลบงาน</button></div></td></tr>`;}).join('');
+  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openDet('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}${finOf(j).state!=='doc'?`<div><a href="#" onclick="openFinanceEdit('${j.id}');return false" style="text-decoration:none">${finStateBadge(j)}</a></div>`:''}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg${finOf(j).how.pc==='doc'&&finOf(j).how.partR==='doc'&&finOf(j).how.fuel==='doc'?'':' fin-ov'}" type="number" value="${jobIncome(j)}" title="${esc(['pc','partR','fuel'].map(k=>FIN_LABEL[k]+': ฿'+money(finOf(j)[k])+' · '+finOf(j).src[k]).join('\n'))}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr${finOf(j).how.pt==='doc'?'':' fin-ov'}" type="number" value="${finOf(j).pt}" title="${esc(finOf(j).src.pt)}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr${finOf(j).how.partC==='doc'?'':' fin-ov'}" type="number" value="${finOf(j).partC}" title="${esc(finOf(j).src.partC)}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openFinanceEdit('${j.id}')">💰 การเงิน (ที่มาของยอด)</button><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button><button onclick="deleteJob('${j.id}')" style="color:var(--red);">ลบงาน</button></div></td></tr>`;}).join('');
   renderFixedExpenses();
 }
 function setPay(id,s){if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(j){const before=clonePlain(j);j.pay=s;renderFin();renderDash();saveState();writeAuditLog('update_job_pay','job',id,before,{pay:s},clonePlain(j));}}
-function updateJobMoney(id,field,value){if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);const v=parseFloat(value)||0;if(field==='income')j.pc=Math.max(0,v-Number(j.partR||0)-Number(j.fuel||0));else j[field]=v;renderFin();renderDash();saveState();writeAuditLog('update_job_money','job',id,before,patchFromDiff(before,j),clonePlain(j),{field});}
-function openFinanceEdit(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;fillSelects();document.getElementById('ff-id').value=id;document.getElementById('ff-pc').value=j.pc;document.getElementById('ff-partR').value=j.partR;document.getElementById('ff-pt').value=j.pt;document.getElementById('ff-partC').value=j.partC;document.getElementById('ff-fuel').value=j.fuel;document.getElementById('ff-pay').value=payLabel(j.pay);document.getElementById('ff-note').value=j.financeNote||'';openM('m-finance-edit');}
-function saveFinanceEdit(){if(!guardEdit())return;const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const before=clonePlain(j);Object.assign(j,{pc:parseFloat(document.getElementById('ff-pc').value)||0,partR:parseFloat(document.getElementById('ff-partR').value)||0,pt:parseFloat(document.getElementById('ff-pt').value)||0,partC:parseFloat(document.getElementById('ff-partC').value)||0,fuel:parseFloat(document.getElementById('ff-fuel').value)||0,pay:document.getElementById('ff-pay').value,financeNote:document.getElementById('ff-note').value});closeM('m-finance-edit');renderFin();renderDash();saveState();writeAuditLog('update_job_finance','job',id,before,patchFromDiff(before,j),clonePlain(j));}
+function updateJobMoney(id,field,value){if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;const v=parseFloat(value)||0,f=finOf(j);
+  const vals=field==='income'?{pc:Math.max(0,v-f.partR-f.fuel)}:{[field]:v};
+  finSetValues(j,vals,{action:'update_job_money'}).then(()=>{renderFin();renderDash();}).catch(e=>{alert('บันทึกไม่สำเร็จ: '+e.message);renderFin();});}
+// หน้าต่างการเงินของงาน: ตัวเลข = คำนวณสด · บรรทัดเล็กบอกที่มา · พิมพ์ตัวเลขใหม่ = ✎ แก้เอง (เฉพาะช่องที่เปลี่ยน) · "ใช้ตามเอกสาร" = ลบค่าแก้เองช่องนั้น
+function finEditFill(j){
+  const f=finOf(j),c=f.calc;
+  FIN_KEYS.forEach(k=>{document.getElementById('ff-'+k).value=f[k];document.getElementById('ff-'+k).classList.toggle('fin-ov',f.how[k]!=='doc');
+    const how=f.how[k],docV=c?c[k]:null;
+    document.getElementById('ff-src-'+k).innerHTML=how==='doc'?esc(f.src[k]):how==='stored'?'ยอดที่บันทึกไว้ (กำลังโหลดเอกสาร…)'
+      :`<span class="fin-ovt">${how==='ov'?'✎ แก้เอง':'ยอดเดิม (ไม่ตรงเอกสาร)'}</span> · เอกสาร ฿${money(docV||0)} <a href="#" onclick="finEditUseDoc('${k}');return false">ใช้ตามเอกสาร</a>`;});
+  const t=FIN_STATE[f.state]||FIN_STATE.none;
+  document.getElementById('ff-state').innerHTML=f.state==='wait'?'กำลังโหลดเอกสารเพื่อคำนวณ…':`${finStateBadge(j)} ${f.inv?`จากเอกสาร <b>${esc(f.inv.doc_no||f.inv.sales_invoice_no||'')}</b>`:''}${f.state==='nodoc'?' — ออกใบเสนอราคาแล้วยอดรายรับจะขึ้นเอง':f.state==='split'?' — ใบนี้รวมหลายงาน แบ่งยอดไม่ได้ ควรออกใบเสนอราคาแยกต่องาน หรือพิมพ์ยอดเอง':''}`;
+  document.getElementById('ff-reset').style.display=FIN_KEYS.some(k=>f.how[k]==='ov'||f.how[k]==='legacy')?'':'none';
+}
+function openFinanceEdit(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;fillSelects();document.getElementById('ff-id').value=id;finEditFill(j);document.getElementById('ff-pay').value=payLabel(j.pay);document.getElementById('ff-note').value=j.financeNote||'';openM('m-finance-edit');
+  if(!finReady())ensureAccountingLoaded().then(()=>{if(document.getElementById('ff-id').value===id)finEditFill(j);}).catch(()=>{});}
+function finEditUseDoc(k){const j=jobs.find(x=>x.id===document.getElementById('ff-id').value&&!isDeletedRecord(x));if(!j)return;const f=finOf(j);if(f.calc)document.getElementById('ff-'+k).value=f.calc[k];document.getElementById('ff-'+k).classList.remove('fin-ov');document.getElementById('ff-src-'+k).textContent=(f.calc&&f.calc.src[k])||'';}
+function finEditResetAll(){const j=jobs.find(x=>x.id===document.getElementById('ff-id').value&&!isDeletedRecord(x));if(!j||!guardEdit())return;if(!confirm('ใช้ยอดตามเอกสารทุกช่อง (ลบค่าที่แก้เองของงานนี้)?'))return;
+  finResetToDocs(j).then(()=>{finEditFill(j);renderFin();renderDash();}).catch(e=>alert('บันทึกไม่สำเร็จ: '+e.message));}
+function saveFinanceEdit(){if(!guardEdit())return;const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
+  const f=finOf(j),vals={};FIN_KEYS.forEach(k=>{const v=parseFloat(document.getElementById('ff-'+k).value)||0;if(Math.abs(v-f[k])>0.005||(f.how[k]!=='doc'&&f.calc&&Math.abs(v-f.calc[k])<=0.5))vals[k]=v;});
+  const extra={};const pay=document.getElementById('ff-pay').value,note=document.getElementById('ff-note').value;if(pay!==j.pay)extra.pay=pay;if(note!==(j.financeNote||''))extra.financeNote=note;
+  closeM('m-finance-edit');
+  if(!Object.keys(vals).length&&!Object.keys(extra).length)return;
+  finSetValues(j,vals,{extra}).then(()=>{renderFin();renderDash();try{renderTP();}catch(e){}}).catch(e=>alert('บันทึกไม่สำเร็จ: '+e.message));}
 // ===== #9 ดึงข้อมูลการเงินจากใบเสนอราคา/บิลขายอัตโนมัติ =====
 const SALES_PARTS_CAT_RE=/อะไหล่|part|spare|วัสดุ|material|ของ/i;
 function latestSalesDocForJob(jobId){
@@ -6668,7 +6728,7 @@ function financeSourceDocForJob(jobId){
   return single.length?pick(single):pick(docs);
 }
 // คำนวณยอดการเงินจากเอกสารขายของงานนี้ (ไม่แก้ข้อมูล) — ใช้ร่วมกันทั้งปุ่มรายงานเดี่ยวและปุ่มดึงทั้งหมด
-function computeFinanceFromSales(jobId){
+function computeFinanceFromSales(jobId,live){
   const j=jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));if(!j)return null;
   const inv=financeSourceDocForJob(jobId);
   if(!inv)return null;
@@ -6697,20 +6757,136 @@ function computeFinanceFromSales(jobId){
     pc=sum('labor_price'); partR=sum('parts_price');
     pt=sum('labor_cost');  partC=sum('parts_cost');
     ptSrc=' (ต้นทุนจากราคากลาง)'; partCSrc=' (ต้นทุนจากราคากลาง)';
+    if(live){ // คำนวณสด: บิลซื้อจริงของ PR นี้ก่อนราคากลาง · ไม่มีค่าแรงต้นทุน → ราคาทีม
+      const cs=jobCosts(jobId).reduce((s,c)=>s+Number(c.cost_amount||0),0);if(cs>0){partC=cs;partCSrc=' (ต้นทุนจริง)';}
+      if(!pt){const tp=(teamPricing||[]).find(p=>String(p.team||'')===String(j.team||'')&&String(p.type||'')===String(j.type||''));if(tp){pt=Number(tp.price||0);ptSrc=' (ราคาทีม)';}}
+    }
   }else{
     // เอกสารเก่าที่ยังไม่มี 4 ช่อง — ใช้ตรรกะเดิมทั้งหมด
     const partsRevenue=items.filter(it=>!SALES_LABOR_RE.test(String(it.category||'')+' '+String(it.description||''))).reduce((s,it)=>s+Number(it.subtotal||0),0);
     partR=partsRevenue;
     pc=Math.max(0,Number(qSub!=null?qSub:inv.subtotal||0)-partsRevenue-travel);
     const costSum=jobCosts(jobId).reduce((s,c)=>s+Number(c.cost_amount||0),0);
-    partC=costSum>0?costSum:Number(j.partC||0);
-    partCSrc=costSum>0?' (ต้นทุนจริง)':' (คงค่าเดิม)';
+    partC=costSum>0?costSum:(live?0:Number(j.partC||0));
+    partCSrc=costSum>0?' (ต้นทุนจริง)':live?'':' (คงค่าเดิม)';
     const tp=(teamPricing||[]).find(p=>String(p.team||'')===String(j.team||'')&&String(p.type||'')===String(j.type||''));
-    pt=tp?Number(tp.price||0):Number(j.pt||0);
-    ptSrc=tp?' (ราคาทีม)':' (คงค่าเดิม)';
+    pt=tp?Number(tp.price||0):(live?0:Number(j.pt||0));
+    ptSrc=tp?' (ราคาทีม)':live?'':' (คงค่าเดิม)';
   }
   return {job:j,inv,items,sharedDoc,pc,partR,pt,partC,fuel,ptSrc,partCSrc};
 }
+// =====================================================================
+// การเงินคำนวณสดจากเอกสาร (2026-11-24 · แบบ B — mockups/finance-live-v2.html)
+// ทุกหน้าที่แสดงเงินอ่านผ่าน finOf(j) — ไม่มีปุ่ม "ดึง" · ไม่เก็บสำเนายอด
+//  - ค่าจากเอกสาร: ใบเสนอราคา/ใบกำกับ (computeFinanceFromSales live) · บิลซื้อที่ระบุ PR (jobCosts) · ราคาทีม
+//  - ค่าแก้เอง: j.finOv {pc,partR,fuel,pt,partC} เฉพาะช่องที่แอดมินพิมพ์ทับ (บันทึกเฉพาะช่อง ผ่าน patchJobFieldsOnServer)
+//  - ยอดเดิมก่อนเปลี่ยนระบบ (j.pc… ที่เก็บไว้): ถ้าไม่ใช่ 0 และไม่ตรงเอกสาร และงานยังไม่ได้เลือก (j.finMig) → ใช้ยอดเดิมไปก่อน (ตัวเลขไม่เปลี่ยนตอนอัป)
+//    แล้วขึ้นรายการ "ยอดเดิมไม่ตรงเอกสาร" ให้เลือก ใช้ตามเอกสาร / คงยอดเดิม
+//  - ข้อมูลเอกสารยังไม่โหลด/โหลดพัง → ใช้ยอดที่เก็บไว้เดิม (เหมือนก่อนมีระบบนี้)
+// =====================================================================
+const FIN_KEYS=['pc','partR','fuel','pt','partC'];
+const FIN_LABEL={pc:'ค่าแรง (รับ)',partR:'ขายอะไหล่ (รับ)',fuel:'ค่าเดินทาง (รับ)',pt:'จ่ายช่าง',partC:'ต้นทุนอะไหล่'};
+let finMemo=new Map();
+function finInvalidate(){finMemo=new Map();}
+function finReady(){return !!accountingLoaded&&!accountingLoadError;} // ระหว่างรีโหลด (force) ยังใช้ข้อมูลชุดเดิมได้
+const finR=v=>Math.round((Number(v)||0)*100)/100;
+// ค่าจากเอกสารล้วน (ไม่ดูค่าที่เก็บ/แก้เอง)
+function finCalc(j){
+  const out={pc:0,partR:0,fuel:0,pt:0,partC:0,src:{},inv:null,shared:false};
+  let res=null;try{res=computeFinanceFromSales(j.id,true);}catch(e){console.warn('fin calc',j.id,e);}
+  if(res){
+    const dn=res.inv.doc_no||res.inv.sales_invoice_no||'เอกสารขาย';
+    Object.assign(out,{pc:finR(res.pc),partR:finR(res.partR),fuel:finR(res.fuel),pt:finR(res.pt),partC:finR(res.partC),inv:res.inv,shared:!!res.sharedDoc});
+    out.src={pc:'📄 '+dn,partR:'📄 '+dn,fuel:'📄 '+dn,pt:res.ptSrc.includes('ราคาทีม')?'👷 ราคาทีม':res.ptSrc.includes('ราคากลาง')?'📄 '+dn+' (ต้นทุน)':'—',partC:res.partCSrc.includes('จริง')?'🧾 บิลซื้อ':res.partCSrc.includes('ราคากลาง')?'📄 '+dn+' (ต้นทุน)':'—'};
+  }else{
+    const tp=(teamPricing||[]).find(p=>String(p.team||'')===String(j.team||'')&&String(p.type||'')===String(j.type||''));
+    const cs=jobCosts(j.id).reduce((s,c)=>s+Number(c.cost_amount||0),0);
+    out.pt=finR(tp?tp.price:0);out.partC=finR(cs);
+    out.src={pc:'ยังไม่มีใบเสนอราคา',partR:'ยังไม่มีใบเสนอราคา',fuel:'ยังไม่มีใบเสนอราคา',pt:tp?'👷 ราคาทีม':'—',partC:cs>0?'🧾 บิลซื้อ':'—'};
+  }
+  finApplyPurchase(j,out);
+  return out;
+}
+// บิลซื้อที่ระบุ PR: รายการ "ค่าแรงช่าง" → จ่ายช่าง = ยอดรวม · "ค่าของ" → ต้นทุนอะไหล่ = ยอดรวม + ต้นทุนที่จับคู่จากแหล่งอื่น (ไม่นับซ้ำ) — สูตรเดิมของปุ่มดึงจากบิลซื้อ
+function finApplyPurchase(j,out){
+  let ls=null;try{ls=tpPurLines(j);}catch(e){ls=null;}
+  if(!ls||!ls.length)return;
+  const S=k=>finR(ls.filter(l=>l.as===k).reduce((s,l)=>s+l.amount,0));
+  if(ls.some(l=>l.as==='pt')){out.pt=S('pt');out.src.pt='🧾 บิลซื้อ (ค่าแรง)';}
+  if(ls.some(l=>l.as==='partC')){const ids=new Set(ls.map(l=>l.id));const other=jobCosts(j.id).filter(c=>!ids.has(c.purchase_item_id)).reduce((s,c)=>s+Number(c.cost_amount||0),0);out.partC=finR(S('partC')+other);out.src.partC='🧾 บิลซื้อ';}
+}
+function finLegacyDiff(j,k,calc){const st=Number(j[k]||0);return Math.abs(st)>0.5&&Math.abs(st-calc)>0.5;}
+// finMig = true (เลือกครบทุกช่องแล้ว) หรือ {k:true} รายช่อง — ช่องที่เลือก/แก้แล้ว ไม่ใช้ยอดเดิมอีก
+function finMigDone(j,k){const m=j&&j.finMig;return m===true||!!(m&&typeof m==='object'&&m[k]);}
+function finLegacyOn(j,k,calc){return !finMigDone(j,k)&&finLegacyDiff(j,k,calc);}
+// ยอดที่ใช้จริงของงาน: {pc,partR,fuel,pt,partC, src:{k:ข้อความที่มา}, how:{k:'doc'|'ov'|'legacy'|'stored'}, calc, state}
+// state: 'wait' (ยังไม่โหลดเอกสาร) · 'doc' · 'ov' (มีแก้เอง/ยอดเดิม) · 'nodoc' (ส่งงานแล้วไม่มีใบเสนอราคา) · 'split' (ใบรวมหลายงาน แบ่งยอดไม่ได้)
+function finOf(j){
+  if(!j)return {pc:0,partR:0,fuel:0,pt:0,partC:0,src:{},how:{},state:'none'};
+  if(!finReady()){const o={src:{},how:{},state:'wait'};FIN_KEYS.forEach(k=>{o[k]=Number(j[k]||0);o.how[k]='stored';o.src[k]='ยอดที่บันทึกไว้';});return o;}
+  const sig=[j.team,j.type,j.status,JSON.stringify(j.finOv||null),JSON.stringify(j.finMig||null),...FIN_KEYS.map(k=>j[k])].join('|');
+  const hit=finMemo.get(j.id);if(hit&&hit.sig===sig&&Date.now()-hit.t<5000)return hit.v; // เก็บผลไว้ 5 วิ (หน้าเดียวเรียกหลายครั้ง)
+  const c=finCalc(j),ov=j.finOv||{},o={src:{},how:{},calc:c,inv:c.inv};
+  FIN_KEYS.forEach(k=>{
+    if(ov[k]!=null&&ov[k]!==''){o[k]=finR(ov[k]);o.how[k]='ov';o.src[k]='✎ แก้เอง';}
+    else if(finLegacyOn(j,k,c[k])){o[k]=finR(j[k]);o.how[k]='legacy';o.src[k]='ยอดเดิม (ไม่ตรงเอกสาร)';}
+    else{o[k]=c[k];o.how[k]='doc';o.src[k]=c.src[k]||'—';}
+  });
+  const st=String(j.status||'');
+  o.state=c.shared?'split':(!c.inv&&isJobAfterSubmit(st)&&!/ยกเลิก|Reject|ปิดงานสำรวจ/.test(st))?'nodoc':FIN_KEYS.some(k=>o.how[k]!=='doc')?'ov':'doc';
+  finMemo.set(j.id,{sig,v:o,t:Date.now()});
+  return o;
+}
+const finIncome=j=>{const f=finOf(j);return f.pc+f.partR+f.fuel;};
+const finCost=j=>{const f=finOf(j);return f.pt+f.partC;};
+const FIN_STATE={doc:['✓ ตามเอกสาร','fin-st-ok'],ov:['✎ มีแก้เอง','fin-st-ov'],nodoc:['✕ ไม่มีใบเสนอราคา','fin-st-bad'],split:['⚠ ต้องแบ่งยอด','fin-st-warn'],wait:['กำลังคำนวณ…','fin-st-wait'],none:['','']};
+function finStateBadge(j){const f=finOf(j),t=FIN_STATE[f.state]||FIN_STATE.none;return t[0]?`<span class="fin-st ${t[1]}" title="${esc(FIN_KEYS.map(k=>FIN_LABEL[k]+': '+f.src[k]).join('\n'))}">${t[0]}</span>`:'';}
+// ===== ยอดเดิมไม่ตรงเอกสาร (ครั้งแรกหลังเปลี่ยนระบบ) =====
+function openFinLegacy(){
+  let m=document.getElementById('m-fin-legacy');
+  if(!m){m=document.createElement('div');m.className='modal-overlay';m.id='m-fin-legacy';m.innerHTML=`<div class="modal" style="max-width:760px"><div class="modal-header"><div><div class="modal-title">ยอดเดิมไม่ตรงเอกสาร</div><div class="tm" style="font-size:12px;margin-top:2px">ยอดที่เคยบันทึกไว้ (สีม่วง) → ยอดที่คำนวณจากเอกสารตอนนี้ (สีน้ำเงิน) · ยังไม่เลือก = ระบบใช้ยอดเดิม</div></div><button class="close-btn" onclick="closeM('m-fin-legacy')">×</button></div><div class="modal-body" id="fin-lg-body" style="max-height:62vh;overflow:auto"></div><div class="modal-footer"><span class="tm" id="fin-lg-n" style="font-size:12px"></span><span style="flex:1"></span><button class="btn btn-ghost" onclick="closeM('m-fin-legacy')">ปิด</button><button class="btn btn-primary" id="fin-lg-all" onclick="finLegacyAll()">ใช้ตามเอกสารทั้งหมด</button></div></div>`;document.body.appendChild(m);}
+  finLegacyRender();openM('m-fin-legacy');
+}
+function finLegacyRender(){
+  const list=finLegacyJobs();const b=document.getElementById('fin-lg-body');if(!b)return;
+  document.getElementById('fin-lg-n').textContent=list.length?`${list.length} งานรอเลือก`:'';document.getElementById('fin-lg-all').disabled=!list.length;
+  b.innerHTML=list.length?list.map(j=>{const f=finOf(j);const ks=FIN_KEYS.filter(k=>f.how[k]==='legacy');
+    return `<div class="fin-lg-row"><div><button class="link-btn mono" onclick="openFinanceEdit('${esc(j.id)}')">${esc(j.id)}</button><div class="tm" style="font-size:12px">${esc(j.branch||'')} · ${esc(j.status||'')}</div></div>
+      <div class="v" style="font-size:12.5px">${ks.map(k=>`${FIN_LABEL[k]}: <b>฿${money(f[k])}</b> → <i>฿${money(f.calc[k])}</i> <span class="tm">(${esc(f.calc.src[k]||'—')})</span>`).join('<br>')}</div>
+      <div style="white-space:nowrap"><button class="btn btn-primary btn-sm" onclick="finLegacyPick('${esc(j.id)}','doc')">ใช้ตามเอกสาร</button> <button class="btn btn-ghost btn-sm" onclick="finLegacyPick('${esc(j.id)}','keep')">คงยอดเดิม</button></div></div>`;}).join('')
+    :'<div class="empty" style="padding:24px;text-align:center">✓ ไม่มียอดเดิมที่ไม่ตรงเอกสารแล้ว</div>';
+}
+async function finLegacyPick(id,how){
+  if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
+  try{if(how==='doc')await finResetToDocs(j,{keepOv:true});else await finKeepLegacy(j);}catch(e){alert('บันทึกไม่สำเร็จ: '+e.message);}
+  finLegacyRender();renderFin();try{renderDash();}catch(e){}
+}
+async function finLegacyAll(){
+  if(!guardEdit())return;const list=finLegacyJobs();if(!list.length)return;
+  if(!confirm(`ใช้ยอดตามเอกสารทั้งหมด ${list.length} งาน?\n\n(ค่าที่แอดมินแก้เองไว้ในระบบใหม่ยังคงอยู่ · ยอดเดิมที่ไม่ตรงเอกสารจะเปลี่ยนเป็นยอดจากเอกสาร)`))return;
+  const btn=document.getElementById('fin-lg-all');let n=0,bad=0;
+  for(const j of list){btn.textContent=`กำลังบันทึก ${++n}/${list.length}…`;try{await finResetToDocs(j,{keepOv:true});}catch(e){bad++;console.warn('fin legacy',j.id,e);}}
+  btn.textContent='ใช้ตามเอกสารทั้งหมด';finLegacyRender();renderFin();try{renderDash();}catch(e){}
+  if(bad)alert(`บันทึกไม่สำเร็จ ${bad} งาน — ลองใหม่อีกครั้ง`);
+}
+// บันทึกค่าแก้เอง — vals = {k:ตัวเลข} · เท่ากับค่าจากเอกสาร = ลบค่าแก้เอง · all=true (ฟอร์มแก้ทั้ง 5 ช่อง) → ถือว่าเลือกแล้ว (finMig)
+async function finSetValues(j,vals,{all=false,action='update_job_finance',extra=null}={}){
+  if(!j)return;
+  const c=finReady()?finCalc(j):null,ov={...(j.finOv||{})};
+  let mig=j.finMig===true?true:{...((j.finMig&&typeof j.finMig==='object')?j.finMig:{})};
+  Object.entries(vals).forEach(([k,v])=>{if(!FIN_KEYS.includes(k))return;v=finR(v);if(c&&Math.abs(v-c[k])<=0.5)delete ov[k];else ov[k]=v;if(mig!==true)mig[k]=true;});
+  if(all)mig=true;
+  if(mig!==true&&FIN_KEYS.every(k=>mig[k]))mig=true;
+  const fields={finOv:Object.keys(ov).length?ov:null,finMig:mig===true||Object.keys(mig).length?mig:null,...(extra||{})};
+  const before=clonePlain(j);
+  await patchJobFieldsOnServer(j.id,fields);
+  finInvalidate();
+  writeAuditLog(action,'job',j.id,before,fields,clonePlain(j));
+}
+// ใช้ตามเอกสารทั้งหมด (ลบค่าแก้เอง + ยอดเดิม) / คงยอดเดิม (ยอดเดิมที่ไม่ตรง → ค่าแก้เอง)
+async function finResetToDocs(j,{keepOv=false}={}){const ov=keepOv?{...(j.finOv||{})}:{};const fields={finOv:Object.keys(ov).length?ov:null,finMig:true};const before=clonePlain(j);await patchJobFieldsOnServer(j.id,fields);finInvalidate();writeAuditLog('finance_use_docs','job',j.id,before,fields,clonePlain(j));}
+async function finKeepLegacy(j){const c=finCalc(j),ov={...(j.finOv||{})};FIN_KEYS.forEach(k=>{if(ov[k]==null&&finLegacyOn(j,k,c[k]))ov[k]=finR(j[k]);});const fields={finOv:Object.keys(ov).length?ov:null,finMig:true};const before=clonePlain(j);await patchJobFieldsOnServer(j.id,fields);finInvalidate();writeAuditLog('finance_keep_legacy','job',j.id,before,fields,clonePlain(j));}
+function finLegacyJobs(){if(!finReady())return [];return liveJobs().filter(j=>j.finMig!==true&&FIN_KEYS.some(k=>finOf(j).how[k]==='legacy'));}
 async function matchFinanceFromSales(jobId){
   await ensureAccountingLoaded().catch(()=>{});
   const res=computeFinanceFromSales(jobId);
@@ -6796,9 +6972,9 @@ function exportFinanceXlsx(){
   const list=financeScopedJobs();
   if(!list.length){alert('ไม่มีข้อมูลงานในช่วงที่เลือก');return;}
   const header=['PR','สาขา','ทีม','ประเภท','วันที่','สถานะงาน','สถานะเงิน','รายรับงาน','ขายอะไหล่','จ่ายช่าง','ต้นทุนอะไหล่','ค่าเดินทาง','กำไร'];
-  const data=list.map(j=>[j.id,j.branch||'',j.team||'',j.type||'',j.date||j.assignedAt||'',j.status||'',payLabel(j.pay)||'',Number(j.pc||0),Number(j.partR||0),Number(j.pt||0),Number(j.partC||0),Number(j.fuel||0),gp(j)]);
+  const data=list.map(j=>[j.id,j.branch||'',j.team||'',j.type||'',j.date||j.assignedAt||'',j.status||'',payLabel(j.pay)||'',finOf(j).pc,finOf(j).partR,finOf(j).pt,finOf(j).partC,finOf(j).fuel,gp(j)]);
   const sum=f=>list.reduce((s,j)=>s+Number(f(j)||0),0);
-  const totals=['รวม','','','','','','',sum(j=>j.pc),sum(j=>j.partR),sum(j=>j.pt),sum(j=>j.partC),sum(j=>j.fuel),sum(j=>gp(j))];
+  const totals=['รวม','','','','','','',sum(j=>finOf(j).pc),sum(j=>finOf(j).partR),sum(j=>finOf(j).pt),sum(j=>finOf(j).partC),sum(j=>finOf(j).fuel),sum(j=>gp(j))];
   const ws=XLSX.utils.aoa_to_sheet([header,...data,totals]);
   ws['!cols']=header.map((h,i)=>({wch:i<7?14:12}));
   const wb=XLSX.utils.book_new();
@@ -7090,6 +7266,7 @@ async function ensureAccountingLoaded(force=false){
     masterPriceItems=mpRows||[];
     accountingLoaded=true;
     accountingLoadError='';
+    finInvalidate();
     plogMark('accounting loaded');
   })().catch(e=>{
     console.warn('Accounting load failed',e);
@@ -7661,7 +7838,7 @@ function openSalesDocPreview(id){
     +`</div>`;
   document.getElementById('doc-preview-actions').innerHTML=
     `<button class="btn btn-primary btn-sm" onclick="closeM('m-doc-preview');openSalesInNewTab('${esc(id)}')">✏️ แก้ไขเอกสาร</button>`
-    +(firstPr?`<button class="btn btn-ghost btn-sm" onclick="matchFinanceFromSales('${esc(firstPr)}')">🔗 ดึงราคาเข้าการเงิน</button>`:'')
+    +(firstPr?`<button class="btn btn-ghost btn-sm" onclick="openFinanceEdit('${esc(firstPr)}')" title="ยอดการเงินคำนวณจากเอกสารอัตโนมัติ">💰 การเงินของงาน</button>`:'')
     +`<button class="btn btn-success btn-sm" style="margin-left:auto;" onclick="printSalesDoc('${esc(id)}')">🖨️ พิมพ์ / Save PDF</button>`
     +(firstPr?`<button class="btn btn-sm" style="background:var(--orange);color:#fff;border:0;" onclick="closeM('m-doc-preview');openDocBundle('${esc(firstPr)}')">📑 ดาวน์โหลดชุดเอกสาร</button>`:'');
   document.getElementById('doc-preview-frame').srcdoc=salesDocHtmlFor(inv,items);
@@ -9905,6 +10082,8 @@ async function saveSalesInvoice(){if(!guardEdit())return;
     }
     // ออกใบเสนอราคา/BOQ ใหม่ → สถานะงาน (คิวช่าง/รายงาน) + งาน Admin = "ออกใบเสนอราคาแล้ว"
     if(docType==='tax_invoice'&&isNewDoc){try{await markJobsQuoted(jobList,statusAfterTaxInvoice);}catch(e){console.warn('อัปเดตสถานะรอวางบิลไม่สำเร็จ',e);}}
+    // ใบแจ้งหนี้/ใบวางบิล (ใหม่ หรือเพิ่ม PR ภายหลัง) → งานที่ยังรอวางบิล/ใบกำกับ = "รอจ่ายช่าง"
+    if(docType==='invoice'){try{await markJobsQuoted(jobList,statusAfterBilling);}catch(e){console.warn('อัปเดตสถานะรอจ่ายช่างไม่สำเร็จ',e);}}
     if(docType==='quotation'&&isNewDoc){try{await markJobsQuoted(jobList);}catch(e){console.warn('อัปเดตสถานะออกใบเสนอราคาไม่สำเร็จ',e);}}
     if(docType==='quotation'){try{await syncSummaryTaxInvoicesForQuotation(id,subtotal,jobList);}catch(e){console.warn('ซิงก์ใบกำกับจากใบเสนอราคาไม่สำเร็จ',e);}}
     let jobTouched=false;
@@ -10022,10 +10201,16 @@ function statusAfterTaxInvoice(j){
   const st=String(j&&j.status||'');
   return TAXINV_FROM.has(st)?'รอวางบิล':'';
 }
+// ออกใบแจ้งหนี้/ใบวางบิล (doc_type invoice) → "รอจ่ายช่าง" (2026-11-24) · เดินหน้าอย่างเดียว ไม่ถอยงานที่ปิด/จ่ายแล้ว
+const BILLING_FROM=new Set([...TAXINV_FROM,'รอวางบิล','รอทำใบกำกับภาษี']);
+function statusAfterBilling(j){
+  const st=String(j&&j.status||'');
+  return BILLING_FROM.has(st)?'รอจ่ายช่าง':'';
+}
 // ลำดับขั้นของงาน Admin — ไม่ถอยหลัง (เช่น งาน Admin ที่ "รอวางบิล" แล้ว จะไม่ถูกเปลี่ยนกลับเป็น "รอออกใบกำกับภาษี")
-const TASK_BILLING_RANK={'รอออกใบกำกับภาษี':1,'รอวางบิล':2};
+const TASK_BILLING_RANK={'รอออกใบกำกับภาษี':1,'รอวางบิล':2,'รอจ่ายช่าง':3};
 async function markJobsQuoted(jobList,decide=statusAfterQuotation){
-  ['รออนุมัติอะไหล่','รอออกใบกำกับภาษี','รอวางบิล'].forEach(s=>{ensureJobStatus(s);ensureAdminStatus(s);});
+  ['รออนุมัติอะไหล่','รอออกใบกำกับภาษี','รอวางบิล','รอจ่ายช่าง'].forEach(s=>{ensureJobStatus(s);ensureAdminStatus(s);});
   for(const pr of (jobList||[])){
     const j=jobs.find(x=>sameJob(x.id,pr)&&!isDeletedRecord(x));
     if(!j)continue;
@@ -10772,7 +10957,7 @@ function tpPaidJobKeys(){
 function tpUnpaidJobs(periodKey){
   const r=tpPeriodRange(periodKey),paid=tpPaidJobKeys(),start=String(techPay.settings.start_date||'').slice(0,10);
   return liveJobs().filter(j=>{
-    if(!j.team||j.team==='ระบุทีมช่าง'||Number(j.pt||0)<=0)return false;
+    if(!j.team||j.team==='ระบุทีมช่าง'||finOf(j).pt<=0)return false;
     if(!TP_DONE_STATUSES.has(j.status))return false;
     const d=tpDoneDate(j);if(!d||d>r.end||(start&&d<start))return false;
     return !paid.has(tpKey(j.id));
@@ -10784,7 +10969,7 @@ function tpWht(gross){const rate=Number(techPay.settings.wht_rate??3);return tpR
 function tpTeamDraft(team,periodKey){
   const jobs=tpUnpaidJobs(periodKey).filter(j=>j.team===team).sort((a,b)=>tpDoneDate(a).localeCompare(tpDoneDate(b)));
   const picked=jobs.filter(j=>!tpState.excluded.has(tpKey(j.id)));
-  const gross=tpRound(picked.reduce((s,j)=>s+Number(j.pt||0),0));
+  const gross=tpRound(picked.reduce((s,j)=>s+finOf(j).pt,0));
   const adj=tpRound(tpState.adjust[team]||0),wht=tpWht(gross);
   return {team,jobs,picked,gross,wht,adjust:adj,adjustNote:tpState.adjustNote[team]||'',net:tpRound(gross-wht+adj)};
 }
@@ -10808,10 +10993,10 @@ function tpPayState(j,paid){
   if(!TP_DONE_STATUSES.has(j.status))return 'open';
   const start=String(techPay.settings.start_date||'').slice(0,10),d=tpDoneDate(j);
   if(start&&d&&d<start)return 'pre';
-  return Number(j.pt||0)>0?'ready':'miss';
+  return finOf(j).pt>0?'ready':'miss';
 }
-function tpCanPay(j,s){return s!=='paid'&&Number(j.pt||0)>0;}
-function tpTechTotal(j){return tpRound(Number(j.pt||0)+(j.tpPartOwn?Number(j.partC||0):0));}
+function tpCanPay(j,s){return s!=='paid'&&finOf(j).pt>0;}
+function tpTechTotal(j){return tpRound(finOf(j).pt+(j.tpPartOwn?finOf(j).partC:0));}
 function tpOweJobs(){const paid=tpPaidMap();return liveJobs().filter(j=>tpHasTeam(j)&&tpPayState(j,paid)==='ready');}
 function tpMonthLabel(ym,half){const m=+String(ym).slice(5,7),y=+String(ym).slice(0,4);const last=new Date(y,m,0).getDate();return `${TP_TH_MONTH[m-1]} ${y+543}${half?(half===1?' (1–15)':` (16–${last})`):''}`;}
 function tpViewJobs(){const ym=tpState.ym,h=tpState.half;return liveJobs().filter(j=>{if(!tpHasTeam(j))return false;const d=tpJobDate(j);if(d.slice(0,7)!==ym)return false;if(h&&((+d.slice(8,10)<=15)!==(h===1)))return false;return true;});}
@@ -10829,7 +11014,7 @@ function tpPurLines(j){
     const prs=String(x.job_id||'').split(/[,\s;/]+/).map(s=>s.trim()).filter(Boolean);
     if(!prs.some(p=>sameJob(p,j.id)))return;
     const inv=(purchaseInvoices||[]).find(v=>v.id===x.purchase_invoice_id);if(!inv)return; // บิลถูกยกเลิก
-    const k=j.id+'|'+x.id,as=tpState.purAs[k]||(j.tpPurAs||{})[x.id]||tpPurGuess(x,inv);
+    const as=(j.tpPurAs||{})[x.id]||tpPurGuess(x,inv); // ค่าที่แอดมินเลือก (บันทึกในงาน) หรือระบบเดา
     out.push({id:x.id,item:x.item_name||'',amount:tpRound(Number(x.subtotal||x.total_amount||0)/prs.length),split:prs.length,bill:inv.purchase_no||'',supplier:inv.supplier_name||'',date:String(inv.invoice_date||'').slice(0,10),as,used:(j.tpPurUsed||[]).includes(x.id)});
   });
   return out;
@@ -10847,9 +11032,11 @@ function tpPullPatch(j){
 function tpSaveJob(id,patch,{silent}={}){
   if(!guardEdit())return false;
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return false;
-  const before=clonePlain(j);Object.assign(j,patch);
-  saveState();writeAuditLog('update_job_finance','job',id,before,patchFromDiff(before,j),clonePlain(j));
-  if(!silent){renderTP();try{renderDash();}catch(e){}}
+  // ช่องเงิน → ค่าแก้เอง เฉพาะช่องที่ตัวเลขเปลี่ยนจริง (ช่องที่ไม่ได้แตะ ยังตามเอกสาร) · ช่องอื่น (tpPartOwn ฯลฯ) บันทึกตรง
+  const f=finOf(j),vals={},extra={};
+  Object.entries(patch||{}).forEach(([k,v])=>{if(FIN_KEYS.includes(k)){if(Math.abs(finR(v)-f[k])>0.005)vals[k]=v;}else if(JSON.stringify(j[k])!==JSON.stringify(v))extra[k]=v;});
+  if(!Object.keys(vals).length&&!Object.keys(extra).length)return true;
+  finSetValues(j,vals,{extra}).then(()=>{if(!silent){renderTP();try{renderDash();renderFin();}catch(e){}}}).catch(e=>alert('บันทึกการเงินไม่สำเร็จ: '+e.message));
   return true;
 }
 // ----- ย้ายหน้าการเงินเดิมมาเป็นแท็บ -----
@@ -10894,7 +11081,7 @@ function renderTP(){
   const chips=yms.filter(x=>x.slice(0,4)===yr).map(k=>{const js=byYm.get(k)||[],wait=js.filter(j=>['ready','miss'].includes(tpPayState(j,paid))).length;
     return `<button type="button" class="tp-mchip${k===ym?' on':''}" data-ym="${k}" onclick="tpState.ym=this.dataset.ym;tpState.sel.clear();renderTP()"><b>${TP_TH_MONTH[+k.slice(5)-1]} ${(+k.slice(0,4)+543)%100}${wait?'<i class="tp-dot" title="มีงานรอจ่าย / ยังไม่กรอกค่าแรง"></i>':''}</b><small>${js.length} งาน${wait?` · ค้าง ${wait}`:''}</small></button>`;}).join('');
   const js=tpViewJobs(),st=new Map(js.map(j=>[j.id,tpPayState(j,paid)])),S=(arr,f)=>tpRound(arr.reduce((s,j)=>s+f(j),0));
-  const inc=S(js,j=>jobIncome(j)),cost=S(js,j=>Number(j.pt||0)+Number(j.partC||0));
+  const inc=S(js,j=>jobIncome(j)),cost=S(js,j=>finOf(j).pt+finOf(j).partC);
   const ready=js.filter(j=>st.get(j.id)==='ready'),miss=js.filter(j=>st.get(j.id)==='miss'),paidJ=js.filter(j=>st.get(j.id)==='paid');
   // ทีม (เรียงตามลำดับในตั้งค่าทีม)
   const order=(teams||[]).map(t=>t.name);
@@ -10947,16 +11134,16 @@ function tpTeamPanelHtml(team,tjs,st,paid){
       <td><span class="mono ta fw7">${esc(j.id)}</span>${pl&&pl.length?`<span class="tp-clip${pn&&s!=='paid'?' new':''}" title="บิลซื้อที่ระบุ PR นี้">📎 บิลซื้อ ${pl.length}${pn&&s!=='paid'?' · ยังไม่ดึง':''}</span>`:''}<div class="tm" style="font-size:12px">${esc(j.branch||'-')}</div></td>
       <td style="font-size:12.5px">${esc(j.type||'-')}</td>
       <td>${statusBadge(j,j.status)}</td>
-      <td class="mono" style="text-align:right">${Number(j.pt||0)?money(j.pt):`<span class="${s==='miss'?'tr fw7':'tm'}">${s==='miss'?'+ กรอก':'—'}</span>`}</td>
-      <td class="mono" style="text-align:right">${Number(j.partC||0)?money(j.partC)+(j.tpPartOwn?'<div class="tm" style="font-size:11px">ช่างออกเงิน</div>':''):'<span class="tm">—</span>'}</td>
+      <td class="mono" style="text-align:right">${finOf(j).pt?money(finOf(j).pt):`<span class="${s==='miss'?'tr fw7':'tm'}">${s==='miss'?'+ กรอก':'—'}</span>`}</td>
+      <td class="mono" style="text-align:right">${finOf(j).partC?money(finOf(j).partC)+(j.tpPartOwn?'<div class="tm" style="font-size:11px">ช่างออกเงิน</div>':''):'<span class="tm">—</span>'}</td>
       <td><span class="tp-pill ${P[1]}">${P[0]}</span>${po?`<div class="tm" style="font-size:11px">${esc(po.doc_no||'')}</div>`:''}</td></tr>`;};
   const fl=[['all','ทั้งหมด'],['miss','ยังไม่กรอกค่าแรง'],['ready','รอจ่าย'],['paid','จ่ายแล้ว'],['open','ยังไม่เสร็จ / ก่อนเริ่มระบบ']];
   let html=`<div class="tp-card">
     <div class="tp-card-h">${jqTeamAvatar(team)}<div style="flex:1;min-width:0"><div class="tp-card-t">${T}</div><div class="tm" style="font-size:12px;">${payeeLine} <button class="btn btn-ghost btn-xs" data-t="${T}" onclick="tpOpenPayee(this.dataset.t)">แก้ไขผู้รับเงิน</button></div></div>
-      ${pullN?`<button class="btn btn-ghost btn-sm" onclick="tpPullTeam()" title="ตั้งค่าแรง/ค่าของ ตามยอดบิลซื้อที่ระบุ PR">📎 ดึงจากบิลซื้อ (${pullN} งาน)</button>`:''}</div>
+      </div>
     <div class="tp-fchips">${fl.map(([k,l])=>`<button type="button" class="tp-fchip${f===k?' on':''}" onclick="tpState.f='${k}';renderTP()">${l}<i>${cnt(k)}</i></button>`).join('')}</div>
     <div class="table-scroll"><table class="tp-jt"><thead><tr><th style="width:32px">${payIds.length?`<input type="checkbox" title="เลือกทุกงานที่จ่ายได้ในรายการนี้" ${allSel?'checked':''} onchange="tpSelAll(this.checked)">`:''}</th><th>วันที่เข้า</th><th>PR / สาขา</th><th>ประเภท</th><th>สถานะงาน</th><th style="text-align:right">ค่าแรงช่าง</th><th style="text-align:right">ค่าของ</th><th>จ่ายช่าง</th></tr></thead><tbody>
-    ${grp.map(([h,g])=>!g.length?'':`<tr class="tp-gh"><td colspan="8">งวด ${h===1?'1–15':'16–'+last} ${TP_TH_MONTH[m-1]} · ${g.length} งาน · ค่าแรงรวม ฿${money(g.reduce((s,j)=>s+Number(j.pt||0),0))}</td></tr>`+g.map(row).join('')).join('')||'<tr><td colspan="8" class="tm" style="text-align:center;padding:26px">ไม่มีงานในตัวกรองนี้</td></tr>'}
+    ${grp.map(([h,g])=>!g.length?'':`<tr class="tp-gh"><td colspan="8">งวด ${h===1?'1–15':'16–'+last} ${TP_TH_MONTH[m-1]} · ${g.length} งาน · ค่าแรงรวม ฿${money(g.reduce((s,j)=>s+finOf(j).pt,0))}</td></tr>`+g.map(row).join('')).join('')||'<tr><td colspan="8" class="tm" style="text-align:center;padding:26px">ไม่มีงานในตัวกรองนี้</td></tr>'}
     </tbody></table></div>`;
   // เอกสารจ่ายที่มีงานของเดือนนี้
   const pays=[...new Set(all.map(j=>paid.get(tpKey(j.id))).filter(Boolean))];
@@ -11000,7 +11187,7 @@ function tpSelReady(on){const paid=tpPaidMap();tpViewJobs().filter(j=>j.team===t
 function tpSelDraft(team){
   const paid=tpPaidMap();
   const picked=liveJobs().filter(j=>j.team===team&&tpState.sel.has(tpKey(j.id))&&tpCanPay(j,tpPayState(j,paid))).sort((a,b)=>tpDoneDate(a).localeCompare(tpDoneDate(b)));
-  const gross=tpRound(picked.reduce((s,j)=>s+Number(j.pt||0),0)),own=tpRound(picked.reduce((s,j)=>s+(j.tpPartOwn?Number(j.partC||0):0),0));
+  const gross=tpRound(picked.reduce((s,j)=>s+finOf(j).pt,0)),own=tpRound(picked.reduce((s,j)=>s+(j.tpPartOwn?finOf(j).partC:0),0));
   const adj=tpRound(tpState.adjust[team]||0),wht=tpWht(gross);
   const last=picked.length?tpDoneDate(picked[picked.length-1])||todayISO():todayISO();
   const periodKey=tpState.half?`${tpState.ym}-${tpState.half}`:tpPeriodOf(last);
@@ -11021,19 +11208,18 @@ function tpDrawer(id,keepFocus){
   tpState.open=id;document.querySelectorAll('.tp-jr').forEach(r=>r.classList.toggle('sel',r.dataset.id===id));
   const paid=tpPaidMap(),s=tpPayState(j,paid),P=TP_PS[s],po=paid.get(tpKey(j.id)),lock=s==='paid';
   const n=v=>Number(v||0)?Number(v):'',d=tpJobDate(j),I=esc(j.id);
-  const gpv=jobIncome(j)-Number(j.pt||0)-Number(j.partC||0);
+  const gpv=jobIncome(j)-finOf(j).pt-finOf(j).partC;
   const pl=tpPurLines(j);
   let pur;
   if(pl===null)pur='<div class="tm" style="font-size:12px">กำลังโหลดบิลซื้อ...</div>';
   else if(!pl.length)pur=`<div class="tm" style="font-size:12px;line-height:1.6">ยังไม่มีบิลซื้อที่ระบุ PR ${I} — ใส่เลข PR ในช่อง "PR" ของรายการในบิลซื้อ แล้วจะขึ้นที่นี่อัตโนมัติ</div>`;
   else{
     const nw=pl.filter(l=>!l.used&&l.as!=='skip'),S=k=>tpRound(pl.filter(l=>l.as===k).reduce((a,l)=>a+l.amount,0));
-    const chg=[pl.some(l=>l.as==='pt')?`ค่าแรง ${money(j.pt||0)} → ${money(S('pt'))}`:'',pl.some(l=>l.as==='partC')?'ค่าของ → ตามบิล':''].filter(Boolean).join(' · ');
+    const chg=[pl.some(l=>l.as==='pt')?`ค่าแรง ${money(finOf(j).pt)} → ${money(S('pt'))}`:'',pl.some(l=>l.as==='partC')?'ค่าของ → ตามบิล':''].filter(Boolean).join(' · ');
     pur=pl.map(l=>`<div class="tp-pl${l.used?' used':''}"><div class="r1"><b>${esc(l.item)}</b><span class="mono fw7">฿${money(l.amount)}</span></div>
       <div class="tm" style="font-size:11.5px">${esc(l.bill)} · ${esc(l.supplier||'-')} · ${tpThaiDate(l.date)}${l.split>1?` · แบ่ง ${l.split} PR`:''}</div>
-      <div class="tp-as">${[['partC','ค่าของ'],['pt','ค่าแรงช่าง'],['skip','ไม่นับ']].map(([k,t])=>`<button type="button" class="${l.as===k?'on':''}" ${lock?'disabled':''} data-k="${k}" data-l="${esc(l.id)}" onclick="tpSetPurAs(this.dataset.l,this.dataset.k)">${t}</button>`).join('')}${l.used?'<span class="tg" style="font-size:11.5px;margin-left:8px">✓ ดึงแล้ว</span>':''}</div></div>`).join('')
-      +(lock?'':`<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:6px" onclick="tpPullOne()">${nw.length?'ดึงเข้างานนี้':'ดึงใหม่อีกครั้ง'} — ${esc(chg)}</button>
-      <div class="tm" style="font-size:11.5px;margin-top:6px;line-height:1.6">ระบบเดาให้ก่อน: ผู้ขายเป็นทีมช่าง หรือรายการมีคำว่า "ค่าแรง" = ค่าแรงช่าง · ที่เหลือ = ค่าของ · ยอดในงาน = ยอดรวมบิลซื้อ (แทนค่าที่กรอกไว้ ไม่บวกซ้ำ)</div>`);
+      <div class="tp-as">${[['partC','ค่าของ'],['pt','ค่าแรงช่าง'],['skip','ไม่นับ']].map(([k,t])=>`<button type="button" class="${l.as===k?'on':''}" ${lock?'disabled':''} data-k="${k}" data-l="${esc(l.id)}" onclick="tpSetPurAs(this.dataset.l,this.dataset.k)">${t}</button>`).join('')}${l.as!=='skip'?'<span class="tg" style="font-size:11.5px;margin-left:8px">✓ นับในยอด</span>':''}</div></div>`).join('')
+      +`<div class="tm" style="font-size:11.5px;margin-top:6px;line-height:1.6">ยอดในงานคำนวณจากบิลเหล่านี้อัตโนมัติ (ไม่ต้องกดดึง) · ระบบเดาให้ก่อน: ผู้ขายเป็นทีมช่าง หรือรายการมีคำว่า "ค่าแรง" = ค่าแรงช่าง · ที่เหลือ = ค่าของ · กดเปลี่ยนได้ · แก้ตัวเลขเองด้านบน = ✎ แก้เอง</div>`;
   }
   const dw=document.getElementById('tp-dw');
   dw.innerHTML=`<div class="tp-dw-h"><div class="flex g8" style="align-items:center"><b style="font-size:18px">${I}</b><span class="tp-pill ${P[1]}">${P[0]}</span><span style="flex:1"></span>
@@ -11043,17 +11229,17 @@ function tpDrawer(id,keepFocus){
   <div class="tp-dw-b">
     ${lock?`<div class="tp-note warn">จ่ายช่างแล้วในเอกสาร <b>${esc(po&&po.doc_no||'')}</b> — แก้ค่าแรง/ค่าของไม่ได้ ต้องยกเลิกเอกสารจ่ายก่อน</div>`:s==='open'?'<div class="tp-note">งานยังไม่เสร็จ — กรอกค่าแรงไว้ก่อนได้ จะขึ้นเป็น "รอจ่าย" เมื่อช่างส่งงานแล้ว</div>':s==='pre'?`<div class="tp-note">งานเสร็จก่อนวันเริ่มใช้ระบบจ่ายช่าง (${tpThaiDate(techPay.settings.start_date)}) — ถือว่าจ่ายนอกระบบแล้ว (เปลี่ยนวันเริ่มได้ที่ ⚙)</div>`:''}
     <div class="tp-grp"><h4>💸 จ่ายช่าง</h4>
-      <div class="tp-fld"><label>ค่าแรงช่าง</label><input id="tpd-pt" type="number" step="0.01" value="${n(j.pt)}" placeholder="0" ${lock?'disabled':''}></div>
-      <div class="tp-fld"><label>ค่าของ / อะไหล่ (ต้นทุน)</label><input id="tpd-partC" type="number" step="0.01" value="${n(j.partC)}" placeholder="0" ${lock?'disabled':''}></div>
+      <div class="tp-fld"><label>ค่าแรงช่าง</label><input id="tpd-pt" type="number" step="0.01" value="${n(finOf(j).pt)}" placeholder="0" ${lock?'disabled':''}></div>
+      <div class="tp-fld"><label>ค่าของ / อะไหล่ (ต้นทุน)</label><input id="tpd-partC" type="number" step="0.01" value="${n(finOf(j).partC)}" placeholder="0" ${lock?'disabled':''}></div>
       <label class="tp-chk"><input type="checkbox" id="tpd-own" ${j.tpPartOwn?'checked':''} ${lock?'disabled':''}><span>ช่างสำรองจ่ายค่าของเอง → คืนเงินพร้อมค่าแรงในรอบจ่าย</span></label>
       <div class="tp-tot"><span>รวมจ่ายช่างงานนี้</span><span class="mono">฿${money(tpTechTotal(j))}</span></div></div>
     <div class="tp-grp"><h4>📎 บิลซื้อที่ระบุ PR ${I}${pl&&pl.length?` (${pl.length} รายการ)`:''}</h4>${pur}</div>
     <div class="tp-grp"><h4>💰 รายรับจากลูกค้า</h4>
-      <div class="tp-fld"><label>ค่าแรง (เก็บลูกค้า)</label><input id="tpd-pc" type="number" step="0.01" value="${n(j.pc)}" placeholder="0"></div>
-      <div class="tp-fld"><label>ค่าอะไหล่ (เก็บลูกค้า)</label><input id="tpd-partR" type="number" step="0.01" value="${n(j.partR)}" placeholder="0"></div>
-      <div class="tp-fld"><label>ค่าเดินทาง</label><input id="tpd-fuel" type="number" step="0.01" value="${n(j.fuel)}" placeholder="0"></div>
+      <div class="tp-fld"><label>ค่าแรง (เก็บลูกค้า)</label><input id="tpd-pc" type="number" step="0.01" value="${n(finOf(j).pc)}" placeholder="0"></div>
+      <div class="tp-fld"><label>ค่าอะไหล่ (เก็บลูกค้า)</label><input id="tpd-partR" type="number" step="0.01" value="${n(finOf(j).partR)}" placeholder="0"></div>
+      <div class="tp-fld"><label>ค่าเดินทาง</label><input id="tpd-fuel" type="number" step="0.01" value="${n(finOf(j).fuel)}" placeholder="0"></div>
       <div class="tp-tot"><span>กำไรงานนี้</span><span class="mono ${gpv>=0?'tg':'tr'}">฿${money(gpv)}</span></div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px" data-id="${I}" onclick="matchFinanceFromSales(this.dataset.id).then(()=>tpDrawer(this.dataset.id))">🔗 ดึงราคาจากใบเสนอราคา/บิลขาย</button></div>
+      <div class="tm" style="font-size:11.5px;margin-top:8px;line-height:1.6">${finStateBadge(j)} ยอดคำนวณจากใบเสนอราคา/บิลซื้อ/ราคาทีม อัตโนมัติ · แก้ตัวเลขในช่อง = ✎ แก้เอง · <a href="#" onclick="openFinanceEdit('${I}');return false">ดูที่มาของยอด</a></div></div>
     <div class="tm" style="font-size:12px">แก้ที่นี่ = แก้ที่งานในคิวช่างตัวเดียวกัน (ข้อมูลชุดเดียว)</div>
   </div>
   <div class="tp-dw-f"><button class="btn btn-ghost" onclick="tpCloseDrawer()">ปิด</button><span style="flex:1"></span><button class="btn btn-ghost" onclick="tpSaveDrawer(false)">บันทึก</button><button class="btn btn-primary" onclick="tpSaveDrawer(true)">บันทึก + งานถัดไป ›</button></div>`;
@@ -11071,7 +11257,11 @@ function tpSaveDrawer(next){
   if(!tpSaveJob(id,patch))return;
   if(next&&nx)tpDrawer(nx);else if(next)tpCloseDrawer();else tpDrawer(id,true);
 }
-function tpSetPurAs(itemId,k){tpState.purAs[tpState.open+'|'+itemId]=k;tpDrawer(tpState.open,true);}
+function tpSetPurAs(itemId,k){ // เลือกว่ารายการบิลซื้อนี้เป็น ค่าของ / ค่าแรงช่าง / ไม่นับ → บันทึกทันที ยอดในงานคำนวณใหม่เอง
+  if(!guardEdit())return;const j=jobs.find(x=>x.id===tpState.open&&!isDeletedRecord(x));if(!j)return;
+  const before=clonePlain(j),fields={tpPurAs:{...(j.tpPurAs||{}),[itemId]:k}};
+  patchJobFieldsOnServer(j.id,fields).then(()=>{finInvalidate();writeAuditLog('update_job_finance','job',j.id,before,fields,clonePlain(j));tpDrawer(j.id,true);renderTP();}).catch(e=>alert('บันทึกไม่สำเร็จ: '+e.message));
+}
 function tpPullOne(){
   const j=jobs.find(x=>x.id===tpState.open&&!isDeletedRecord(x));if(!j)return;
   const p=tpPullPatch(j);if(!p)return;
@@ -11166,7 +11356,7 @@ async function tpConfirmPay(){
       const payout={id,period_key:pk,period_start:r.start,period_end:r.end,team,payee_name:pe.payee_name||team,payee_tax_id:pe.tax_id||'',payee_address:pe.address||'',payee_bank:pe.bank||'',
         payer_company:techPay.settings.payer_company||'profix',gross:d.gross,wht_rate:Number(techPay.settings.wht_rate??3),wht_amount:d.wht,adjust_amount:d.adjust,adjust_note:d.adjustNote,net:d.net,
         paid_at:paidAt,transfer_ref:document.getElementById('tpm-ref').value.trim(),slip_url:slipUrl,note:document.getElementById('tpm-note').value.trim(),doc_no:docNo,created_by:getActorName()};
-      const items=d.picked.map(j=>({id:newAccountingId('TPI'),job_id:String(j.id).trim(),amount:tpRound(j.pt),job_branch:j.branch||'',job_type:j.type||'',job_done_date:tpDoneDate(j)||null,job_status:j.status||''}));
+      const items=d.picked.map(j=>({id:newAccountingId('TPI'),job_id:String(j.id).trim(),amount:tpRound(finOf(j).pt),job_branch:j.branch||'',job_type:j.type||'',job_done_date:tpDoneDate(j)||null,job_status:j.status||''}));
       const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/tech_pay_create`,{method:'POST',headers:sbHeaders(),body:JSON.stringify({p_payout:payout,p_items:items})});
       if(res.ok){
         writeAuditLog('tech_payout_create','tech_payout',id,null,payout,{...payout,items:items.map(i=>i.job_id)});
@@ -11206,7 +11396,9 @@ async function tpCancelPayout(id){
 // ลูกค้าเป็นระบบเครดิต (วางบิล) → งานจบตอนจ่ายช่าง: บันทึกจ่าย → "ปิดงาน" (คิวช่าง + งาน Admin ที่ผูก PR)
 // เฉพาะงานที่ช่างทำเสร็จแล้ว — งานที่จ่ายล่วงหน้าทั้งที่ยังไม่เสร็จ ไม่ปิด ; ยกเลิกเอกสารจ่าย → คืนสถานะตอนจ่าย (tech_payout_items.job_status)
 const TP_CLOSED_ST=new Set(['ปิดงาน','ปิดงานสำรวจ','Reject','ยกเลิก']);
-const TP_CLOSE_FROM=new Set([...TP_DONE_STATUSES,'เสร็จงาน','รอจ่าย'].filter(s=>!TP_CLOSED_ST.has(s)));
+const TP_CLOSE_FROM=new Set([...TP_DONE_STATUSES,'เสร็จงาน','รอจ่าย','ออกใบเสนอราคาแล้ว'].filter(s=>!TP_CLOSED_ST.has(s)));
+// 2026-11-24: ปิดได้ทุกสถานะหลังช่างส่งงาน รวมชื่อสถานะที่ตั้งเพิ่มเอง (เช่น "วางบิลแล้วรอยอดเข้า" / "ใบกำกับ…") — เดิมเฉพาะรายชื่อตายตัว งานเหล่านี้เลยไม่ปิด
+function tpCloseable(st){st=String(st||'').trim();return !TP_CLOSED_ST.has(st)&&(TP_CLOSE_FROM.has(st)||isJobAfterSubmit(st));}
 async function tpSetJobStatusAll(j,status,action){
   ensureJobStatus(status);ensureAdminStatus(status);
   const before=clonePlain(j),fields={status};
@@ -11214,14 +11406,14 @@ async function tpSetJobStatusAll(j,status,action){
   writeAuditLog(action,'job',j.id,before,fields,clonePlain(j));
   let rows=[];
   try{rows=await sbFetchJson('admin_tasks',`?select=id,data&data->>jobId=eq.${encodeURIComponent(j.id)}`);}catch(e){console.warn('อ่านงาน Admin ไม่สำเร็จ',e);}
-  for(const t of rows||[]){const d=t.data||{};if(d.deletedAt||d.deleted_at||d.status===status||(status==='ปิดงาน'&&QUOTE_TASK_KEEP.has(d.status)))continue;
+  for(const t of rows||[]){const d=t.data||{};if(d.deletedAt||d.deleted_at||d.status===status||(status==='ปิดงาน'&&(TP_CLOSED_ST.has(d.status)||d.status==='Job Done')))continue; // จ่ายช่างแล้ว → ปิดงาน Admin ทุกสถานะ (รวม "วางบิลแล้วรอยอดเข้า")
     try{await patchTaskFieldsOnServer(t.id,{status});}catch(e){console.warn('อัปเดตสถานะงาน Admin ไม่สำเร็จ',t.id,e);}}
 }
 async function tpCloseJobsPaid(ids){
   let n=0;
   for(const id of ids||[]){
     const j=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x));
-    if(!j||!TP_CLOSE_FROM.has(j.status))continue;
+    if(!j||!tpCloseable(j.status))continue;
     try{await tpSetJobStatusAll(j,'ปิดงาน','job_close_after_tech_pay');n++;}catch(e){console.warn('ปิดงานไม่สำเร็จ',j.id,e);}
   }
   if(n){try{renderJobs();renderAdmin();renderReports();renderDash();}catch(e){}broadcastDataChanged('jobs');}
@@ -11240,7 +11432,7 @@ async function tpReopenJobsUnpaid(items){
   return n;
 }
 // งานเก่าที่จ่ายช่างแล้ว (ก่อนมีระบบปิดอัตโนมัติ) แต่สถานะยังไม่ "ปิดงาน"
-function tpPaidNotClosed(){const paid=tpPaidMap();return liveJobs().filter(j=>paid.has(tpKey(j.id))&&TP_CLOSE_FROM.has(j.status)).map(j=>({j,p:paid.get(tpKey(j.id))}));}
+function tpPaidNotClosed(){const paid=tpPaidMap();return liveJobs().filter(j=>paid.has(tpKey(j.id))&&tpCloseable(j.status)).map(j=>({j,p:paid.get(tpKey(j.id))}));}
 async function tpCloseBackfill(btn){
   if(!guardEdit())return;
   const list=tpPaidNotClosed();if(!list.length){renderTP();return;}
@@ -11263,7 +11455,7 @@ function tpDocData(payoutId,team){
   }
   const d=tpSelDraft(team),pe=tpPayee(team);
   const p={id:'',doc_no:'',team,gross:d.gross,wht_rate:Number(techPay.settings.wht_rate??3),wht_amount:d.wht,adjust_amount:d.adjust,adjust_note:d.adjustNote,net:d.net,paid_at:todayISO(),transfer_ref:''};
-  return {draft:true,p,rows:d.picked.map(j=>({id:j.id,branch:j.branch,type:j.type,done:tpDoneDate(j),amount:Number(j.pt||0)})),payee:{name:pe.payee_name||team,tax:pe.tax_id,address:pe.address,bank:pe.bank},period:tpPeriodRange(d.periodKey),payer:tpPayerProfile()};
+  return {draft:true,p,rows:d.picked.map(j=>({id:j.id,branch:j.branch,type:j.type,done:tpDoneDate(j),amount:finOf(j).pt})),payee:{name:pe.payee_name||team,tax:pe.tax_id,address:pe.address,bank:pe.bank},period:tpPeriodRange(d.periodKey),payer:tpPayerProfile()};
 }
 const TP_DOC_CSS=`@page{size:A4 portrait;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,'Noto Sans Thai',sans-serif}body{margin:0;background:#edf2f7;color:#111827;font-size:12.5px}
 .toolbar{position:fixed;top:0;left:0;right:0;background:#0b1220;color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;z-index:2}.toolbar button{padding:6px 14px;border:0;border-radius:6px;cursor:pointer;font-family:inherit}.btn-print{background:#175fff;color:#fff}.btn-ghost{background:#374151;color:#fff;margin-right:6px}
@@ -11394,7 +11586,7 @@ function tpViewSummary(){
   const paid=tpPaidMap(),js=tpViewJobs();
   const payouts=[...new Set(js.map(j=>paid.get(tpKey(j.id))).filter(Boolean))];
   const teams=[...new Set(js.filter(j=>tpPayState(j,paid)==='ready').map(j=>j.team))];
-  const drafts=teams.map(t=>{const picked=js.filter(j=>j.team===t&&tpPayState(j,paid)==='ready');const gross=tpRound(picked.reduce((s,j)=>s+Number(j.pt||0),0)),own=tpRound(picked.reduce((s,j)=>s+(j.tpPartOwn?Number(j.partC||0):0),0)),wht=tpWht(gross);return {team:t,picked,gross,wht,adjust:own,net:tpRound(gross-wht+own)};});
+  const drafts=teams.map(t=>{const picked=js.filter(j=>j.team===t&&tpPayState(j,paid)==='ready');const gross=tpRound(picked.reduce((s,j)=>s+finOf(j).pt,0)),own=tpRound(picked.reduce((s,j)=>s+(j.tpPartOwn?finOf(j).partC:0),0)),wht=tpWht(gross);return {team:t,picked,gross,wht,adjust:own,net:tpRound(gross-wht+own)};});
   const ym=tpState.ym,y=+ym.slice(0,4),m=+ym.slice(5,7),last=new Date(y,m,0).getDate(),h=tpState.half;
   const r={key:ym+(h?'-'+h:''),start:`${ym}-${h===2?'16':'01'}`,end:`${ym}-${h===1?'15':String(last).padStart(2,'0')}`,label:tpMonthLabel(ym,h)};
   return {r,payouts,drafts};
@@ -11432,7 +11624,7 @@ function tpExportPeriodXlsx(){
     ...drafts.map(d=>{const pe=tpPayee(d.team);return [d.team,pe.payee_name||'',pe.tax_id||'',pe.bank||'',d.picked.length,d.gross,d.wht,d.adjust,d.net,'ยังไม่โอน','','',''];})];
   const det=[['ทีม','PR','สาขา','ประเภทงาน','วันที่เสร็จ','ค่าแรง','สถานะจ่าย','เลขที่เอกสาร'],
     ...payouts.flatMap(p=>tpItemsOf(p.id).map(it=>[p.team,it.job_id,it.job_branch||'',it.job_type||'',it.job_done_date||'',+it.amount,'โอนแล้ว',p.doc_no||''])),
-    ...drafts.flatMap(d=>d.picked.map(j=>[d.team,j.id,j.branch||'',j.type||'',tpDoneDate(j),Number(j.pt||0),'ยังไม่โอน','']))];
+    ...drafts.flatMap(d=>d.picked.map(j=>[d.team,j.id,j.branch||'',j.type||'',tpDoneDate(j),finOf(j).pt,'ยังไม่โอน','']))];
   const wb=XLSX.utils.book_new();
   const ws1=XLSX.utils.aoa_to_sheet(sum);ws1['!cols']=sum[0].map((_,i)=>({wch:i<4?20:13}));
   const ws2=XLSX.utils.aoa_to_sheet(det);ws2['!cols']=det[0].map((_,i)=>({wch:i===2?32:14}));
@@ -13544,7 +13736,7 @@ function syncReportFormToJob(){
   j.dateDone=document.getElementById('mrpt-date-done').value;
   j.timeDone=document.getElementById('mrpt-time-done').value;
   j.pic=document.getElementById('mrpt-pic').value;
-  j.symptom=j.symptom||document.getElementById('mrpt-symptom').value;
+  j.symptom=document.getElementById('mrpt-symptom').value; // เดิม j.symptom||… = แก้อาการไม่ได้ถ้ามีค่าอยู่แล้ว
   j.cause=document.getElementById('mrpt-cause')?.value||'';
   j.fix=document.getElementById('mrpt-fix').value;
   j.partsUsed=document.getElementById('mrpt-parts').value;
@@ -13554,7 +13746,7 @@ function syncReportFormToJob(){
   j.reviewNoteColor=mrptNoteColor();
   j.report=j.fix;
   j.reportReviewStatus=j.reportReviewStatus||reportReviewStatus(j);
-  j.technicianReport={...(j.technicianReport||{}),dateIn:j.dateIn,timeIn:j.timeIn,dateDone:j.dateDone,timeDone:j.timeDone,symptom:j.symptom,cause:j.cause,fix:j.fix,parts:j.partsUsed,recommendation:j.recommendation,note:j.note2,reviewStatus:j.reportReviewStatus,reviewNote:j.reviewNote,reviewedAt:j.technicianReport?.reviewedAt||''};
+  j.technicianReport={...(j.technicianReport||{}),dateIn:j.dateIn,timeIn:j.timeIn,dateDone:j.dateDone,timeDone:j.timeDone,symptom:j.symptom,cause:j.cause,fix:j.fix,parts:j.partsUsed,recommendation:j.recommendation,note:j.note2,reviewStatus:j.reportReviewStatus,reviewNote:j.reviewNote,reviewedAt:j.technicianReport?.reviewedAt||'',adminEditedAt:new Date().toISOString(),adminEditedBy:getActorName()};
   return j;
 }
 function reportReviewPatch(j){
@@ -14273,6 +14465,8 @@ function onProfixSync(kind,msg){
     if(/sales-tax/.test(a))renderSalesTax();
     else if(/purchase-tax/.test(a))renderPurchaseTax();
     else if(/finance/.test(a)){renderFin&&renderFin();}
+    else if(/tech-pay/.test(a)){try{renderTP();}catch(_){}}
+    else if(/dashboard/.test(a)){try{renderDash();}catch(_){}}
     else if(/documents/.test(a)){renderDocs&&renderDocs();}
     // ถ้าเปิดพรีวิวเอกสารอยู่ รีเฟรชให้ตรงล่าสุด (กันปรินท์ข้อมูลเก่า)
     const dp=document.getElementById('m-doc-preview');
@@ -14660,7 +14854,7 @@ function openDet(id){
     ${[['🔧','ฟอร์มช่าง','ช่างกรอกรายงาน + รูป',`copyTechnicianLink('${jid}')`,`openTechnicianForm('${jid}')`,''],['📝','แจ้งเข้าซ่อม','ช่างเช็คอินหน้างาน',`copyCheckinLink('${jid}')`,`openCheckinForm('${jid}')`,`openCheckinViewModal('${jid}')`],['✅','ตรวจรับงาน','ลูกค้าเซ็นรับงาน',`copyAcceptanceLink('${jid}')`,`openAcceptanceForm('${jid}')`,`openAcceptanceViewModal('${jid}')`]].map(([ic,t,s,cp,op,vw])=>`<div class="dw-link"><span class="dw-link-ic">${ic}</span><div style="flex:1;min-width:0"><b>${t}</b><div class="tm">${s}</div></div><button class="btn btn-ghost btn-sm" onclick="${cp}">📋 คัดลอก</button><button class="btn btn-ghost btn-sm" onclick="${op}">↗ เปิด</button>${vw?`<button class="btn btn-ghost btn-sm" onclick="${vw}">👁 ดูข้อมูล</button>`:''}</div>`).join('')}
   </div>
   <div class="dw-pane" data-t="doc">
-    <div class="dw-acts"><button class="btn btn-ghost" onclick="openReportModal('${jid}')">🔍 ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="openSalesForJob('${jid}')">🧾 ออกบิลขาย</button><button class="btn btn-ghost" onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button>${salesJobIsBilled(j.id)?`<button class="btn btn-ghost" onclick="matchFinanceFromSales('${jid}')">🔗 ดึงราคาเข้าการเงิน</button>`:''}<button class="btn btn-ghost" onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button></div>
+    <div class="dw-acts"><button class="btn btn-ghost" onclick="openReportModal('${jid}')">🔍 ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="openSalesForJob('${jid}')">🧾 ออกบิลขาย</button><button class="btn btn-ghost" onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button>${salesJobIsBilled(j.id)?`<button class="btn btn-ghost" onclick="openFinanceEdit('${jid}')">💰 การเงิน</button>`:''}<button class="btn btn-ghost" onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button></div>
     <div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div>
   </div>
   <div class="dw-pane" data-t="hist"><div id="dw-hist"><div class="tm">กำลังโหลดประวัติ...</div></div></div>`;
