@@ -1420,9 +1420,10 @@ function slotSnapshot(){
 }
 function slotInit(){
   const cfg=jobData&&jobData.photoSlots;
-  if(!(cfg&&cfg.on)) { slotState=null; return; }
+  // งาน PM ที่เปิดฟอร์มช่าง PM (pmCtx — สวิตช์ทีมนำร่อง/ทุกทีม) → ใช้รูปแยกช่องอัตโนมัติ · งานอื่นต้องให้แอดมินเปิดรายงาน (photoSlots.on)
+  if(!(cfg&&cfg.on) && !pmCtx) { slotState=null; return; }
   const saved=jobData.technicianReport&&jobData.technicianReport.slots;
-  const src=(saved&&Array.isArray(saved.units)&&saved.units.length)?saved:{ units:(cfg.units||[]), na:{} };
+  const src=(saved&&Array.isArray(saved.units)&&saved.units.length)?saved:{ units:((cfg&&cfg.units)||[]), na:{} };
   const pmMode=!!pmCtx;
   slotState={ pm:pmMode, units:pmMode?[]:(src.units||[]).filter(u=>!/^repair_/.test(u.tpl)).map((u,i)=>({ id:u.id||('u'+(i+1)), tpl:SLOT_TPL[u.tpl]?u.tpl:'pm_air', name:u.name||'', loc:u.loc||'' })), na:Object.fromEntries(Object.entries(src.na||{}).filter(([k])=>!pmMode||k.startsWith('site.'))) };
   ['before','during','after'].forEach(c=>{ const g=document.getElementById('inp-'+c)?.closest('.up-group'); if(g) g.classList.add('hidden'); });
@@ -1639,7 +1640,7 @@ async function slotAddFiles(files){
 // แต่ละเครื่อง (pmItems) ใช้แม่แบบตามชนิด: แอร์ → pm_air · ตู้แช่ → pm_fridge · ไส้กรอง → pm_filter · อื่น ๆ → รูปก่อน/หลังแบบเดิม
 // รูปเก็บใน it.photos.before/during/after (อัปโหลดทันทีเหมือนเดิม) + p.slot = "<ช่วง>.<ช่อง>" · N/A เก็บใน it.slot_na
 // รูปสาขา (หน้าร้าน/หลังร้าน) อยู่การ์ด "รูปแยกช่อง" ด้านบน ถ่ายครั้งเดียวต่องาน
-function slotPmOn(){ return !!(pmCtx && jobData && jobData.photoSlots && jobData.photoSlots.on); }
+function slotPmOn(){ return !!pmCtx; } // ฟอร์ม PM เปิด = ช่องรูปรายเครื่องเปิด (pmInit/pmRender รันก่อน slotInit จึงเช็ค pmCtx ตรง ๆ)
 function pmSlotTpl(it){ if(!slotPmOn()||!it||!it.asset_type) return ''; const g=pmType(it.asset_type).g; return g==='air'?'pm_air':g==='fridge'?'pm_fridge':g==='filter'?'pm_filter':''; }
 function pmSlotFind(it,key){ const t=SLOT_TPL[pmSlotTpl(it)]; if(!t) return null; const [pk,sk]=String(key).split('.'); const p=t.phases.find(x=>x.k===pk); const sl=p&&p.slots.find(x=>x.k===sk); return sl?{p,s:sl,cat:sl.cat||p.cat}:null; }
 function pmSlotLabel(it,key){ const f=pmSlotFind(it,key); return f?f.s.l:''; }

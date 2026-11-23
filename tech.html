@@ -116,7 +116,7 @@ svg.i{width:16px;height:16px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-
 .dh .sub{font-size:13px;color:var(--ink2)}
 .warn{border-radius:14px;padding:10px 12px;font-size:13.5px;margin-top:12px;display:flex;gap:8px;line-height:1.45}
 .warn svg.i{margin-top:2px;flex:0 0 auto}
-.warn.o{background:#fff3e0;color:#9a4d00}.warn.r{background:var(--red-dim);color:#a4161a}.warn.y{background:#fff8db;color:#7a5b00}
+.warn.o{background:#fff3e0;color:#9a4d00}.jc .note.cn,.warn.y.cn{border-left:4px solid var(--an);background:#f3f4f6;background:color-mix(in srgb,var(--an) 12%,#fff);color:#1f2937;color:color-mix(in srgb,var(--an) 62%,#000)}.warn.r{background:var(--red-dim);color:#a4161a}.warn.y{background:#fff8db;color:#7a5b00}
 .info{background:#fff;border-radius:20px;margin-top:12px;padding:2px 14px;box-shadow:0 2px 10px rgba(15,23,42,.04)}
 .ir{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
 .ir:last-child{border-bottom:0}
@@ -456,6 +456,9 @@ const CAT={
   closed:{t:'ปิดงานแล้ว',ic:'check',hint:''}
 };
 const CAT_ORDER=['today','send','late','done','next'];
+// สีโน้ตแอดมิน (เลือกใน console / LINE) · ไม่ได้เลือก หรือเลือกเหลือง = ใช้สไตล์เหลืองเดิม
+const noteC=c=>/^#[0-9a-f]{6}$/i.test(String(c||''))&&String(c).toLowerCase()!=='#f5b400'?String(c).toLowerCase():'';
+const noteSty=c=>noteC(c)?` style="--an:${noteC(c)}"`:'';
 const I=(n,st)=>`<svg class="i"${st?` style="${st}"`:''}><use href="#${n}"/></svg>`;
 const hasDate=j=>/^\d{4}-\d{2}-\d{2}/.test(j.date||'');
 const startDay=j=>j.started&&j.started.at?todayISO(new Date(j.started.at)):'';
@@ -567,7 +570,7 @@ function card(j){
   return `<div class="jc" style="--c:var(--${k})" onclick="openDetail('${esc(j.id)}')">
     <div class="r1"><span class="pr">${esc(j.id)}</span>${btPill(j)}${lvlChip(j)}${stLabel(k)}</div>
     <div class="br">${esc(j.branch||'-')}</div><div class="mt">${meta}</div>
-    ${j.reviewNote&&k!=='closed'?`<div class="note">${I('note')}<span>${esc(j.reviewNote)}</span></div>`:''}
+    ${j.reviewNote&&k!=='closed'?`<div class="note${noteC(j.reviewNoteColor)?' cn':''}"${noteSty(j.reviewNoteColor)}>${I('note')}<span>${esc(j.reviewNote)}</span></div>`:''}
     <div class="act" onclick="event.stopPropagation()">${jobActions(j,true)}</div></div>`;
 }
 function hm(iso){const d=new Date(iso);return isNaN(d)?'':String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
@@ -645,7 +648,7 @@ function openDetail(id,toDocs){
     <div class="d-body">
       <div class="dh"><div class="tags">${stLabel(k,1)}${btPill(j)}${lvlChip(j)}</div>
         <div class="br">${esc(j.branch||'-')}</div><div class="sub">${esc(j.id)}${j.type?' · '+esc(j.type):''}</div>${warn}</div>
-      ${j.reviewNote?`<div class="warn y" style="margin-top:12px">${I('note')}<span><b>หมายเหตุจากแอดมิน</b><br>${esc(j.reviewNote)}</span></div>`:''}
+      ${j.reviewNote?`<div class="warn y${noteC(j.reviewNoteColor)?' cn':''}" style="margin-top:12px${noteC(j.reviewNoteColor)?';--an:'+noteC(j.reviewNoteColor):''}">${I('note')}<span><b>หมายเหตุจากแอดมิน</b><br>${esc(j.reviewNote)}</span></div>`:''}
       <div class="info">
         ${ir('cal','c1','วันนัด',esc(hasDate(j)?thDate(j.date)+' '+(+j.date.slice(0,4)+543):'ยังไม่ระบุวัน'))}
         ${ir('pin','c2','ที่อยู่สาขา',esc(j.branchAddr||j.branch||''),`<a class="go" href="${mapHref(j)}" target="_blank" rel="noopener">นำทาง</a>`)}
@@ -1213,7 +1216,7 @@ function revRender(){
       <div class="dh"><div class="tags"><span class="ttag">${esc(tLabel(r.team))}</span>${r.type?`<span class="ttag" style="background:#f1f4f9;color:var(--ink2)">${esc(r.type)}${r.pm&&r.pm.round_no?' รอบ '+esc(r.pm.round_no):''}</span>`:''}${k==='parts'?'<span class="st send" style="margin-left:auto">ขออนุมัติอะไหล่</span>':st?(st.miss.length?`<span class="pl r" style="margin-left:auto">ขาด ${st.miss.length} ช่อง</span>`:'<span class="pl g" style="margin-left:auto">ครบทุกช่อง</span>'):''}</div>
         <div class="br">${esc(r.branch||'-')}</div><div class="sub">${esc(r.client||'')}</div>
         <div class="kv"><div>เข้างาน<b>${tIn}</b></div><div>เสร็จงาน<b>${tOut}</b></div><div>ส่งรายงาน<b>${r.techSubmittedAt?esc(thTime(r.techSubmittedAt)):'-'}${r.round>1?` · รอบที่ ${r.round}`:''}</b></div><div>${pmSum?'เครื่อง':'สถานะ'}<b>${esc(pmSum||r.status)}</b></div></div>
-        ${r.reviewNote?`<div class="warn y">${I('note')}<span><b>หมายเหตุเดิมของแอดมิน</b><br>${esc(r.reviewNote)}</span></div>`:''}</div>
+        ${r.reviewNote?`<div class="warn y${noteC(r.reviewNoteColor)?' cn':''}"${noteSty(r.reviewNoteColor)}>${I('note')}<span><b>หมายเหตุเดิมของแอดมิน</b><br>${esc(r.reviewNote)}</span></div>`:''}</div>
       <div class="rv-sec">สรุปงาน</div>
       <div class="box rv-txt">${txt.length?txt.map(x=>`<p><b>${x[0]}:</b> ${esc(x[1])}</p>`).join(''):'<p style="color:var(--ink3)">ช่างไม่ได้กรอกสรุป</p>'}</div>
       <div class="rv-sec">${I('img')}รูปถ่าย <small style="color:${st&&st.miss.length?'var(--late)':'var(--done)'}">${st?`${st.done}/${st.need} ช่อง`:`${r.images.length} รูป`}</small></div>
@@ -1259,7 +1262,7 @@ const NOTE_COLORS=[['#f5b400','เหลือง'],['#ea580c','ส้ม'],['#d
 function revColor(c){if(REV.cur)REV.cur.color=c;const t=$('rv-anote');if(t)t.style.setProperty('--an',c);document.querySelectorAll('#rv-sws button').forEach(b=>b.classList.toggle('on',b.dataset.c===c));}
 async function revSaveNote(id,b){
   const note=(($('rv-anote')||{}).value||'').trim(),color=(REV.cur&&(REV.cur.color||REV.cur.r.reviewNoteColor))||'';
-  b.disabled=true;try{await api('admin_note',{jobId:id,note,color});if(REV.cur){REV.cur.r.reviewNote=note;REV.cur.r.reviewNoteColor=color;}const j=findJob(id);if(j)j.reviewNote=note;toast('บันทึกโน้ตแล้ว');}catch(e){toast(e.message);}b.disabled=false;
+  b.disabled=true;try{await api('admin_note',{jobId:id,note,color});if(REV.cur){REV.cur.r.reviewNote=note;REV.cur.r.reviewNoteColor=color;}const j=findJob(id);if(j){j.reviewNote=note;j.reviewNoteColor=color;}toast('บันทึกโน้ตแล้ว');}catch(e){toast(e.message);}b.disabled=false;
 }
 const HIST_ACT={create_job:['สร้างงานในคิวช่าง','#94a3b8'],create_admin_task:['สร้างงาน Admin','#94a3b8'],update_job:['แก้ไขงาน','#94a3b8'],update_admin_task:['แก้ไขงาน Admin','#94a3b8'],approve_report:['ผ่านรายงาน','#12A150'],line_review_approve:['ผ่านรายงาน','#12A150'],
   return_report_for_fix:['ตีกลับให้แก้','#E5383B'],line_review_reject:['ตีกลับให้แก้','#E5383B'],approve_parts_repair:['อนุมัติอะไหล่','#F08C00'],line_review_approve_parts:['อนุมัติอะไหล่','#F08C00'],
@@ -1712,7 +1715,7 @@ function demoApi(action,extra){
     {id:'PR-429095',branch:'MAGURO สาขา INT-INTERSECT RAMA 3',client:'บริษัท มากุโระ กรุ๊ป จำกัด (มหาชน)',type:'ซ่อมแอร์',date:addDays(t,-9),status:'ปิดงาน',level:'3',detail:'แอร์ไม่เย็น',phone:'',waitingAdmin:false,inProgress:false,done:true,started:null}
   ];
   const r=extra||{};
-  return Promise.resolve({ok:true,tech,jobs:dJobs.filter(j=>!j.done||((!r.from||j.date>=r.from)&&(!r.to||j.date<=r.to)&&(r.from||r.to))).map(j=>({...j,team:'ทีม1 - อำนวย',ref:'REF-'+j.id.slice(-4),assignedAt:addDays(t,-12),reviewNote:j.id==='PR431019'?'รบกวนถ่ายรูปป้ายรุ่นตู้ให้ชัดด้วยครับ':''}))});
+  return Promise.resolve({ok:true,tech,jobs:dJobs.filter(j=>!j.done||((!r.from||j.date>=r.from)&&(!r.to||j.date<=r.to)&&(r.from||r.to))).map(j=>({...j,team:'ทีม1 - อำนวย',ref:'REF-'+j.id.slice(-4),assignedAt:addDays(t,-12),reviewNote:j.id==='PR431019'?'รบกวนถ่ายรูปป้ายรุ่นตู้ให้ชัดด้วยครับ':'',reviewNoteColor:j.id==='PR431019'?'#dc2626':''}))});
 }
 boot();
 </script>

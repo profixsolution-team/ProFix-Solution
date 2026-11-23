@@ -15734,23 +15734,39 @@ var pmTeamPushIds=new Set(); // แถวที่แอดมินเปลี
 function pmTeamCanon(t){t=String(t||'').trim();if(!t)return '';const k=x=>String(x||'').toLowerCase().replace(/[\s\-–—_.()]/g,'');const m=(typeof teams!=='undefined'&&teams||[]).find(x=>k(x.name)===k(t));return m?m.name:t;}
 function pmVTeam(v){const j=v&&v.job_id?pmJob(v.job_id):null;return (j&&pmTeamCanon(j.team))||(v&&v.team)||'';}
 function pmJobOpenFor(pr){if(!pr)return null;const j=liveJobs().find(x=>sameJob(x.id,pr));return j&&!pmStartOf(j)&&!pmJobStDone(j.status)?j:null;}
-async function pmSyncJobDates(rows){
-  let n=0;
+// ดันวัน/ทีมจากแผนไปคิวช่าง · ยิงพร้อมกันทีละ 4 งาน (แต่ละงานต้องอ่าน data ทั้งก้อนก่อนเขียน → ทีละงานช้ามากเมื่อนำเข้า Excel หลายสาขา)
+// ระหว่างดัน: pmPushBusy>0 → pmAutoLink ไม่ดึงวันจากคิวช่างกลับมาทับแผน · กันปิด/รีเฟรชหน้ากลางทาง (beforeunload)
+// คืน {n: อัปเดตแล้ว, skipped: วันไม่ดันเพราะช่างเริ่ม/ส่ง/ปิดงานแล้ว, failed}
+var pmPushBusy=0;
+async function pmSyncJobDates(rows,opt){
+  opt=opt||{};
+  const tasks=[];let skipped=0;
   for(const r of rows||[]){
     if(!r)continue;
     const tPush=pmTeamPushIds.has(r.id)&&!!r.team;pmTeamPushIds.delete(r.id);
     let dPush=!!r.planned_date;
     if(dPush&&'job_id' in r&&!pmPushIds.has(r.id))dPush=false;pmPushIds.delete(r.id);
     if(!dPush&&!tPush)continue;
-    const v=pm.visits.find(x=>x.id===r.id)||{},pr=r.job_id||v.job_id,jo=pmJobOpenFor(pr),j=jo||(tPush?pmJob(pr):null);if(!j)continue;
+    const v=pm.visits.find(x=>x.id===r.id)||{},pr=r.job_id||v.job_id,jo=pmJobOpenFor(pr),j=jo||pmJob(pr);if(!j)continue;
     const patch={},d=String(r.planned_date||'').slice(0,10);
-    if(dPush&&jo&&String(j.date||'').slice(0,10)!==d)patch.date=d; // วันนัด: เฉพาะงานที่ยังไม่เริ่ม
+    if(dPush&&String(j.date||'').slice(0,10)!==d){if(jo)patch.date=d;else skipped++;} // วันนัด: เฉพาะงานที่ยังไม่เริ่ม
     if(tPush&&pmTeamCanon(j.team)!==r.team)patch.team=r.team;     // ทีม: ทุกสถานะ (ข้อมูลเดียวกับคิวช่าง)
-    if(!Object.keys(patch).length)continue;
-    try{await patchJobFieldsOnServer(j.id,patch);n++;}catch(e){console.warn('pm→queue',j.id,e);}
+    if(Object.keys(patch).length)tasks.push({id:j.id,patch});
   }
-  if(n){pmToast(`อัปเดตคิวช่างตามแผน (วัน/ทีม) ${n} งาน`);try{renderJobs();}catch(e){}}
-  return n;
+  let n=0,failed=0,done=0,i=0;
+  if(tasks.length){
+    pmPushBusy++;const guard=e=>{e.preventDefault();e.returnValue='';return '';};window.addEventListener('beforeunload',guard);
+    try{
+      await Promise.all(Array.from({length:Math.min(4,tasks.length)},async()=>{
+        while(i<tasks.length){const t=tasks[i++];
+          try{await patchJobFieldsOnServer(t.id,t.patch);n++;}catch(e){failed++;console.warn('pm→queue',t.id,e);}
+          done++;if(opt.onProgress)try{opt.onProgress(done,tasks.length);}catch(e){}}
+      }));
+    }finally{pmPushBusy--;window.removeEventListener('beforeunload',guard);}
+  }
+  if(n){if(!opt.quiet)pmToast(`อัปเดตคิวช่างตามแผน (วัน/ทีม) ${n} งาน`);try{renderJobs();}catch(e){}}
+  if(failed&&!opt.quiet)pmToast(`⚠ อัปเดตคิวช่างไม่สำเร็จ ${failed} งาน`);
+  return {n,skipped,failed};
 }
 function pmToast(m){let t=document.getElementById('pm-toast');if(!t){t=document.createElement('div');t.id='pm-toast';t.className='pm-toast';document.body.appendChild(t);}t.textContent=m;t.classList.add('on');clearTimeout(pmToast.t);pmToast.t=setTimeout(()=>t.classList.remove('on'),3200);}
 function pmInsert(table,rows){return pmBulk(table,rows,'','return=representation');}
@@ -17181,8 +17197,15 @@ async function pmXSave(){
       // วันนัดเปลี่ยนได้เฉพาะงานที่ช่างยังไม่เริ่ม (pmJobOpenFor) · ทีมเปลี่ยนได้ทุกสถานะ เหมือนแก้ในหน้า PM
       if(x.date)pmPushIds.add(row.id);if(x.team)pmTeamPushIds.add(row.id);
       return row;});
-    for(let i=0;i<vrows.length;i+=200){const part=await pmUpsert('pm_visits',vrows.slice(i,i+200));(part&&part.length?part:vrows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(v=>v.id===r.id);if(k>=0)pm.visits[k]={...pm.visits[k],...r};else pm.visits.push(r);});}
-    closeM('m-pm');renderPM();alert(`เพิ่ม ${newRows.length} สาขา · อัปเดตแผนรอบ ${pmRound} ${vrows.length} สาขา`);
+    for(let i=0;i<vrows.length;i+=200){const part=await pmBulk('pm_visits',vrows.slice(i,i+200),'?on_conflict=id','resolution=merge-duplicates,return=representation');(part&&part.length?part:vrows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(v=>v.id===r.id);if(k>=0)pm.visits[k]={...pm.visits[k],...r};else pm.visits.push(r);});}
+    // รอดันวัน/ทีมไปคิวช่างให้เสร็จก่อนแจ้งผล (เดิมทำเบื้องหลัง → รีเฟรชกลางทาง งานที่มี PR ไม่ได้วันใหม่ แล้วแผนถูกดึงกลับเป็นวันเดิมในคิว)
+    if(btn)btn.textContent='กำลังอัปเดตคิวช่าง...';
+    const sy=await pmSyncJobDates(vrows,{quiet:true,onProgress:(d,t)=>{if(btn)btn.textContent=`กำลังอัปเดตคิวช่าง ${d}/${t}...`;}});
+    closeM('m-pm');renderPM();
+    alert(`เพิ่ม ${newRows.length} สาขา · อัปเดตแผนรอบ ${pmRound} ${vrows.length} สาขา`
+      +(sy.n?`\nอัปเดตวันนัด/ทีมในคิวช่าง ${sy.n} งาน`:'')
+      +(sy.skipped?`\nไม่เปลี่ยนวันนัดในคิวช่าง ${sy.skipped} งาน (ช่างเริ่ม/ส่ง/ปิดงานแล้ว)`:'')
+      +(sy.failed?`\n⚠ อัปเดตคิวช่างไม่สำเร็จ ${sy.failed} งาน — นำเข้าไฟล์เดิมซ้ำได้ (ระบบส่งเฉพาะงานที่วันยังไม่ตรง)`:''));
   }catch(e){pmErr(e);if(btn){btn.disabled=false;btn.textContent=pmXBtnText();}}
 }
 async function pmSaveSites(){
@@ -17442,7 +17465,7 @@ async function pmAutoLink(){
     // คิวช่างเป็นแหล่งเดียว (ข้ามแถวที่เพิ่งแก้ใน 2 นาที — กันชนกับการดันจากหน้า PM ที่กำลังส่ง)
     //  วันนัด: แผนตามวันนัดในคิว (เฉพาะงานที่ยังไม่เริ่ม) · ทีม: แผนตามทีมในคิว (ทุกสถานะ — งานที่ส่ง/ปิดแล้วก็ได้ทีมที่ทำจริง)
     let synced=0,syncedT=0;const recent=Date.now()-120e3;
-    for(const v of V){
+    for(const v of (pmPushBusy?[]:V)){ // กำลังดันวันจากแผนไปคิว (เช่น นำเข้า Excel) → รอบนี้ยังไม่ดึงกลับ
       if(!v.job_id||['skipped','cancelled'].includes(v.status))continue;
       if(v.updated_at&&new Date(v.updated_at).getTime()>recent)continue;
       const patch={};
