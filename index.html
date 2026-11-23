@@ -15727,7 +15727,7 @@ async function pmLoad(force){
       // ประวัติการเปลี่ยนแผน (console_pm_status_history.sql) — ยังไม่รัน SQL ก็ใช้งานส่วนอื่นได้ตามปกติ
       try{pm.vlogs=await sbFetchAll('pm_visit_logs','?select=visit_id,at,by,action,changes&order=at.asc');pm.vlogOk=true;}catch(e){pm.vlogs=[];pm.vlogOk=false;}
       // สวิตช์ฟอร์มช่าง PM (console_pm_tech_switch.sql) — ไม่มีแถว = ยังไม่รัน SQL → ฟอร์มช่างยังแสดงส่วน PM อยู่
-      try{const r=await sbFetchAllOptional('console_ui_settings','?select=key,value&key=eq.pm_tech');pm.tech=r&&r[0]?!!(r[0].value&&r[0].value.enabled):undefined;}catch(e){pm.tech=undefined;}
+      try{const r=await sbFetchAllOptional('console_ui_settings','?select=key,value&key=eq.pm_tech');pm.tech=r&&r[0]?!!(r[0].value&&r[0].value.enabled):undefined;pm.techTeams=r&&r[0]&&r[0].value&&Array.isArray(r[0].value.teams)?r[0].value.teams:[];}catch(e){pm.tech=undefined;pm.techTeams=[];}
       await pmBlockLoad();
       pmVLogMemo=null;
     }catch(e){console.warn('pm load',e);pm.missing=/PGRST205|does not exist|schema cache|relation/i.test(String(e&&e.message||e));pm.loaded=true;pm.error=String(e&&e.message||e);}
@@ -15798,7 +15798,7 @@ function pmCtxContract(id){
 function pmToolsHtml(){
   if(!pm.contracts.length&&!AUTH)return '';
   const a=pm.auto||{pending:[]},p=a.pending.length,c=pmContract(),I=c?esc(c.id):'';
-  const tech=pm.tech===undefined?'ยังไม่ได้รัน SQL':pm.tech?'เปิดอยู่':'ปิดอยู่';
+  const tech=pm.tech===undefined?'ยังไม่ได้รัน SQL':pm.tech?'ทุกทีม':(pm.techTeams||[]).length?`นำร่อง ${(pm.techTeams||[]).length} ทีม`:'ปิดอยู่';
   const it=(ic,l,s,fn,extra='')=>`<button type="button" onclick="pmToolsClose();${fn}"><span class="ic">${ic}</span><span class="tx">${l}${s?`<small>${s}</small>`:''}</span>${extra}</button>`;
   return `<span class="pm-tools"><button type="button" class="btn btn-ghost btn-sm" onclick="pmToolsToggle(event)" aria-haspopup="menu">⋯ เครื่องมือ${p?'<i class="pm-tdot" title="มีงานรอผูก PR"></i>':''}</button>
     <div class="pm-tmenu" id="pm-tmenu" role="menu">
@@ -15809,7 +15809,7 @@ function pmToolsHtml(){
       ${it('🗓','จัดวันเป็นชุด','เรียงวันให้หลายสาขาตามลำดับ',"pmView='plan';renderPM();pmBulkPlan()")}
       ${it('⬆','เพิ่มสาขา / นำเข้า Excel','สาขา · ที่อยู่ · พิกัด · PR · แพลน',"pmView='plan';renderPM();pmAddSites()")}`:''}
       <div class="g">ตั้งค่า</div>
-      ${it('📱','ฟอร์มช่าง PM','',pm.tech===undefined?"alert('รันไฟล์ console_pm_tech_switch.sql ใน Supabase ก่อน แล้วรีเฟรช')":'pmTechToggle()',`<span class="sw ${pm.tech?'on':''}">${tech}</span>`)}
+      ${it('📱','ฟอร์มช่าง PM','',pm.tech===undefined?"alert('รันไฟล์ console_pm_tech_switch.sql ใน Supabase ก่อน แล้วรีเฟรช')":'pmTechToggle()',`<span class="sw ${pm.tech||(pm.techTeams||[]).length?'on':''}">${tech}</span>`)}
       ${c?it('✏️','แก้ไขสัญญา',esc(c.client)+' · '+esc(c.name),`pmEditContract('${I}')`):''}
       ${it('＋','สัญญาใหม่','','pmEditContract()')}
       ${it('⟳','รีเฟรชข้อมูล','','pm.loaded=false;renderPM()')}
@@ -16361,16 +16361,33 @@ function pmTechSwHtml(){
   if(pm.tech===undefined)return `<span class="pm-sw warn" title="รันไฟล์ console_pm_tech_switch.sql ใน Supabase เพื่อให้ปิดได้">⚠ ฟอร์มช่าง PM เปิดอยู่ <small>· ยังไม่ได้รัน SQL สวิตช์</small></span>`;
   return `<button type="button" class="pm-sw${pm.tech?' on':''}" onclick="pmTechToggle()" title="${pm.tech?'ช่างเห็นส่วน PM ในฟอร์มช่าง (เครื่อง / ใบ PM / ลายเซ็น / สแกน QR)':'ช่างเห็นฟอร์มช่างแบบเดิม แม้งานจะผูกกับแผน PM'}"><i></i>ฟอร์มช่าง PM <small>${pm.tech?'เปิด':'ปิด'}</small></button>`;
 }
-async function pmTechToggle(){
+// เปิด/ปิดฟอร์มช่าง PM: ปิด · เฉพาะทีมนำร่อง (เลือกทีม) · ทุกทีม — เก็บใน console_ui_settings.pm_tech {enabled, teams}
+// ต้องรัน console_pm_tech_teams.sql ก่อน ไม่งั้นโหมด "เฉพาะทีม" จะยังไม่มีผลกับฟอร์มช่าง
+function pmTechToggle(){
   if(!AUTH||AUTH.role!=='admin'){alert('เฉพาะแอดมินเปิด/ปิดได้');return;}
-  const on=!pm.tech;
-  if(!confirm(on?'เปิดฟอร์มช่าง PM?\n\nงานที่ผูกกับแผน PM ช่างจะเห็นส่วน PM ในฟอร์มช่างทันที (รายการเครื่อง · ใบ PM · ลายเซ็นลูกค้า · สแกน QR)'
-    :'ปิดฟอร์มช่าง PM?\n\nช่างจะเห็นฟอร์มช่างแบบเดิม แม้งานจะผูกกับแผน PM\n(ข้อมูลเครื่องที่บันทึกไว้แล้วยังอยู่ครบ · สถานะแผน PM ยังซิงก์จากคิวช่างเหมือนเดิม)'))return;
+  const sel=new Set((pm.techTeams||[]).map(pmTeamCanon));
+  const names=[...new Set([...(teams||[]).map(x=>x.name),...sel])].filter(Boolean);
+  const mode=pm.tech?'all':sel.size?'teams':'off';
+  const radio=(v,l,d)=>`<label class="pmts-opt"><input type="radio" name="pmts-mode" value="${v}"${mode===v?' checked':''} onchange="pmTechModeChg()"><span><b>${l}</b><small>${d}</small></span></label>`;
+  const body=`<style>.pmts-opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer}.pmts-opt small{display:block;color:var(--text3);font-size:12px;margin-top:2px}.pmts-teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin:6px 0 4px 28px}.pmts-teams label{display:flex;gap:8px;align-items:center;padding:7px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:14px}.pmts-teams.off{opacity:.45;pointer-events:none}.pmts-opt input,.pmts-teams input{width:18px!important;height:18px;min-width:0;flex:0 0 18px;margin:2px 0 0;padding:0}.pmts-opt span{flex:1;min-width:0;text-align:left}.pmts-teams label{justify-content:flex-start;text-align:left}</style>
+    ${radio('off','ปิด','ทุกทีมใช้ฟอร์มช่างแบบเดิม (ยกเว้นงานทดสอบ TEST-SLOT)')}
+    ${radio('teams','เฉพาะทีมนำร่อง','งาน PM ของทีมที่เลือกได้ฟอร์มใหม่ (สแกน QR · รายเครื่อง · รูปแยกช่อง · ลายเซ็น) ทีมอื่นใช้แบบเดิม')}
+    <div class="pmts-teams${mode==='teams'?'':' off'}" id="pmts-teams">${names.length?names.map(n=>`<label><input type="checkbox" value="${esc(n)}"${sel.has(n)?' checked':''}>${esc(n)}</label>`).join(''):'<span class="tm">ยังไม่มีรายชื่อทีม (ตั้งค่า → ทีมช่าง)</span>'}</div>
+    ${radio('all','ทุกทีม','งาน PM ทุกงานได้ฟอร์มใหม่')}
+    <div class="tm" style="font-size:12px;margin-top:8px">มีผลกับงานที่ผูกแผน PM เท่านั้น · เปลี่ยนทีมของงานในคิวช่าง ฟอร์มจะตามทีมใหม่ทันที · ข้อมูลเครื่องที่บันทึกแล้วไม่หายเมื่อปิด</div>`;
+  pmModal('ฟอร์มช่าง PM','เลือกทีมที่จะใช้ฟอร์มใหม่',body,`<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="pmTechSave()">บันทึก</button>`);
+}
+function pmTechModeChg(){const m=document.querySelector('input[name="pmts-mode"]:checked')?.value;document.getElementById('pmts-teams')?.classList.toggle('off',m!=='teams');}
+async function pmTechSave(){
+  const mode=document.querySelector('input[name="pmts-mode"]:checked')?.value||'off';
+  const picked=[...document.querySelectorAll('#pmts-teams input:checked')].map(x=>x.value);
+  if(mode==='teams'&&!picked.length){alert('เลือกอย่างน้อย 1 ทีม หรือเลือก "ปิด"');return;}
+  const value={enabled:mode==='all',teams:mode==='teams'?picked:[]};
   try{
-    const r=await fetch(splitUrl('console_ui_settings','?on_conflict=key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify({key:'pm_tech',value:{enabled:on},updated_at:new Date().toISOString(),updated_by:getActorName()})});
+    const r=await fetch(splitUrl('console_ui_settings','?on_conflict=key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify({key:'pm_tech',value,updated_at:new Date().toISOString(),updated_by:getActorName()})});
     if(!r.ok)throw new Error(await r.text());
-    pm.tech=on;broadcastDataChanged('uisettings');renderPM();
-  }catch(e){alert('บันทึกสวิตช์ไม่สำเร็จ: '+(e.message||e));}
+    pm.tech=value.enabled;pm.techTeams=value.teams;closeM('m-pm');broadcastDataChanged('uisettings');renderPM();
+  }catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));}
 }
 
 // ---------- แผนที่ (OpenStreetMap + Leaflet) ----------
