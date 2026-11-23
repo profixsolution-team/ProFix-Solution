@@ -237,6 +237,43 @@ body.pm-t2 #pm-wrap{display:none!important;}
 .sl-ph{font-weight:800;font-size:15px;margin-bottom:10px}
 .sl-foot{margin-top:16px}.sl-btn{display:block;width:100%;padding:13px;border:0;border-radius:12px;background:var(--accent);color:#0d1117;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer}
 .sl-del{border:1px solid var(--red);background:none;color:var(--red);border-radius:9px;padding:6px 10px;font-family:inherit;font-size:12px;font-weight:700;flex:none}
+.sl-bulk{width:100%;border:1.5px dashed var(--accent);background:rgba(88,166,255,.08);color:var(--accent);border-radius:12px;padding:11px;font-family:inherit;font-weight:700;font-size:14.5px;display:flex;flex-direction:column;align-items:center;gap:2px;margin:0 0 10px;cursor:pointer}
+.sl-bulk small{font-weight:500;color:var(--text2);font-size:12px}
+.pb{position:fixed;inset:0;z-index:250;background:var(--bg);display:flex;flex-direction:column}
+.pb.hidden{display:none}
+.pb-h{padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.pb-h b{font-size:16px}.pb-h small{display:block;color:var(--text2);font-size:12.5px;margin-top:2px}
+.pb-b{flex:1;overflow:auto;padding:12px 12px 16px;-webkit-overflow-scrolling:touch}
+.pb-f{padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 2fr;gap:8px}
+.pb-f button{border-radius:12px;padding:13px;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.pb-cancel{border:1px solid var(--border2);background:var(--surface2);color:var(--text)}
+.pb-ok{border:0;background:var(--accent);color:#06121f}.pb-ok:disabled{opacity:.6}
+.pb-tip{background:var(--yellow-dim);color:#f0c96a;border-radius:10px;padding:9px 11px;font-size:12.5px;line-height:1.5;margin-bottom:8px}
+.pb-leg{font-size:11.5px;color:var(--text3);margin:0 2px 8px}
+.pb-hint{position:sticky;top:0;z-index:2;background:var(--accent);color:#06121f;font-weight:700;font-size:13px;border-radius:10px;padding:8px 10px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pb-hint button{border:0;background:rgba(0,0,0,.18);color:#06121f;border-radius:8px;padding:3px 9px;font-family:inherit;font-size:12px;font-weight:700}
+.pb-row{display:grid;grid-template-columns:26px 1fr 18px 1.25fr;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px;margin-bottom:8px}
+.pb-row.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(88,166,255,.35)}
+.pb-row.na{opacity:.6}.pb-row.warn{border-color:var(--yellow)}
+.pb-no{width:26px;height:26px;border-radius:8px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;color:var(--text2)}
+.pb-ex{min-width:0}.pb-ex .t{font-size:12.5px;line-height:1.3;font-weight:600}
+.pb-ex .ei{margin-top:5px;aspect-ratio:4/3;border-radius:8px;background:#0b0f14 center/cover;position:relative;opacity:.85}
+.pb-ex .ei i{position:absolute;left:4px;top:4px;font-style:normal;font-size:10px;background:rgba(0,0,0,.65);color:#fff;padding:1px 6px;border-radius:6px}
+.pb-ar{color:var(--text3);text-align:center}
+.pb-mine{position:relative}
+.pb-mine .pi{aspect-ratio:4/3;border-radius:10px;background:#0b0f14 center/cover;border:2px solid transparent;cursor:pointer}
+.pb-row.sel .pb-mine .pi{border-color:var(--accent)}
+.pb-mine .tm{position:absolute;left:5px;bottom:5px;font-size:10.5px;background:rgba(0,0,0,.7);color:#fff;padding:1px 6px;border-radius:6px}
+.pb-mine .tm.x{background:rgba(210,153,34,.92);color:#1a1100}
+.pb-mine .emp{aspect-ratio:4/3;border-radius:10px;border:1.5px dashed var(--border2);display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text3);font-size:12px;padding:6px;cursor:pointer}
+.pb-mine .nat{aspect-ratio:4/3;border-radius:10px;background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text2);font-size:12px;font-weight:700;text-align:center;padding:4px}
+.pb-acts{grid-column:2/-1;display:flex;gap:6px;justify-content:flex-end}
+.pb-acts button{border:1px solid var(--border);background:var(--surface2);color:var(--text2);border-radius:8px;padding:5px 10px;font-family:inherit;font-size:12px}
+.pb-tray{background:var(--surface);border:1px dashed var(--yellow);border-radius:12px;padding:10px;margin-top:6px}
+.pb-tray .tt{font-size:12.5px;color:#f0c96a;margin-bottom:8px}
+.pb-tray .tl{display:flex;gap:8px;overflow:auto}
+.pb-tray .tl span{flex:0 0 90px;aspect-ratio:4/3;border-radius:8px;background:#0b0f14 center/cover;border:2px solid transparent}
+.pb-tray .tl span.sel{border-color:var(--accent)}
 .sl-pop{position:fixed;inset:0;z-index:260;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
 .sl-pop-in{width:100%;max-width:560px;max-height:92vh;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:14px 16px 22px}
 .sl-pop-h{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}.sl-pop-h>div,.sl-pop-h>b{flex:1}.sl-pop-h b{font-size:16px;display:block}.sl-pop-h small{font-size:12px;color:var(--text2)}.sl-pop-h button{border:0;background:var(--surface2);color:var(--text);width:32px;height:32px;border-radius:9px;font-size:15px;flex:none}
@@ -445,8 +482,10 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
     <div id="pm-scan" class="pm-sheet pm-scan hidden"></div>
     <div id="slot-sheet" class="pm-sheet hidden"></div>
     <div id="slot-pop" class="sl-pop hidden" onclick="if(event.target===this)slotPopClose()"></div>
+    <div id="pmbk" class="pb hidden"><div class="pb-h"><b>ตรวจก่อนยืนยัน</b><small id="pb-sub"></small></div><div class="pb-b" id="pb-b"></div><div class="pb-f"><button type="button" class="pb-cancel" onclick="pmBulkCancel()">ยกเลิก</button><button type="button" class="pb-ok" id="pb-ok" onclick="pmBulkConfirm()">✓ ยืนยัน</button></div></div>
+    <input type="file" id="pm-bulk-inp" accept="image/*" multiple class="hidden" onchange="pmBulkFiles(this.files)">
     <input type="file" id="slot-cam" accept="image/*" capture="environment" class="hidden" onclick="slotPickSrc='cam'" onchange="slotAddFiles(this.files)">
-    <input type="file" id="slot-gal" accept="image/*" multiple class="hidden" onclick="slotPickSrc='gal'" onchange="slotAddFiles(this.files)">
+    <input type="file" id="slot-gal" accept="image/*" class="hidden" onclick="slotPickSrc='gal'" onchange="slotAddFiles(this.files)">
     <div id="pm-doc" class="pm-sheet pm-doc hidden"></div>
     <div id="pm-pad" class="pm-sheet pm-padw hidden"></div>
 
@@ -533,6 +572,7 @@ async function loadJob(){
     const needsFix = (latest && latest.review_status === 'ต้องแก้ไข') || job.status === 'ต้องแก้ไข';
     const realStatus = latest ? (latest.is_draft ? 'ช่างบันทึกร่าง' : (latest.status || job.status)) : job.status;
     // ส่งแล้วและไม่ได้ถูกตีกลับ → หน้าสรุป (กดกลับไปแก้ได้) ; ไม่งั้น (ร่าง/ต้องแก้ไข/ยังไม่ทำ) → เปิดฟอร์ม
+    jobSubmittedLock = !!(submitted && !needsFix);
     if(submitted && !needsFix){
       document.getElementById('state-loading').classList.add('hidden');
       document.getElementById('done-job-id').textContent = job.id || JOB_ID;
@@ -1421,7 +1461,7 @@ function slotSnapshot(){
 function slotInit(){
   const cfg=jobData&&jobData.photoSlots;
   // งาน PM ที่เปิดฟอร์มช่าง PM (pmCtx — สวิตช์ทีมนำร่อง/ทุกทีม) → ใช้รูปแยกช่องอัตโนมัติ · งานอื่นต้องให้แอดมินเปิดรายงาน (photoSlots.on)
-  if(!(cfg&&cfg.on) && !pmCtx) { slotState=null; return; }
+  if(!(cfg&&cfg.on) && !(pmCtx && !slotLegacyJob())) { slotState=null; return; }
   const saved=jobData.technicianReport&&jobData.technicianReport.slots;
   const src=(saved&&Array.isArray(saved.units)&&saved.units.length)?saved:{ units:((cfg&&cfg.units)||[]), na:{} };
   const pmMode=!!pmCtx;
@@ -1511,8 +1551,8 @@ function slotOpen(id){
     ${ex?`<div class="sl-exbig" style="background-image:url('${esc(ex)}')"><i>รูปตัวอย่าง</i></div>`:''}
     ${f.s.tip?`<div class="sl-tip">💡 ${esc(f.s.tip)}</div>`:''}
     ${na?`<div class="sl-tip" style="color:var(--yellow)">ตั้งเป็น N/A แล้ว: ${esc(na)} <button type="button" class="sl-lnk" onclick="slotNA('${id}',false)">ยกเลิก N/A</button></div>`:''}
-    <button type="button" class="sl-btn" style="margin-top:10px" onclick="document.getElementById('slot-cam').click()">📷 ถ่ายรูป${ps.length?'เพิ่ม':''}</button>
-    <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 เลือกจากเครื่อง</button>${na?'':`<button type="button" onclick="slotNA('${id}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
+    <button type="button" class="sl-btn" style="margin-top:10px" onclick="document.getElementById('slot-cam').click()">📷 ${ps.length?'ถ่ายใหม่ (แทนรูปเดิม)':'ถ่ายรูป'}</button>
+    <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 ${ps.length?'เลือกรูปใหม่แทน':'เลือกจากเครื่อง'}</button>${na?'':`<button type="button" onclick="slotNA('${id}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
   box.classList.remove('hidden');
 }
 function slotPopClose(){ document.getElementById('slot-pop').classList.add('hidden'); slotCur.slot=''; pmSlotKey=''; }
@@ -1620,15 +1660,17 @@ function slotCompress(file, lines, maxW=1280, quality=0.72){
 async function slotAddFiles(files){
   if(!slotCur.slot&&pmSlotKey&&pmCur){ const fl=Array.from(files||[]); document.getElementById('slot-cam').value=''; document.getElementById('slot-gal').value=''; return pmSlotAdd(fl); }
   const id=slotCur.slot; const f=id&&slotFind(id); if(!f) return;
-  const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/'));
+  const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/')).slice(0,1); // ช่องละ 1 รูป
   document.getElementById('slot-cam').value=''; document.getElementById('slot-gal').value='';
   if(!list.length) return;
   if((slotState.na||{})[id]) delete slotState.na[id];
+  const oldIds=new Set(slotPhotosOf(id).map(p=>p.id)); // รูปเดิมของช่องนี้ → ลบเมื่อรูปใหม่พร้อม (ถ้ารูปใหม่พัง รูปเดิมยังอยู่)
   const entries=list.map(file=>{ const e={ id:Date.now()+'-'+Math.random().toString(36).slice(2,7), file, fileKey:`${file.name}|${file.size}|${file.lastModified}`, compressed:null, dataUrl:null, status:'compressing', slot:id }; photos[f.cat].push(e); return e; });
   slotRender(); slotOpen(id);
   await slotGeoWait(3000);
   for(const e of entries){
-    try{ const ti=await photoTimeInfo(e.file); ti.picked=slotPickSrc==='gal'; const r=await slotCompress(e.file, slotStampLines(f,ti)); Object.assign(e,{ compressed:r.blob, dataUrl:r.dataUrl, width:r.width, height:r.height, status:'ready', takenAt:ti.at.toISOString(), timeSrc:ti.src }); }
+    try{ const ti=await photoTimeInfo(e.file); ti.picked=slotPickSrc==='gal'; const r=await slotCompress(e.file, slotStampLines(f,ti)); Object.assign(e,{ compressed:r.blob, dataUrl:r.dataUrl, width:r.width, height:r.height, status:'ready', takenAt:ti.at.toISOString(), timeSrc:ti.src });
+      if(oldIds.size) ['before','during','after'].forEach(c=>{ photos[c]=(photos[c]||[]).filter(p=>!oldIds.has(p.id)); }); }
     catch(err){ e.status='error'; }
     slotRender(); if(slotCur.slot===id) slotOpen(id);
   }
@@ -1640,8 +1682,89 @@ async function slotAddFiles(files){
 // แต่ละเครื่อง (pmItems) ใช้แม่แบบตามชนิด: แอร์ → pm_air · ตู้แช่ → pm_fridge · ไส้กรอง → pm_filter · อื่น ๆ → รูปก่อน/หลังแบบเดิม
 // รูปเก็บใน it.photos.before/during/after (อัปโหลดทันทีเหมือนเดิม) + p.slot = "<ช่วง>.<ช่อง>" · N/A เก็บใน it.slot_na
 // รูปสาขา (หน้าร้าน/หลังร้าน) อยู่การ์ด "รูปแยกช่อง" ด้านบน ถ่ายครั้งเดียวต่องาน
-function slotPmOn(){ return !!pmCtx; } // ฟอร์ม PM เปิด = ช่องรูปรายเครื่องเปิด (pmInit/pmRender รันก่อน slotInit จึงเช็ค pmCtx ตรง ๆ)
+function slotPmOn(){ return !!pmCtx && (!!(jobData&&jobData.photoSlots&&jobData.photoSlots.on) || !slotLegacyJob()); } // ฟอร์ม PM เปิด = ช่องรูปรายเครื่องเปิด (pmInit/pmRender รันก่อน slotInit จึงไม่อิง slotState)
+// งานที่ช่างเคยบันทึก/ส่งด้วยฟอร์มรูปแบบเดิม (มีรูปแล้ว แต่รายงานไม่มี slots) → ใช้ฟอร์มเดิมต่อ รูปเดิมขึ้นในกล่อง ก่อน/ระหว่าง/หลัง และรูปรายเครื่องเหมือนเดิม
+function slotLegacyJob(){
+  const r=jobData&&jobData.technicianReport; if(!r||r.slots) return false;
+  const pmPh=!!(r.pm&&Array.isArray(r.pm.items)&&r.pm.items.some(it=>['before','during','after'].some(c=>(it.photos?.[c]||[]).length)));
+  return (+r.imageCount>0) || (Array.isArray(r.images)&&r.images.length>0) || pmPh;
+}
 function pmSlotTpl(it){ if(!slotPmOn()||!it||!it.asset_type) return ''; const g=pmType(it.asset_type).g; return g==='air'?'pm_air':g==='fridge'?'pm_fridge':g==='filter'?'pm_filter':''; }
+// ---------- อัปหลายรูปทีเดียว (2026-11-24 · ตาม mockups/pm-bulk-upload-v1.html) ----------
+// ช่างเลือกหลายรูปในหัวข้อที่เปิดอยู่ → เรียงตามเวลาถ่าย (EXIF/เวลาไฟล์ · ไม่มีเวลา = คงลำดับที่เลือก) → ใส่เฉพาะช่องที่ยังว่าง
+// → หน้า "ตรวจก่อนยืนยัน" (ชื่อช่อง+รูปตัวอย่าง | รูปของช่าง) แตะ 2 รูปสลับ · N/A เลื่อนรูปลงช่องถัดไป · เอาออก/รูปเกิน → ถาด
+// → ยืนยัน = ใส่ลายน้ำตามช่อง แล้วอัปโหลดเหมือนถ่ายทีละช่อง
+let PB=null;
+function pmBulkRows(it){ const p=pmSlotPhases(it).find(x=>x.k===pmSlotPh); if(!p) return []; return p.slots.map(sl=>({s:sl,k:p.k+'.'+sl.k})).filter(r=>!pmSlotPhotos(it,r.k).length&&!(it.slot_na||{})[r.k]); }
+function pmBulkPick(){ if(!pmCur||!pmBulkRows(pmCur).length) return; slotPickSrc='gal'; const i=document.getElementById('pm-bulk-inp'); i.value=''; i.click(); }
+async function pmBulkFiles(files){
+  const it=pmCur, list=Array.from(files||[]).filter(f=>f.type.startsWith('image/')); document.getElementById('pm-bulk-inp').value='';
+  if(!it||!list.length) return; const rows=pmBulkRows(it); if(!rows.length) return;
+  tsToast('กำลังอ่านเวลาถ่ายของรูป...',0);
+  const ps=[]; for(let i=0;i<list.length;i++){ let ti; try{ ti=await photoTimeInfo(list[i]); }catch(e){ ti={at:new Date(),src:'now',geo:null}; } ti.picked=true; ps.push({ id:'pb'+i, file:list[i], url:URL.createObjectURL(list[i]), ti, noTime:ti.src==='now' }); }
+  const timed=ps.filter(p=>!p.noTime).sort((a,b)=>a.ti.at-b.ti.at); let n=0; const out=ps.map(p=>p.noTime?p:timed[n++]);
+  const photos={}; ps.forEach(p=>photos[p.id]=p);
+  PB={ it, ph:pmSlotPh, rows, photos, asg:rows.map((r,i)=>out[i]?out[i].id:null), tray:out.slice(rows.length).map(p=>p.id), na:{}, sel:null };
+  tsToast(list.length>rows.length?`เลือกมา ${list.length} รูป · ช่องว่าง ${rows.length} ช่อง — รูปที่เกินอยู่ใน "รูปที่ยังไม่ได้ใส่"`:'ตรวจรูปให้ตรงช่องก่อนกดยืนยัน', list.length>rows.length?3800:2000);
+  document.getElementById('pmbk').classList.remove('hidden'); pmBulkRender();
+}
+function pmBulkTime(p){ const t=p.ti.at.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}); return p.noTime?'⚠ ไม่มีเวลาถ่าย':'🕘 '+t+(p.ti.src==='file'?' (เวลาไฟล์)':''); }
+function pmBulkRender(){
+  const B=PB; if(!B) return; const ph=pmSlotPhases(B.it).find(x=>x.k===B.ph);
+  const placed=B.asg.filter((id,i)=>id&&!B.na[i]).length, emptyN=B.asg.filter((id,i)=>!id&&!B.na[i]).length, noT=B.asg.filter((id,i)=>id&&!B.na[i]&&B.photos[id].noTime).length;
+  const tms=B.asg.filter(Boolean).map(id=>B.photos[id]).filter(p=>!p.noTime).map(p=>p.ti.at.getTime()).sort((a,b)=>a-b), hm=x=>new Date(x).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('pb-sub').textContent=`${pmItemName(B.it)} · ${ph?ph.l:''} · ${placed} รูป → ${B.rows.length} ช่องว่าง${tms.length?` · เรียงตามเวลาถ่าย ${hm(tms[0])}–${hm(tms[tms.length-1])}`:''}`;
+  const skip=(ph?ph.slots.length:0)-B.rows.length;
+  let h=B.sel?`<div class="pb-hint"><span>${B.sel.tray?'แตะช่องที่จะใส่รูปนี้':'แตะรูปอีกรูปเพื่อสลับกัน'}</span><button type="button" onclick="PB.sel=null;pmBulkRender()">ยกเลิก</button></div>`:'';
+  h+=`<div class="pb-tip">👀 ดู<b>ชื่อช่อง + รูปตัวอย่าง</b>ทางซ้าย เทียบกับ<b>รูปของคุณ</b>ทางขวาทีละแถว · ไม่ตรง → แตะรูป 2 รูปเพื่อสลับ${noT?` · <b>${noT} รูปไม่มีเวลาถ่าย</b> (เช่นรูปที่ส่งต่อทาง LINE) วางตามลำดับที่เลือก — ตรวจแถวกรอบเหลืองเป็นพิเศษ`:''}</div>`;
+  if(skip>0) h+=`<div class="pb-leg">ข้าม ${skip} ช่องที่มีรูป/N/A อยู่แล้ว (ไม่ถูกแทน)</div>`;
+  B.rows.forEach((r,i)=>{ const id=B.asg[i], p=id&&B.photos[id], na=B.na[i], sel=B.sel&&!B.sel.tray&&B.sel.i===i, ex=r.s.ex?SLOT_EX_BASE+r.s.ex+'.jpg':'';
+    h+=`<div class="pb-row ${sel?'sel':''} ${na?'na':''} ${p&&p.noTime&&!na?'warn':''}"><div class="pb-no">${i+1}</div>
+      <div class="pb-ex"><div class="t">${esc(r.s.l)}${r.s.opt?' <small style="color:var(--text3)">(ไม่บังคับ)</small>':''}</div>${ex?`<div class="ei" style="background-image:url('${esc(ex)}')"><i>ตัวอย่าง</i></div>`:''}</div>
+      <div class="pb-ar">→</div>
+      <div class="pb-mine">${na?`<div class="nat">N/A<small style="font-weight:500;color:var(--text3)">${esc(na)}</small></div>`:p?`<div class="pi" style="background-image:url('${p.url}')" onclick="pmBulkTap(${i})"></div><span class="tm ${p.noTime?'x':''}">${esc(pmBulkTime(p))}</span>`:`<div class="emp" onclick="pmBulkTap(${i})">${B.sel?'แตะเพื่อใส่รูปที่เลือก':'ยังไม่มีรูป<br>(ถ่ายทีหลังได้)'}</div>`}</div>
+      <div class="pb-acts">${na?`<button type="button" onclick="pmBulkNA(${i},false)">ยกเลิก N/A</button>`:`${p?`<button type="button" onclick="pmBulkOut(${i})">เอาออก</button>`:''}<button type="button" onclick="pmBulkNA(${i},true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`; });
+  if(B.tray.length) h+=`<div class="pb-tray"><div class="tt">📦 รูปที่ยังไม่ได้ใส่ ${B.tray.length} รูป — แตะรูป แล้วแตะช่องที่จะใส่ · ไม่ใช้ก็ปล่อยไว้ (ไม่ถูกอัป)</div><div class="tl">${B.tray.map(id=>`<span class="${B.sel&&B.sel.tray&&B.sel.id===id?'sel':''}" style="background-image:url('${B.photos[id].url}')" onclick="pmBulkTrayTap('${id}')"></span>`).join('')}</div></div>`;
+  document.getElementById('pb-b').innerHTML=h;
+  const ok=document.getElementById('pb-ok'); ok.disabled=!placed&&!Object.keys(B.na).length; ok.textContent=`✓ ยืนยัน ใส่ ${placed} รูปลงช่อง`+(emptyN?` (เว้น ${emptyN})`:'');
+}
+function pmBulkTap(i){ const B=PB; if(!B||B.na[i]) return;
+  if(B.sel&&B.sel.tray){ const id=B.sel.id; B.tray=B.tray.filter(x=>x!==id); if(B.asg[i]) B.tray.push(B.asg[i]); B.asg[i]=id; B.sel=null; pmBulkRender(); return; }
+  if(!B.sel){ if(B.asg[i]){ B.sel={i}; pmBulkRender(); } return; }
+  if(B.sel.i===i){ B.sel=null; pmBulkRender(); return; }
+  const a=B.sel.i; [B.asg[a],B.asg[i]]=[B.asg[i],B.asg[a]]; B.sel=null; pmBulkRender(); tsToast('สลับรูปแล้ว',1200); }
+function pmBulkTrayTap(id){ PB.sel=PB.sel&&PB.sel.tray&&PB.sel.id===id?null:{tray:true,id}; pmBulkRender(); }
+function pmBulkOut(i){ const B=PB, id=B&&B.asg[i]; if(!id) return; B.asg[i]=null; B.tray.unshift(id); B.sel=null; pmBulkRender(); }
+// N/A: ช่องนี้ไม่มีรูป → รูปของช่องนี้และช่องถัด ๆ ไปเลื่อนลงทีละช่อง (ช่างไม่ได้ถ่ายจุดนี้) · ล้นท้าย → ถาด
+function pmBulkNA(i,on){ const B=PB; if(!B) return;
+  if(on){ const r=prompt('เหตุผลที่ไม่มีรูปช่องนี้ (เช่น ไม่มีปั๊มน้ำทิ้ง)','ไม่มีจุดนี้'); if(r===null) return;
+    const tail=[]; for(let x=i;x<B.rows.length;x++) if(!B.na[x]){ tail.push(B.asg[x]); B.asg[x]=null; }
+    B.na[i]=r.trim()||'ไม่มีจุดนี้'; let k=0; for(let x=i+1;x<B.rows.length;x++) if(!B.na[x]) B.asg[x]=tail[k++]??null;
+    B.tray.push(...tail.slice(k).filter(Boolean)); }
+  else delete B.na[i];
+  B.sel=null; pmBulkRender(); }
+function pmBulkClose(){ if(PB) Object.values(PB.photos).forEach(p=>{ try{ URL.revokeObjectURL(p.url); }catch(e){} }); PB=null; document.getElementById('pmbk').classList.add('hidden'); document.getElementById('pb-b').innerHTML=''; }
+function pmBulkCancel(){ if(PB&&!confirm('ยกเลิก — ไม่ใส่รูปชุดนี้?')) return; pmBulkClose(); }
+async function pmBulkConfirm(){
+  const B=PB; if(!B) return; const it=B.it, ok=document.getElementById('pb-ok'), cc=document.querySelector('#pmbk .pb-cancel');
+  ok.disabled=true; if(cc) cc.disabled=true;
+  it.slot_na=it.slot_na||{}; Object.entries(B.na).forEach(([i,v])=>{ it.slot_na[B.rows[+i].k]=v; });
+  const todo=B.rows.map((r,i)=>({r,id:B.na[i]?null:B.asg[i]})).filter(x=>x.id);
+  await slotGeoWait(3000);
+  let d=0;
+  for(const x of todo){
+    ok.textContent=`กำลังใส่ลายน้ำ ${++d}/${todo.length}...`;
+    const f=pmSlotFind(it,x.r.k), p=B.photos[x.id]; if(!f) continue;
+    it.photos[f.cat]=it.photos[f.cat]||[];
+    if((it.slot_na||{})[x.r.k]) delete it.slot_na[x.r.k];
+    const e={ id:Date.now()+'-'+Math.random().toString(36).slice(2,7), status:'compressing', slot:x.r.k }; it.photos[f.cat].push(e);
+    try{ const c=await slotCompress(p.file, slotStampBase(pmItemName(it), f.s.l, p.ti)); e.blob=c.blob; e.dataUrl=c.dataUrl; e.takenAt=p.ti.at.toISOString(); e.timeSrc=p.ti.src; pmUploadEntry(e,f.cat); }
+    catch(err){ console.warn('bulk compress',err); e.status='error'; }
+  }
+  if(cc) cc.disabled=false;
+  pmBulkClose(); if(pmCur===it) pmSheetRender(); else pmRender(); scheduleLocalDraftSave();
+  tsToast(`ใส่รูปลงช่องแล้ว ${todo.length} รูป · กำลังอัปโหลด — กด "บันทึก" เพื่อบันทึกขึ้นระบบ`,3200);
+}
 function pmSlotFind(it,key){ const t=SLOT_TPL[pmSlotTpl(it)]; if(!t) return null; const [pk,sk]=String(key).split('.'); const p=t.phases.find(x=>x.k===pk); const sl=p&&p.slots.find(x=>x.k===sk); return sl?{p,s:sl,cat:sl.cat||p.cat}:null; }
 function pmSlotLabel(it,key){ const f=pmSlotFind(it,key); return f?f.s.l:''; }
 function pmSlotPhotos(it,key){ return ['before','during','after'].flatMap(c=>(it.photos?.[c]||[]).filter(p=>p.slot===key&&p.status!=='error')); }
@@ -1658,6 +1781,7 @@ function pmSlotCardHtml(it){
   return `<div class="card"><div class="sec-title">📸 รูปของเครื่องนี้ <span class="req-star">*</span> <span class="sl-test">แยกช่อง</span></div>
     <div class="sec-sub">กดช่องเพื่อดูรูปตัวอย่างแล้วถ่าย · ไม่มีจุดนั้นกด N/A · ${miss?`<b style="color:var(--yellow)">ยังขาด ${miss} ช่อง</b>`:'<b style="color:var(--green)">ครบทุกช่อง ✓</b>'}</div>
     ${ps.length>1?`<div class="sl-tabs">${ps.map(tab).join('')}</div>`:''}<div class="sl-ph">${esc(p.l)}</div>
+    ${(()=>{const n=pmBulkRows(it).length;return n>1?`<button type="button" class="sl-bulk" onclick="pmBulkPick()">📥 อัปหลายรูปทีเดียว<small>${esc(p.l)} · ช่องว่าง ${n} ช่อง · ถ่ายเรียงตามช่อง ระบบเรียงตามเวลาถ่ายให้</small></button>`:'';})()}
     <div class="sl-grid">${p.slots.map(cell).join('')}</div></div>`;
 }
 function pmSlotOpen(k){
@@ -1670,8 +1794,8 @@ function pmSlotOpen(k){
     ${ex?`<div class="sl-exbig" style="background-image:url('${esc(ex)}')"><i>รูปตัวอย่าง</i></div>`:''}
     ${f.s.tip?`<div class="sl-tip">💡 ${esc(f.s.tip)}</div>`:''}
     ${na?`<div class="sl-tip" style="color:var(--yellow)">ตั้งเป็น N/A แล้ว: ${esc(na)} <button type="button" class="sl-lnk" onclick="pmSlotNA('${k}',false)">ยกเลิก N/A</button></div>`:''}
-    <button type="button" class="sl-btn" style="margin-top:10px" onclick="document.getElementById('slot-cam').click()">📷 ถ่ายรูป${ph.length?'เพิ่ม':''}</button>
-    <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 เลือกจากเครื่อง</button>${na?'':`<button type="button" onclick="pmSlotNA('${k}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
+    <button type="button" class="sl-btn" style="margin-top:10px" onclick="document.getElementById('slot-cam').click()">📷 ${ph.length?'ถ่ายใหม่ (แทนรูปเดิม)':'ถ่ายรูป'}</button>
+    <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 ${ph.length?'เลือกรูปใหม่แทน':'เลือกจากเครื่อง'}</button>${na?'':`<button type="button" onclick="pmSlotNA('${k}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
   box.classList.remove('hidden');
 }
 function pmSlotNA(k,on){ const it=pmCur; if(!it) return; it.slot_na=it.slot_na||{};
@@ -1680,14 +1804,16 @@ function pmSlotNA(k,on){ const it=pmCur; if(!it) return; it.slot_na=it.slot_na||
 function pmSlotRemove(pid){ const it=pmCur; if(!it) return; ['before','during','after'].forEach(c=>{ it.photos[c]=(it.photos[c]||[]).filter(x=>x.id!==pid); }); pmSheetRender(); scheduleLocalDraftSave(); if(pmSlotKey) pmSlotOpen(pmSlotKey); }
 async function pmSlotAdd(files){
   const it=pmCur, k=pmSlotKey, f=it&&pmSlotFind(it,k); if(!f) return;
-  const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/')); if(!list.length) return;
+  const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/')).slice(0,1); if(!list.length) return; // ช่องละ 1 รูป
   it.photos[f.cat]=it.photos[f.cat]||[]; if((it.slot_na||{})[k]) delete it.slot_na[k];
+  const oldIds=new Set(pmSlotPhotos(it,k).map(p=>p.id)); // รูปเดิมของช่องนี้ → ลบเมื่อรูปใหม่บีบอัดเสร็จ
   await slotGeoWait(3000);
   const picked=slotPickSrc==='gal';
   const entries=list.map(()=>{ const e={ id:Date.now()+'-'+Math.random().toString(36).slice(2,7), status:'compressing', slot:k }; it.photos[f.cat].push(e); return e; });
   pmSheetRender(); slotPopClose();
   for(let i=0;i<list.length;i++){ const e=entries[i];
-    try{ const ti=await photoTimeInfo(list[i]); ti.picked=picked; const c=await slotCompress(list[i], slotStampBase(pmItemName(it), f.s.l, ti)); e.blob=c.blob; e.dataUrl=c.dataUrl; e.takenAt=ti.at.toISOString(); e.timeSrc=ti.src; }catch(err){ e.status='error'; pmRefreshPhotos(); continue; }
+    try{ const ti=await photoTimeInfo(list[i]); ti.picked=picked; const c=await slotCompress(list[i], slotStampBase(pmItemName(it), f.s.l, ti)); e.blob=c.blob; e.dataUrl=c.dataUrl; e.takenAt=ti.at.toISOString(); e.timeSrc=ti.src;
+      if(oldIds.size) ['before','during','after'].forEach(c=>{ it.photos[c]=(it.photos[c]||[]).filter(p=>!oldIds.has(p.id)); }); }catch(err){ e.status='error'; pmRefreshPhotos(); continue; }
     pmUploadEntry(e, f.cat);
   }
 }
@@ -1970,15 +2096,16 @@ async function ensureUploadBlob(photo, category){
   throw new Error(`รูป${CAT_LABEL[category]||category}บางรูปยังไม่พร้อมอัปโหลด กรุณาลบรูปนั้นแล้วเลือกใหม่`);
 }
 
-async function saveDraft(){
+async function saveDraft(opt){
+  opt=opt||{}; const quiet=!!opt.quiet; // quiet = บันทึกอัตโนมัติจากปุ่ม "บันทึก" รายเครื่อง PM (ไม่บังหน้าจอ ไม่เด้ง alert)
   const report = collectReportDraft();
   const allPhotos = allPhotoEntries();
-  if(allPhotos.some(p=>p.status==='compressing')){ alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
+  if(allPhotos.some(p=>p.status==='compressing')){ if(quiet) return false; alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
   document.getElementById('draft-btn').disabled = true;
   document.getElementById('submit-btn').disabled = true;
   document.getElementById('upload-status').textContent = 'กำลังบันทึกฉบับร่าง...';
   document.getElementById('upload-detail').textContent = allPhotos.length ? 'กำลังอัปโหลดรูปที่เพิ่มไว้' : '';
-  document.getElementById('overlay-upload').classList.add('show');
+  if(!quiet) document.getElementById('overlay-upload').classList.add('show');
   try{
     const uploadedImages = [...await collectUploadedImages(report), ...pmSlotJobImages()];
     const uploadedDocumentImages = await collectUploadedImages(report, ['documents']);
@@ -2028,10 +2155,13 @@ async function saveDraft(){
     await patchJobAfterTechReport(job.id || JOB_ID, patch, { savedAt, statuses:[draftStatus], adminTaskNote:'ช่างบันทึกฉบับร่าง' });
     jobData = { ...job, ...patch };
     document.getElementById('overlay-upload').classList.remove('show');
+    jobSubmittedLock = false;
     await clearLocalDraft(); // ขึ้นเซิร์ฟเวอร์แล้ว → ไม่ต้องเก็บร่างในเครื่อง
+    if(quiet){ scheduleLocalDraftSave(); return true; } // เก็บสำเนาในเครื่องต่อ เผื่อช่างแก้เครื่องถัดไประหว่างบันทึก
     alert('บันทึกฉบับร่างแล้ว กลับมาเปิดลิงก์นี้เพื่อกรอกต่อได้');
   }catch(e){
     document.getElementById('overlay-upload').classList.remove('show');
+    if(quiet){ console.warn('auto draft', e); return false; }
     alert('บันทึกฉบับร่างไม่สำเร็จ: ' + e.message);
   }finally{
     document.getElementById('draft-btn').disabled = false;
@@ -2040,6 +2170,8 @@ async function saveDraft(){
 }
 
 async function submitJob(){
+  // บันทึกอัตโนมัติรายเครื่องค้างอยู่ → รอให้จบก่อน (กันร่างที่บันทึกทีหลังทับสถานะ "ส่งงานแล้ว")
+  if(pmAutoBusy||pmAutoAgain){ pmAutoAgain=false; tsToast('☁️ กำลังบันทึกขึ้นระบบ รอสักครู่...',0); while(pmAutoBusy) await new Promise(r=>setTimeout(r,300)); tsToast('พร้อมส่งงาน',1200); }
   // validate text fields
   const report = collectReportDraft();
   if(pmCtx && !report.needQuote){
@@ -2161,6 +2293,7 @@ async function submitJob(){
     notifyLine(report, { before:photos.before.length, during:photos.during.length, after:photos.after.length });
 
     // success
+    jobSubmittedLock=true; pmAutoAgain=false;
     localDraftEnabled=false; await clearLocalDraft();
     document.getElementById('overlay-upload').classList.remove('show');
     document.getElementById('overlay-success').classList.add('show');
@@ -2376,6 +2509,7 @@ const PM_READ={
   other:[['amp','กระแสไฟ','A'],['volt','แรงดันไฟ','V']]
 };
 const PM_COND=[['ดี ใช้งานปกติ','ok'],['พอใช้','fair'],['ควรซ่อม / เปลี่ยนอะไหล่','warn'],['เสีย ใช้งานไม่ได้','bad']];
+var jobSubmittedLock=false, pmAutoBusy=false, pmAutoAgain=false; // var: loadJob ตั้งค่า jobSubmittedLock
 let pmCtx=null, pmItems=[], pmQty={}, pmCur=null, pmExtraAssets=[], pmSign=null, pmTabNo=1;
 
 function pmType(k){ return PM_TYPES.find(t=>t.k===k) || (/แอร์/.test(k||'')?{k,en:'',g:'air',unit:'เครื่อง',ic:'❄️',legacy:true}:/ตู้/.test(k||'')?PM_TYPES[3]:PM_TYPES[5]); }
@@ -2405,7 +2539,7 @@ function pmSnapshot(){
     visit_id: pmCtx.visit.id, round_no: pmCtx.visit.round_no, contract: pmCtx.contract?.name||'',
     qty: { ...pmQty }, summary: pmQtyRows().map(r=>({ type:r.t.k, unit:r.t.unit, qty:r.qty })),
     sign: pmSignOut(),
-    items: pmItems.map(({ _rmk, ...it })=>({ ...it,
+    items: pmItems.filter(it=>!(it._fresh && pmCore(it)===it._fresh)).map(({ _rmk, ...it })=>({ ...it, // เครื่องที่เปิดดูเฉย ๆ ยังไม่กรอก ไม่นับ (บันทึกอัตโนมัติระหว่างเปิดเครื่องถัดไป)
       sheet_rows: pmType(it.asset_type).g==='air' ? pmSheetRows(it) : null,
       label_photo: it.label_photo&&it.label_photo.url ? { url:it.label_photo.url } : null,
       photos: { before:(it.photos?.before||[]).filter(p=>p.url).map(p=>({id:p.id,url:p.url,...(p.slot?{slot:p.slot}:{})})),during:(it.photos?.during||[]).filter(p=>p.url).map(p=>({id:p.id,url:p.url,...(p.slot?{slot:p.slot}:{})})),after:(it.photos?.after||[]).filter(p=>p.url).map(p=>({id:p.id,url:p.url,...(p.slot?{slot:p.slot}:{})})) }
@@ -2568,7 +2702,7 @@ function pmSheetRender(scrollTop){
     </div>
     <div id="pm-miss" class="pm-miss"></div>
     <div class="pm-foot">
-      <button type="button" class="pm-btn2" onclick="pmClose()">บันทึก</button>
+      <button type="button" class="pm-btn2" onclick="pmClose(true)">บันทึก</button>
       <button type="button" class="btn btn-primary" onclick="pmNext()">บันทึก + เครื่องถัดไป ›</button>
     </div>
     <button type="button" class="pm-del" onclick="pmRemoveItem()">${it.asset_id?'ล้างข้อมูลที่บันทึกของเครื่องนี้':'ลบเครื่องใหม่นี้ออก'}</button>
@@ -2682,18 +2816,38 @@ function pmRead(k,v){
 }
 function pmCheck(c,on){ if(!pmCur) return; if(on) pmCur.checklist[c]=true; else delete pmCur.checklist[c]; scheduleLocalDraftSave(); }
 function pmSetType(k){ if(!pmCur) return; pmCur.asset_type=k; pmSheetRender(); scheduleLocalDraftSave(); }
-function pmClose(){
+function pmClose(save){
   const sh=document.getElementById('pm-sheet'); if(sh){ sh.classList.add('hidden'); sh.innerHTML=''; }
   document.body.classList.remove('pm-lock');
   pmDropIfUntouched(pmCur); pmCur=null; pmRender(); if(slotOn()) slotRender(); scheduleLocalDraftSave();
+  if(save) pmAutoSave();
+}
+// ปุ่ม "บันทึก" รายเครื่อง → บันทึกร่างขึ้นระบบให้เลย (console เห็นรูป/ผลรายเครื่องทันที)
+//  - รอรูปที่กำลังบีบอัด/อัปโหลดให้เสร็จก่อน (สูงสุด 90 วิ) · กดซ้ำระหว่างบันทึก = ต่อคิวอีกรอบ
+//  - งานที่ส่งแล้ว (เปิดกลับมาแก้) ไม่บันทึกอัตโนมัติ — กันสถานะถอยเป็น "ช่างบันทึกร่าง" · ต้องกดส่งงานอีกครั้ง
+function tsToast(msg,ms){ let el=document.getElementById('ts-toast'); if(!el){ el=document.createElement('div'); el.id='ts-toast'; el.style.cssText='position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:9999;background:#111827;color:#fff;padding:9px 14px;border-radius:999px;font-size:13px;max-width:92vw;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.25);transition:opacity .2s'; document.body.appendChild(el); }
+  el.textContent=msg; el.style.opacity='1'; el.style.display=''; clearTimeout(el._t); if(ms!==0) el._t=setTimeout(()=>{ el.style.opacity='0'; setTimeout(()=>{ el.style.display='none'; },250); }, ms||2600); }
+function pmPhotosBusy(){ return [...allPhotoEntries(), ...pmItems.flatMap(it=>['before','during','after'].flatMap(c=>it.photos?.[c]||[]))].some(p=>p.status==='compressing'||p.status==='uploading'); }
+async function pmAutoSave(){
+  if(!pmCtx || document.getElementById('overlay-upload')?.classList.contains('show')) return; // กำลังส่งงาน/บันทึกร่างแบบเต็มจออยู่
+  if(jobSubmittedLock){ tsToast('บันทึกในเครื่องแล้ว · งานนี้ส่งไปแล้ว กด "ส่งงาน" อีกครั้งเพื่ออัปเดตขึ้นระบบ',4200); return; }
+  if(pmAutoBusy){ pmAutoAgain=true; return; }
+  pmAutoBusy=true;
+  try{
+    tsToast('☁️ กำลังบันทึกขึ้นระบบ...',0);
+    const t0=Date.now(); while(pmPhotosBusy() && Date.now()-t0<90000) await new Promise(r=>setTimeout(r,700));
+    const ok=await saveDraft({quiet:true});
+    tsToast(ok?'☁️ บันทึกขึ้นระบบแล้ว '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+' น.':'⚠️ ยังบันทึกขึ้นระบบไม่สำเร็จ (เก็บไว้ในเครื่องแล้ว) — กด "บันทึกร่าง" อีกครั้งเมื่อมีสัญญาณ', ok?2600:5200);
+  }finally{ pmAutoBusy=false; if(pmAutoAgain){ pmAutoAgain=false; pmAutoSave(); } }
 }
 function pmNext(){
   const cur=pmCur;
   if(cur && cur._fresh && pmCore(cur)===cur._fresh){ pmDropIfUntouched(cur); }
   else if(cur && pmMissing(cur).length && !confirm('เครื่องนี้ยังกรอกไม่ครบ ('+pmMissing(cur).join(', ')+')\nไปเครื่องถัดไปก่อนแล้วค่อยกลับมากรอกต่อ?')) return;
   const next=pmAllAssets().find(a=>{ const it=pmItemOf(a.id); return it!==cur && (!it || pmMissing(it).length); });
-  if(next){ pmOpen(next.id); scheduleLocalDraftSave(); }
-  else { pmClose(); alert('บันทึกครบทุกเครื่องในรายการแล้ว\nถ้ามีเครื่องที่ยังไม่อยู่ในรายการ กด "สแกน QR" หรือ "เพิ่มเครื่องใหม่"'); }
+  const kept=!!(cur&&pmItems.includes(cur));
+  if(next){ pmOpen(next.id); scheduleLocalDraftSave(); if(kept) pmAutoSave(); }
+  else { pmClose(kept); alert('บันทึกครบทุกเครื่องในรายการแล้ว\nถ้ามีเครื่องที่ยังไม่อยู่ในรายการ กด "สแกน QR" หรือ "เพิ่มเครื่องใหม่"'); }
 }
 function pmRemoveItem(){
   if(!pmCur) return;
