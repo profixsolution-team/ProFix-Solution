@@ -13903,7 +13903,7 @@ async function approvePartsRepair(){
   const _evNote=j.reviewNote||'อนุมัติอะไหล่แล้ว รอช่างเข้าซ่อมต่อ';
   ensureJobStatus('รอช่างเข้าซ่อม');
   syncAdminTasksFromReport(id,'รอช่างเข้าซ่อม',_evNote);
-  j.technicianReport={...(j.technicianReport||{}),needQuote:false,noPhoto:{during:false,after:false},reviewStatus:'รอช่างเข้าซ่อม',reviewNote:j.reviewNote,approvedForRepairAt:new Date().toISOString()};
+  j.technicianReport={...(j.technicianReport||{}),needQuote:false,noPhoto:{during:false,after:false},reviewStatus:'รอช่างเข้าซ่อม',reviewNote:j.reviewNote,approvedForRepairAt:new Date().toISOString(),reviewedAt:new Date().toISOString(),reviewedBy:getActorName()};
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
   try{
     await patchJobAfterAdminReview(id,reportReviewPatch(j),{statuses:['รอช่างเข้าซ่อม'],adminTaskNote:_evNote});
@@ -13924,7 +13924,7 @@ async function closeSurveyJob(){
   const _evNote=j.reviewNote||'ไม่อนุมัติซ่อมต่อ / ปิดงานสำรวจ';
   ensureJobStatus('ปิดงานสำรวจ');
   syncAdminTasksFromReport(id,'ปิดงานสำรวจ',_evNote);
-  j.technicianReport={...(j.technicianReport||{}),reviewStatus:'ตรวจแล้ว',reviewNote:j.reviewNote,closedSurveyAt:new Date().toISOString()};
+  j.technicianReport={...(j.technicianReport||{}),reviewStatus:'ตรวจแล้ว',reviewNote:j.reviewNote,closedSurveyAt:new Date().toISOString(),reviewedAt:new Date().toISOString(),reviewedBy:getActorName()};
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
   try{
     await patchJobAfterAdminReview(id,reportReviewPatch(j),{statuses:['ปิดงานสำรวจ'],adminTaskNote:_evNote});
@@ -13944,7 +13944,7 @@ async function approveReport(){
   const _evNote=x.reviewNote||'อนุมัติรายงานแล้ว';
   ensureJobStatus('แอดมินตรวจแล้ว');
   syncAdminTasksFromReport(id,'แอดมินตรวจแล้ว',_evNote);
-  x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ตรวจแล้ว',reviewNote:x.reviewNote,reviewedAt:new Date().toISOString()};
+  x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ตรวจแล้ว',reviewNote:x.reviewNote,reviewedAt:new Date().toISOString(),reviewedBy:getActorName()};
   closeM('m-report');
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();saveState();
   try{
@@ -13975,7 +13975,7 @@ async function returnReportForFix(){
   x.techUpdateType='returned_for_fix';
   ensureJobStatus('ต้องแก้ไข');
   syncAdminTasksFromReport(id,'ต้องแก้ไข',note,{markUnread:true,updateAt:returnedAt,updateType:'returned_for_fix'});
-  x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ต้องแก้ไข',reviewNote:note,reviewedAt:returnedAt,returnedForFixAt:returnedAt};
+  x.technicianReport={...(x.technicianReport||{}),reviewStatus:'ต้องแก้ไข',reviewNote:note,reviewedAt:returnedAt,returnedForFixAt:returnedAt,reviewedBy:getActorName()};
   closeM('m-report');
   renderReports();renderJobs();renderAdmin();renderDash();fillSelects();
   try{
@@ -14596,6 +14596,39 @@ function dwListIds(){return [...document.querySelectorAll('#job-tbody tr[onclick
 function dwGo(dir){const ids=dwListIds(),i=ids.indexOf(currentDetailJobId);if(i<0)return;const n=ids[i+dir];if(n)openDet(n);}
 function dwTabSet(t){dwTab=t;document.querySelectorAll('#m-detail .dw-tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('#m-detail .dw-pane').forEach(p=>p.classList.toggle('on',p.dataset.t===t));}
 function dwMenu(e){e.stopPropagation();document.getElementById('dw-menu')?.classList.toggle('open');}
+
+// ===== ประวัติงาน (admin_audit_logs ของงาน + งาน Admin ที่ผูก + เหตุการณ์ของช่าง) — แท็บ "ประวัติ" ในรายละเอียดงาน =====
+// รวมการกดจาก LINE (แอดมิน/ช่าง) ที่บันทึกชื่อเป็น "LINE: ชื่อ"
+var JOB_HIST_ACT={create_job:['สร้างงานในคิวช่าง','#94a3b8'],create_admin_task:['สร้างงาน Admin','#94a3b8'],update_job:['แก้ไขงาน','#94a3b8'],update_admin_task:['แก้ไขงาน Admin','#94a3b8'],update_admin_status:['เปลี่ยนสถานะงาน Admin','#64748b'],
+  update_job_status:['เปลี่ยนสถานะ','#64748b'],reschedule_job:['เลื่อนนัด','#d97706'],renumber_job:['เปลี่ยนเลขงาน','#64748b'],soft_delete_job:['ลบงาน','#dc2626'],edit_admin_note:['แก้โน้ตแอดมิน','#7c3aed'],update_report_review:['แก้รายงาน','#94a3b8'],
+  approve_report:['ผ่านรายงาน','#16a34a'],return_report_for_fix:['ตีกลับให้แก้','#dc2626'],approve_parts_repair:['อนุมัติอะไหล่','#d97706'],close_survey_job:['ปิดงานสำรวจ','#334155'],
+  job_status_from_sales:['สถานะจากเอกสารขาย','#64748b'],job_status_after_sales_doc:['สถานะจากเอกสารขาย','#64748b'],
+  line_review_approve:['ผ่านรายงาน','#16a34a'],line_review_reject:['ตีกลับให้แก้','#dc2626'],line_review_approve_parts:['อนุมัติอะไหล่','#d97706'],line_review_deny_parts:['ไม่อนุมัติซ่อมต่อ','#334155'],
+  line_admin_patch_job:['เลื่อนนัด/ย้ายทีม','#d97706'],line_admin_note:['บันทึกโน้ต','#7c3aed'],tech_start:['เริ่มงาน','#175FFF'],tech_submit:['ส่งรายงาน','#16a34a']};
+function reviewedByPill(j){const tr=j&&j.technicianReport||{};if(!tr.reviewedBy||!tr.reviewedAt)return '';const line=/^LINE:/.test(tr.reviewedBy),who=String(tr.reviewedBy).replace(/^LINE:\s*/,'');
+  const verb=tr.reviewStatus==='ต้องแก้ไข'?'ตีกลับโดย':tr.reviewStatus==='รอช่างเข้าซ่อม'?'อนุมัติอะไหล่โดย':'ตรวจโดย';
+  return `<span class="queue-pill" title="${esc(editedAtText(tr.reviewedAt))}">${verb} ${esc(who)}${line?' <b style="background:#06c755;color:#fff;border-radius:4px;padding:0 4px;font-size:10px">LINE</b>':''}</span>`;}
+async function jobHistoryLoad(id){
+  const box=document.getElementById('dw-hist');if(!box)return;
+  const j=jobs.find(x=>x.id===id)||{};
+  const taskIds=liveAdminTasks().filter(t=>sameJob(t.jobId,id)).map(t=>t.id);
+  const ids=[id,...taskIds].map(x=>'"'+String(x).replace(/"/g,'')+'"').join(',');
+  const sel='actor_name,device_id,action,created_at,bs:before_data->>status,ps:patch_data->>status,pn:patch_data->>reviewNote,pd:patch_data->>date,bd:before_data->>date,pt:patch_data->>team,bt:before_data->>team';
+  let rows=[],err='';
+  try{const r=await fetch(splitUrl('admin_audit_logs',`?target_id=in.(${encodeURIComponent(ids)})&select=${sel}&order=created_at.desc&limit=80`),{headers:sbHeaders()});if(!r.ok)throw new Error(await r.text());rows=await r.json();}
+  catch(e){err='ดูประวัติไม่ได้ (สิทธิ์ไม่พอ หรือเชื่อมต่อไม่ได้)';}
+  if(currentDetailJobId!==id)return;
+  const ev=(rows||[]).map(r=>({at:r.created_at,who:String(r.actor_name||'').replace(/^LINE:\s*/,''),src:/^LINE:/.test(r.actor_name||'')||r.device_id==='line'?'line':'web',act:r.action,from:r.ps?(r.bs||''):'',to:r.ps||'',note:r.pn||'',date:r.pd||'',odate:r.bd||'',team:r.pt||'',oteam:r.bt||''}));
+  if(j.techStartedAt)ev.push({at:j.techStartedAt,who:j.techStartedBy||'ช่าง',src:'line',act:'tech_start'});
+  const tw=j.techStartedBy||j.team||'ช่าง';
+  (j.reportRounds||[]).forEach(rd=>{const at=rd&&(rd.submittedAt||rd.at);if(at)ev.push({at,who:tw,src:'tech',act:'tech_submit'});});
+  if(!(j.reportRounds||[]).length&&j.techSubmittedAt)ev.push({at:j.techSubmittedAt,who:tw,src:'tech',act:'tech_submit'});
+  ev.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  const badge=s=>s==='line'?'<b style="background:#06c755;color:#fff;border-radius:4px;padding:0 5px;font-size:10px;margin-left:4px">LINE</b>':s==='tech'?'<b style="background:#fff3e0;color:#b45309;border-radius:4px;padding:0 5px;font-size:10px;margin-left:4px">ช่าง</b>':'<b style="background:var(--surface3);color:var(--text2);border-radius:4px;padding:0 5px;font-size:10px;margin-left:4px">console</b>';
+  box.innerHTML=(err?`<div class="tm" style="margin-bottom:8px">${esc(err)}</div>`:'')+(ev.length?ev.map(e=>{const a=JOB_HIST_ACT[e.act]||[e.act,'#94a3b8'];
+    const det=[e.to&&e.from!==e.to?`${e.from||'-'} → ${e.to}`:'',e.date&&e.odate!==e.date?`นัด ${e.odate||'-'} → ${e.date}`:'',e.team&&e.oteam!==e.team?`ทีม ${e.oteam||'-'} → ${e.team}`:'',e.note?`โน้ต: ${e.note}`:''].filter(Boolean).join(' · ');
+    return `<div class="d2-ev" style="cursor:default"><span class="d2-evdot" style="background:${a[1]}"></span><span style="flex:1;min-width:0"><b>${esc(a[0])}</b> — ${esc(e.who||'-')}${badge(e.src)}${det?`<div class="tm" style="font-size:12px;margin-top:2px;word-break:break-word">${esc(det)}</div>`:''}</span><span class="tm" style="font-size:11.5px;white-space:nowrap">${esc(editedAtText(e.at))}</span></div>`;}).join(''):'<div class="tm">ยังไม่มีประวัติ</div>');
+}
 function openDet(id){
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   currentDetailJobId=id;
@@ -14612,9 +14645,9 @@ function openDet(id){
       <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button><button onclick="slotToggleJob('${jid}')">📷 รูปแยกช่อง (ทดสอบ): ${j.photoSlots&&j.photoSlots.on?'ปิด':'เปิด'}</button></div></div>
       <button class="dw-ib" title="ปิด (Esc)" onclick="closeM('m-detail')">✕</button></div>
     <div class="dw-title">${esc(j.branch||'-')}</div><div class="tm dw-sub">${esc(j.client||'')}${j.type?' · '+esc(j.type):''}</div>
-    <div class="dw-status">${statusSel}${isLevel1(j)?level1Badge(j):''}${techAcceptPill(j)?techAcceptPill(j):''}<span style="flex:1"></span>${dwNext(j)}</div>
+    <div class="dw-status">${statusSel}${isLevel1(j)?level1Badge(j):''}${techAcceptPill(j)?techAcceptPill(j):''}${reviewedByPill(j)}<span style="flex:1"></span>${dwNext(j)}</div>
     <div class="dw-steps">${DW_FLOW.map((f,i)=>`<div class="${i<k?'done':i===k?'cur':''}">${f}</div>`).join('')}</div>
-    <div class="dw-tabs">${[['ov','ภาพรวม'],['link','ลิงก์ช่าง / ลูกค้า'],['doc','เอกสาร & การเงิน']].map(([t,l])=>`<button type="button" class="dw-tab" data-t="${t}" onclick="dwTabSet('${t}')">${l}</button>`).join('')}</div></div>
+    <div class="dw-tabs">${[['ov','ภาพรวม'],['link','ลิงก์ช่าง / ลูกค้า'],['doc','เอกสาร & การเงิน'],['hist','ประวัติ']].map(([t,l])=>`<button type="button" class="dw-tab" data-t="${t}" onclick="dwTabSet('${t}')">${l}</button>`).join('')}</div></div>
   <div class="dw-pane" data-t="ov">
     ${adminNoteBlock(j)}
     <div class="dw-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${v}</b></div>`).join('')}</div>
@@ -14629,8 +14662,10 @@ function openDet(id){
   <div class="dw-pane" data-t="doc">
     <div class="dw-acts"><button class="btn btn-ghost" onclick="openReportModal('${jid}')">🔍 ตรวจรายงานช่าง</button><button class="btn btn-ghost" onclick="openSalesForJob('${jid}')">🧾 ออกบิลขาย</button><button class="btn btn-ghost" onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button>${salesJobIsBilled(j.id)?`<button class="btn btn-ghost" onclick="matchFinanceFromSales('${jid}')">🔗 ดึงราคาเข้าการเงิน</button>`:''}<button class="btn btn-ghost" onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button></div>
     <div id="job-accounting-section"><div class="text-box">กำลังโหลดข้อมูลบัญชี...</div></div>
-  </div>`;
+  </div>
+  <div class="dw-pane" data-t="hist"><div id="dw-hist"><div class="tm">กำลังโหลดประวัติ...</div></div></div>`;
   dwTabSet(dwTab||'ov');
+  jobHistoryLoad(j.id);
   ensureAccountingLoaded().then(()=>renderJobAccountingSection(j.id));
   openM('m-detail');pfSheetRefresh();
 }
