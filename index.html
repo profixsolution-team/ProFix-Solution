@@ -5978,14 +5978,14 @@ async function renderTechnicians(reload){
     return `<div class="table-wrap" style="padding:14px;margin-bottom:12px;${t.status==='pending'?'border-color:var(--yellow);':''}">
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
         ${t.line_picture?`<img src="${esc(t.line_picture)}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">`:'<div style="width:44px;height:44px;border-radius:50%;background:var(--surface3);"></div>'}
-        <div style="flex:1;min-width:180px;"><div style="font-weight:800;">${esc(t.display_name||t.line_name||'-')} <span class="badge ${stCls}">${stLbl}</span>${t.is_leader?' <span class="chip">หัวหน้าทีม</span>':''}</div>
+        <div style="flex:1;min-width:180px;"><div style="font-weight:800;">${esc(t.display_name||t.line_name||'-')} <span class="badge ${stCls}">${stLbl}</span>${t.is_leader?' <span class="chip">หัวหน้าทีม</span>':''}${t.is_admin?' <span class="chip" style="background:#0b1f4d;color:#fff;">แอดมิน LINE</span>':''}</div>
           <div class="tm" style="font-size:12px;">LINE: ${esc(t.line_name||'-')} · โทร ${esc(t.phone||'-')}${t.requested_team?` · แจ้งทีม: <b>${esc(t.requested_team)}</b>`:''}</div>
           <div class="tm" style="font-size:11px;">ลงทะเบียน ${esc(editedAtText(t.created_at))}${t.last_seen_at?' · เปิดล่าสุด '+esc(editedAtText(t.last_seen_at)):''}</div></div>
       </div>
       <div class="form-row" style="margin-top:10px;"><div class="form-group"><label>ชื่อที่แสดง</label><input id="tn-${esc(t.id)}" value="${esc(t.display_name||'')}"></div><div class="form-group"><label>เบอร์โทร</label><input id="tp-${esc(t.id)}" value="${esc(t.phone||'')}"></div><div class="form-group"><label>สถานะ</label><select id="ts-${esc(t.id)}"><option value="active"${t.status==='active'?' selected':''}>ใช้งาน (อนุมัติ)</option><option value="pending"${t.status==='pending'?' selected':''}>รออนุมัติ</option><option value="disabled"${t.status==='disabled'?' selected':''}>ระงับ</option></select></div></div>
       <div style="font-size:12px;color:var(--text2);margin:4px 0;">ทีมที่ช่างคนนี้ดูงานได้ <span class="tm">(เลือกได้หลายทีม · ชื่อที่ต่างกันแค่เว้นวรรค/ขีด เช่น "ทีม3 - ทรงกลด" กับ "ทีม3 ทรงกลด" ระบบนับเป็นทีมเดียวกันให้แล้ว · ตัวเลขในวงเล็บ = งานที่ยังไม่ปิด)</span></div>
       <div style="max-height:150px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:6px 10px;">${teamBoxes||'<span class="tm">ยังไม่มีชื่อทีม</span>'}</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;"><label style="display:inline-flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap;"><input type="checkbox" style="width:auto;" id="tl-${esc(t.id)}"${t.is_leader?' checked':''}> หัวหน้าทีม (รับแจ้งเตือนเฟส 2)</label><span style="flex:1;"></span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;"><label style="display:inline-flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap;"><input type="checkbox" style="width:auto;" id="tl-${esc(t.id)}"${t.is_leader?' checked':''}> หัวหน้าทีม (รับแจ้งเตือนเฟส 2)</label>${'is_admin' in t?`<label style="display:inline-flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap;" title="เปิดลิงก์ LINE งานของฉัน แล้วเห็นงานทุกทีม · เลื่อนนัด / ย้ายทีมได้ · ไม่เห็นราคา"><input type="checkbox" style="width:auto;" id="ta-${esc(t.id)}"${t.is_admin?' checked':''}> แอดมิน (ดูงานทุกทีมใน LINE)</label>`:''}<span style="flex:1;"></span>
         ${t.status==='pending'?`<button class="btn btn-success btn-sm" onclick="saveTechnician('${esc(t.id)}','active')">✓ อนุมัติ</button>`:''}
         <button class="btn btn-primary btn-sm" onclick="saveTechnician('${esc(t.id)}')">บันทึก</button>
         <button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteTechnician('${esc(t.id)}')">ลบ</button></div>
@@ -5998,8 +5998,11 @@ async function saveTechnician(id,forceStatus){
   const v=k=>document.getElementById(k+'-'+id);
   const teamNames=[...document.querySelectorAll('.tt-'+CSS.escape(id))].filter(c=>c.checked).map(c=>c.value);
   const status=forceStatus||v('ts').value;
-  if(status==='active'&&!teamNames.length&&!confirm('ยังไม่ได้เลือกทีม — ช่างจะยังไม่เห็นงานใดเลย บันทึกต่อไหม?'))return;
+  const isAdmin=!!(v('ta')&&v('ta').checked);
+  if(status==='active'&&!teamNames.length&&!isAdmin&&!confirm('ยังไม่ได้เลือกทีม — ช่างจะยังไม่เห็นงานใดเลย บันทึกต่อไหม?'))return;
+  if(isAdmin&&!t.is_admin&&!confirm(`ตั้ง "${t.display_name||t.line_name}" เป็นแอดมินใน LINE?\n\nจะเห็นงานของทุกทีม และเลื่อนนัด / ย้ายทีมได้จากมือถือ (ไม่เห็นราคา)`))return;
   const patch={display_name:v('tn').value.trim(),phone:v('tp').value.trim(),status,is_leader:!!v('tl').checked,team_names:teamNames,updated_at:new Date().toISOString()};
+  if('is_admin' in t)patch.is_admin=isAdmin; // คอลัมน์มีหลังรัน tech_portal_admin_view.sql
   if(status==='active'&&t.status!=='active'){patch.approved_by=getActorName();patch.approved_at=new Date().toISOString();}
   try{
     const r=await fetch(splitUrl('technicians',`?id=eq.${encodeURIComponent(id)}`),{method:'PATCH',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify(patch)});

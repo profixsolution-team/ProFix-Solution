@@ -445,8 +445,8 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
     <div id="pm-scan" class="pm-sheet pm-scan hidden"></div>
     <div id="slot-sheet" class="pm-sheet hidden"></div>
     <div id="slot-pop" class="sl-pop hidden" onclick="if(event.target===this)slotPopClose()"></div>
-    <input type="file" id="slot-cam" accept="image/*" capture="environment" class="hidden" onchange="slotAddFiles(this.files)">
-    <input type="file" id="slot-gal" accept="image/*" multiple class="hidden" onchange="slotAddFiles(this.files)">
+    <input type="file" id="slot-cam" accept="image/*" capture="environment" class="hidden" onclick="slotPickSrc='cam'" onchange="slotAddFiles(this.files)">
+    <input type="file" id="slot-gal" accept="image/*" multiple class="hidden" onclick="slotPickSrc='gal'" onchange="slotAddFiles(this.files)">
     <div id="pm-doc" class="pm-sheet pm-doc hidden"></div>
     <div id="pm-pad" class="pm-sheet pm-padw hidden"></div>
 
@@ -1231,7 +1231,7 @@ async function saveLocalDraftNow(){
       const keep=new Set(local.map(x=>prefix+x.p.id));
       const rq=st.getAllKeys();
       rq.onsuccess=()=>{ (rq.result||[]).forEach(k=>{ if(String(k).startsWith(prefix)&&!keep.has(k)) st.delete(k); }); };
-      local.forEach(({cat,p})=>{ if(!p._localSaved){ st.put({cat,id:p.id,blob:p.compressed||p.file,width:p.width||0,height:p.height||0,fileKey:p.fileKey||'',name:p.file?.name||'',slot:p.slot||''}, prefix+p.id); p._localSaved=true; } });
+      local.forEach(({cat,p})=>{ if(!p._localSaved){ st.put({cat,id:p.id,blob:p.compressed||p.file,width:p.width||0,height:p.height||0,fileKey:p.fileKey||'',name:p.file?.name||'',slot:p.slot||'',takenAt:p.takenAt||'',timeSrc:p.timeSrc||''}, prefix+p.id); p._localSaved=true; } });
     }).catch(e=>console.warn('local draft photos save failed',e));
     const hint=document.getElementById('local-draft-hint');
     if(hint){ hint.textContent='💾 บันทึกร่างในเครื่องอัตโนมัติ '+new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+' น.'; hint.style.display=''; }
@@ -1261,7 +1261,7 @@ async function restoreLocalDraft(){
         (rows||[]).forEach(r=>{
           if(!r||!r.blob||!photos[r.cat]||!(draft.photoIds||[]).includes(r.id)) return;
           if(photos[r.cat].some(p=>p.id===r.id)) return;
-          photos[r.cat].push({ id:r.id, file:null, fileKey:r.fileKey, compressed:r.blob, dataUrl:URL.createObjectURL(r.blob), width:r.width, height:r.height, status:'ready', _localSaved:true, ...(r.slot?{slot:r.slot}:{}) });
+          photos[r.cat].push({ id:r.id, file:null, fileKey:r.fileKey, compressed:r.blob, dataUrl:URL.createObjectURL(r.blob), width:r.width, height:r.height, status:'ready', _localSaved:true, ...(r.slot?{slot:r.slot}:{}), ...(r.takenAt?{takenAt:r.takenAt,timeSrc:r.timeSrc||''}:{}) });
           restored++;
         });
       }catch(e){ console.warn('local draft photos restore failed', e); }
@@ -1410,7 +1410,7 @@ function slotFind(id){ // → {u,p,s,cat,label,unitLabel}
   return { u,p,s,cat:s.cat||p.cat,label:s.l,unitLabel:slotUnitLabel(u) };
 }
 function slotPick(im){ return im&&im.slot?{ slot:im.slot, slotLabel:im.slotLabel||'', unitLabel:im.unitLabel||'', unitTpl:im.unitTpl||'' }:{}; }
-function slotMetaOf(p){ if(!p||!p.slot) return {}; const f=slotFind(p.slot); return { slot:p.slot, slotLabel:f?f.label:(p.slotLabel||''), unitLabel:f?f.unitLabel:(p.unitLabel||''), unitTpl:f&&f.u?f.u.tpl:'', phaseLabel:f&&f.p?f.p.l:'' }; }
+function slotMetaOf(p){ if(!p||!p.slot) return {}; const f=slotFind(p.slot); return { slot:p.slot, slotLabel:f?f.label:(p.slotLabel||''), unitLabel:f?f.unitLabel:(p.unitLabel||''), unitTpl:f&&f.u?f.u.tpl:'', phaseLabel:f&&f.p?f.p.l:'', ...(p.takenAt?{takenAt:p.takenAt,timeSrc:p.timeSrc||''}:{}) }; }
 function slotSnapshot(){
   if(!slotOn()) return undefined;
   if(slotState.pm){ const units=[], na={...(slotState.na||{})};
@@ -1533,13 +1533,65 @@ function slotGeoRefresh(){
     ()=>{ slotGeoBusy=false; }, { enableHighAccuracy:true, timeout:10000, maximumAge:120000 });
 }
 async function slotGeoWait(ms){ slotGeoRefresh(); const t0=Date.now(); while(!slotGeo&&slotGeoBusy&&Date.now()-t0<ms) await new Promise(r=>setTimeout(r,200)); return slotGeo; }
-function slotStampBase(unitLabel,slotLabel){
-  const d=new Date(), th=d.toLocaleString('th-TH',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+// ---------- เวลา/พิกัดที่ถ่ายจริง จากข้อมูลในไฟล์รูป (EXIF) ----------
+// รูปจากกล้องมือถือมี "ถ่ายเมื่อ" (DateTimeOriginal) + บางเครื่องมีพิกัด GPS ฝังในไฟล์ JPEG
+// ใช้ตอนช่างถ่ายไว้ก่อนแล้วมา "เลือกจากเครื่อง" ทีหลัง → ลายน้ำเป็นเวลาที่ถ่ายจริง ไม่ใช่เวลาที่แนบ
+async function readPhotoExif(file){
+  try{
+    const buf=await file.slice(0, 256*1024).arrayBuffer(); const v=new DataView(buf);
+    if(v.byteLength<4||v.getUint16(0)!==0xFFD8) return null; // ไม่ใช่ JPEG (HEIC/PNG/ภาพแคป) → ไม่มีข้อมูล
+    let o=2;
+    while(o+4<=v.byteLength){
+      const m=v.getUint16(o), len=v.getUint16(o+2);
+      if(m===0xFFE1 && o+10<=v.byteLength && v.getUint32(o+4)===0x45786966){ return parseExifTiff(v, o+10); }
+      if((m&0xFF00)!==0xFF00 || m===0xFFDA) break;
+      o+=2+len;
+    }
+  }catch(e){}
+  return null;
+}
+function parseExifTiff(v, t){
+  const le=v.getUint16(t)===0x4949, u16=o=>v.getUint16(o,le), u32=o=>v.getUint32(o,le);
+  const ascii=(off,n)=>{ let x=''; for(let i=0;i<n&&off+i<v.byteLength;i++){ const c=v.getUint8(off+i); if(!c) break; x+=String.fromCharCode(c); } return x; };
+  const ifd=(off)=>{ const out={}; if(off<=0||t+off+2>v.byteLength) return out; const n=u16(t+off);
+    for(let i=0;i<n;i++){ const e=t+off+2+i*12; if(e+12>v.byteLength) break; const tag=u16(e), type=u16(e+2), cnt=u32(e+4), vo=e+8;
+      const ptr=(type===2?cnt:type===5?cnt*8:cnt*4)>4?t+u32(vo):vo;
+      if(type===2) out[tag]=ascii(ptr,cnt);
+      else if(type===5){ const a=[]; for(let k=0;k<cnt;k++){ const d=u32(ptr+k*8+4); a.push(d?u32(ptr+k*8)/d:0); } out[tag]=a; }
+      else if(type===3) out[tag]=u16(vo); else if(type===4) out[tag]=u32(vo);
+    } return out; };
+  const i0=ifd(u32(t+4)), ex=i0[0x8769]?ifd(i0[0x8769]):{}, gp=i0[0x8825]?ifd(i0[0x8825]):{};
+  const ds=ex[0x9003]||ex[0x9004]||i0[0x0132]||'';
+  const mm=String(ds).match(/^(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+  let taken=null;
+  if(mm){ const off=String(ex[0x9011]||ex[0x9010]||'').match(/^([+-])(\d{2}):(\d{2})$/);
+    taken=off? new Date(Date.UTC(+mm[1],+mm[2]-1,+mm[3],+mm[4],+mm[5],+mm[6]) - (off[1]==='-'?-1:1)*(+off[2]*60+ +off[3])*60000)
+             : new Date(+mm[1],+mm[2]-1,+mm[3],+mm[4],+mm[5],+mm[6]);
+    if(isNaN(taken)||taken.getFullYear()<2015) taken=null; }
+  let geo=null; const dms=a=>Array.isArray(a)&&a.length>=3?a[0]+a[1]/60+a[2]/3600:null;
+  const la=dms(gp[2]), lo=dms(gp[4]);
+  if(la!=null&&lo!=null&&(la||lo)) geo={lat:la*(gp[1]==='S'?-1:1), lng:lo*(gp[3]==='W'?-1:1)};
+  return { taken, geo };
+}
+// เวลาที่ใช้ทำลายน้ำของรูป 1 ใบ: EXIF → เวลาไฟล์ (ถ้าเก่ากว่า 5 นาที) → เวลาที่แนบ
+async function photoTimeInfo(file){
+  const now=Date.now(), ex=await readPhotoExif(file);
+  if(ex&&ex.taken&&ex.taken.getTime()<=now+5*60000) return { at:ex.taken, src:'exif', geo:ex.geo };
+  const lm=Number(file&&file.lastModified)||0;
+  if(lm && lm<now-5*60000 && lm>now-60*86400000) return { at:new Date(lm), src:'file', geo:ex&&ex.geo||null };
+  return { at:new Date(now), src:'now', geo:ex&&ex.geo||null };
+}
+function slotStampBase(unitLabel,slotLabel,ti){
+  const d=ti&&ti.at?ti.at:new Date(), th=d.toLocaleString('th-TH',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const tag=!ti||ti.src==='exif'?'':ti.src==='file'?' (เวลาไฟล์)':ti.picked?' (เวลาที่แนบรูป)':'';
+  // พิกัด: จากไฟล์รูปก่อน · ไม่มี → ใช้ GPS มือถือตอนนี้ เฉพาะรูปที่ถ่ายไม่เกิน 10 นาที (กันพิกัดผิดที่เมื่อเลือกรูปเก่า)
+  const g=ti&&ti.geo?ti.geo:(slotGeo&&Math.abs(Date.now()-d.getTime())<=10*60000?slotGeo:null);
   const addr=String((typeof pmCtx!=='undefined'&&pmCtx&&pmCtx.site&&pmCtx.site.address)||'').replace(/\s+/g,' ').trim();
-  return [th+' น.', slotGeo?`พิกัด ${slotGeo.lat.toFixed(6)}, ${slotGeo.lng.toFixed(6)}`:'', addr.length>60?addr.slice(0,58)+'…':addr,
+  return [th+' น.'+tag, g?`พิกัด ${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}`:'', addr.length>60?addr.slice(0,58)+'…':addr,
     (jobData?.branch||'')+(jobData?.client?' · '+jobData.client:''), `${jobData?.id||JOB_ID} · ${unitLabel}`, String(slotLabel||'').replace(/^รูปถ่าย|^รูป/,'').trim()].filter(x=>String(x).trim());
 }
-function slotStampLines(f){ return slotStampBase(f.unitLabel, f.label); }
+let slotPickSrc='cam'; // ปุ่มที่ช่างกด: cam = ถ่ายใหม่ในฟอร์ม · gal = เลือกจากเครื่อง
+function slotStampLines(f,ti){ return slotStampBase(f.unitLabel, f.label, ti); }
 function slotCompress(file, lines, maxW=1280, quality=0.72){
   return new Promise((resolve,reject)=>{
     const img=new Image(), reader=new FileReader();
@@ -1575,7 +1627,7 @@ async function slotAddFiles(files){
   slotRender(); slotOpen(id);
   await slotGeoWait(3000);
   for(const e of entries){
-    try{ const r=await slotCompress(e.file, slotStampLines(f)); Object.assign(e,{ compressed:r.blob, dataUrl:r.dataUrl, width:r.width, height:r.height, status:'ready' }); }
+    try{ const ti=await photoTimeInfo(e.file); ti.picked=slotPickSrc==='gal'; const r=await slotCompress(e.file, slotStampLines(f,ti)); Object.assign(e,{ compressed:r.blob, dataUrl:r.dataUrl, width:r.width, height:r.height, status:'ready', takenAt:ti.at.toISOString(), timeSrc:ti.src }); }
     catch(err){ e.status='error'; }
     slotRender(); if(slotCur.slot===id) slotOpen(id);
   }
@@ -1630,11 +1682,11 @@ async function pmSlotAdd(files){
   const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/')); if(!list.length) return;
   it.photos[f.cat]=it.photos[f.cat]||[]; if((it.slot_na||{})[k]) delete it.slot_na[k];
   await slotGeoWait(3000);
-  const lines=slotStampBase(pmItemName(it), f.s.l);
+  const picked=slotPickSrc==='gal';
   const entries=list.map(()=>{ const e={ id:Date.now()+'-'+Math.random().toString(36).slice(2,7), status:'compressing', slot:k }; it.photos[f.cat].push(e); return e; });
   pmSheetRender(); slotPopClose();
   for(let i=0;i<list.length;i++){ const e=entries[i];
-    try{ const c=await slotCompress(list[i], lines); e.blob=c.blob; e.dataUrl=c.dataUrl; }catch(err){ e.status='error'; pmRefreshPhotos(); continue; }
+    try{ const ti=await photoTimeInfo(list[i]); ti.picked=picked; const c=await slotCompress(list[i], slotStampBase(pmItemName(it), f.s.l, ti)); e.blob=c.blob; e.dataUrl=c.dataUrl; e.takenAt=ti.at.toISOString(); e.timeSrc=ti.src; }catch(err){ e.status='error'; pmRefreshPhotos(); continue; }
     pmUploadEntry(e, f.cat);
   }
 }
@@ -1643,7 +1695,7 @@ function pmSlotJobImages(){
   if(!slotPmOn()) return [];
   const out=[];
   pmItems.forEach(it=>{ if(!pmSlotTpl(it)) return; ['before','during','after'].forEach(c=>(it.photos?.[c]||[]).forEach(p=>{ if(!p.url||!p.slot) return; const f=pmSlotFind(it,p.slot);
-    out.push({ id:'pm-'+p.id, category:c, label:CAT_LABEL[c], url:p.url, storage:'r2', uploadedAt:new Date().toISOString(), slot:`${it.key}.${p.slot}`, slotLabel:f?f.s.l:'', unitLabel:pmItemName(it), unitTpl:pmSlotTpl(it), phaseLabel:f?f.p.l:'', pmItem:it.key }); })); });
+    out.push({ id:'pm-'+p.id, category:c, label:CAT_LABEL[c], url:p.url, storage:'r2', uploadedAt:new Date().toISOString(), slot:`${it.key}.${p.slot}`, slotLabel:f?f.s.l:'', unitLabel:pmItemName(it), unitTpl:pmSlotTpl(it), phaseLabel:f?f.p.l:'', pmItem:it.key, ...(p.takenAt?{takenAt:p.takenAt,timeSrc:p.timeSrc||''}:{}) }); })); });
   return out;
 }
 function slotValidate(){

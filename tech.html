@@ -185,6 +185,58 @@ label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 .prof b{font-size:18px;display:block}.prof span{font-size:13px;color:var(--ink2)}
 .lg-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink2)}
 .lg-row:last-child{border-bottom:0}.lg-row .st{flex:0 0 auto;min-width:122px}
+
+/* ===== มุมมองแอดมิน (เห็นทุกทีม แยกดูทีละทีม) ===== */
+.role{font-size:10.5px;font-weight:700;background:#0b1f4d;color:#fff;border-radius:6px;padding:2px 7px;margin-left:6px;vertical-align:2px}
+.tsel{display:flex;align-items:center;gap:8px;width:100%;border:0;background:#fff;border-radius:16px;padding:11px 13px;box-shadow:0 2px 10px rgba(15,23,42,.04);font:inherit;font-size:14px;color:var(--ink);text-align:left;cursor:pointer}
+.tsel b{flex:1}.tsel small{color:var(--ink2);font-size:12.5px}.tsel svg.i{color:var(--brand)}
+.ahero{border-radius:22px;padding:15px;color:#fff;background:linear-gradient(135deg,#1e2f63,#0b1f4d);margin-top:12px;box-shadow:0 12px 26px rgba(11,31,77,.25)}
+.ahero small{font-size:12.5px;opacity:.82}.ahero .big{display:flex;align-items:baseline;gap:8px;margin:2px 0 10px}.ahero .big b{font-size:28px}.ahero .big span{font-size:13px;opacity:.88}
+.sum4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.sum4 button{border:0;font:inherit;color:#fff;background:rgba(255,255,255,.1);border-radius:12px;padding:8px 4px;text-align:center;cursor:pointer}
+.sum4 b{display:block;font-size:20px}.sum4 span{font-size:10.5px;opacity:.9;white-space:nowrap}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px;vertical-align:1px}
+.tcard{display:flex;gap:10px;align-items:center;width:100%;border:0;font:inherit;color:inherit;text-align:left;background:#fff;border-radius:18px;padding:12px 13px;margin-bottom:9px;box-shadow:0 2px 10px rgba(15,23,42,.04);position:relative;overflow:hidden;cursor:pointer}
+.tcard:before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:var(--c,#cbd5e1)}
+.tcard .ta{width:36px;height:36px;border-radius:11px;background:#eef2ff;color:#3b4b8a;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px;flex:0 0 auto}
+.tcard .tx{flex:1;min-width:0}.tcard .tx b{font-size:15px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcard .tx small{font-size:12px;color:var(--ink2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cnts{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.cnts span{font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px;color:#fff}
+.cnts .z{background:#eef1f5;color:var(--ink3)}
+.pbar{height:5px;border-radius:9px;background:#eef1f5;margin-top:7px;overflow:hidden}.pbar i{display:block;height:100%;background:var(--done);border-radius:9px}
+.tchips{display:flex;gap:7px;overflow-x:auto;margin:2px -16px 0;padding:0 16px 2px;scrollbar-width:none}.tchips::-webkit-scrollbar{display:none}
+.tchip{flex:0 0 auto;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font:inherit;font-size:13px;font-weight:600;color:var(--ink2);display:flex;gap:6px;align-items:center;cursor:pointer}
+.tchip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.tchip i{font-style:normal;font-size:11px;background:var(--late);color:#fff;border-radius:999px;padding:0 6px;line-height:17px}
+.tchip.on i{background:#fff;color:var(--late)}
+.seg4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0}
+.seg4 button{border:1.5px solid transparent;background:#fff;border-radius:13px;padding:7px 2px;text-align:center;font:inherit;font-size:11.5px;color:var(--ink2);cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,.03)}
+.seg4 button b{display:block;font-size:18px;color:var(--ink)}
+.seg4 button.on{border-color:var(--c);color:var(--c)}.seg4 button.on b{color:var(--c)}
+.ttag{font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;background:#eef2ff;color:#3b4b8a;white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
+.b.adm{background:#f1f4f9;color:var(--ink);font-size:13.5px}.b.adm.p{background:var(--brand);color:#fff}
+.feed{background:#fff;border-radius:18px;padding:2px 13px;box-shadow:0 2px 10px rgba(15,23,42,.04)}
+.fi{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px;align-items:flex-start;cursor:pointer}
+.fi:last-child{border:0}.fi .tt{color:var(--ink3);font-size:11.5px;white-space:nowrap;margin-left:auto;padding-left:6px}
+.fi .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto}.fi .ic svg.i{width:16px;height:16px}
+.fi .tx{min-width:0}.fi .tx small{display:block;color:var(--ink2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sheet{position:fixed;inset:0;z-index:40;display:none}#sheet.open{display:block}
+#sheet .dim{position:absolute;inset:0;background:rgba(15,23,42,.45)}
+#sheet .sh{position:absolute;left:0;right:0;bottom:0;max-width:640px;margin:0 auto;background:#fff;border-radius:22px 22px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom));max-height:86vh;display:flex;flex-direction:column}
+#sheet .grab{width:40px;height:5px;border-radius:9px;background:#d6dbe4;margin:0 auto 10px;flex:0 0 auto}
+#sheet h4{font-size:17px}#sheet .sub{font-size:12.5px;color:var(--ink2);margin:3px 0 8px}
+#sheet .lst{overflow:auto;flex:1;-webkit-overflow-scrolling:touch}
+.opt{display:flex;align-items:center;gap:11px;padding:11px 2px;border-bottom:1px solid var(--line);font-size:15px;cursor:pointer;width:100%;background:none;border-left:0;border-right:0;border-top:0;font-family:inherit;color:inherit;text-align:left}
+.opt:last-child{border-bottom:0}
+.opt .ck{width:23px;height:23px;border-radius:7px;border:2px solid #cbd5e1;display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto}
+.opt .ck.r{border-radius:50%}
+.opt.on .ck{background:var(--brand);border-color:var(--brand)}.opt .ck svg.i{width:14px;height:14px;stroke-width:3}
+.opt .tx{flex:1;min-width:0}.opt small{display:block;font-size:12px;color:var(--ink2)}
+.opt .n{font-size:11.5px;font-weight:700;color:var(--late);white-space:nowrap}
+.sh-row{display:flex;gap:8px;margin-top:12px;flex:0 0 auto}
+.qd{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.qd button{border:0;background:#eef3ff;color:var(--brand);border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+#sheet input[type=date]{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;-webkit-appearance:none;appearance:none;min-height:48px}
 </style>
 </head>
 <body>
@@ -220,10 +272,15 @@ label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 <symbol id="bank" viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/></symbol>
 <symbol id="prn" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v7H7z"/></symbol>
 <symbol id="chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+<symbol id="flt" viewBox="0 0 24 24"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></symbol>
+<symbol id="bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 6.5 3 8 3 8H3s3-1.5 3-8M10 20a2 2 0 0 0 4 0"/></symbol>
+<symbol id="move" viewBox="0 0 24 24"><path d="M4 7h13l-3-3M20 17H7l3 3"/></symbol>
+<symbol id="send" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-6z"/></symbol>
 <symbol id="hash" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16"/></symbol>
 </svg>
 <div class="wrap" id="app"><div class="loading"><div class="spin"></div>กำลังเปิด...</div></div>
 <nav class="tabbar" id="tabbar" style="display:none"></nav>
+<div id="sheet"></div>
 <div id="detail"></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -277,6 +334,7 @@ function route(){
   if(me.status==='pending')return showPending();
   if(me.status==='disabled')return showError('บัญชีนี้ถูกระงับ — ติดต่อแอดมิน');
   if(DOC_PARAM&&!route.doc){route.doc=1;return showDocPage();}
+  if(isAdm())return admBoot();
   showTop();loadJobs().then(()=>{if(JOB_PARAM&&!route.job){route.job=1;openDetail(JOB_PARAM);}});
   if(ASSET_CODE&&!route.asset){route.asset=1;openAsset(ASSET_CODE);}
 }
@@ -364,6 +422,7 @@ function setTab(t){
 }
 function goCat(k){cat=k;setTab('jobs');}
 function tabbar(){
+  if(isAdm())return admTabbar();
   const b=(k,ic,l)=>`<button class="tab${tab===k?' on':''}" onclick="setTab('${k}')">${I(ic)}${l}</button>`;
   return b('home','home','หน้าแรก')+b('jobs','list','งาน')+`<button class="tab qr" onclick="setTab('scan')" aria-label="สแกน QR เครื่อง">${I('qr')}</button>`+b('hist','hist','ประวัติ')+b('me','user','ฉัน');
 }
@@ -375,6 +434,7 @@ async function loadJobs(manual){
   catch(e){if(e.status===403&&e.data&&e.data.tech){me=e.data.tech;return route();}showError(e.message);}
 }
 function render(){
+  if(isAdm())return admRender();
   $('tabbar').innerHTML=tabbar();
   $('app').innerHTML=tab==='jobs'?viewJobs():tab==='hist'?viewHist():tab==='me'?viewMe():viewHome();
 }
@@ -520,7 +580,7 @@ function openDetail(id,toDocs){
         ${ir('cal','c5','วันที่สั่งงาน',esc(j.assignedAt||''))}
       </div>
     </div>
-    ${j.done?'':`<div class="d-foot">${jobActions(j,false)}</div>`}`;
+    ${j.done?'':`<div class="d-foot">${isAdm()?admActions(j):jobActions(j,false)}</div>`}`;
   const wasOpen=$('detail').classList.contains('open');
   $('detail').classList.add('open');document.body.style.overflow='hidden';
   if(toDocs)setTimeout(()=>{const el=$('d-docs');if(el)el.scrollIntoView({block:'start'});},50);
@@ -876,9 +936,207 @@ async function openAsset(code){
     ${a.note?`<div class="d-box" style="margin-top:12px">${esc(a.note)}</div>`:''}
     <div class="sec">${I('hist')} ประวัติงาน <span class="n">${logs.length}</span></div>${logs.length?logs.map(ev).join(''):'<div class="empty">ยังไม่มีประวัติงานของเครื่องนี้</div>'}`;
 }
+
+// ===== มุมมองแอดมิน (technicians.is_admin) =====
+// เห็นงานทุกทีม · เปิดมาเป็นการ์ดทีละทีม · เลือก "ทีมที่ฉันดูแล" (เก็บที่ technicians.watch_teams) · เลื่อนนัด / ย้ายทีม / โทรหัวหน้าทีม
+// ไม่มีราคา/บัญชีใน LINE — งานพวกนั้นทำใน console
+let ADM={teams:[],loaded:false},admTab='home',admTeam=null,admCat='late',admQ='',admTechMode=false;
+const tkey=s=>String(s||'').toLowerCase().replace(/[\s\-–—_.()]/g,'');
+function isAdm(){return !!(me&&me.is_admin&&!admTechMode);}
+const tLabel=n=>n||'ยังไม่ระบุทีม';
+function tShort(n){const m=/^(ทีม\s*\d+)/.exec(n||'');return m?m[1].replace(/\s+/g,''):tLabel(n).slice(0,10);}
+function tAv(n){const m=/\d+/.exec(n||'');return m?m[0]:esc(tLabel(n).replace(/^ทีม\s*/,'').slice(0,1));}
+function admWatch(){return new Set((me.watch_teams||[]).map(tkey));}
+function admTeams(){const w=admWatch();return w.size?ADM.teams.filter(t=>w.has(tkey(t.name))):ADM.teams;}
+function admJobsOf(name){if(name==null){const ks=new Set(admTeams().map(t=>tkey(t.name)));return jobs.filter(j=>ks.has(tkey(j.team)));}return jobs.filter(j=>tkey(j.team)===tkey(name));}
+function admBoot(){showTop();if(!ADM.loaded)return loadAdmin();admRender();}
+async function loadAdmin(manual){
+  if(!ADM.loaded)$('app').innerHTML='<div class="loading"><div class="spin"></div>กำลังโหลดงานทุกทีม...</div>';
+  const rb=document.querySelector('.ibtn.rf');if(rb)rb.classList.add('spin');
+  try{
+    const d=await api('admin',{});me=d.tech||me;jobs=d.jobs||[];
+    const teams=(d.teams||[]).slice();if(jobs.some(j=>!String(j.team||'').trim()))teams.push({name:'',people:[]});
+    ADM={teams,loaded:true};showTop();admRender();if(manual)toast('อัปเดตแล้ว');
+    if(JOB_PARAM&&!loadAdmin.job){loadAdmin.job=1;openDetail(JOB_PARAM);}
+  }catch(e){if(e.status===403&&e.data&&e.data.tech){me=e.data.tech;return route();}showError(e.message);}
+}
+function admSetTab(t){admTab=t;admRender();window.scrollTo(0,0);}
+function admTabbar(){
+  const b=(k,ic,l)=>`<button class="tab${admTab===k?' on':''}" onclick="admSetTab('${k}')">${I(ic)}${l}</button>`;
+  const w=classify(admJobsOf(null)).done.length;
+  return b('home','home','ภาพรวม')+b('team','users','งานรายทีม')+b('review','check','รอตรวจ'+(w?` (${w})`:''))+b('feed','bell','ล่าสุด');
+}
+function admRender(){
+  $('tabbar').innerHTML=admTabbar();
+  $('app').innerHTML=admTab==='team'?admViewTeam():admTab==='review'?admViewReview():admTab==='feed'?admViewFeed():admViewHome();
+}
+function admHead(sub,title,extra){
+  return `<div class="hello">${avHtml()}<div class="t"><small>${sub}</small><b>${title}</b></div>${extra||''}<button class="ibtn rf" onclick="loadAdmin(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>`;
+}
+function admLast(list){
+  const today=todayISO();let best=null;
+  const put=(at,t,j)=>{if(!at||todayISO(new Date(at))!==today)return;if(!best||at>best.at)best={at,t,j};};
+  const TT={started:'เริ่มงาน',submitted:'ส่งงาน',parts_quote_needed:'ขอเสนอราคา',draft_saved:'บันทึกร่าง'};
+  list.forEach(j=>{if(j.started&&j.started.at)put(j.started.at,'เริ่มงาน',j);if(j.techSubmittedAt)put(j.techSubmittedAt,'ส่งงาน',j);if(j.techUpdateAt&&TT[j.techUpdateType])put(j.techUpdateAt,TT[j.techUpdateType],j);});
+  return best?`ล่าสุด: ${best.t} ${esc(best.j.id)} · ${hm(best.at)}`:'วันนี้ยังไม่มีความเคลื่อนไหว';
+}
+function admSentToday(c){const t=todayISO();return c.done.filter(j=>String(j.techSubmittedAt||'').slice(0,10)===t).length;}
+function admViewHome(){
+  const all=admJobsOf(null),c=classify(all),W=admWatch(),T=admTeams();
+  const open=c.today.filter(j=>!j.waitingAdmin).length+c.send.length+c.late.length;
+  const sum=(k,col,l)=>`<button onclick="admGo('${k}')"><b>${c[k].length}</b><span><i class="dot" style="background:${col}"></i>${l}</span></button>`;
+  const rows=T.map(t=>{const tj=admJobsOf(t.name),cc=classify(tj),st=admSentToday(cc),base=cc.today.length+st;return {t,cc,st,pct:base?Math.round(st/base*100):0,score:cc.late.length*1000+cc.send.length*100+cc.today.length*10+cc.done.length,last:admLast(tj)};})
+    .sort((a,b)=>b.score-a.score||a.t.name.localeCompare(b.t.name,'th',{numeric:true}));
+  const n=(k,v,l)=>v?`<span style="background:var(--${k})">${l} ${v}</span>`:`<span class="z">${l} 0</span>`;
+  const card=r=>{const col=r.cc.late.length?'var(--late)':r.cc.send.length?'var(--send)':r.cc.today.length?'var(--today)':'#cbd5e1';
+    return `<button class="tcard" style="--c:${col}" onclick="admOpenTeam('${esc(r.t.name)}')"><div class="ta">${tAv(r.t.name)}</div><div class="tx"><b>${esc(tLabel(r.t.name))}</b><small>${r.last}</small>
+      <div class="cnts">${n('today',r.cc.today.length,'วันนี้')}${n('send',r.cc.send.length,'ส่ง')}${n('late',r.cc.late.length,'เลย')}${n('done',r.cc.done.length,'ตรวจ')}</div><div class="pbar"><i style="width:${r.pct}%"></i></div></div>${I('chev','color:var(--ink3)')}</button>`;};
+  return admHead('ดูงานทุกทีม · '+esc(thDate(todayISO())),`${esc(me.display_name||lineProfile.name||'แอดมิน')} <span class="role">แอดมิน</span>`,(me.team_names||[]).length?`<button class="ibtn" onclick="admTechMode=true;showTop();loadJobs()" aria-label="ดูแบบช่าง">${I('user')}</button>`:'')+`
+    <button class="tsel" onclick="admWatchSheet()">${I('flt')}<b>ทีมที่ฉันดูแล</b><small>${W.size?`${T.length} จาก ${ADM.teams.length} ทีม`:`ทุกทีม (${ADM.teams.length})`}</small>${I('chev','color:var(--ink3)')}</button>
+    <div class="ahero"><small>งานที่ยังไม่ปิด (${T.length} ทีม)</small><div class="big"><b>${open}</b><span>งาน · วันนี้ส่งแล้ว ${admSentToday(c)}</span></div>
+      <div class="sum4">${sum('today','#6f9bff','นัดวันนี้')}${sum('send','#ffb347','ต้องส่ง')}${sum('late','#ff6b6e','เลยนัด')}${sum('done','#4cd38a','รอตรวจ')}</div></div>
+    <div class="h3">ทีม <a style="color:var(--ink3);cursor:default">เรียง: ต้องดูก่อน</a></div>
+    ${rows.length?rows.map(card).join(''):'<div class="empty">ยังไม่มีทีม</div>'}`;
+}
+function admGo(k){admCat=k;admTeam=null;admTab='team';admRender();window.scrollTo(0,0);}
+function admOpenTeam(n){admTeam=n;admTab='team';const cc=classify(admJobsOf(n));admCat=cc.late.length?'late':cc.today.length?'today':cc.send.length?'send':'done';admRender();window.scrollTo(0,0);}
+function admTeamChips(){
+  const T=admTeams(),late=n=>classify(admJobsOf(n)).late.length;
+  const ch=(n,lab,on,badge)=>`<button class="tchip${on?' on':''}" onclick="admTeam=${n===null?'null':`'${esc(n)}'`};admQ='';admRender()">${esc(lab)}${badge?`<i>${badge}</i>`:''}</button>`;
+  const allLate=classify(admJobsOf(null)).late.length;
+  return `<div class="tchips">${ch(null,'ทุกทีม',admTeam===null||admTeam===undefined,allLate)}${T.map(t=>ch(t.name,tShort(t.name),admTeam===t.name,late(t.name))).join('')}</div>`;
+}
+function admListHtml(){
+  const L=admTeam==null?admJobsOf(null):admJobsOf(admTeam),c=classify(L),qq=admQ.trim().toLowerCase();
+  const list=qq?[...c.late,...c.today,...c.send,...c.done,...c.next].filter(j=>[j.id,j.branch,j.client,j.type,j.ref,j.team].join(' ').toLowerCase().includes(qq)):c[admCat]||[];
+  return list.length?list.map(admCard).join(''):`<div class="empty">${qq?'ไม่พบงานที่ค้นหา':'ไม่มีงานในหมวดนี้'}</div>`;
+}
+function admViewTeam(){
+  if(admTeam===undefined)admTeam=null;
+  const L=admTeam==null?admJobsOf(null):admJobsOf(admTeam),c=classify(L);
+  const sg=(k,l)=>`<button class="${admCat===k&&!admQ?'on':''}" style="--c:var(--${k})" onclick="admCat='${k}';admQ='';admRender()"><b>${c[k].length}</b>${l}</button>`;
+  const ppl=admTeam!=null?(ADM.teams.find(t=>t.name===admTeam)||{}).people||[]:[];
+  const lead=ppl.find(p=>p.leader&&p.phone)||ppl.find(p=>p.phone);
+  return `<div class="tbar"><b>${admTeam==null?'งานทุกทีม':esc(tLabel(admTeam))}</b>${lead?`<a class="ibtn" href="${telHref(lead.phone)}" aria-label="โทรหัวหน้าทีม">${I('phone')}</a>`:''}<button class="ibtn rf" onclick="loadAdmin(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
+    ${admTeamChips()}
+    <div class="seg4">${sg('today','นัดวันนี้')}${sg('send','ต้องส่ง')}${sg('late','เลยนัด')}${sg('done','รอตรวจ')}</div>
+    <div class="search">${I('srch')}<input id="aq" type="search" placeholder="ค้นหา PR / สาขา${admTeam==null?' / ทีม':''}" value="${esc(admQ)}" oninput="admQ=this.value;$('ajl').innerHTML=admListHtml()"></div>
+    <div id="ajl" style="margin-top:12px">${admListHtml()}</div>
+    ${c.next.length&&!admQ?`<div class="mnote">นัดล่วงหน้า ${c.next.length} งาน — ค้นหาด้วย PR/สาขาเพื่อดู</div>`:''}`;
+}
+function admCard(j){
+  const k=catOf(j),od=overDays(j);
+  const meta=[`<span>${I(typeIcon(j.type))}${esc(j.type||'งาน')}</span>`,
+    k==='today'&&j.inProgress&&j.started?`<span>${I('play')}เริ่ม ${esc(hm(j.started.at))}</span>`:k==='done'&&j.techSubmittedAt?`<span>${I('check')}ส่ง ${esc(thTime(j.techSubmittedAt))}</span>`:`<span>${I('cal')}${hasDate(j)?esc(thDate(j.date)):'ยังไม่ระบุวัน'}</span>`,
+    od?`<span class="od">${k==='late'?'เลยนัด':'ค้าง'} ${od} วัน</span>`:''].filter(Boolean).join('');
+  return `<div class="jc" style="--c:var(--${k})" onclick="openDetail('${esc(j.id)}')">
+    <div class="r1"><span class="pr">${esc(j.id)}</span>${admTeam==null||admQ?`<span class="ttag">${esc(tShort(j.team))}</span>`:''}${btPill(j)}${stLabel(k)}</div>
+    <div class="br">${esc(j.branch||'-')}</div><div class="mt">${meta}</div>
+    ${k!=='done'&&k!=='closed'?`<div class="act" onclick="event.stopPropagation()">${admActions(j,true)}</div>`:''}</div>`;
+}
+function admPeople(team){return ((ADM.teams.find(t=>tkey(t.name)===tkey(team))||{}).people||[]).filter(p=>p.phone);}
+function admActions(j,compact){
+  const ppl=admPeople(j.team),call=ppl.length===1?`<a class="b adm" href="${telHref(ppl[0].phone)}">${I('phone')}${compact?'โทรทีม':'โทรหัวหน้าทีม'}</a>`:ppl.length?`<button class="b adm" onclick="admCallSheet('${esc(j.team)}')">${I('phone')}${compact?'โทรทีม':'โทรหาทีม'}</button>`:'';
+  return `${call}<button class="b adm" onclick="admDateSheet('${esc(j.id)}')">${I('cal')}เลื่อนนัด</button><button class="b adm p" onclick="admTeamSheet('${esc(j.id)}')">${I('move')}ย้ายทีม</button>`;
+}
+function admViewReview(){
+  const c=classify(admJobsOf(null));
+  return `<div class="tbar"><b>รอตรวจ</b><button class="ibtn rf" onclick="loadAdmin(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
+    <div class="mnote" style="margin:0 0 12px">ช่างส่งงานแล้ว รอแอดมินตรวจรายงานใน console · ${admTeams().length} ทีมที่ดูแล</div>
+    ${c.done.length?c.done.map(j=>{const sv=admTeam;admTeam=null;const h=admCard(j);admTeam=sv;return h;}).join(''):'<div class="empty">ไม่มีงานรอตรวจ</div>'}`;
+}
+function admViewFeed(){
+  const now=Date.now(),ev=[];
+  const add=(at,kind,j,txt)=>{const t=new Date(at).getTime();if(!at||isNaN(t)||now-t>2*864e5)return;ev.push({t,kind,j,txt});};
+  admJobsOf(null).forEach(j=>{if(j.started&&j.started.at)add(j.started.at,'start',j,'เริ่มงาน');if(j.techSubmittedAt)add(j.techSubmittedAt,'submit',j,'ส่งงาน');
+    if(j.techUpdateType==='parts_quote_needed'&&j.techUpdateAt)add(j.techUpdateAt,'quote',j,'ขอเสนอราคาอะไหล่');});
+  ev.sort((a,b)=>b.t-a.t);
+  const IC={start:['play','var(--today)'],submit:['send','var(--done)'],quote:['note','var(--send)']};
+  const today=todayISO();let lastDay='';
+  const rows=ev.slice(0,80).map(e=>{const d=todayISO(new Date(e.t)),hd=d!==lastDay?`<div class="sec" style="margin:14px 2px 6px">${d===today?'วันนี้':'เมื่อวาน'}</div>`:'';lastDay=d;
+    return `${hd}<div class="feed"><div class="fi" onclick="openDetail('${esc(e.j.id)}')"><div class="ic" style="background:${IC[e.kind][1]}">${I(IC[e.kind][0])}</div><div class="tx"><b>${esc(tShort(e.j.team))}</b> ${e.txt} ${esc(e.j.id)}<small>${esc(e.j.branch||'')}</small></div><span class="tt">${hm(new Date(e.t).toISOString())}</span></div></div>`;}).join('');
+  return `<div class="tbar"><b>ความเคลื่อนไหว</b><button class="ibtn rf" onclick="loadAdmin(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
+    <div class="mnote" style="margin:0 0 4px">2 วันล่าสุด · เฉพาะทีมที่ดูแล</div>${rows||'<div class="empty">ยังไม่มีความเคลื่อนไหว</div>'}`;
+}
+// ---------- แผ่นเลือก (bottom sheet) ----------
+function sheet(html){const s=$('sheet');s.innerHTML=`<div class="dim" onclick="sheetClose()"></div><div class="sh"><div class="grab"></div>${html}</div>`;s.classList.add('open');}
+function sheetClose(){$('sheet').classList.remove('open');$('sheet').innerHTML='';}
+const ckI=()=>I('check');
+function admWatchSheet(){
+  const W=admWatch(),all=!W.size;
+  sheet(`<h4>ทีมที่ฉันดูแล</h4><div class="sub">เลือกเฉพาะทีมที่คุณรับผิดชอบ หน้าแรก รอตรวจ และความเคลื่อนไหวจะแสดงแค่ทีมเหล่านี้ · ไม่เลือก = ทุกทีม</div>
+    <div class="lst" id="ws">${ADM.teams.map(t=>{const on=all||W.has(tkey(t.name)),l=classify(admJobsOf(t.name)).late.length;
+      return `<button class="opt${on?' on':''}" data-n="${esc(t.name)}" onclick="this.classList.toggle('on')"><span class="ck">${ckI()}</span><span class="tx">${esc(tLabel(t.name))}<small>${esc((t.people||[]).map(p=>p.name).filter(Boolean).slice(0,3).join(', ')||'ยังไม่มีช่างลงทะเบียน')}</small></span>${l?`<span class="n">เลยนัด ${l}</span>`:''}</button>`;}).join('')}</div>
+    <div class="sh-row"><button class="b ghost" onclick="document.querySelectorAll('#ws .opt').forEach(x=>x.classList.add('on'))">เลือกทั้งหมด</button><button class="b start" id="ws-save" onclick="admWatchSave()">บันทึก</button></div>`);
+}
+async function admWatchSave(){
+  const on=[...document.querySelectorAll('#ws .opt.on')].map(x=>x.dataset.n);
+  const list=on.length===ADM.teams.length?[]:on;
+  if(!on.length){toast('เลือกอย่างน้อย 1 ทีม');return;}
+  const b=$('ws-save');b.disabled=true;
+  try{const d=await api('admin_watch',{teams:list});me.watch_teams=d.watch_teams||list;sheetClose();admRender();toast(list.length?`ดู ${list.length} ทีม`:'ดูทุกทีม');}
+  catch(e){b.disabled=false;toast(e.message);}
+}
+function admCallSheet(team){
+  const ppl=admPeople(team);
+  sheet(`<h4>โทรหา${esc(tLabel(team))}</h4><div class="sub">ช่างที่ลงทะเบียนในทีมนี้</div><div class="lst">${ppl.map(p=>`<a class="opt" href="${telHref(p.phone)}" style="text-decoration:none">${I('phone','color:var(--brand)')}<span class="tx">${esc(p.name||'-')}${p.leader?' · หัวหน้าทีม':''}<small>${esc(p.phone)}</small></span></a>`).join('')}</div>
+    <div class="sh-row"><button class="b ghost" onclick="sheetClose()">ปิด</button></div>`);
+}
+function admDateSheet(id){
+  const j=findJob(id);if(!j)return;const t=todayISO(),cur=hasDate(j)?j.date.slice(0,10):t;
+  const q=(l,d)=>`<button onclick="$('ad-date').value='${d}'">${l}</button>`;
+  sheet(`<h4>เลื่อนนัด ${esc(j.id)}</h4><div class="sub">${esc(j.branch||'')} · ${esc(tLabel(j.team))} · นัดเดิม ${hasDate(j)?esc(thDate(j.date)):'ยังไม่ระบุวัน'}</div>
+    <div class="qd">${q('วันนี้',t)}${q('พรุ่งนี้',addDays(t,1))}${q('+2 วัน',addDays(t,2))}${q('+7 วัน',addDays(t,7))}</div>
+    <input type="date" id="ad-date" value="${cur}">
+    <div class="sh-row"><button class="b ghost" onclick="sheetClose()">ยกเลิก</button><button class="b start" id="ad-save" onclick="admSave('${esc(j.id)}','date')">บันทึกวันนัด</button></div>`);
+}
+function admTeamSheet(id){
+  const j=findJob(id);if(!j)return;
+  sheet(`<h4>ย้ายทีม ${esc(j.id)}</h4><div class="sub">${esc(j.branch||'')} · ตอนนี้ ${esc(tLabel(j.team))} · ทีมใหม่จะเห็นงานนี้ในหน้า "งานของฉัน" ทันที</div>
+    <div class="lst" id="at">${ADM.teams.filter(t=>t.name).map(t=>{const c=classify(admJobsOf(t.name)),on=tkey(t.name)===tkey(j.team);
+      return `<button class="opt${on?' on':''}" data-n="${esc(t.name)}" onclick="document.querySelectorAll('#at .opt').forEach(x=>x.classList.remove('on'));this.classList.add('on')"><span class="ck r">${ckI()}</span><span class="tx">${esc(t.name)}<small>วันนี้ ${c.today.length} · ต้องส่ง ${c.send.length} · เลยนัด ${c.late.length}</small></span></button>`;}).join('')}</div>
+    <div class="sh-row"><button class="b ghost" onclick="sheetClose()">ยกเลิก</button><button class="b start" id="ad-save" onclick="admSave('${esc(j.id)}','team')">ย้ายทีม</button></div>`);
+}
+async function admSave(id,kind){
+  const j=findJob(id);if(!j)return;const b=$('ad-save');
+  const val=kind==='date'?($('ad-date')||{}).value:(document.querySelector('#at .opt.on')||{dataset:{}}).dataset.n;
+  if(!val){toast(kind==='date'?'เลือกวันที่':'เลือกทีม');return;}
+  if(kind==='team'&&tkey(val)===tkey(j.team)){sheetClose();return;}
+  if(kind==='date'&&hasDate(j)&&j.date.slice(0,10)===val){sheetClose();return;}
+  b.disabled=true;
+  try{await api('admin_update',{jobId:id,[kind]:val});j[kind]=val;sheetClose();if($('detail').classList.contains('open'))openDetail(id);admRender();
+    toast(kind==='date'?`เลื่อนนัด ${id} เป็น ${thDate(val)}`:`ย้าย ${id} ไป ${tShort(val)}`);}
+  catch(e){b.disabled=false;toast(e.message);}
+}
+
 function openSubmit(id,mode){location.href=SUBMIT_PAGE+'?job='+encodeURIComponent(id)+'&from=tech'+(mode?'&mode='+mode:'');}
+
+// ข้อมูลตัวอย่างมุมมองแอดมิน (?demo=admin)
+function demoAdminApi(action,extra){
+  const t=todayISO(),now=Date.now(),H=h=>new Date(now-h*36e5).toISOString();
+  const tech={id:'TECH-adm',display_name:'คุณอร',status:'active',team_names:[],is_leader:false,is_admin:true,watch_teams:demoAdminApi.w||[]};
+  if(action==='me')return Promise.resolve({ok:true,line:{name:'Orn',picture:''},tech});
+  if(action==='admin_watch'){demoAdminApi.w=extra.teams||[];return Promise.resolve({ok:true,watch_teams:demoAdminApi.w});}
+  if(action==='admin_update')return Promise.resolve({ok:true,job:{id:extra.jobId}});
+  const T=['ทีม1 - อำนวย','ทีม2 - สมชาย','ทีม3 - ธนา','ทีม4 - ประเสริฐ','ทีม5 - ชัยวัฒน์','ทีม6 - วิชัย'];
+  const B=['Pun Thai บางพระ1','Pun Thai ชลบุรี7','Max Mart หนองมน','Lotus บางนา','ร้านกาแฟ สาขาบางแสน','Pun Thai ลาดกระบัง2','Max Mart ตลาดไท1','Pun Thai พนมสารคาม5','MAGURO RAMA 3','Pun Thai รังสิต','Pun Thai บางคล้า3','Max Mart กบินทร์บุรี8'];
+  const TY=['ซ่อมแอร์','ซ่อมตู้แช่','PM แอร์ และ ตู้แช่','PM แอร์'];
+  const plan=[[0,'today',3,1],[0,'send',1,0],[0,'done',3,0],[1,'today',2,1],[1,'late',2,0],[1,'send',1,0],[1,'done',1,0],[2,'next',2,0],[2,'done',1,0],[3,'today',2,1],[3,'send',1,0],[3,'done',2,0],[4,'late',1,0],[4,'today',1,0],[5,'today',1,0],[5,'late',1,0],[5,'done',1,0]];
+  const jobs=[];let n=439700,bi=0;
+  plan.forEach(([ti,k,cnt,started])=>{for(let i=0;i<cnt;i++){const id='PR'+(n++),b=B[bi++%B.length],ty=TY[(n+i)%TY.length],team=T[ti];
+    const j={id,team,branch:b,client:'บริษัท เอ็มไพร์ เซอร์วิส โซลูชั่น จำกัด',type:ty,level:'3',detail:'ตัวอย่างงาน',phone:'',docs:[],ref:'',assignedAt:addDays(t,-5),reviewNote:'',waitingAdmin:false,inProgress:false,started:null,status:'รอช่างเข้าซ่อม',date:t};
+    if(k==='today'&&i<started){j.inProgress=true;j.status='ช่างกำลังเข้าซ่อม';j.started={at:H(1+i),by:'ช่าง'};}
+    if(k==='send'){j.date=addDays(t,-1-i);j.inProgress=true;j.status='ช่างกำลังเข้าซ่อม';j.started={at:H(26+i*5),by:'ช่าง'};}
+    if(k==='late'){j.date=addDays(t,-1-i);}
+    if(k==='next'){j.date=addDays(t,2+i);}
+    if(k==='done'){j.waitingAdmin=true;j.status='ช่างส่งงานแล้ว';j.date=addDays(t,-i);j.techSubmittedAt=H(2+i*7);j.started={at:H(5+i*7),by:'ช่าง'};if(ti===3&&i===0){j.status='รอขออนุมัติ';j.techUpdateType='parts_quote_needed';j.techUpdateAt=H(3);}}
+    jobs.push(j);}});
+  const ppl={'ทีม1 - อำนวย':[{name:'ช่างอำนวย',phone:'081-111-1111',leader:true}],'ทีม2 - สมชาย':[{name:'ช่างสมชาย',phone:'081-222-2222',leader:true},{name:'ช่างเอ',phone:'089-000-0000',leader:false}],'ทีม4 - ประเสริฐ':[{name:'ช่างประเสริฐ',phone:'081-444-4444',leader:true}],'ทีม6 - วิชัย':[{name:'ช่างวิชัย',phone:'081-666-6666',leader:true}]};
+  return Promise.resolve({ok:true,tech,jobs,teams:T.map(x=>({name:x,people:ppl[x]||[]}))});
+}
 // ===== ข้อมูลตัวอย่าง (?demo=1) =====
 function demoApi(action,extra){
+  if(new URLSearchParams(location.search).get('demo')==='admin'&&(action==='me'||action.startsWith('admin')))return demoAdminApi(action,extra);
   const t=todayISO();
   const tech={id:'TECH-demo',display_name:'ช่างอำนวย',status:'active',team_names:['ทีม1 - อำนวย'],is_leader:true};
   if(action==='me')return Promise.resolve({ok:true,line:{name:'Amnuay',picture:''},tech:new URLSearchParams(location.search).get('demo')==='new'?null:tech});
