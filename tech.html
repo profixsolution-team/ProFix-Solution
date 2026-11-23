@@ -211,6 +211,11 @@ label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 .tchip.on{background:var(--ink);border-color:var(--ink);color:#fff}
 .tchip i{font-style:normal;font-size:11px;background:var(--late);color:#fff;border-radius:999px;padding:0 6px;line-height:17px}
 .tchip.on i{background:#fff;color:var(--late)}
+.kseg{display:flex;gap:6px;margin:10px 0 2px;background:#eef1f5;border-radius:12px;padding:4px}
+.kseg button{flex:1;border:0;background:transparent;border-radius:9px;padding:7px 4px;font:inherit;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+.kseg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(15,23,42,.12)}
+.kseg button em{font-style:normal;font-size:11px;color:var(--ink3);font-weight:700}
+.kseg button.on em{color:var(--brand)}
 .seg4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0}
 .seg4 button{border:1.5px solid transparent;background:#fff;border-radius:13px;padding:7px 2px;text-align:center;font:inherit;font-size:11.5px;color:var(--ink2);cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,.03)}
 .seg4 button b{display:block;font-size:18px;color:var(--ink)}
@@ -545,13 +550,13 @@ function viewHome(){
     ${first.length?first.map(j=>card(j)).join(''):`<div class="empty">ไม่มีงานค้าง${c.next.length?` · นัดล่วงหน้า ${c.next.length} งาน`:''}</div>`}`;
 }
 function jobsListHtml(){
-  const c=classify(jobs),qq=q.trim().toLowerCase();
+  const c=classify(byKind(jobs,jKind)),qq=q.trim().toLowerCase();
   const match=j=>!qq||[j.id,j.branch,j.client,j.type,j.ref].join(' ').toLowerCase().includes(qq);
   const list=qq?[...c.today,...c.send,...c.late,...c.next,...c.done].filter(match):c[cat];
   return list.length?list.map(j=>card(j)).join(''):`<div class="empty">${qq?'ไม่พบงานที่ค้นหา':'ไม่มีงานในหมวดนี้'}</div>`;
 }
 function chipsHtml(){
-  const c=classify(jobs),qq=q.trim();
+  const c=classify(byKind(jobs,jKind)),qq=q.trim();
   return CAT_ORDER.map(k=>`<button class="chip ${k}${!qq&&cat===k?' on':''}" onclick="cat='${k}';q='';render()">${CAT[k].t.replace('/ยังไม่เข้า','')} <em>${c[k].length}</em></button>`).join('');
 }
 // พิมพ์ค้นหา → อัปเดตเฉพาะรายการ (ไม่วาดช่องค้นหาใหม่ — พิมพ์ไทยบน iPhone ไม่สะดุด)
@@ -559,6 +564,7 @@ function onSearch(v){q=v;$('jch').innerHTML=chipsHtml();$('jl').innerHTML=jobsLi
 function viewJobs(){
   return `<div class="tbar"><b>งานของฉัน</b><button class="ibtn rf" onclick="loadJobs(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
     <div class="search">${I('srch')}<input id="q" type="search" placeholder="ค้นหา PR / สาขา" value="${esc(q)}" oninput="onSearch(this.value)"></div>
+    ${kindSeg(jKind,'setJKind',jobs)}
     <div class="chips" id="jch">${chipsHtml()}</div>
     <div id="jl">${jobsListHtml()}</div>`;
 }
@@ -1027,6 +1033,18 @@ async function openAsset(code){
 // ===== มุมมองแอดมิน (technicians.is_admin) =====
 // เห็นงานทุกทีม · เปิดมาเป็นการ์ดทีละทีม · เลือก "ทีมที่ฉันดูแล" (เก็บที่ technicians.watch_teams) · เลื่อนนัด / ย้ายทีม / โทรหัวหน้าทีม
 // ไม่มีราคา/บัญชีใน LINE — งานพวกนั้นทำใน console
+// ---------- ประเภทงาน PM / CM (2026-11-24) ----------
+// PM = บำรุงรักษาตามรอบ (ประเภทงานมีคำว่า PM / Preventive / บำรุงรักษา หรือระดับงาน PM) · CM = งานซ่อมทั่วไป (ที่เหลือทั้งหมด)
+function jobKind(j){return /(^|[^a-z])pm([^a-z]|$)|preventive|บำรุงรักษา/i.test(String((j&&j.type)||''))||lvlShort(j&&j.level)==='PM'?'pm':'cm';}
+function byKind(list,k){return !k||k==='all'?list:list.filter(j=>jobKind(j)===k);}
+function lsGet(k){try{return localStorage.getItem('tk_'+k)||'';}catch(e){return '';}}
+function lsSet(k,v){try{localStorage.setItem('tk_'+k,v);}catch(e){}}
+let jKind=lsGet('jkind')||'all', admKind=lsGet('akind')||'all';
+// แถบเลือก ทั้งหมด / PM / CM — list = งานที่จะนับ (ก่อนกรองประเภท) · fn = ชื่อฟังก์ชันที่เรียกเมื่อเลือก
+function kindSeg(cur,fn,list){const n=k=>byKind(list,k).length;
+  return `<div class="kseg">${[['all','ทั้งหมด'],['pm','PM'],['cm','CM ซ่อม']].map(([k,l])=>`<button type="button" class="${cur===k?'on':''}" onclick="${fn}('${k}')">${l}<em>${n(k)}</em></button>`).join('')}</div>`;}
+function setJKind(k){jKind=k;lsSet('jkind',k);render();}
+function setAdmKind(k){admKind=k;lsSet('akind',k);admRender();}
 let ADM={teams:[],loaded:false},admTab='home',admTeam=null,admCat='late',admQ='',admTechMode=false;
 const tkey=s=>String(s||'').toLowerCase().replace(/[\s\-–—_.()]/g,'');
 function isAdm(){return !!(me&&me.is_admin&&!admTechMode);}
@@ -1088,24 +1106,25 @@ function admViewHome(){
 function admGo(k){admCat=k;admTeam=null;admTab='team';admRender();window.scrollTo(0,0);}
 function admOpenTeam(n){admTeam=n;admTab='team';const cc=classify(admJobsOf(n));admCat=cc.late.length?'late':cc.today.length?'today':cc.send.length?'send':'done';admRender();window.scrollTo(0,0);}
 function admTeamChips(){
-  const T=admTeams(),late=n=>classify(admJobsOf(n)).late.length;
+  const T=admTeams(),late=n=>classify(byKind(admJobsOf(n),admKind)).late.length;
   const ch=(n,lab,on,badge)=>`<button class="tchip${on?' on':''}" onclick="admTeam=${n===null?'null':`'${esc(n)}'`};admQ='';admRender()">${esc(lab)}${badge?`<i>${badge}</i>`:''}</button>`;
   const allLate=classify(admJobsOf(null)).late.length;
   return `<div class="tchips">${ch(null,'ทุกทีม',admTeam===null||admTeam===undefined,allLate)}${T.map(t=>ch(t.name,tShort(t.name),admTeam===t.name,late(t.name))).join('')}</div>`;
 }
 function admListHtml(){
-  const L=admTeam==null?admJobsOf(null):admJobsOf(admTeam),c=classify(L),qq=admQ.trim().toLowerCase();
+  const L=byKind(admTeam==null?admJobsOf(null):admJobsOf(admTeam),admKind),c=classify(L),qq=admQ.trim().toLowerCase();
   const list=qq?[...c.late,...c.today,...c.send,...c.done,...c.next].filter(j=>[j.id,j.branch,j.client,j.type,j.ref,j.team].join(' ').toLowerCase().includes(qq)):c[admCat]||[];
   return list.length?list.map(admCard).join(''):`<div class="empty">${qq?'ไม่พบงานที่ค้นหา':'ไม่มีงานในหมวดนี้'}</div>`;
 }
 function admViewTeam(){
   if(admTeam===undefined)admTeam=null;
-  const L=admTeam==null?admJobsOf(null):admJobsOf(admTeam),c=classify(L);
+  const L0=admTeam==null?admJobsOf(null):admJobsOf(admTeam),L=byKind(L0,admKind),c=classify(L);
   const sg=(k,l)=>`<button class="${admCat===k&&!admQ?'on':''}" style="--c:var(--${k})" onclick="admCat='${k}';admQ='';admRender()"><b>${c[k].length}</b>${l}</button>`;
   const ppl=admTeam!=null?(ADM.teams.find(t=>t.name===admTeam)||{}).people||[]:[];
   const lead=ppl.find(p=>p.leader&&p.phone)||ppl.find(p=>p.phone);
   return `<div class="tbar"><b>${admTeam==null?'งานทุกทีม':esc(tLabel(admTeam))}</b>${lead?`<a class="ibtn" href="${telHref(lead.phone)}" aria-label="โทรหัวหน้าทีม">${I('phone')}</a>`:''}<button class="ibtn rf" onclick="loadAdmin(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
     ${admTeamChips()}
+    ${kindSeg(admKind,'setAdmKind',L0)}
     <div class="seg4">${sg('today','นัดวันนี้')}${sg('send','ต้องส่ง')}${sg('late','เลยนัด')}${sg('done','รอตรวจ')}</div>
     <div class="search">${I('srch')}<input id="aq" type="search" placeholder="ค้นหา PR / สาขา${admTeam==null?' / ทีม':''}" value="${esc(admQ)}" oninput="admQ=this.value;$('ajl').innerHTML=admListHtml()"></div>
     <div id="ajl" style="margin-top:12px">${admListHtml()}</div>
@@ -1174,14 +1193,23 @@ function revCard(j){
     <div class="br">${esc(j.branch||'-')}</div><div class="mt">${revPills(j,m)}</div>${th}
     <div class="act" onclick="event.stopPropagation()">${acts}</div></div>`;
 }
+// รอตรวจ: เลือกทีม (REV.team) + ประเภท PM/CM (ใช้ร่วมกับหน้างานรายทีม)
+function revTeamChips(){
+  const T=admTeams(),n=t=>byKind(classify(admJobsOf(t)).done,admKind).length,all=byKind(classify(admJobsOf(null)).done,admKind).length;
+  if(REV.team&&!T.some(t=>t.name===REV.team))REV.team=null;
+  const ch=(t,lab,c)=>`<button class="tchip${(REV.team||null)===t?' on':''}" onclick="REV.team=${t===null?'null':`'${esc(t)}'`};admRender()">${esc(lab)}${c?`<i style="background:var(--done)">${c}</i>`:''}</button>`;
+  return `<div class="tchips">${ch(null,'ทุกทีม',all)}${T.map(t=>ch(t.name,tShort(t.name),n(t.name))).join('')}</div>`;
+}
 function admViewReview(){
-  const all=classify(admJobsOf(null)).done,cnt=f=>all.filter(j=>f==='all'||revKind(j)===f).length;
+  const base=classify(admJobsOf(REV.team||null)).done,all=byKind(base,admKind),cnt=f=>all.filter(j=>f==='all'||revKind(j)===f).length;
   const list=all.filter(j=>REV.f==='all'||revKind(j)===REV.f);
   if(all.some(j=>!REV.meta[j.id]))setTimeout(()=>revLoadMeta(),0);
   const ch=(f,l)=>`<button class="chip${REV.f===f?' on done':''}" onclick="REV.f='${f}';admRender()">${l} <em>${cnt(f)}</em></button>`;
   return `<div class="tbar"><b>รอตรวจ</b><button class="ibtn rf" onclick="REV.meta={};loadAdmin(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
-    <div class="chips" style="margin-top:0">${ch('all','ทั้งหมด')}${ch('sub','ส่งงาน')}${ch('parts','ขออนุมัติอะไหล่')}${cnt('other')?ch('other','อื่น ๆ'):''}</div>
-    ${list.length?list.map(revCard).join(''):'<div class="empty">ไม่มีงานรอตรวจ</div>'}
+    ${revTeamChips()}
+    ${kindSeg(admKind,'setAdmKind',base)}
+    <div class="chips" style="margin-top:8px">${ch('all','ทั้งหมด')}${ch('sub','ส่งงาน')}${ch('parts','ขออนุมัติอะไหล่')}${cnt('other')?ch('other','อื่น ๆ'):''}</div>
+    ${list.length?list.map(revCard).join(''):`<div class="empty">ไม่มีงานรอตรวจ${REV.team||admKind!=='all'?' ในตัวกรองนี้':''}</div>`}
     <div class="mnote">${admTeams().length} ทีมที่ดูแล · กดผ่าน/ตีกลับที่นี่ = กดในหน้ารายงานช่างของ console</div>`;
 }
 // ---------- หน้าตรวจรายงาน (เต็มจอ) ----------
