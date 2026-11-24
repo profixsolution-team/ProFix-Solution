@@ -1454,7 +1454,7 @@ function slotMetaOf(p){ if(!p||!p.slot) return {}; const f=slotFind(p.slot); ret
 function slotSnapshot(){
   if(!slotOn()) return undefined;
   if(slotState.pm){ const units=[], na={...(slotState.na||{})};
-    pmItems.forEach(it=>{ const tpl=pmSlotTpl(it); if(!tpl) return; units.push({ id:it.key, tpl, kind:it.asset_type||'', name:'', loc:[it.asset_id,it.location].filter(Boolean).join(' · ') }); Object.entries(it.slot_na||{}).forEach(([k,v])=>{ na[`${it.key}.${k}`]=v; }); });
+    pmItems.forEach(it=>{ const tpl=pmSlotTpl(it); if(!tpl) return; units.push({ id:it.key, tpl, kind:it.asset_type||'', name:'', loc:[pmShowCode(it),it.location].filter(Boolean).join(' · ') }); Object.entries(it.slot_na||{}).forEach(([k,v])=>{ na[`${it.key}.${k}`]=v; }); });
     return { v:1, pm:true, units, na }; }
   return { v:1, units:slotState.units.map(u=>({...u})), na:{...(slotState.na||{})} };
 }
@@ -1770,7 +1770,9 @@ function pmSlotLabel(it,key){ const f=pmSlotFind(it,key); return f?f.s.l:''; }
 function pmSlotPhotos(it,key){ return ['before','during','after'].flatMap(c=>(it.photos?.[c]||[]).filter(p=>p.slot===key&&p.status!=='error')); }
 function pmSlotPhases(it){ const t=SLOT_TPL[pmSlotTpl(it)]; return t?t.phases:[]; }
 function pmSlotMissing(it){ const out=[]; pmSlotPhases(it).forEach(p=>p.slots.forEach(sl=>{ const k=p.k+'.'+sl.k; if(!sl.opt&&!pmSlotPhotos(it,k).length&&!(it.slot_na||{})[k]) out.push(k); })); return out; }
-function pmItemName(it){ return [it.asset_id||'เครื่องใหม่', it.asset_type].filter(Boolean).join(' · '); }
+// รหัสเครื่องที่แสดง (2026-11-24) = เลขสติกเกอร์ QR ถ้ามี · ยังไม่ติดสติกเกอร์ = รหัสภายใน (PFA) · asset_id ที่ส่งเข้าระบบยังเป็น PFA เหมือนเดิม
+function pmShowCode(it){ if(!it) return ''; if(it.qr_code) return it.qr_code; const a=it.asset_id&&pmAllAssets().find(x=>x.id===it.asset_id); return (a&&a.qr_code)||it.asset_id||''; }
+function pmItemName(it){ return [pmShowCode(it)||'เครื่องใหม่', it.asset_type].filter(Boolean).join(' · '); }
 let pmSlotPh='', pmSlotKey='';
 function pmSlotCardHtml(it){
   const ps=pmSlotPhases(it); if(!ps.some(p=>p.k===pmSlotPh)) pmSlotPh=(ps.find(p=>p.slots.some(sl=>!sl.opt&&!pmSlotPhotos(it,p.k+'.'+sl.k).length&&!(it.slot_na||{})[p.k+'.'+sl.k]))||ps[0]).k;
@@ -2613,7 +2615,7 @@ function pmRender(){
       const ng=it&&!miss.length&&pmType(it.asset_type).g==='air'?pmSheetNg(it):0;
       const badge=!it?'<span class="pm-r td">ยังไม่ทำ</span>':miss.length?'<span class="pm-r part">ยังไม่ครบ</span>':it.follow_up?'<span class="pm-r wr">⚠ มีงานต่อ</span>':ng?`<span class="pm-r wr">✓ ไม่ปกติ ${ng} ข้อ</span>`:'<span class="pm-r ok">✓ เสร็จ</span>';
       const key=it?it.key:a.id;
-      return `<div class="pm-mi" onclick="pmOpen('${esc(key)}')"><div class="pm-ic">${t.ic}</div><div style="min-width:0;flex:1"><div class="pm-nm">${esc((it&&it.asset_type)||(a&&a.asset_type)||'ยังไม่ระบุประเภท')}${(it?.location||a?.location)?' · '+esc(it?.location||a?.location):''}</div><div class="pm-sb">${esc((it&&it.asset_id)||(a&&a.id)||'เครื่องใหม่')}${(it?.brand||a?.brand)?' · '+esc(it?.brand||a?.brand):''}${it&&it.other_branch?' · ย้ายมาจาก '+esc(it.other_branch):''}</div></div>${badge}</div>`;
+      return `<div class="pm-mi" onclick="pmOpen('${esc(key)}')"><div class="pm-ic">${t.ic}</div><div style="min-width:0;flex:1"><div class="pm-nm">${esc((it&&it.asset_type)||(a&&a.asset_type)||'ยังไม่ระบุประเภท')}${(it?.location||a?.location)?' · '+esc(it?.location||a?.location):''}</div><div class="pm-sb">${esc((it&&pmShowCode(it))||(a&&(a.qr_code||a.id))||'เครื่องใหม่')}${(it?.brand||a?.brand)?' · '+esc(it?.brand||a?.brand):''}${it&&it.other_branch?' · ย้ายมาจาก '+esc(it.other_branch):''}</div></div>${badge}</div>`;
     }).join(''):'<div class="pm-empty">ยังไม่มีเครื่องในทะเบียนของสาขานี้ — กด "สแกน QR" ถ้าติดสติกเกอร์ไว้แล้ว หรือ "เพิ่มเครื่องใหม่"</div>'}</div>
   </div>
   <div class="card">
@@ -2650,10 +2652,10 @@ function pmSheetRender(scrollTop){
   const idx=pmItems.indexOf(it);
   const photoRow=(slot,label,cls)=>`<div><div class="pm-ph-h ${cls}">${label}</div><div class="pm-tb">${(it.photos[slot]||[]).map(p=>`<span class="pm-th">${p.dataUrl||p.url?`<img src="${esc(p.dataUrl||p.url)}">`:''}${p.status==='uploading'||p.status==='compressing'?'<i class="pm-pct">…</i>':p.status==='error'?`<i class="pm-pct err" onclick="pmRetry('${slot}','${p.id}')">⟳</i>`:''}<b onclick="pmDelPhoto('${slot}','${p.id}')">×</b></span>`).join('')}<label class="pm-th add">＋<input type="file" accept="image/*" multiple class="hidden" onchange="pmAddPhotos('${slot}',this.files);this.value=''"></label></div></div>`;
   sh.innerHTML=`
-  <div class="pm-sh-top"><button type="button" class="pm-back" onclick="pmClose()">‹</button><div style="min-width:0"><div class="pm-sh-t">บันทึก PM รายเครื่อง</div><div class="pm-sh-s">${esc(it.asset_id||'เครื่องใหม่')}${it.asset_type?' · '+esc(it.asset_type):''}</div></div></div>
+  <div class="pm-sh-top"><button type="button" class="pm-back" onclick="pmClose()">‹</button><div style="min-width:0"><div class="pm-sh-t">บันทึก PM รายเครื่อง</div><div class="pm-sh-s">${esc(pmShowCode(it)||'เครื่องใหม่')}${it.asset_type?' · '+esc(it.asset_type):''}</div></div></div>
   <div class="wrap pm-sh-body">
     <div class="card">
-      <div class="pm-mh"><span class="pm-code">${esc(it.asset_id||'เครื่องใหม่')}</span>${it.scanned?'<span class="pm-okb">สแกน QR ✓</span>':''}${it.qr_code?`<span class="pm-okb">ผูกสติกเกอร์ ${esc(it.qr_code)}</span>`:''}</div>
+      <div class="pm-mh"><span class="pm-code">${esc(pmShowCode(it)||'เครื่องใหม่')}</span>${it.scanned?'<span class="pm-okb">สแกน QR ✓</span>':''}${it.qr_code?`<span class="pm-okb">ผูกสติกเกอร์ ${esc(it.qr_code)}</span>`:''}</div>
       ${it.last?`<div class="pm-last">PM ครั้งก่อน ${esc(pmThDate(it.last.done_at))}${it.last.condition?' · สภาพ: '+esc(it.last.condition):''}</div>`:''}
       ${it.other_branch?`<div class="pm-warn">⚠ เครื่องนี้ลงทะเบียนไว้ที่สาขา "${esc(it.other_branch)}"</div>`:''}
       ${!it.has_qr&&!it.qr_code?`<button type="button" class="pm-btn2" style="margin-top:10px;width:100%" onclick="pmScanOpen('bind')">🏷 ติดสติกเกอร์เปล่า → สแกนเพื่อผูกกับเครื่องนี้</button>`:''}
@@ -2961,7 +2963,7 @@ async function pmHandleCode(code){
   if(r.kind==='asset'){
     const a=r.asset;
     if(!r.same_branch){
-      if(!confirm(`เครื่อง ${a.id} ลงทะเบียนไว้ที่ "${a.client} · ${a.branch}"\nไม่ใช่สาขานี้ — เครื่องถูกย้ายมา หรือสแกนผิดเครื่อง?\n\nกด OK เพื่อบันทึกเครื่องนี้ในงานนี้ต่อ`)) return;
+      if(!confirm(`เครื่อง ${a.qr_code||a.id} ลงทะเบียนไว้ที่ "${a.client} · ${a.branch}"\nไม่ใช่สาขานี้ — เครื่องถูกย้ายมา หรือสแกนผิดเครื่อง?\n\nกด OK เพื่อบันทึกเครื่องนี้ในงานนี้ต่อ`)) return;
       a._other=true; if(!pmExtraAssets.some(x=>x.id===a.id)) pmExtraAssets.push(a);
     }
     let it=pmItemOf(a.id); if(!it){ it=pmNewItem(a); it._fresh=pmCore(it); pmItems.push(it); }
@@ -2993,7 +2995,7 @@ function pmValidateForSubmit(){
   const ups=pmItems.flatMap(pmUploading);
   if(ups.length){ alert(`รูปของเครื่อง PM กำลังอัปโหลด ${ups.length} รูป — รอสักครู่แล้วกดส่งอีกครั้ง`); return false; }
   const bad=pmItems.map(it=>({it,m:pmMissing(it)})).filter(x=>x.m.length);
-  if(bad.length){ alert('ข้อมูลเครื่อง PM ยังไม่ครบ:\n'+bad.map(x=>`• ${x.it.asset_id||'เครื่องใหม่'} ${x.it.asset_type||''} — ขาด ${x.m.join(', ')}`).join('\n')); pmTab(1,true); pmCur=bad[0].it; pmSheetRender(true); return false; }
+  if(bad.length){ alert('ข้อมูลเครื่อง PM ยังไม่ครบ:\n'+bad.map(x=>`• ${pmShowCode(x.it)||'เครื่องใหม่'} ${x.it.asset_type||''} — ขาด ${x.m.join(', ')}`).join('\n')); pmTab(1,true); pmCur=bad[0].it; pmSheetRender(true); return false; }
   if(!pmItems.length){ alert('งาน PM ต้องบันทึกอย่างน้อย 1 เครื่อง (แท็บ ① บันทึกรายเครื่อง)'); pmTab(1); return false; }
   if(pmSign && pmSign.status==='uploading'){ alert('ลายเซ็นกำลังอัปโหลด — รอสักครู่แล้วกดส่งอีกครั้ง'); return false; }
   const left=pmAllAssets().filter(a=>!pmItemOf(a.id));
@@ -3003,7 +3005,7 @@ function pmValidateForSubmit(){
 async function pmRetryFailedUploads(){
   for(const it of pmItems){
     for(const p of pmFailed(it)){ if(p.blob){ const cat=['before','during','after'].find(c=>(it.photos[c]||[]).includes(p))||'before'; await pmUploadEntry(p,cat); } }
-    if(pmFailed(it).length) throw new Error(`อัปโหลดรูปของเครื่อง ${it.asset_id||'เครื่องใหม่'} ไม่สำเร็จ — เช็กอินเทอร์เน็ตแล้วลองใหม่`);
+    if(pmFailed(it).length) throw new Error(`อัปโหลดรูปของเครื่อง ${pmShowCode(it)||'เครื่องใหม่'} ไม่สำเร็จ — เช็กอินเทอร์เน็ตแล้วลองใหม่`);
   }
 }
 async function pmSaveServer(){
@@ -3105,7 +3107,7 @@ function pmsCommonTech(){
 }
 function pmDocPages(){
   const its=pmItems.filter(it=>pmType(it.asset_type).g==='air'), c=pmsCommonTech();
-  return its.map((it,i)=>pmsPage({ ...c, notes:pmsNotes(it), footL:`${(jobData&&jobData.id)||JOB_ID} · ${it.asset_id||'เครื่องใหม่'} · PM รอบที่ ${pmCtx.visit.round_no}`, footR:`แผ่น ${i+1} / ${its.length}` }, { ...it, sheet_rows:pmSheetRows(it) }));
+  return its.map((it,i)=>pmsPage({ ...c, notes:pmsNotes(it), footL:`${(jobData&&jobData.id)||JOB_ID} · ${pmShowCode(it)||'เครื่องใหม่'} · PM รอบที่ ${pmCtx.visit.round_no}`, footR:`แผ่น ${i+1} / ${its.length}` }, { ...it, sheet_rows:pmSheetRows(it) }));
 }
 let pmDocZ=1;
 function pmDocOpen(){
@@ -3116,7 +3118,7 @@ function pmDocOpen(){
   box.innerHTML=`<div class="pm-sh-top"><button type="button" class="pm-back" onclick="pmDocClose()">‹</button><div style="min-width:0;flex:1"><div class="pm-sh-t">ใบงาน PM Check Sheet</div><div class="pm-sh-s">${pages.length} แผ่น · หน้าตาเดียวกับ PDF ที่ส่งลูกค้า</div></div><button type="button" class="pm-btn2" style="padding:8px 12px" onclick="pmDocZoom()">${pmDocZ>1?'ย่อ':'ขยาย'}</button></div>
     <div class="pm-doc-body" id="pm-doc-body">
       ${miss?`<div class="pm-warn">ยังกรอกไม่ครบ ${miss} เครื่อง — ใบงานยังไม่สมบูรณ์</div>`:''}
-      ${others.length?`<div class="pm-note">${others.map(it=>esc((it.asset_type||'')+' '+(it.asset_id||''))).join(', ')} — ไม่มี Check Sheet (แสดงเป็นหน้ารูปในรายงาน)</div>`:''}
+      ${others.length?`<div class="pm-note">${others.map(it=>esc((it.asset_type||'')+' '+pmShowCode(it))).join(', ')} — ไม่มี Check Sheet (แสดงเป็นหน้ารูปในรายงาน)</div>`:''}
       ${pages.length?pages.map((h,i)=>`<div class="pm-pg"><div class="pm-pg-in">${h}<button type="button" class="pm-here${signed?' done':''}" style="left:${B.x}pt;top:${B.y}pt;width:${B.w}pt;height:${B.h}pt" onclick="pmPadOpen(${i})">${signed?'':'แตะเพื่อเซ็น'}</button></div></div>`).join(''):'<div class="pm-empty" style="color:#d1d5db">ยังไม่มีเครื่องแอร์ที่บันทึก</div>'}
     </div>
     <div class="pm-doc-foot">${pages.length?`<button type="button" class="btn btn-primary" onclick="pmPadOpen(0)">✍️ ${signed?'เซ็นใหม่':'ให้ลูกค้าเซ็น'}</button>`:`<button type="button" class="pm-btn2" style="width:100%" onclick="pmDocClose()">ปิด</button>`}</div>`;

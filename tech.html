@@ -190,6 +190,10 @@ label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 .lg-row:last-child{border-bottom:0}.lg-row .st{flex:0 0 auto;min-width:122px}
 
 /* ===== มุมมองแอดมิน (เห็นทุกทีม แยกดูทีละทีม) ===== */
+.asbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;background:#0b1f4d;color:#fff;border-radius:16px;padding:8px 8px 8px 12px;margin:0 0 12px;box-shadow:0 6px 18px rgba(11,31,77,.25)}
+.asbar svg.i{width:20px;height:20px;flex:0 0 auto}.asbar span{flex:1;min-width:0;line-height:1.2}.asbar small{display:block;font-size:11px;opacity:.75}.asbar b{font-size:14.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.asbar button{flex:0 0 auto;border:0;border-radius:11px;padding:8px 10px;font:inherit;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.14);color:#fff;cursor:pointer}.asbar button.x{background:#fff;color:#0b1f4d}
+.astm .ld{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:14px;padding:10px 12px;margin-top:10px}.astm .ld .v{flex:1;min-width:0}.astm .ld small{display:block;font-size:12px;color:var(--ink2)}
 .role{font-size:10.5px;font-weight:700;background:#0b1f4d;color:#fff;border-radius:6px;padding:2px 7px;margin-left:6px;vertical-align:2px}
 .tsel{display:flex;align-items:center;gap:8px;width:100%;border:0;background:#fff;border-radius:16px;padding:11px 13px;box-shadow:0 2px 10px rgba(15,23,42,.04);font:inherit;font-size:14px;color:var(--ink);text-align:left;cursor:pointer}
 .tsel b{flex:1}.tsel small{color:var(--ink2);font-size:12.5px}.tsel svg.i{color:var(--brand)}
@@ -332,6 +336,7 @@ label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 <symbol id="list" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></symbol>
 <symbol id="qr" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 12h8"/></symbol>
 <symbol id="hist" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></symbol>
+<symbol id="eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
 <symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
 <symbol id="users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/></symbol>
 <symbol id="phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/></symbol>
@@ -522,6 +527,7 @@ function tabbar(){
 }
 function showTop(){ $('tabbar').innerHTML=tabbar();$('tabbar').style.display=''; }
 async function loadJobs(manual){
+  if(admAsTeam!=null)return asTeamReload(manual);
   if(!jobs.length)$('app').innerHTML='<div class="loading"><div class="spin"></div>กำลังโหลดงาน...</div>';
   const rb=document.querySelector('.ibtn.rf');if(rb)rb.classList.add('spin');
   try{const d=await api('jobs',{});me=d.tech||me;jobs=d.jobs||[];showTop();render();if(manual)toast('อัปเดตแล้ว');if(manual&&hist.jobs)loadHist();}
@@ -530,7 +536,7 @@ async function loadJobs(manual){
 function render(){
   if(isAdm())return admRender();
   $('tabbar').innerHTML=tabbar();
-  $('app').innerHTML=tab==='jobs'?viewJobs():tab==='hist'?viewHist():tab==='me'?viewMe():viewHome();
+  $('app').innerHTML=asTeamBar()+(tab==='jobs'?viewJobs():tab==='hist'?viewHist():tab==='me'?viewMe():viewHome());
 }
 const initials=n=>String(n||'ช่าง').replace(/^(นาย|นาง|น\.ส\.|ช่าง)\s*/,'').trim().slice(0,2);
 const avHtml=()=>`<div class="av">${lineProfile.picture?`<img src="${esc(lineProfile.picture)}" alt="">`:esc(initials(me&&me.display_name||lineProfile.name))}</div>`;
@@ -542,7 +548,7 @@ function viewHome(){
   const allToday=c.today.length+sentToday,pct=allToday?Math.round(sentToday/allToday*100):0;
   const tile=k=>{const n=c[k].length;return `<div class="cat${n?'':' zero'}" onclick="goCat('${k}')">${stLabel(k)}<div class="n" style="color:var(--${k})">${n}</div><div class="s">${n||k!=='late'?CAT[k].hint:'ไม่มีงานเลยนัด'}</div></div>`;};
   const first=[...c.late,...c.today.filter(j=>!j.waitingAdmin),...c.send].slice(0,3);
-  return `<div class="hello">${avHtml()}<div class="t"><small>สวัสดี</small><b>${esc(me.display_name||lineProfile.name||'ช่าง')} · ${esc((me.team_names||[])[0]||'ยังไม่ได้ผูกทีม')}</b></div>
+  return `<div class="hello">${avHtml()}<div class="t"><small>สวัสดี</small><b>${admAsTeam!=null?'ช่าง'+esc(tLabel(admAsTeam)):esc(me.display_name||lineProfile.name||'ช่าง')+' · '+esc((me.team_names||[])[0]||'ยังไม่ได้ผูกทีม')}</b></div>
       <button class="ibtn rf" onclick="loadJobs(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
     <div class="hero"><div class="tx"><small>งานที่ยังไม่ส่ง</small><b>${todo} งาน</b><span>วันนี้ ${c.today.length} · ต้องส่ง ${c.send.length} · เลยนัด ${c.late.length}</span></div>
       <div class="ring" style="background:conic-gradient(#fff 0 ${pct}%,rgba(255,255,255,.25) 0)"><div>${sentToday}/${allToday}<small>ส่งวันนี้</small></div></div></div>
@@ -603,7 +609,7 @@ function histRange(){
 }
 async function loadHist(){
   hist.loading=true;if(tab==='hist')render();
-  try{const r=histRange();const d=await api('jobs',r);hist.jobs=(d.jobs||[]).filter(j=>hasDate(j)&&(!r.from||j.date>=r.from)&&(!r.to||j.date<=r.to));}
+  try{const r=histRange();const d=await api('jobs',admAsTeam!=null?{...r,asTeam:admAsTeam}:r);hist.jobs=(d.jobs||[]).filter(j=>hasDate(j)&&(!r.from||j.date>=r.from)&&(!r.to||j.date<=r.to)&&(admAsTeam==null||tkey(j.team)===tkey(admAsTeam)));}
   catch(e){toast(e.message);hist.jobs=hist.jobs||[];}
   hist.loading=false;if(tab==='hist')render();
 }
@@ -684,6 +690,7 @@ function openDetail(id,toDocs){
 function closeDetail(fromPop){$('detail').classList.remove('open');document.body.style.overflow='';if(!fromPop&&history.state&&history.state.detail)history.back();}
 window.addEventListener('popstate',()=>{if(!$('detail').classList.contains('open'))return;const s=history.state;if(s&&s.detail==='me'&&s.me)return meSub(s.me);if(s&&s.detail&&s.detail!=='me')return; /* ปิดตัวดูรูปแล้วกลับมาที่หน้ารายละเอียด */closeDetail(true);});
 async function startJob(id,btn){
+  if(asTeamBlock())return;
   const j=findJob(id);
   if(!confirm(`เริ่มงาน ${id}${j&&j.branch?'\n'+j.branch:''} ?\n(กดเมื่อถึงสาขาแล้ว)`))return;
   btn.disabled=true;
@@ -894,6 +901,7 @@ const yTh=iso=>String(iso||'').slice(0,4)?(+String(iso).slice(0,4)+543):'';
 const fmtTax=t=>{const s=String(t||'').replace(/\D/g,'');return s.length===13?`${s[0]}-${s.slice(1,5)}-${s.slice(5,10)}-${s.slice(10,12)}-${s[12]}`:s;};
 
 function viewMe(){
+  if(admAsTeam!=null)return asTeamMe();
   if(!PAY&&!PAY_LOADING)loadPay();
   const P=PAY||{},list=P.payouts||[],last=list[0];
   const y=String(todayISO()).slice(0,4),yWht=list.filter(p=>String(p.paid_at||'').slice(0,4)===y).reduce((s,p)=>s+Number(p.wht_amount||0),0);
@@ -1036,7 +1044,7 @@ async function openAsset(code){
     <div class="d-title">${esc(a.branch||'-')}</div><div class="meta" style="margin-bottom:12px;">${esc(a.client||'')}${a.location?' · '+esc(a.location):''}</div>
     ${open.length?`<div class="d-box yw"><b>${I('alert')} งานต่อเนื่องที่ยังค้าง ${open.length} รายการ</b>${open.map(l=>`<br>• ${esc(l.follow_up_note||l.cause||'-')} <span style="color:var(--text2)">(${esc(thDate(String(l.done_at||'').slice(0,10)))})</span>`).join('')}</div>`:''}
     ${d.next?`<div class="d-box"><b>${I('cal')} PM รอบถัดไป</b><br>${esc(thDate(d.next.planned_date))}${d.next.team?' · '+esc(d.next.team):''}${d.next.job_id?' · '+esc(d.next.job_id):''}</div>`:''}
-    <div class="d-grid">${row('รหัสเครื่อง',esc(a.id))}${row('สติกเกอร์',esc(a.qr_code||''))}${row('ยี่ห้อ / รุ่น',esc([a.brand,a.model].filter(Boolean).join(' ')))}${row('ขนาด',esc(a.capacity||''))}${row('Serial',esc(a.serial_no||''))}${row('น้ำยา',esc(a.refrigerant||''))}${row('ติดตั้ง',a.installed_at?esc(thDate(a.installed_at)):'')}${row('รูปป้ายเครื่อง',a.label_photo_url?`<a href="${esc(a.label_photo_url)}" target="_blank" rel="noopener">เปิดรูป</a>`:'')}</div>
+    <div class="d-grid">${row('รหัสเครื่อง',esc(a.qr_code||a.id))}${row('ยี่ห้อ / รุ่น',esc([a.brand,a.model].filter(Boolean).join(' ')))}${row('ขนาด',esc(a.capacity||''))}${row('Serial',esc(a.serial_no||''))}${row('น้ำยา',esc(a.refrigerant||''))}${row('ติดตั้ง',a.installed_at?esc(thDate(a.installed_at)):'')}${row('รูปป้ายเครื่อง',a.label_photo_url?`<a href="${esc(a.label_photo_url)}" target="_blank" rel="noopener">เปิดรูป</a>`:'')}</div>
     ${a.note?`<div class="d-box" style="margin-top:12px">${esc(a.note)}</div>`:''}
     <div class="sec">${I('hist')} ประวัติงาน <span class="n">${logs.length}</span></div>${logs.length?logs.map(ev).join(''):'<div class="empty">ยังไม่มีประวัติงานของเครื่องนี้</div>'}`;
 }
@@ -1056,7 +1064,7 @@ function kindSeg(cur,fn,list){const n=k=>byKind(list,k).length;
   return `<div class="kseg">${[['all','ทั้งหมด'],['pm','PM'],['cm','CM ซ่อม']].map(([k,l])=>`<button type="button" class="${cur===k?'on':''}" onclick="${fn}('${k}')">${l}<em>${n(k)}</em></button>`).join('')}</div>`;}
 function setJKind(k){jKind=k;lsSet('jkind',k);render();}
 function setAdmKind(k){admKind=k;lsSet('akind',k);admRender();}
-let ADM={teams:[],loaded:false},admTab='home',admTeam=null,admCat='late',admQ='',admTechMode=false;
+let ADM={teams:[],loaded:false,jobs:[]},admTab='home',admTeam=null,admCat='late',admQ='',admTechMode=false,admAsTeam=null;
 const tkey=s=>String(s||'').toLowerCase().replace(/[\s\-–—_.()]/g,'');
 function isAdm(){return !!(me&&me.is_admin&&!admTechMode);}
 const tLabel=n=>n||'ยังไม่ระบุทีม';
@@ -1072,7 +1080,7 @@ async function loadAdmin(manual){
   try{
     const d=await api('admin',{});me=d.tech||me;jobs=d.jobs||[];
     const teams=(d.teams||[]).slice();if(jobs.some(j=>!String(j.team||'').trim()))teams.push({name:'',people:[]});
-    ADM={teams,loaded:true};showTop();admRender();if(manual)toast('อัปเดตแล้ว');
+    ADM={teams,loaded:true,jobs};showTop();admRender();if(manual)toast('อัปเดตแล้ว');
     if(JOB_PARAM&&!loadAdmin.job){loadAdmin.job=1;openDetail(JOB_PARAM);}
   }catch(e){if(e.status===403&&e.data&&e.data.tech){me=e.data.tech;return route();}showError(e.message);}
 }
@@ -1107,8 +1115,9 @@ function admViewHome(){
   const card=r=>{const col=r.cc.late.length?'var(--late)':r.cc.send.length?'var(--send)':r.cc.today.length?'var(--today)':'#cbd5e1';
     return `<button class="tcard" style="--c:${col}" onclick="admOpenTeam('${esc(r.t.name)}')"><div class="ta">${tAv(r.t.name)}</div><div class="tx"><b>${esc(tLabel(r.t.name))}</b><small>${r.last}</small>
       <div class="cnts">${n('today',r.cc.today.length,'วันนี้')}${n('send',r.cc.send.length,'ส่ง')}${n('late',r.cc.late.length,'เลย')}${n('done',r.cc.done.length,'ตรวจ')}</div><div class="pbar"><i style="width:${r.pct}%"></i></div></div>${I('chev','color:var(--ink3)')}</button>`;};
-  return admHead('ดูงานทุกทีม · '+esc(thDate(todayISO())),`${esc(me.display_name||lineProfile.name||'แอดมิน')} <span class="role">แอดมิน</span>`,(me.team_names||[]).length?`<button class="ibtn" onclick="admTechMode=true;showTop();loadJobs()" aria-label="ดูแบบช่าง">${I('user')}</button>`:'')+`
+  return admHead('ดูงานทุกทีม · '+esc(thDate(todayISO())),`${esc(me.display_name||lineProfile.name||'แอดมิน')} <span class="role">แอดมิน</span>`,'')+`
     <button class="tsel" onclick="admWatchSheet()">${I('flt')}<b>ทีมที่ฉันดูแล</b><small>${W.size?`${T.length} จาก ${ADM.teams.length} ทีม`:`ทุกทีม (${ADM.teams.length})`}</small>${I('chev','color:var(--ink3)')}</button>
+    <button class="tsel" style="margin-top:8px" onclick="asTeamSheet()">${I('eye')}<b>ดูแบบช่าง</b><small>เห็นหน้าจอเหมือนช่างแต่ละทีม</small>${I('chev','color:var(--ink3)')}</button>
     <div class="ahero"><small>งานที่ยังไม่ปิด (${T.length} ทีม)</small><div class="big"><b>${open}</b><span>งาน · วันนี้ส่งแล้ว ${admSentToday(c)}</span></div>
       <div class="sum4">${sum('today','#6f9bff','นัดวันนี้')}${sum('send','#ffb347','ต้องส่ง')}${sum('late','#ff6b6e','เลยนัด')}${sum('done','#4cd38a','รอตรวจ')}</div></div>
     <div class="h3">ทีม <a style="color:var(--ink3);cursor:default">เรียง: ต้องดูก่อน</a></div>
@@ -1133,7 +1142,7 @@ function admViewTeam(){
   const sg=(k,l)=>`<button class="${admCat===k&&!admQ?'on':''}" style="--c:var(--${k})" onclick="admCat='${k}';admQ='';admRender()"><b>${c[k].length}</b>${l}</button>`;
   const ppl=admTeam!=null?(ADM.teams.find(t=>t.name===admTeam)||{}).people||[]:[];
   const lead=ppl.find(p=>p.leader&&p.phone)||ppl.find(p=>p.phone);
-  return `<div class="tbar"><b>${admTeam==null?'งานทุกทีม':esc(tLabel(admTeam))}</b>${lead?`<a class="ibtn" href="${telHref(lead.phone)}" aria-label="โทรหัวหน้าทีม">${I('phone')}</a>`:''}<button class="ibtn rf" onclick="loadAdmin(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
+  return `<div class="tbar"><b>${admTeam==null?'งานทุกทีม':esc(tLabel(admTeam))}</b>${admTeam!=null&&admTeam!==''?`<button class="ibtn" onclick="asTeamGo(admTeam)" aria-label="ดูแบบช่างทีมนี้">${I('eye')}</button>`:''}${lead?`<a class="ibtn" href="${telHref(lead.phone)}" aria-label="โทรหัวหน้าทีม">${I('phone')}</a>`:''}<button class="ibtn rf" onclick="loadAdmin(true)" aria-label="รีเฟรช">${I('refresh')}</button></div>
     ${admTeamChips()}
     ${kindSeg(admKind,'setAdmKind',L0)}
     <div class="seg4">${sg('today','นัดวันนี้')}${sg('send','ต้องส่ง')}${sg('late','เลยนัด')}${sg('done','รอตรวจ')}</div>
@@ -1155,6 +1164,36 @@ function admPeople(team){return ((ADM.teams.find(t=>tkey(t.name)===tkey(team))||
 function admActions(j,compact){
   const ppl=admPeople(j.team),call=ppl.length===1?`<a class="b adm" href="${telHref(ppl[0].phone)}">${I('phone')}${compact?'โทรทีม':'โทรหัวหน้าทีม'}</a>`:ppl.length?`<button class="b adm" onclick="admCallSheet('${esc(j.team)}')">${I('phone')}${compact?'โทรทีม':'โทรหาทีม'}</button>`:'';
   return `${call}<button class="b adm" onclick="admDateSheet('${esc(j.id)}')">${I('cal')}เลื่อนนัด</button><button class="b adm p" onclick="admTeamSheet('${esc(j.id)}')">${I('move')}ย้ายทีม</button>`;
+}
+// ===== ดูแบบช่าง (2026-11-24): แอดมินเลือกทีม → เห็นหน้า "งานของฉัน" เหมือนช่างทีมนั้นเปิด LINE =====
+// ใช้ข้อมูลงานที่แอดมินโหลดอยู่แล้ว (กรองเฉพาะทีม) · ดูอย่างเดียว: กดเริ่มงาน/ส่งงานแทนช่างไม่ได้ · แท็บประวัติดึงจาก tech-portal action jobs + asTeam
+function asTeamJobs(){return (ADM.jobs||[]).filter(j=>tkey(j.team)===tkey(admAsTeam));}
+function asTeamSheet(){
+  const mine=new Set((me.team_names||[]).map(tkey)),T=ADM.teams.filter(t=>t.name).slice().sort((a,b)=>(mine.has(tkey(b.name))?1:0)-(mine.has(tkey(a.name))?1:0));
+  sheet(`<h4>ดูแบบช่าง</h4><div class="sub">เลือกทีม → เห็นหน้าจอเหมือนช่างทีมนั้นเปิด LINE · ดูอย่างเดียว (กดเริ่มงาน/ส่งงานแทนช่างไม่ได้)</div>
+    <div class="lst">${T.map(t=>{const c=classify(admJobsOf(t.name)),on=admAsTeam!=null&&tkey(admAsTeam)===tkey(t.name);
+      return `<button class="opt${on?' on':''}" data-n="${esc(t.name)}" onclick="asTeamGo(this.dataset.n)">${I('eye','color:var(--brand)')}<span class="tx">${esc(t.name)}${mine.has(tkey(t.name))?' <span class="role">ทีมของฉัน</span>':''}<small>วันนี้ ${c.today.length} · ต้องส่ง ${c.send.length} · เลยนัด ${c.late.length}</small></span>${I('chev','color:var(--ink3)')}</button>`;}).join('')||'<div class="empty">ยังไม่มีทีม</div>'}</div>
+    <div class="sh-row"><button class="b ghost" onclick="sheetClose()">ปิด</button>${admAsTeam!=null?'<button class="b start" onclick="sheetClose();asTeamExit()">กลับมุมมองแอดมิน</button>':''}</div>`);
+}
+function asTeamReset(){tab='home';cat='today';q='';hist={month:'',from:'',to:'',jobs:null,loading:false};if($('detail').classList.contains('open'))closeDetail();}
+function asTeamGo(name){if(name==null)return;sheetClose();asTeamReset();admTechMode=true;admAsTeam=name;jobs=asTeamJobs();showTop();render();window.scrollTo(0,0);}
+function asTeamExit(){asTeamReset();admTechMode=false;admAsTeam=null;jobs=ADM.jobs||[];showTop();admRender();window.scrollTo(0,0);}
+async function asTeamReload(manual){
+  const rb=document.querySelector('.ibtn.rf');if(rb)rb.classList.add('spin');
+  try{const d=await api('admin',{});me=d.tech||me;ADM.jobs=d.jobs||[];jobs=asTeamJobs();render();if(manual)toast('อัปเดตแล้ว');if(manual&&hist.jobs)loadHist();}
+  catch(e){toast(e.message);if(rb)rb.classList.remove('spin');}
+}
+function asTeamBar(){return admAsTeam==null?'':`<div class="asbar">${I('eye')}<span><small>แอดมินกำลังดูแบบช่าง</small><b>${esc(tLabel(admAsTeam))}</b></span><button onclick="asTeamSheet()">เปลี่ยนทีม</button><button class="x" onclick="asTeamExit()">กลับ</button></div>`;}
+function asTeamBlock(){if(admAsTeam==null)return false;toast('โหมดดูแบบช่าง — ปุ่มนี้ให้ช่างในทีมกดเอง');return true;}
+// แท็บ "ฉัน" ตอนดูแบบช่าง: รายชื่อช่างในทีม + ใครเห็นเอกสารเงิน (ไม่โหลดเอกสารเงินใน LINE ของแอดมิน)
+function asTeamMe(){
+  const t=ADM.teams.find(x=>tkey(x.name)===tkey(admAsTeam))||{people:[]},P=t.people||[],lead=P.some(p=>p.leader);
+  return `<div class="tbar"><b>ฉัน</b></div>
+    <div class="panel astm"><h2>${I('users')} ช่างใน${esc(tLabel(admAsTeam))}</h2>
+      ${P.length?P.map(p=>`<div class="ld"><span class="v"><b>${esc(p.name||'-')}${p.leader?' <span class="role">หัวหน้าทีม</span>':''}</b><small>${p.leader||P.length===1?'แท็บนี้เห็นใบสำคัญรับเงิน / 50 ทวิ ของทีม':'แท็บนี้เห็นเอกสารเงินเป็นล็อก 🔒'}</small></span>${p.phone?`<a class="b ghost" style="flex:0 0 auto;width:auto;padding:8px 12px" href="${telHref(p.phone)}">${I('phone')}โทร</a>`:''}</div>`).join('')
+        :'<p>ยังไม่มีช่างลงทะเบียน LINE ในทีมนี้</p>'}
+      ${P.length>1&&!lead?'<div class="warn o" style="margin-top:12px">ทีมนี้ยังไม่ได้ตั้งหัวหน้า — ยังไม่มีใครเห็นเอกสารเงิน ตั้งได้ในคอนโซล หน้าทีมช่าง</div>':''}</div>
+    <div class="mnote">ของช่างจริง แท็บนี้คือข้อมูลส่วนตัว + ใบสำคัญรับเงิน / 50 ทวิ ของทีม · แอดมินดูเอกสารเงินในคอนโซล</div>`;
 }
 // ===== รอตรวจ: ตรวจรายงานจากมือถือ (ผ่าน / ตีกลับ / อนุมัติอะไหล่) =====
 let REV={meta:{},loading:false,f:'all',cur:null};
@@ -1681,7 +1720,7 @@ async function admSave(id,kind){
   catch(e){b.disabled=false;toast(e.message);}
 }
 
-function openSubmit(id,mode){location.href=SUBMIT_PAGE+'?job='+encodeURIComponent(id)+'&from=tech'+(mode?'&mode='+mode:'');}
+function openSubmit(id,mode){if(asTeamBlock())return;location.href=SUBMIT_PAGE+'?job='+encodeURIComponent(id)+'&from=tech'+(mode?'&mode='+mode:'');}
 
 // ข้อมูลตัวอย่างมุมมองแอดมิน (?demo=admin)
 function demoAdminApi(action,extra){

@@ -1744,6 +1744,21 @@ body.pfpv-lock{overflow:hidden;}
 .clr-tax{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}@media(max-width:860px){.clr-tax{grid-template-columns:1fr 1fr}}
 .clr-tax>div{border:1px solid var(--border);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}.clr-tax small{color:var(--text2);font-size:11.5px}.clr-tax b{font-size:17px}
 .clr-close{display:flex;gap:12px;align-items:center;margin-top:14px}
+.clr-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--red);border-radius:14px;padding:14px 18px;margin:12px 0}
+.clr-head.ok{border-left-color:var(--green)}.clr-head b{font-size:17px;margin-right:10px}.clr-head span{font-size:16px;font-weight:600}.clr-head em{font-style:normal;color:var(--red);font-size:22px;font-weight:800}.clr-head small{color:var(--text2);font-size:12.5px}
+.clr-list2{display:flex;flex-direction:column;gap:8px}
+.clr-todo{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}.clr-todo.open{border-color:var(--accent)}
+.clr-row2{display:grid;grid-template-columns:34px 1fr 70px auto;gap:12px;align-items:center;padding:12px 14px;cursor:pointer}.clr-row2:hover{background:var(--surface2)}
+.clr-no{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px}
+.clr-row2 .clr-t b{font-size:15px}.clr-row2 .clr-t small{font-size:12.5px;color:var(--text2)}
+.clr-cnt{text-align:center;line-height:1.1}.clr-cnt b{display:block;font-size:20px;color:var(--red)}.clr-cnt small{font-size:11px;color:var(--text2)}
+.clr-acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+@media(max-width:860px){.clr-row2{grid-template-columns:30px 1fr 56px}.clr-acts{grid-column:2/4;justify-content:flex-start}}
+.clr-todo .clr-det{padding-left:60px}
+.clr-okline{margin-top:10px;font-size:12.5px;color:var(--green);background:var(--green-dim);border-radius:10px;padding:8px 12px}
+.clr-bf{margin-top:8px;font-size:12.5px;background:var(--yellow-dim);border-radius:10px;padding:8px 12px}
+.clr-more{margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 16px}.clr-more summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--text2)}
+.clr-mo{min-width:96px;padding:6px 10px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -2131,7 +2146,7 @@ body.pfpv-lock{overflow:hidden;}
   <div class="content"><div id="techpay-list"></div><div id="tp-ov-wrap" style="display:none"></div></div>
 </div>
 <div class="page" id="page-clear">
-  <div class="page-header"><div><div class="page-title">🧹 เคลียร์ยอด</div><div class="page-sub">ไล่ทีละเดือน · ทุกแถวเป็น ✓ = เดือนนั้นเคลียร์ · หน้านี้อ่านอย่างเดียว กดปุ่มเพื่อไปแก้ในหน้าที่มีอยู่</div></div>
+  <div class="page-header"><div><div class="page-title">🧹 เคลียร์ยอด</div><div class="page-sub">เลือกเดือน → ทำตามรายการทีละข้อ · กดปุ่มแล้วระบบพาไปหน้าที่ต้องแก้</div></div>
     <div class="flex g8"><button class="btn btn-ghost btn-sm" onclick="clrSetCutoff()">✂️ วันตัดยอด</button><button class="btn btn-ghost btn-sm" onclick="accountingLoaded=false;techPay.loaded=false;renderClear()">↻ โหลดใหม่</button></div></div>
   <div class="content"><div id="clr-wrap"></div></div>
 </div>
@@ -11603,24 +11618,36 @@ function renderClear(){
   const bf=(salesInvoices||[]).filter(d=>d.status!=='cancelled'&&ix.rk(d)>=2&&String(d.invoice_date||'').slice(0,7)<cut&&saleRevCounts(d,ix)&&!saleRevPaid(d,ix));
   const bfAmt=bf.reduce((s,d)=>s+saleDocTotal(d),0);
   const strip=months.map(m=>{const c=m===clrYm?C:clrCompute(m,ix);return `<button type="button" class="clr-mo${m===clrYm?' on':''}" onclick="clrPick('${m}')"><b>${tpMonthLabel(m,0)}</b><small class="${c.open?'bad':'ok'}">${c.open?`ค้าง ${c.open} เรื่อง`:'✓ เคลียร์แล้ว'}</small></button>`;}).join('');
-  const pct=C.total?(C.total-C.open)/C.total*360:360;
-  const G={1:['เงินเข้า — ลูกค้า','สำคัญสุด เพราะเป็นเงินสด'],2:['เงินออก — จ่ายช่าง','ยอดคำนวณจากเอกสาร'],3:['ต้นทุน & ข้อมูลไม่ครบ','ทำให้กำไรต่องานถูกต้อง']};
-  const rowHtml=r=>{const key=clrYm+':'+r.k,open=clrOpen.has(key)&&r.n>0,ok=!r.n;
-    return `<div class="clr-row${ok?' ok':''}" onclick="clrToggle('${key}')"><span class="clr-ic ${ok?'ok':r.warn?'warn':'bad'}">${ok?'✓':'!'}</span><div class="clr-t"><b>${r.t}</b><small>${r.s}</small></div><div class="clr-n${ok?' ok':''}">${ok?'0':r.n+' '+r.unit}</div><div class="clr-amt">${r.amt==null||!r.n||(r.approx&&!r.amt)?'—':(r.approx?'≈ ':'')+'฿'+money(r.amt)}</div><div class="clr-go">${r.go&&r.n?`<button class="btn btn-primary btn-xs" onclick="event.stopPropagation();${r.go[1]}">${r.go[0]}</button>`:''}</div></div>`
-      +(open?`<div class="clr-det">${r.aging?`<div class="clr-aging">${['0–30 วัน','31–60 วัน','61–90 วัน','เกิน 90 วัน'].map((l,i)=>`<div class="${i===3&&r.aging.agn[3]?'bad':i===2&&r.aging.agn[2]?'warn':''}"><small>${l}</small><b>฿${money(r.aging.ag[i])}</b>${r.aging.agn[i]} ใบ</div>`).join('')}</div>`:''}
-        <table class="clr-tb"><tr>${r.head.map(h=>`<th>${h}</th>`).join('')}<th></th></tr>${r.items.slice(0,60).map(it=>`<tr>${it.cols.map(c=>`<td>${c}</td>`).join('')}<td style="text-align:right">${it.open?`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();${it.open}">เปิด</button>`:''}</td></tr>`).join('')}${r.items.length>60?`<tr><td colspan="${r.head.length+1}" class="clr-mut">… อีก ${r.items.length-60} รายการ</td></tr>`:''}</table></div>`:'');};
-  const grp=g=>`<div class="clr-gh"><span class="clr-gn">${g}</span><b>${G[g][0]}</b><span class="clr-mut">${G[g][1]}</span></div><div class="clr-list">${C.rows.filter(r=>r.g===g).map(rowHtml).join('')}</div>`;
-  const K=C.kpi,T=C.tax;
-  box.innerHTML=`<div class="clr-cut">✂️ <span>เริ่มเคลียร์ตั้งแต่ <b>${tpMonthLabel(cut,0)}</b> · เดือนก่อนหน้านี้ = <b>ยอดยกมา</b> (ไม่นับในหน้านี้)${bf.length?` · ลูกค้ายังค้างจ่ายยอดยกมา <b>฿${money(bfAmt)}</b> (${bf.length} ใบ) <a href="#" onclick="event.preventDefault();clrGoSales('')">ดู</a>`:''}</span><span style="flex:1"></span><button class="btn btn-ghost btn-xs" onclick="clrSetCutoff()">เปลี่ยนวันตัดยอด</button></div>
-    <div class="clr-months">${strip}</div>
-    <div class="clr-sum"><div class="clr-card clr-ring"><div class="clr-rg" style="background:conic-gradient(var(--green) ${pct}deg,var(--surface3) 0)"><div><b>${C.total-C.open}/${C.total}</b><small>เคลียร์แล้ว</small></div></div><div><b style="font-size:16px">${tpMonthLabel(clrYm,0)}</b><div class="clr-mut">${C.open?`ค้าง ${C.open} เรื่อง`:'🎉 เดือนนี้เคลียร์ครบ'}</div><div class="clr-mut" style="font-size:11.5px">นับจากงานที่ “เสร็จ” ในเดือนนี้ + เอกสารลงวันที่เดือนนี้</div></div></div>
-      <div class="clr-card clr-kpis"><div class="in"><small>รายได้ (ตามเอกสาร)</small><b>฿${money(K.inc)}</b><i>${K.n} งานที่เสร็จ</i></div><div class="out"><small>ต้นทุน (ช่าง+ของ)</small><b>฿${money(K.cost)}</b><i>&nbsp;</i></div><div class="gp"><small>กำไรขั้นต้น</small><b>฿${money(K.gp)}</b><i>${K.inc?Math.round(K.gp/K.inc*100)+'%':'—'}</i></div><div><small>รับเงินแล้ว (บิลเดือนนี้)</small><b>฿${money(K.cash)}</b><i>ค้างรับ ฿${money(K.unpaid)}</i></div></div></div>
-    ${grp(1)}${grp(2)}${grp(3)}
-    <div class="clr-gh"><span class="clr-gn">4</span><b>ภาษีเดือนนี้ — ส่งนักบัญชี</b><span class="clr-mut">ยอดประมาณจากเอกสารในระบบ ให้นักบัญชียืนยันก่อนยื่น</span></div>
-    <div class="clr-card"><div class="clr-tax"><div><small>ภาษีขาย (ใบกำกับขาย ${T.sn} ใบ)</small><b>฿${money(T.sv)}</b></div><div><small>ภาษีซื้อ (ใบกำกับซื้อ ${T.pn} ใบ)</small><b>฿${money(T.pv)}</b>${T.pnf?`<span class="clr-pill warn">${T.pnf} ใบยังไม่แนบไฟล์</span>`:''}</div><div><small>ภ.พ.30 ต้องชำระ (ประมาณ)</small><b>฿${money(Math.max(0,T.sv-T.pv))}</b>${T.pv>T.sv?`<span class="clr-mut">ภาษีซื้อเกิน ฿${money(T.pv-T.sv)} ยกไป</span>`:''}</div><div><small>หัก ณ ที่จ่ายช่าง (ภ.ง.ด.3)</small><b>฿${money(T.wht)}</b><span class="clr-mut">จ่ายช่าง ${T.wn} งวด</span></div></div>
-      <div class="flex g8" style="margin-top:10px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="clrGoSales('${clrYm}')">ภาษีขายเดือนนี้ →</button><button class="btn btn-ghost btn-sm" onclick="clrGoPurchase('${clrYm}')">ภาษีซื้อเดือนนี้ →</button><button class="btn btn-ghost btn-sm" onclick="goTo('tech-pay')">50 ทวิ / จ่ายช่าง →</button></div></div>
-    <div class="clr-card clr-close"><div style="flex:1"><b>🔒 ปิดงวด ${tpMonthLabel(clrYm,0)}</b><div class="clr-mut">ขั้นถัดไป (ยังไม่เปิดใช้): เมื่อทุกแถวเป็น ✓ กดปิดงวด กันแก้ยอดย้อนหลัง</div></div><button class="btn btn-primary btn-sm" disabled>${C.open?`ยังค้าง ${C.open} เรื่อง`:'ปิดงวด (เร็ว ๆ นี้)'}</button></div>`;
+  // แบบง่าย (2026-11-24 v2): แสดงเฉพาะเรื่องที่ต้องทำ เรียงตามลำดับ · ตัวเลข/ภาษี/วันตัดยอด พับไว้ล่างสุด
+  const TODO={unbilled:['งานเสร็จแล้ว ยังไม่วางบิล','ออกใบแจ้งหนี้ให้ลูกค้า','ไปออกบิล'],unpaid:['วางบิลแล้ว ลูกค้ายังไม่จ่าย','เช็กเงินเข้าบัญชี แล้วเปิดบิลกด “รับเงินแล้ว”','ไปเช็กบิล'],
+    notax:['รับเงินแล้ว ยังไม่ออกใบกำกับภาษี','ออกใบกำกับภาษีต่อจากบิลนั้น','ไปออกใบกำกับ'],owe:['ยังไม่ได้จ่ายช่าง','จ่ายช่างทีละทีม (ระบบออกใบสำคัญ + 50 ทวิ ให้)','ไปจ่ายช่าง'],
+    legacy:['ยอดเงินในงานไม่ตรงเอกสาร','เลือกว่าจะใช้ยอดตามเอกสาร หรือคงยอดเดิม','ไปเลือก'],stale:['จ่ายช่างแล้ว แต่งานยังไม่ปิด','กดปิดงานที่แถบเหลืองในหน้าจ่ายช่าง','ไปปิดงาน'],
+    loose:['บิลซื้อยังไม่ระบุว่าเป็นของงานไหน','ใส่เลข PR ในรายการบิลซื้อ','ไปบิลซื้อ'],nodoc:['งานยังไม่มีใบเสนอราคา','ทำใบเสนอราคา หรือใส่ยอดเองในหน้าต่างการเงิน','ไปดู'],
+    neg:['งานขาดทุน (ต้นทุนมากกว่ารายได้)','เช็กว่าลืมคิดค่าอะไหล่ หรือผูกบิลซื้อผิดงาน','']};
+  const todo=C.rows.filter(r=>r.n>0),okRows=C.rows.filter(r=>!r.n);
+  const amtTxt=r=>r.amt==null||(r.approx&&!r.amt)?'':` · ${r.approx?'≈ ':''}฿${money(Math.abs(r.amt))}`;
+  const detHtml=r=>`<div class="clr-det"><div class="clr-mut" style="margin-bottom:6px">${r.s}</div>${r.aging?`<div class="clr-aging">${['0–30 วัน','31–60 วัน','61–90 วัน','เกิน 90 วัน'].map((l,i)=>`<div class="${i===3&&r.aging.agn[3]?'bad':i===2&&r.aging.agn[2]?'warn':''}"><small>ค้าง ${l}</small><b>฿${money(r.aging.ag[i])}</b>${r.aging.agn[i]} ใบ</div>`).join('')}</div>`:''}
+    <table class="clr-tb"><tr>${r.head.map(h=>`<th>${h}</th>`).join('')}<th></th></tr>${r.items.slice(0,60).map(it=>`<tr>${it.cols.map(c=>`<td>${c}</td>`).join('')}<td style="text-align:right">${it.open?`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();${it.open}">เปิด</button>`:''}</td></tr>`).join('')}${r.items.length>60?`<tr><td colspan="${r.head.length+1}" class="clr-mut">… อีก ${r.items.length-60} รายการ</td></tr>`:''}</table></div>`;
+  const todoHtml=(r,i)=>{const key=clrYm+':'+r.k,open=clrOpen.has(key),T=TODO[r.k]||[r.t,'',''];
+    const go=r.go&&T[2]?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();${r.go[1]}">${T[2]} →</button>`:'';
+    return `<div class="clr-todo${open?' open':''}"><div class="clr-row2" onclick="clrToggle('${key}')"><span class="clr-no">${i+1}</span><div class="clr-t"><b>${T[0]}</b><small>👉 ${T[1]}${amtTxt(r)}</small></div><div class="clr-cnt"><b>${r.n}</b><small>${r.unit}</small></div>
+      <div class="clr-acts">${go}<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();clrToggle('${key}')">${open?'ซ่อน ▴':'ดูรายการ ▾'}</button></div></div>${open?detHtml(r):''}</div>`;};
+  const K=C.kpi,T=C.tax,ml=tpMonthLabel(clrYm,0);
+  box.innerHTML=`<div class="clr-months">${strip}</div>
+    <div class="clr-head${C.open?'':' ok'}"><div><b>${ml}</b><span>${C.open?`เหลือ <em>${C.open}</em> เรื่องต้องทำ`:'🎉 เคลียร์ครบแล้ว'}</span></div><small>${C.open?'ทำจากข้อ 1 ลงไป · ทำเสร็จข้อไหน ข้อนั้นจะหายไปเอง':'ไม่มีอะไรค้างในเดือนนี้'}</small></div>
+    ${todo.length?`<div class="clr-list2">${todo.map(todoHtml).join('')}</div>`:''}
+    ${okRows.length?`<div class="clr-okline">✓ เรียบร้อยแล้ว: ${okRows.map(r=>CLR_OK[r.k]||r.t).join(' · ')}</div>`:''}
+    ${bf.length?`<div class="clr-bf">💰 นอกจากนี้ ลูกค้ายังค้างจ่าย <b>บิลเก่าก่อน ${tpMonthLabel(cut,0)}</b> ฿${money(bfAmt)} (${bf.length} ใบ) <a href="#" onclick="event.preventDefault();clrGoSales('')">ดู</a></div>`:''}
+    <details class="clr-more"${clrMoreOpen?' open':''} ontoggle="clrMoreOpen=this.open"><summary>📊 ตัวเลขเดือนนี้ และภาษี (ส่งนักบัญชี)</summary>
+      <div class="clr-kpis" style="margin-top:10px"><div class="in"><small>รายได้ (ตามเอกสาร)</small><b>฿${money(K.inc)}</b><i>${K.n} งานที่เสร็จ</i></div><div class="out"><small>ต้นทุน (ช่าง+ของ)</small><b>฿${money(K.cost)}</b><i>&nbsp;</i></div><div class="gp"><small>กำไรขั้นต้น</small><b>฿${money(K.gp)}</b><i>${K.inc?Math.round(K.gp/K.inc*100)+'%':'—'}</i></div><div><small>รับเงินแล้ว (บิลเดือนนี้)</small><b>฿${money(K.cash)}</b><i>ค้างรับ ฿${money(K.unpaid)}</i></div></div>
+      <div class="clr-mut" style="margin:14px 0 6px"><b>ภาษีเดือนนี้</b> — ยอดประมาณจากเอกสารในระบบ ให้นักบัญชียืนยันก่อนยื่น</div>
+      <div class="clr-tax"><div><small>ภาษีขาย (ใบกำกับขาย ${T.sn} ใบ)</small><b>฿${money(T.sv)}</b></div><div><small>ภาษีซื้อ (ใบกำกับซื้อ ${T.pn} ใบ)</small><b>฿${money(T.pv)}</b>${T.pnf?`<span class="clr-pill warn">${T.pnf} ใบยังไม่แนบไฟล์</span>`:''}</div><div><small>ภ.พ.30 ต้องชำระ (ประมาณ)</small><b>฿${money(Math.max(0,T.sv-T.pv))}</b>${T.pv>T.sv?`<span class="clr-mut">ภาษีซื้อเกิน ฿${money(T.pv-T.sv)} ยกไป</span>`:''}</div><div><small>หัก ณ ที่จ่ายช่าง (ภ.ง.ด.3)</small><b>฿${money(T.wht)}</b><span class="clr-mut">จ่ายช่าง ${T.wn} งวด</span></div></div>
+      <div class="flex g8" style="margin-top:10px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="clrGoSales('${clrYm}')">ภาษีขาย →</button><button class="btn btn-ghost btn-sm" onclick="clrGoPurchase('${clrYm}')">ภาษีซื้อ →</button><button class="btn btn-ghost btn-sm" onclick="goTo('tech-pay')">50 ทวิ / จ่ายช่าง →</button></div>
+      <div class="clr-mut" style="margin-top:14px">✂️ เริ่มนับตั้งแต่ <b>${tpMonthLabel(cut,0)}</b> (เดือนก่อนหน้า = ยอดยกมา ไม่นับ) · <a href="#" onclick="event.preventDefault();clrSetCutoff()">เปลี่ยน</a> · นับงานตามวันที่เสร็จ และเอกสารตามวันที่บนเอกสาร</div>
+    </details>`;
 }
+let clrMoreOpen=false;
+const CLR_OK={unbilled:'วางบิลครบ',unpaid:'รับเงินครบ',notax:'ใบกำกับครบ',owe:'จ่ายช่างครบ',legacy:'ยอดตรงเอกสาร',stale:'งานที่จ่ายแล้วปิดครบ',loose:'บิลซื้อผูกงานครบ',nodoc:'มีใบเสนอราคาครบ',neg:'ไม่มีงานขาดทุน'};
 async function tpCloseBackfill(btn){
   if(!guardEdit())return;
   const list=tpPaidNotClosed();if(!list.length){renderTP();return;}
@@ -18054,6 +18081,10 @@ function pmJobChip(pr){
 function pmGoVisit(id){const v=pm.visits.find(x=>x.id===id);if(!v)return;closeM('m-detail');pmView='plan';pmContractId=v.contract_id;pmRound=+v.round_no;pmMonth='';pmFilt='';pmF=pmFBlank();pmFSave();pmQ=String(v.job_id||'');goTo('pm');}
 
 // ---------- ทะเบียนเครื่อง ----------
+// รหัสเครื่องที่แสดง (2026-11-24) = เลขสติกเกอร์ QR (PFQ-xxxxx) ถ้าผูกแล้ว · ยังไม่ติดสติกเกอร์ = รหัสภายใน PFA-xxxxx
+// id (PFA) ยังเป็นคีย์ในฐานข้อมูลเหมือนเดิม (ประวัติ/รายงานเก่าอ้าง id นี้) — แค่ไม่โชว์ให้คนเห็นเป็นรหัสหลักแล้ว
+function pmCode(a){return a?(a.qr_code||a.id||''):'';}
+function pmCodeOfId(id,qr){if(qr)return qr;const a=id&&(pm.assets||[]).find(x=>x.id===id);return a?pmCode(a):(id||'');}
 function pmAssetLast(a){return pm.logs.find(l=>l.asset_id===a.id&&l.kind!=='bind_qr');}
 function pmCondChip(cond){if(!cond)return '<span class="tm">—</span>';const c=/ปกติ/.test(cond)?'#16a34a':/เสีย/.test(cond)?'#dc2626':/ซ่อม|เปลี่ยน/.test(cond)?'#ea580c':'#d97706';return `<span class="chip pm-st" style="--c:${c}">${esc(cond)}</span>`;}
 function pmAssetsHtml(){
@@ -18062,7 +18093,7 @@ function pmAssetsHtml(){
   const q=pmNorm(pmAsset.q);
   const list=pm.assets.filter(a=>(!pmAsset.client||a.client===pmAsset.client)&&(!pmAsset.branch||a.branch===pmAsset.branch)&&(!q||pmNorm([a.id,a.qr_code,a.brand,a.model,a.serial_no,a.location,a.branch,a.asset_type,a.capacity].join(' ')).includes(q)));
   const rows=list.map(a=>{const l=pmAssetLast(a),aid=esc(a.id);
-    return `<tr class="pm-arow${a.status==='retired'?' off':''}" onclick="pmOpenAsset('${aid}')"><td><div class="pm-code"><span class="pm-qrmini"></span><div><b>${aid}</b>${a.qr_code?`<small>สติกเกอร์ ${esc(a.qr_code)}</small>`:''}</div></div></td>
+    return `<tr class="pm-arow${a.status==='retired'?' off':''}" onclick="pmOpenAsset('${aid}')"><td><div class="pm-code"><span class="pm-qrmini"></span><div><b>${esc(pmCode(a))}</b>${a.qr_code?'':'<small>ยังไม่ติดสติกเกอร์</small>'}</div></div></td>
       <td><div class="jq-two"><b>${esc(a.asset_type)}${a.brand?' '+esc(a.brand):''}${a.capacity?' · '+esc(a.capacity):''}</b><small>${esc(a.model||'')}</small></div></td>
       <td><div class="jq-two"><b>${esc(a.branch)}</b><small>${esc(a.client)}</small></div></td><td>${esc(a.location||'-')}</td><td class="tm mono" style="font-size:12px">${esc(a.serial_no||'—')}</td>
       <td>${l?esc(jqThDate(String(l.done_at).slice(0,10))):'<span class="tm">ยังไม่เคยบันทึก</span>'}</td><td>${a.status==='retired'?'<span class="chip pm-st" style="--c:#64748b">เลิกใช้</span>':pmCondChip(l&&l.condition)}</td></tr>`;}).join('');
@@ -18070,14 +18101,14 @@ function pmAssetsHtml(){
       <select class="filter-select ${pmAsset.client?'jq-set':''}" onchange="pmAsset.client=this.value;pmAsset.branch='';renderPM()"><option value="">ลูกค้า: ทั้งหมด</option>${clientsAll.map(x=>`<option${x===pmAsset.client?' selected':''}>${esc(x)}</option>`).join('')}</select>
       <select class="filter-select ${pmAsset.branch?'jq-set':''}" onchange="pmAsset.branch=this.value;renderPM()"><option value="">สาขา: ทั้งหมด</option>${branchesAll.map(x=>`<option${x===pmAsset.branch?' selected':''}>${esc(x)}</option>`).join('')}</select></div></div>
     <section class="d2-box"><div class="d2-h"><div><div class="t">${list.length} เครื่อง</div><div class="s">คลิกแถวเพื่อดูประวัติเครื่อง</div></div><button class="btn btn-ghost btn-sm" onclick="pmTemplateXlsx()">⬇ แม่แบบ Excel</button><label class="btn btn-ghost btn-sm" style="cursor:pointer">⬆ นำเข้า Excel<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="pmImportXlsx(this.files[0]);this.value=''"></label><button class="btn btn-primary btn-sm" onclick="pmEditAsset()">＋ เพิ่มเครื่อง</button></div>
-      <div class="d2-in pm-scroll">${list.length?`<table class="pm-tbl"><thead><tr><th>รหัส</th><th>เครื่อง</th><th>สาขา</th><th>ตำแหน่ง</th><th>Serial</th><th>บันทึกล่าสุด</th><th>สภาพ</th></tr></thead><tbody>${rows}</tbody></table>`:`<div class="d2-empty">${pm.assets.length?'ไม่พบเครื่องตามตัวกรอง':'ยังไม่มีเครื่องในทะเบียน — เพิ่มทีละเครื่อง หรือนำเข้าจาก Excel (ดาวน์โหลดแม่แบบก่อน)'}</div>`}</div></section>`;
+      <div class="d2-in pm-scroll">${list.length?`<table class="pm-tbl"><thead><tr><th>รหัส (เลข QR)</th><th>เครื่อง</th><th>สาขา</th><th>ตำแหน่ง</th><th>Serial</th><th>บันทึกล่าสุด</th><th>สภาพ</th></tr></thead><tbody>${rows}</tbody></table>`:`<div class="d2-empty">${pm.assets.length?'ไม่พบเครื่องตามตัวกรอง':'ยังไม่มีเครื่องในทะเบียน — เพิ่มทีละเครื่อง หรือนำเข้าจาก Excel (ดาวน์โหลดแม่แบบก่อน)'}</div>`}</div></section>`;
 }
 function pmEditAsset(id,preset){
   const a=id?pm.assets.find(x=>x.id===id):{asset_type:'แอร์',...(preset||{}),client:pmAsset.client||(preset&&preset.client)||'',branch:pmAsset.branch||(preset&&preset.branch)||''};
   const cl=[...new Set([...pm.contracts.map(c=>c.client),...pm.assets.map(x=>x.client),...(clients||[]).map(x=>x.name)])].filter(Boolean);
   const br=[...new Set([...pm.sites.map(s=>s.branch),...pm.assets.map(x=>x.branch)])].filter(Boolean);
   const f=(k,l,v,t='text',ph='')=>`<div class="form-group"><label>${l}</label><input id="pma-${k}" type="${t}" value="${esc(v||'')}" placeholder="${ph}"${k==='client'?' list="pma-cl"':k==='branch'?' list="pma-br"':''}></div>`;
-  pmModal(id?'แก้ไขข้อมูลเครื่อง '+id:'เพิ่มเครื่อง',id?'':'ระบบออกรหัสเครื่อง (PFA-xxxxx) ให้อัตโนมัติ',`
+  pmModal(id?'แก้ไขข้อมูลเครื่อง '+pmCode(a):'เพิ่มเครื่อง',id?'':'ใส่เลขสติกเกอร์ QR ที่ติดเครื่อง — เลขนั้นจะเป็นรหัสเครื่องเลย (ยังไม่มีสติกเกอร์ ว่างไว้ก่อนได้)',`
     <datalist id="pma-cl">${cl.map(x=>`<option value="${esc(x)}">`).join('')}</datalist><datalist id="pma-br">${br.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
     <div class="form-row">${f('client','ลูกค้า',a.client)}${f('branch','สาขา',a.branch)}</div>
     <div class="form-row"><div class="form-group"><label>ประเภท</label><select id="pma-type">${PM_ASSET_TYPES.map(t=>`<option${t===a.asset_type?' selected':''}>${t}</option>`).join('')}</select></div>${f('location','ตำแหน่งในสาขา',a.location,'text','เช่น หน้าร้าน / ห้องเก็บของ')}</div>
@@ -18085,7 +18116,7 @@ function pmEditAsset(id,preset){
     <div class="form-row">${f('capacity','ขนาด / BTU',a.capacity,'text','เช่น 18,000 BTU / 2 ประตู')}${f('serial','Serial (ของยี่ห้อ)',a.serial_no)}</div>
     <div class="form-row"><div class="form-group"><label>ชนิดน้ำยา (แอร์)</label><select id="pma-refrigerant"><option value="">— ไม่ระบุ —</option>${['R22','R410A','R32'].map(r=>`<option${r===a.refrigerant?' selected':''}>${r}</option>`).join('')}</select></div><div class="form-group"></div></div>
     <div class="form-row">${f('installed','วันติดตั้ง',a.installed_at,'date')}${f('warranty','ประกันถึง',a.warranty_until,'date')}</div>
-    <div class="form-row">${f('qr','สติกเกอร์ QR ที่ติดอยู่ (ถ้ามี)',a.qr_code,'text','เช่น PFQ-00012')}${f('note','หมายเหตุ',a.note)}</div>
+    <div class="form-row">${f('qr','เลขสติกเกอร์ QR = รหัสเครื่อง',a.qr_code,'text','เช่น PFQ-00312')}${f('note','หมายเหตุ',a.note)}</div>
     ${id?`<div class="form-group"><label>สถานะ</label><select id="pma-status"><option value="active"${a.status!=='retired'?' selected':''}>ใช้งาน</option><option value="retired"${a.status==='retired'?' selected':''}>เลิกใช้ / ถอดออกแล้ว</option></select></div>`:''}`,
     `<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="pmSaveAsset('${id||''}')">✓ บันทึก</button>`);
 }
@@ -18106,14 +18137,14 @@ function pmOpenAsset(id){
   const a=pm.assets.find(x=>x.id===id);if(!a)return;
   const logs=pm.logs.filter(l=>l.asset_id===id);
   const jobsHere=liveJobs().filter(j=>pmNorm(j.branch)===pmNorm(a.branch)).sort((x,y)=>String(y.date||'').localeCompare(String(x.date||''))).slice(0,6);
-  const info=[['ประเภท',a.asset_type],['ยี่ห้อ / รุ่น',[a.brand,a.model].filter(Boolean).join(' ')||'-'],['ขนาด',a.capacity||'-'],['Serial',a.serial_no||'-'],...(a.refrigerant?[['น้ำยา',a.refrigerant]]:[]),['ลูกค้า / สาขา',`${a.client} · ${a.branch}`],['ตำแหน่ง',a.location||'-'],['ติดตั้ง',a.installed_at?pmThDateY(a.installed_at):'-'],['ประกันถึง',a.warranty_until?pmThDateY(a.warranty_until):'-'],['สติกเกอร์',a.qr_code||'ใช้รหัสเครื่อง']];
+  const info=[['ประเภท',a.asset_type],['ยี่ห้อ / รุ่น',[a.brand,a.model].filter(Boolean).join(' ')||'-'],['ขนาด',a.capacity||'-'],['Serial',a.serial_no||'-'],...(a.refrigerant?[['น้ำยา',a.refrigerant]]:[]),['ลูกค้า / สาขา',`${a.client} · ${a.branch}`],['ตำแหน่ง',a.location||'-'],['ติดตั้ง',a.installed_at?pmThDateY(a.installed_at):'-'],['ประกันถึง',a.warranty_until?pmThDateY(a.warranty_until):'-'],...(a.qr_code?[]:[['สติกเกอร์ QR','ยังไม่ติด']])];
   const feed=logs.length?logs.map(l=>`<div class="pm-ev"><span class="d2-evdot" style="background:${l.kind==='repair'?'#dc2626':l.kind==='pm'?'#16a34a':'#175fff'}"></span><div style="flex:1;min-width:0"><b>${esc({pm:'PM',repair:'ซ่อม',note:'บันทึก',bind_qr:'ผูก QR'}[l.kind]||l.kind)}${l.condition?' — '+esc(l.condition):''}</b> <span class="tm">· ${esc(jqThDate(String(l.done_at).slice(0,10)))}${l.team?' · '+esc(l.team):''}${l.job_id?' · '+esc(l.job_id):''}${l.created_by?' · โดย '+esc(l.created_by):''}</span>${l.recommendation?`<div style="font-size:13px;margin-top:2px">${esc(l.recommendation)}</div>`:''}${pmLogDetail(l)}</div></div>`).join(''):'<div class="tm" style="padding:6px 0">ยังไม่มีบันทึก — ช่วงที่ 2 ช่างจะบันทึกผ่านฟอร์ม PM ได้ · ตอนนี้แอดมินเพิ่มบันทึกเองได้</div>';
-  pmModal(a.id,`${a.asset_type} ${a.brand||''} · ${a.client} · ${a.branch}`,`
+  pmModal(pmCode(a),`${a.asset_type} ${a.brand||''} · ${a.client} · ${a.branch}`,`
     <div class="pm-ahead"><div><div class="pm-qrbox" id="pm-qrbox"></div>${a.label_photo_url?`<a class="pm-lbl" href="${esc(a.label_photo_url)}" target="_blank" rel="noopener" title="รูปฉลากเครื่อง"><img src="${esc(a.label_photo_url)}" alt="ฉลาก"><span>ฉลากเครื่อง</span></a>`:''}</div><div style="flex:1;min-width:0"><div class="pm-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${esc(v)}</b></div>`).join('')}</div>${a.note?`<div class="tm" style="margin-top:8px">${esc(a.note)}</div>`:''}</div></div>
     <div class="pm-sec"><div class="pm-sech"><b>ประวัติเครื่อง</b><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pmAddLog('${esc(id)}')">＋ เพิ่มบันทึก</button></div>${feed}</div>
     ${jobsHere.length?`<div class="pm-sec"><div class="pm-sech"><b>งานล่าสุดที่สาขานี้</b><span class="tm" style="font-size:12px">(จากคิวช่าง)</span></div>${jobsHere.map(j=>`<div class="pm-ev"><span class="d2-evdot" style="background:${pfStatusColor(j.status)}"></span><div><button type="button" class="link-btn" onclick="closeM('m-pm');openDet('${esc(j.id).replace(/'/g,'&#39;')}')">${esc(j.id)}</button> <span class="tm">· ${esc(j.type||'')} · ${esc(j.date?jqThDate(j.date):'')} · ${esc(j.status||'')}</span></div></div>`).join('')}</div>`:''}`,
     `<button class="btn btn-ghost" onclick="pmPrintStickers(['${esc(id)}'])">🖨 พิมพ์ QR</button><button class="btn btn-ghost" onclick="pmEditAsset('${esc(id)}')">✏️ แก้ไขข้อมูล</button><button class="btn btn-primary" onclick="closeM('m-pm')">ปิด</button>`,true);
-  pmQrSvg(PM_QR_BASE+encodeURIComponent(a.id),132).then(svg=>{const b=document.getElementById('pm-qrbox');if(b)b.innerHTML=svg+`<div class="mono" style="font-weight:700;margin-top:4px">${esc(a.id)}</div>`;}).catch(()=>{});
+  pmQrSvg(PM_QR_BASE+encodeURIComponent(pmCode(a)),132).then(svg=>{const b=document.getElementById('pm-qrbox');if(b)b.innerHTML=svg+`<div class="mono" style="font-weight:700;margin-top:4px">${esc(pmCode(a))}</div>${a.qr_code?'':'<div class="tm" style="font-size:11px">ยังไม่ติดสติกเกอร์</div>'}`;}).catch(()=>{});
 }
 function pmAddLog(assetId){
   pmModal('เพิ่มบันทึกเครื่อง '+assetId,'',`
@@ -18174,20 +18205,32 @@ function pmQrHtml(){
   return `<div class="pm-grid2">
     <section class="d2-box"><div class="d2-h"><div><div class="t">พิมพ์ QR ของเครื่องที่มีในทะเบียน</div><div class="s">เลือกเครื่องแล้วพิมพ์ลงกระดาษสติกเกอร์ A4 (แถวละ 4 · 40 ดวง/แผ่น · มีเส้นไดคัท)</div></div></div>
       <div class="d2-in d2-pad"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><select class="filter-select" onchange="pmAsset.client=this.value;pmAsset.branch='';pmQrPick.clear();renderPM()"><option value="">ลูกค้า: ทั้งหมด</option>${clientsAll.map(x=>`<option${x===pmAsset.client?' selected':''}>${esc(x)}</option>`).join('')}</select><select class="filter-select" onchange="pmAsset.branch=this.value;pmQrPick.clear();renderPM()"><option value="">สาขา: ทั้งหมด</option>${brs.map(x=>`<option${x===pmAsset.branch?' selected':''}>${esc(x)}</option>`).join('')}</select><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pmQrPickAll()">เลือกทั้งหมด (${list.length})</button><button class="btn btn-ghost btn-sm" onclick="pmQrPick.clear();renderPM()">ล้าง</button></div>
-      <div class="pm-qrlist">${list.length?list.map(a=>`<label class="pm-ck"><input type="checkbox" ${pmQrPick.has(a.id)?'checked':''} onchange="this.checked?pmQrPick.add('${esc(a.id)}'):pmQrPick.delete('${esc(a.id)}');document.getElementById('pm-qr-n').textContent=pmQrPick.size"> <b class="mono">${esc(a.id)}</b> <span class="tm">${esc(a.branch)} · ${esc(a.asset_type)} ${esc(a.brand||'')} · ${esc(a.location||'')}</span></label>`).join(''):'<div class="tm">ยังไม่มีเครื่องในทะเบียน</div>'}</div>
+      <div class="pm-qrlist">${list.length?list.map(a=>`<label class="pm-ck"><input type="checkbox" ${pmQrPick.has(a.id)?'checked':''} onchange="this.checked?pmQrPick.add('${esc(a.id)}'):pmQrPick.delete('${esc(a.id)}');document.getElementById('pm-qr-n').textContent=pmQrPick.size"> <b class="mono">${a.qr_code?esc(a.qr_code):'<span class="tm">ยังไม่มีเลข</span>'}</b> <span class="tm">${esc(a.branch)} · ${esc(a.asset_type)} ${esc(a.brand||'')} · ${esc(a.location||'')}</span></label>`).join(''):'<div class="tm">ยังไม่มีเครื่องในทะเบียน</div>'}</div>
       <button class="btn btn-primary" style="margin-top:12px" onclick="pmPrintStickers([...pmQrPick])">🖨 พิมพ์ที่เลือก (<span id="pm-qr-n">${pmQrPick.size}</span> ดวง)</button></div></section>
     <section class="d2-box"><div class="d2-h"><div><div class="t">สติกเกอร์เปล่า</div><div class="s">พิมพ์เตรียมไว้ให้ช่าง ไปติดแล้วผูกกับเครื่องตอนเข้า PM</div></div></div>
       <div class="d2-in d2-pad"><div class="form-group"><label>จำนวน</label><select id="pm-blank-n" class="filter-select"><option>40</option><option selected>80</option><option>120</option><option>160</option></select></div>
       <button class="btn btn-primary" onclick="pmPrintBlank()">🖨 จองเลขและพิมพ์สติกเกอร์เปล่า</button>
-      <div class="tm" style="font-size:12.5px;line-height:1.7;margin-top:12px">• เลขเรียงต่อกัน PFQ-00001, 00002, ... ไม่ซ้ำแม้พิมพ์จากหลายเครื่อง<br>• ช่วงทดลอง: ติดสติกเกอร์แล้วใส่เลขสติกเกอร์ในช่อง "สติกเกอร์ QR" ของเครื่องได้เลย<br>• ช่วงที่ 2: ช่างสแกนสติกเกอร์เปล่าแล้วผูกกับเครื่องในฟอร์มได้เอง</div></div></section>
+      <div class="tm" style="font-size:12.5px;line-height:1.7;margin-top:12px">• เลขเรียงต่อกัน PFQ-00001, 00002, ... ไม่ซ้ำแม้พิมพ์จากหลายเครื่อง<br>• เลขบนสติกเกอร์ = รหัสเครื่องในคอนโซล (ผูกแล้วใช้เลขนี้ทุกที่) · ติดแล้วใส่เลขในช่อง "เลขสติกเกอร์ QR" ของเครื่องได้เลย<br>• ช่วงที่ 2: ช่างสแกนสติกเกอร์เปล่าแล้วผูกกับเครื่องในฟอร์มได้เอง</div></div></section>
   </div>`;
 }
 function pmQrPickAll(){pm.assets.filter(a=>a.status!=='retired'&&(!pmAsset.client||a.client===pmAsset.client)&&(!pmAsset.branch||a.branch===pmAsset.branch)).forEach(a=>pmQrPick.add(a.id));renderPM();}
 async function pmPrintStickers(ids){
   const list=ids.map(id=>pm.assets.find(a=>a.id===id)).filter(Boolean);if(!list.length){alert('ยังไม่ได้เลือกเครื่อง');return;}
+  // เครื่องที่ยังไม่มีสติกเกอร์ → จองเลข PFQ ใหม่ แล้วผูกให้ก่อนพิมพ์ (ทุกดวงที่พิมพ์ = เลขเดียวกับรหัสเครื่องในคอนโซล)
+  const need=list.filter(a=>!a.qr_code);
+  if(need.length){if(typeof guardEdit==='function'&&!guardEdit())return;if(!confirm(`มี ${need.length} เครื่องที่ยังไม่มีเลขสติกเกอร์\nระบบจะจองเลข PFQ ใหม่ให้และผูกกับเครื่องเลย (เลขนี้จะเป็นรหัสเครื่อง) — ทำต่อ?`))return;}
   const w=window.open('','_blank');if(!w){alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
   w.document.write('<p style="font-family:sans-serif;padding:20px">กำลังสร้าง QR...</p>');
-  try{const labels=[];for(const a of list){labels.push({code:a.id,svg:await pmQrSvg(PM_QR_BASE+encodeURIComponent(a.id),120),l1:`${a.asset_type} ${a.brand||''} ${a.capacity||''}`.trim(),l2:`${a.branch}${a.location?' · '+a.location:''}`});}
+  try{
+    if(need.length){
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/pm_reserve_qr`,{method:'POST',headers:sbHeaders(),body:JSON.stringify({p_count:need.length})});if(!r.ok)throw new Error(await r.text());
+      const codes=(await r.json()).map(x=>typeof x==='string'?x:Object.values(x)[0]);
+      for(let i=0;i<need.length;i++){const a=need[i],code=codes[i];if(!code)continue;
+        const [saved]=await pmPatch('pm_assets',a.id,{qr_code:code,updated_at:new Date().toISOString(),updated_by:getActorName()});Object.assign(a,saved||{qr_code:code});
+        try{const [lg]=await pmInsert('pm_asset_logs',[{id:pmId('PML'),asset_id:a.id,kind:'bind_qr',recommendation:'ผูกสติกเกอร์ '+code+' (พิมพ์จากคอนโซล)',source:'admin',created_by:getActorName()}]);if(lg)pm.logs.unshift(lg);}catch(e){}}
+      try{renderPM();}catch(e){}
+    }
+    const labels=[];for(const a of list){const c=pmCode(a);labels.push({code:c,svg:await pmQrSvg(PM_QR_BASE+encodeURIComponent(c),120),l1:`${a.asset_type} ${a.brand||''} ${a.capacity||''}`.trim(),l2:`${a.branch}${a.location?' · '+a.location:''}`});}
     pmWriteSheet(w,labels);
   }catch(e){w.document.body.innerHTML='สร้าง QR ไม่สำเร็จ: '+esc(e.message||e);}
 }
@@ -18241,14 +18284,14 @@ function pmBindSticker(code,q){
   const list=pm.assets.filter(a=>a.status!=='retired'&&!a.qr_code&&(!n||pmNorm([a.id,a.client,a.branch,a.asset_type,a.brand,a.model,a.serial_no,a.location].join(' ')).includes(n))).slice(0,60);
   const body=`<div class="tm" style="font-size:13px;line-height:1.7;margin-bottom:10px">สติกเกอร์ <b class="mono">${esc(code)}</b> ยังไม่ได้ผูกกับเครื่องไหน — เลือกเครื่องที่ติดสติกเกอร์ดวงนี้ หรือเพิ่มเป็นเครื่องใหม่</div>
     <input class="filter-input" style="width:100%;margin-bottom:8px" placeholder="ค้นหา สาขา / ยี่ห้อ / Serial / ตำแหน่ง" value="${esc(q)}" oninput="clearTimeout(window._pmbs);window._pmbs=setTimeout(()=>{const p=this.selectionStart;pmBindSticker('${esc(code)}',this.value);const i=document.querySelector('#m-pm-body input');if(i){i.focus();try{i.setSelectionRange(p,p);}catch(e){}}},250)">
-    <div class="pm-xtbl" style="max-height:50vh">${list.length?`<table class="pm-tbl"><tbody>${list.map(a=>`<tr><td><b class="mono">${esc(a.id)}</b><div class="tm" style="font-size:12px">${esc(a.asset_type)} ${esc(a.brand||'')} ${esc(a.capacity||'')}${a.serial_no?' · SN '+esc(a.serial_no):''}</div></td><td>${esc(a.branch)}<div class="tm" style="font-size:12px">${esc(a.client||'')}${a.location?' · '+esc(a.location):''}</div></td><td><button class="btn btn-ghost btn-sm" onclick="pmBindStickerTo('${esc(code)}','${esc(a.id)}')">ผูก</button></td></tr>`).join('')}</tbody></table>`:'<div class="d2-empty">ไม่พบเครื่องที่ยังไม่มีสติกเกอร์</div>'}</div>`;
+    <div class="pm-xtbl" style="max-height:50vh">${list.length?`<table class="pm-tbl"><tbody>${list.map(a=>`<tr><td><b>${esc(a.asset_type)} ${esc(a.brand||'')}</b><div class="tm" style="font-size:12px">${esc(a.model||'')} ${esc(a.capacity||'')}${a.serial_no?' · SN '+esc(a.serial_no):''}</div></td><td>${esc(a.branch)}<div class="tm" style="font-size:12px">${esc(a.client||'')}${a.location?' · '+esc(a.location):''}</div></td><td><button class="btn btn-ghost btn-sm" onclick="pmBindStickerTo('${esc(code)}','${esc(a.id)}')">ผูก</button></td></tr>`).join('')}</tbody></table>`:'<div class="d2-empty">ไม่พบเครื่องที่ยังไม่มีสติกเกอร์</div>'}</div>`;
   pmModal('ผูกสติกเกอร์ '+code,'ทะเบียนเครื่อง',body,`<button class="btn btn-ghost" onclick="closeM('m-pm')">ยกเลิก</button><button class="btn btn-primary" onclick="closeM('m-pm');pmEditAsset(null,{qr_code:'${esc(code)}'})">＋ เพิ่มเป็นเครื่องใหม่</button>`,true);
 }
 async function pmBindStickerTo(code,id){
   if(typeof guardEdit==='function'&&!guardEdit())return;
   const a=pm.assets.find(x=>x.id===id);if(!a)return;
   if(pm.assets.some(x=>x.qr_code===code)){alert('สติกเกอร์ '+code+' ผูกกับเครื่องอื่นอยู่แล้ว');return;}
-  if(!confirm(`ผูกสติกเกอร์ ${code} กับเครื่อง ${a.id} (${a.asset_type} · ${a.branch})?`))return;
+  if(!confirm(`ผูกสติกเกอร์ ${code} กับเครื่อง ${a.asset_type} ${a.brand||''} · ${a.branch}${a.location?' · '+a.location:''}?\nต่อไปรหัสเครื่องนี้ = ${code}`))return;
   try{const [saved]=await pmPatch('pm_assets',id,{qr_code:code,updated_at:new Date().toISOString(),updated_by:getActorName()});Object.assign(a,saved||{qr_code:code});
     try{const [lg]=await pmInsert('pm_asset_logs',[{id:pmId('PML'),asset_id:id,kind:'bind_qr',recommendation:'ผูกสติกเกอร์ '+code,source:'admin',created_by:getActorName()}]);if(lg)pm.logs.unshift(lg);}catch(e){}
     closeM('m-pm');renderPM();pmOpenAsset(id);}catch(e){pmErr(e);}
@@ -18488,7 +18531,7 @@ function renderReportPM(j){
 }
 function pmReportItemHtml(it,mid){
   const ph=[...(it.label_photo&&it.label_photo.url?[{url:it.label_photo.url,label:'ฉลาก'}]:[]),...((it.photos&&it.photos.before)||[]).map(x=>({url:x.url,label:'ก่อน'})),...((it.photos&&it.photos.after)||[]).map(x=>({url:x.url,label:'หลัง'}))];
-  const code=it.asset_id||'เครื่องใหม่',canOpen=!!it.asset_id&&typeof AUTH!=='undefined'&&AUTH.role==='admin';
+  const code=pmCodeOfId(it.asset_id,it.qr_code)||'เครื่องใหม่',canOpen=!!it.asset_id&&typeof AUTH!=='undefined'&&AUTH.role==='admin';
   return `<div class="rpm-it${it.follow_up?' fu':''}"><div class="rpm-ih">${canOpen?`<button type="button" class="link-btn mono" onclick="pmGoAsset('${esc(it.asset_id)}')">${esc(code)}</button>`:`<span class="mono" style="font-weight:700">${esc(code)}</span>`} <b>${esc(it.asset_type||'')}</b>${it.location?` <span class="tm">· ${esc(it.location)}</span>`:''}${it.qr_code?` <span class="tm">· ผูก ${esc(it.qr_code)}</span>`:''}<span style="flex:1"></span>${pmCondChip(it.condition)}</div>
     <div class="tm" style="font-size:12px">${[it.brand,it.model,it.capacity?(it.capacity+(/^\d+$/.test(String(it.capacity))?' BTU':'')):''].filter(Boolean).map(esc).join(' · ')}${it.no_label?' · ไม่มีฉลาก':it.serial_no?` · SN <span class="mono">${esc(it.serial_no)}</span>`:''}</div>
     ${mid}
@@ -18648,7 +18691,7 @@ async function pmPrintCheckSheet(jobId){
     const lbl=it.label_photo&&it.label_photo.url;
     const ng=(it.sheet_rows||[]).filter(r=>r.result==='ไม่ปกติ');
     const notes=[...ng.map(r=>`ข้อ ${r.no} ไม่ปกติ: ${r.item}${r.data?' ('+r.data+')':''}${r.remark?' — '+r.remark:''}`),it.condition?'สภาพเครื่อง: '+it.condition:'',it.readings&&it.readings.cartridges?`จำนวนไส้ที่เปลี่ยน: ${it.readings.cartridges} ไส้`:'',it.cause?'สาเหตุ: '+it.cause:'',it.fix?'การแก้ไข: '+it.fix:'',it.follow_up?'งานต่อเนื่อง: '+(it.follow_up_note||'-'):''].filter(Boolean);
-    const head=`<div class="ph-h"><div><b>${esc(title)}</b> <span class="badge">${esc(it.asset_id||'เครื่องใหม่')}</span><br><small>${esc([it.brand,it.model].filter(Boolean).join(' '))}${it.serial_no?' · S/N '+esc(it.serial_no):''} · ${esc(j.branch||'')} · ${esc(pmThaiDate(tr.dateIn))}</small></div><img src="${esc(logo)}" alt=""></div>`;
+    const head=`<div class="ph-h"><div><b>${esc(title)}</b> <span class="badge">${esc(pmCodeOfId(it.asset_id,it.qr_code)||'เครื่องใหม่')}</span><br><small>${esc([it.brand,it.model].filter(Boolean).join(' '))}${it.serial_no?' · S/N '+esc(it.serial_no):''} · ${esc(j.branch||'')} · ${esc(pmThaiDate(tr.dateIn))}</small></div><img src="${esc(logo)}" alt=""></div>`;
     const chunks=[];const first=lbl?2:4;chunks.push(ph.slice(0,first));for(let i=first;i<ph.length;i+=6)chunks.push(ph.slice(i,i+6));
     chunks.forEach((ch,ci)=>{
       if(ci>0&&!ch.length)return;
@@ -18662,7 +18705,7 @@ async function pmPrintCheckSheet(jobId){
         dateIn:pmThaiDate(tr.dateIn),timeIn:tr.timeIn||'',notes:pmsNotes(it),
         sign:{img:sign.url||sign.dataUrl||'',name:sign.name||'',date:sign.url||sign.dataUrl||sign.name?signDate:'',time:sign.url||sign.dataUrl||sign.name?signTime:''},
         provider:{name:lead&&lead.display_name||j.team||'',company,date:doneDate,time:doneTime},
-        footL:`${j.id} · ${it.asset_id||'เครื่องใหม่'}${p.round_no?' · PM รอบที่ '+p.round_no:''}`};
+        footL:`${j.id} · ${pmCodeOfId(it.asset_id,it.qr_code)||'เครื่องใหม่'}${p.round_no?' · PM รอบที่ '+p.round_no:''}`};
       pages.push({code:it.asset_id,sheet:(i,N)=>pmsPage({...ci,footR:`หน้า ${i+1} / ${N}`},it)});
       photoPages(it,'รูปประกอบ · '+[it.asset_type,it.location].filter(Boolean).join(' '));
     }else photoPages(it,'รูปประกอบ PM · '+[it.asset_type,it.location].filter(Boolean).join(' '));
@@ -18702,7 +18745,7 @@ function pmGoAsset(id){closeM('m-report');pmView='assets';goTo('pm');pmLoad().th
 function pmFollowHtml(c){
   const open=pm.logs.filter(l=>l.follow_up&&!l.follow_up_done_at).map(l=>({l,a:pm.assets.find(x=>x.id===l.asset_id)})).filter(x=>x.a&&pmNorm(x.a.client)===pmNorm(c.client));
   if(!open.length)return '';
-  return `<section class="d2-box" style="margin-top:14px"><div class="d2-h"><div><div class="t">🔧 งานต่อเนื่องจาก PM (${open.length})</div><div class="s">ช่างแจ้งว่าต้องซ่อม / เปลี่ยนอะไหล่ต่อ — เสนอราคาหรือเปิดงานซ่อม แล้วกด "จัดการแล้ว"</div></div></div><div class="d2-in d2-pad">${open.map(({l,a})=>`<div class="pm-ev"><span class="d2-evdot" style="background:#ea580c"></span><div style="flex:1;min-width:0"><b>${esc(a.branch)}</b> · <button type="button" class="link-btn mono" onclick="pmOpenAsset('${esc(a.id)}')">${esc(a.id)}</button> <span class="tm">${esc(a.asset_type)} ${esc(a.brand||'')}${a.location?' · '+esc(a.location):''} · ${esc(jqThDate(String(l.done_at).slice(0,10)))}${l.job_id?' · '+esc(l.job_id):''}${l.team?' · '+esc(l.team):''}</span><div style="font-size:13px;margin-top:2px">${esc(l.follow_up_note||'')}</div></div><button class="btn btn-ghost btn-sm" onclick="pmFollowDone('${esc(l.id)}')">✓ จัดการแล้ว</button></div>`).join('')}</div></section>`;
+  return `<section class="d2-box" style="margin-top:14px"><div class="d2-h"><div><div class="t">🔧 งานต่อเนื่องจาก PM (${open.length})</div><div class="s">ช่างแจ้งว่าต้องซ่อม / เปลี่ยนอะไหล่ต่อ — เสนอราคาหรือเปิดงานซ่อม แล้วกด "จัดการแล้ว"</div></div></div><div class="d2-in d2-pad">${open.map(({l,a})=>`<div class="pm-ev"><span class="d2-evdot" style="background:#ea580c"></span><div style="flex:1;min-width:0"><b>${esc(a.branch)}</b> · <button type="button" class="link-btn mono" onclick="pmOpenAsset('${esc(a.id)}')">${esc(pmCode(a))}</button> <span class="tm">${esc(a.asset_type)} ${esc(a.brand||'')}${a.location?' · '+esc(a.location):''} · ${esc(jqThDate(String(l.done_at).slice(0,10)))}${l.job_id?' · '+esc(l.job_id):''}${l.team?' · '+esc(l.team):''}</span><div style="font-size:13px;margin-top:2px">${esc(l.follow_up_note||'')}</div></div><button class="btn btn-ghost btn-sm" onclick="pmFollowDone('${esc(l.id)}')">✓ จัดการแล้ว</button></div>`).join('')}</div></section>`;
 }
 async function pmFollowDone(id){
   if(typeof guardEdit==='function'&&!guardEdit())return;
