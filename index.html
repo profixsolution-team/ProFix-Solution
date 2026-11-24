@@ -226,7 +226,11 @@ body[data-theme="light"] tr:hover td{background:rgba(23,95,255,.04);}
 .report-thumb{border:1px solid var(--border);background:var(--surface2);border-radius:8px;overflow:hidden;aspect-ratio:1;cursor:pointer;padding:0;position:relative;}
 .report-thumb:hover{border-color:var(--accent);}
 .report-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-.rt-wrap{position:relative}.rt-wrap .report-thumb{width:100%;display:block}.rt-wrap.off .report-thumb{opacity:.42;filter:grayscale(.6)}
+.rt-wrap{position:relative}
+.rt-del{position:absolute;right:4px;top:4px;width:24px;height:24px;border:0;border-radius:6px;background:rgba(207,34,46,.92);color:#fff;font-weight:800;cursor:pointer;line-height:24px;padding:0}
+.rt-adm{position:absolute;left:32px;top:6px;font-size:10px;font-weight:700;background:#0b1f4d;color:#fff;border-radius:5px;padding:1px 5px}
+.rg-add{display:flex;gap:10px;align-items:center;margin:2px 0 8px;font-size:11.5px}
+.rg-add label{cursor:pointer}.rt-wrap .report-thumb{width:100%;display:block}.rt-wrap.off .report-thumb{opacity:.42;filter:grayscale(.6)}
 .rt-chk{position:absolute;left:4px;top:4px;width:24px;height:24px;display:grid;place-items:center;background:rgba(255,255,255,.92);border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer}.rt-chk input{width:16px;height:16px;margin:0;cursor:pointer;accent-color:var(--accent)}
 .rg-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;margin:0 0 8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)}.rg-st{font-size:11.5px}
 .rt-wrap[draggable=true]{cursor:grab}.rt-wrap.dragging{opacity:.35}.rt-wrap.dragover .report-thumb{outline:3px solid var(--accent);outline-offset:1px}
@@ -4040,7 +4044,7 @@ function buildJobFromTechnicianReport(job, reportRow, imageRows=[]){
   const reportId=reportRow.report_id||reportRow.id;
   // imageRows === null = ยังไม่ได้โหลดรูปของงานนี้ → คงรายการรูปเดิมของงานไว้ (ห้ามล้างเป็นว่าง)
   const prevTr=job.technicianReport||{};
-  const images=imageRows===null?(Array.isArray(prevTr.images)?prevTr.images:(Array.isArray(data.images)?data.images:[])):imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>({...(r.data||{}),_row:r.id,category:(r.data||{}).category||r.category||'before'})).filter(Boolean);
+  const images=imageRows===null?(Array.isArray(prevTr.images)?prevTr.images:(Array.isArray(data.images)?data.images:[])):imageRows.filter(r=>!(r.data||{}).documentOnly).map(r=>rptImgOverlay({...(r.data||{}),_row:r.id,category:(r.data||{}).category||r.category||'before'})).filter(Boolean);
   const documentImages=imageRows===null?(Array.isArray(prevTr.documentImages)?prevTr.documentImages:(Array.isArray(data.documentImages)?data.documentImages:[])):imageRows.filter(r=>(r.data||{}).documentOnly||r.category==='documents').map(r=>({...(r.data||{}),_row:r.id})).filter(Boolean);
   // รูปที่ไม่มีหมวด (เช่นรูปตรวจเช็คที่ดึงจากตอนเช็คอิน) = 'ก่อนดำเนินการ' — ตรงกับที่ฟอร์มช่างแสดง
   // แอดมินแก้รายงานในหน้า "รายงานช่าง" หลังช่างบันทึก/ส่งครั้งล่าสุด → ค่าที่แอดมินแก้ชนะ (เดิมรายงานต้นฉบับของช่างทับทุกครั้งที่โหลด = แก้แล้วไม่บันทึก)
@@ -13472,17 +13476,24 @@ async function createSlotTestJobs(){
     {id:'TEST-SLOT-1',type:'PM แอร์',branch:'สาขาทดสอบ 1 · PM แอร์'},
     {id:'TEST-SLOT-2',type:'PM ตู้แช่',branch:'สาขาทดสอบ 2 · PM ตู้แช่'},
     {id:'TEST-SLOT-3',type:'PM ไส้กรองน้ำ',branch:'สาขาทดสอบ 3 · PM ไส้กรองน้ำ'}];
+  // (2026-11-24) เลือกทีมได้ — ให้ช่างทีมจริงเห็นงานทดสอบใน LINE (ค่าเริ่มต้น "ทดสอบ" = ไม่มีช่างคนไหนเห็น)
+  let dl=document.getElementById('slot-team-dl');if(!dl){dl=document.createElement('datalist');dl.id='slot-team-dl';document.body.appendChild(dl);}
+  dl.innerHTML=['ทดสอบ',...techTeamOptions().map(o=>o.name)].map(n=>`<option value="${esc(n)}">`).join('');
+  const prevTeam=(jobs.find(j=>normalizePR(j.id)==='TEST-SLOT-1')||{}).team;
+  const ask=uiPrompt({title:'🧪 งานทดสอบ PM — ให้ทีมไหน?',label:'พิมพ์หรือเลือกชื่อทีม (ทีมนั้นจะเห็นงานใน LINE "งานของฉัน") · "ทดสอบ" = ไม่มีช่างเห็น',value:prevTeam&&prevTeam!=='ทดสอบ'?prevTeam:'ทดสอบ',okText:'ถัดไป'});
+  try{document.getElementById('uiprompt-input').setAttribute('list','slot-team-dl');}catch(e){}
+  const team=String(await ask||'').trim();if(!team)return;
   const have=defs.filter(d=>liveJobs().some(j=>normalizePR(j.id)===normalizePR(d.id)));
-  if(!confirm(`สร้าง${have.length?'ใหม่ (รีเซ็ต)':''}งานทดสอบ "รูปแยกช่อง" 3 งาน?\n\n${defs.map(d=>'• '+d.id+' — '+d.branch).join('\n')}\n\n• ผูกกับแผน PM ทดสอบ (สัญญา "ทดสอบรูปแยกช่อง") ช่างจะเห็นหน้า "บันทึก PM รายเครื่อง" + ช่องรูป\n• ทีมช่าง = "ทดสอบ" (ไม่มีช่างจริงได้รับแจ้ง)${have.length?'\n• งานทดสอบเดิม '+have.length+' งานจะถูกล้างรายงาน/รูปเดิม':''}\n\nลบทิ้งได้หลังทดสอบเสร็จ (งาน + สัญญาทดสอบในหน้า PM)`))return;
+  if(!confirm(`สร้าง${have.length?'ใหม่ (รีเซ็ต)':''}งานทดสอบ "รูปแยกช่อง" 3 งาน?\n\n${defs.map(d=>'• '+d.id+' — '+d.branch).join('\n')}\n\n• ผูกกับแผน PM ทดสอบ (สัญญา "ทดสอบรูปแยกช่อง") ช่างจะเห็นหน้า "บันทึก PM รายเครื่อง" + ช่องรูป\n• ทีมช่าง = "${team}"${team==='ทดสอบ'?' (ไม่มีช่างจริงเห็น)':' — ช่างทีมนี้จะเห็นใน LINE (นัดวันนี้)'}${have.length?'\n• งานทดสอบเดิม '+have.length+' งานจะถูกล้างรายงาน/รูปเดิม':''}\n\nลบทิ้งได้หลังทดสอบเสร็จ (งาน + สัญญาทดสอบในหน้า PM)`))return;
   const now=todayISO(),by=getActorName(),ts=new Date().toISOString();
   try{
     await pmUpsert('pm_contracts',[{id:SLOT_TEST_CONTRACT,client:SLOT_TEST_CLIENT,name:'ทดสอบรูปแยกช่อง',year:+now.slice(0,4),rounds:1,status:'active',note:'สัญญาทดสอบ — ลบได้หลังทดสอบ',updated_at:ts,updated_by:by}]);
     await pmUpsert('pm_sites',defs.map((d,i)=>({id:'PMS-TESTSLOT-'+(i+1),contract_id:SLOT_TEST_CONTRACT,branch:d.branch,address:'',sort_no:i,status:'active',updated_at:ts})));
-    await pmUpsert('pm_visits',defs.map((d,i)=>({id:'PMV-TESTSLOT-'+(i+1),contract_id:SLOT_TEST_CONTRACT,round_no:1,site_id:'PMS-TESTSLOT-'+(i+1),branch:d.branch,planned_date:now,team:'ทดสอบ',job_id:d.id,status:'planned',updated_at:ts,updated_by:by})));
+    await pmUpsert('pm_visits',defs.map((d,i)=>({id:'PMV-TESTSLOT-'+(i+1),contract_id:SLOT_TEST_CONTRACT,round_no:1,site_id:'PMS-TESTSLOT-'+(i+1),branch:d.branch,planned_date:now,team,job_id:d.id,status:'planned',updated_at:ts,updated_by:by})));
   }catch(e){alert('สร้างแผน PM ทดสอบไม่สำเร็จ: '+((e&&e.message)||e)+'\n(งานทดสอบยังสร้างได้ แต่ช่างจะไม่เห็นหน้าบันทึก PM รายเครื่อง)');}
   defs.forEach((d,i)=>{
     const old=jobs.find(j=>normalizePR(j.id)===normalizePR(d.id));
-    const row={id:d.id,client:SLOT_TEST_CLIENT,ref:d.id,branch:d.branch,type:d.type,team:'ทดสอบ',date:now,status:'จัดช่างแล้ว',level:'',billType:'',note:'งานทดสอบรูปแยกช่อง — ลบได้หลังทดสอบ',company:'',pc:0,pt:0,assignedAt:now,partC:0,partR:0,fuel:0,report:'',isNew:false,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()+i,photoSlots:{on:true,units:[]},isTest:true};
+    const row={id:d.id,client:SLOT_TEST_CLIENT,ref:d.id,branch:d.branch,type:d.type,team,date:now,status:'จัดช่างแล้ว',level:'',billType:'',note:'งานทดสอบรูปแยกช่อง — ลบได้หลังทดสอบ',company:'',pc:0,pt:0,assignedAt:now,partC:0,partR:0,fuel:0,report:'',isNew:false,pay:payStatuses[0]||'รอเก็บเงิน',createdAt:Date.now()+i,photoSlots:{on:true,units:[]},isTest:true};
     if(old){const before=clonePlain(old);Object.keys(old).forEach(k=>delete old[k]);Object.assign(old,row);writeAuditLog('reset_slot_test_job','job',d.id,before,row,row);}
     else{jobs.unshift(row);writeAuditLog('create_slot_test_job','job',d.id,null,row,row);}
   });
@@ -13493,8 +13504,12 @@ async function createSlotTestJobs(){
 function renderReportImages(j){
   const imgs=reportImages(j),docs=reportDocumentImages(j);
   const slotHtml=rptSlotHtml(j);
-  if(!imgs.length&&!docs.length)return slotHtml+'<div class="text-box">ยังไม่มีรูปจากช่าง</div>';
-  if(imgs.some(im=>im&&im.url&&!(Number(im.width)>0&&Number(im.height)>0)))setTimeout(()=>fillReportImageDims(j).then(()=>rptGalRerender(j)).catch(()=>{}),0);
+  if(!imgs.length&&!docs.length)return slotHtml+`<div id="rpt-gal">${rptGalleryHtml(j)}</div>`;
+  rptDimsFromCache(j);
+  if(rptDimsMissing(j)){
+    setTimeout(()=>fillReportImageDims(rptImgJob(j.id)||j).then(()=>rptGalRerender(j)).catch(()=>rptGalRerender(j)),0);
+    return slotHtml+`<div id="rpt-gal"><div class="text-box">กำลังจัดเรียงรูป…</div></div>`;
+  }
   return slotHtml+`<div id="rpt-gal">${rptGalleryHtml(j)}</div>`;
 }
 // ===== จัดเรียง/ขนาดรูปในใบงานรูปภาพ (2026-11-14) =====
@@ -13536,11 +13551,12 @@ function rptGalleryHtml(j){
   const open=window.__rgOpen||new Set();
   const thumb=(im,cat,i,badge,chk)=>{
     const arr=chk&&can(im),sz=photoDocSize(im),own=['s','m','l'].includes(im.docSize);
-    return `<div class="rt-wrap${chk&&im.docExclude?' off':''}"${arr?` draggable="true" data-row="${R(im)}" ondragstart="rptDragStart(event,'${cat}','${R(im)}')" ondragover="rptDragOver(event,'${cat}')" ondragleave="this.classList.remove('dragover')" ondrop="rptDrop(event,'${J}','${cat}','${R(im)}')" ondragend="rptDragEnd()"`:''}><button class="report-thumb" type="button" onclick="pfpvOpen('${J}','${cat}',${i})"><img loading="lazy" draggable="false" src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat]||'')}"><span class="report-thumb-badge">${badge}</span></button>`
+    return `<div class="rt-wrap${chk&&im.docExclude?' off':''}"${arr?` draggable="true" data-row="${R(im)}" ondragstart="rptDragStart(event,'${cat}','${R(im)}')" ondragover="rptDragOver(event,'${cat}')" ondragleave="this.classList.remove('dragover')" ondrop="rptDrop(event,'${J}','${cat}','${R(im)}')" ondragend="rptDragEnd()"`:''}><button class="report-thumb" type="button" onclick="pfpvOpen('${J}','${cat}',${i})"><img loading="lazy" draggable="false" src="${esc(im.url||'')}" alt="${esc(im.label||REPORT_IMAGE_LABELS[cat]||'')}"><span class="report-thumb-badge">${badge}</span></button>${im.adminAdded?`<span class="rt-adm" title="แอดมินเพิ่มเอง ${esc(im.addedBy||'')}">แอดมิน</span>`+(can(im)?`<button type="button" class="rt-del" title="ลบรูปนี้ (เฉพาะรูปที่แอดมินเพิ่ม)" onclick="rptAdminDel('${J}','${R(im)}')">✕</button>`:''):''}`
     +(arr?`<label class="rt-chk" title="ใช้ในใบงานรูปภาพ / โหลดรวม"><input type="checkbox"${im.docExclude?'':' checked'} onchange="rptImgToggle('${J}','${R(im)}',this.checked)"></label>`
       +`<div class="rt-tools"><button type="button" title="เลื่อนไปก่อน" onclick="rptImgStep('${J}','${R(im)}',-1)">◀</button><button type="button" class="rt-size${own?' own':''}" title="ขนาดในใบงานรูปภาพ: เล็ก 3/แถว · กลาง 2/แถว · ใหญ่ เต็มแถว — กดเพื่อเปลี่ยน" onclick="rptImgSize('${J}','${R(im)}')">${PHOTO_SIZE_LABEL[sz]}</button><button type="button" title="เลื่อนไปหลัง" onclick="rptImgStep('${J}','${R(im)}',1)">▶</button></div>`:'')+`</div>`;
   };
   const sec=(cat,title,list,chk,badgeFn)=>`<details class="report-gallery-section" data-cat="${cat}"${open.has(cat)?' open':''} ontoggle="rptGalOpen(this)"><summary class="report-gallery-title"><span><span class="rg-arrow">▶</span>${title}</span><span class="report-gallery-count">${chk?`${list.filter(im=>!im.docExclude).length}/`:''}${list.length} รูป<span class="rg-hint">กดรูปเพื่อเลื่อนดู/ซูม</span></span></summary>`
+    +(chk?`<div class="rg-add"><label class="btn btn-ghost btn-xs">＋ เพิ่มรูป${esc(title.replace(/ดำเนินการ$/,''))}<input type="file" accept="image/*" multiple hidden onchange="rptAdminAdd('${J}','${cat}',this)"></label><span class="tm" id="rg-add-st-${cat}">แอดมินอัปเพิ่มได้เลย ไม่ต้องให้ช่างส่งใหม่</span></div>`:'')
     +(list.length?`${chk&&list.some(can)?`<div class="rg-catbar"><button type="button" onclick="rptImgSetAll('${J}','${cat}',true)">เลือกทั้งหมวด</button><button type="button" onclick="rptImgSetAll('${J}','${cat}',false)">ไม่เลือกทั้งหมวด</button>${list.some(im=>photoHasOrder(im)||im.docSize)?`<button type="button" onclick="rptImgAutoArrange('${J}','${cat}')">↺ เรียงอัตโนมัติ</button>`:''}<span class="tm">ลากรูป หรือ ◀ ▶ เพื่อจัดลำดับ · กดป้ายขนาดเพื่อเปลี่ยน</span></div>`:''}<div class="report-thumbs">${(chk?photoDocOrdered(list):list).map((im,k)=>thumb(im,cat,list.indexOf(im),badgeFn(im,k),chk)).join('')}</div>`:'<div class="tm" style="font-size:12px;">ไม่มีรูปในหมวดนี้</div>')+`</details>`;
   const bar=photos.length?`<div class="rg-bar"><span>ติ๊กแล้ว <b>${sel.length}</b>/${photos.length} รูป <span class="tm">= ใช้ในใบงานรูปภาพ</span></span><span style="flex:1"></span>
     ${photos.some(can)?`<button type="button" class="btn btn-ghost btn-xs" onclick="rptImgSetAll('${J}','',true)">เลือกทั้งหมด</button><button type="button" class="btn btn-ghost btn-xs" onclick="rptImgSetAll('${J}','',false)">ไม่เลือก</button>`:''}
@@ -13549,7 +13565,18 @@ function rptGalleryHtml(j){
     +(docs.length?sec('documents',REPORT_IMAGE_LABELS.documents,docs,false,()=>'DOC'):'')    +`</div>`;
 }
 function rptGalOpen(d){const s=window.__rgOpen||(window.__rgOpen=new Set());const k=d.dataset.cat;if(d.open)s.add(k);else s.delete(k);}
-function rptGalRerender(j){const el=document.getElementById('rpt-gal');if(el&&document.getElementById('mrpt-jobid')?.value===j.id)el.innerHTML=rptGalleryHtml(j);}
+// วาดใหม่จากงาน "ตัวปัจจุบัน" เสมอ — รูปถูกสร้างใหม่ทุกครั้งที่ซิงก์ (object เดิมอาจไม่อยู่ในงานแล้ว)
+function rptGalRerender(j){const el=document.getElementById('rpt-gal');if(!el||!j||document.getElementById('mrpt-jobid')?.value!==j.id)return;const cur=rptImgJob(j.id)||j;rptDimsFromCache(cur);el.innerHTML=rptGalleryHtml(cur);}
+// (2026-11-24) กันรูป "กระโดด": ① ค่าที่แอดมินเพิ่งติ๊ก/เรียง (ยังรอบันทึก) ทับลงรูปที่สร้างใหม่ตอนซิงก์ ② ขนาดรูปที่วัดแล้วใส่กลับ — ไม่งั้นการเรียงอัตโนมัติ (แนวตั้งขึ้นก่อน) สลับตำแหน่งใต้เมาส์
+function rptImgOverlay(im){
+  try{if(im&&im._row&&typeof rptImgPend!=='undefined'){const p=rptImgPend.get(String(im._row));if(p)Object.assign(im,p.extra);}
+    if(im&&im.url&&!(Number(im.width)>0&&Number(im.height)>0)&&typeof imgDimCache!=='undefined'&&imgDimCache.has(im.url)){const d=imgDimCache.get(im.url);im.width=d.w;im.height=d.h;}}catch(e){}
+  return im;
+}
+function rptDimsFromCache(j){reportImages(j).forEach(rptImgOverlay);}
+function rptDimsMissing(j){return reportImages(j).some(im=>im&&im.url&&['before','during','after'].includes(im.category)&&!(Number(im.width)>0&&Number(im.height)>0));}
+// ทุก object ของรูปแถวนี้ที่อยู่ในงานตอนนี้ (หลังบันทึกสำเร็จ อัปเดตตัวที่แสดงจริง ไม่ใช่ตัวเก่า)
+function rptImgLive(row){const out=[];jobs.forEach(j=>{const a=j&&j.technicianReport&&j.technicianReport.images;if(Array.isArray(a))a.forEach(im=>{if(im&&String(im._row||'')===String(row))out.push(im);});});return out;}
 function rptImgJob(jobId){return jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));}
 function rptImgFind(j,row){return [...reportImages(j),...reportDocumentImages(j)].find(im=>im&&String(im._row||'')===String(row));}
 function rptImgStatus(t,bad){const el=document.getElementById('rg-st');if(el){el.textContent=t||'';el.style.color=bad?'var(--red)':'';}}
@@ -13560,7 +13587,7 @@ async function rptImgPatch(im,extra){
   const r=await fetch(splitUrl('technician_report_images',`?id=eq.${encodeURIComponent(row)}`),{method:'PATCH',headers:sbHeaders({'Prefer':'return=representation'}),body:JSON.stringify({data})});
   if(!r.ok)throw new Error(await r.text());
   const out=await r.json();if(!Array.isArray(out)||!out.length)throw new Error('ไม่พบรูปนี้บนระบบแล้ว (ช่างอาจส่งรูปชุดใหม่) — ปิดแล้วเปิดรายงานใหม่');
-  Object.assign(im,extra);
+  Object.assign(im,extra);rptImgLive(row).forEach(x=>Object.assign(x,extra));
   try{jobImagesCache.forEach(c=>(c.rows||[]).forEach(x=>{if(String(x.id)===String(row))x.data={...(x.data||{}),...extra};}));}catch(e){}
 }
 var rptImgPend=new Map(),rptImgTimer=null;
@@ -13570,7 +13597,7 @@ function rptImgQueueSet(j,pairs){
   pairs.forEach(([im,extra])=>{
     if(!im||!im._row)return;const k=String(im._row),cur=rptImgPend.get(k),prev=cur?cur.prev:{};
     Object.keys(extra).forEach(f=>{if(!(f in prev))prev[f]=im[f];});
-    Object.assign(im,extra);rptImgPend.set(k,{im,extra:{...(cur?cur.extra:{}),...extra},prev});
+    Object.assign(im,extra);rptImgPend.set(k,{im,jobId:j.id,extra:{...(cur?cur.extra:{}),...extra},prev});
   });
   rptGalRerender(j);rptImgStatus('กำลังบันทึก…');
   clearTimeout(rptImgTimer);rptImgTimer=setTimeout(()=>rptImgFlush().catch(()=>{}),700);
@@ -13607,13 +13634,78 @@ function rptDrop(e,jobId,cat,toRow){
 async function rptImgFlush(){
   clearTimeout(rptImgTimer);if(!rptImgPend.size)return;
   const list=[...rptImgPend.values()];rptImgPend.clear();let bad=0,msg='';
-  for(const x of list){try{await rptImgPatch(x.im,x.extra);}catch(e){bad++;msg=e.message||String(e);Object.assign(x.im,x.prev||{});}}
-  const j=list[0]&&jobs.find(q=>(q.technicianReport?.images||[]).includes(list[0].im));if(j)rptGalRerender(j);
+  for(const x of list){
+    const live=rptImgLive(x.im._row)[0]||x.im; // ใช้ตัวที่แสดงอยู่จริง (ข้อมูลล่าสุด)
+    try{await rptImgPatch(live,x.extra);}catch(e){bad++;msg=e.message||String(e);[x.im,...rptImgLive(x.im._row)].forEach(o=>Object.assign(o,x.prev||{}));}
+  }
+  [...new Set(list.map(x=>x.jobId).filter(Boolean))].forEach(id=>{const j=rptImgJob(id);if(j)rptGalRerender(j);});
   if(bad){rptImgStatus(`บันทึกไม่สำเร็จ ${bad} รูป`,true);alert('บันทึกการเลือก/จัดเรียงรูปไม่สำเร็จ '+bad+' รูป\n'+msg);}else rptImgStatus('บันทึกแล้ว ✓');
 }
 function rptImgToggle(jobId,row,on){if(typeof guardEdit==='function'&&!guardEdit())return;const j=rptImgJob(jobId);if(!j)return;const im=rptImgFind(j,row);if(im)rptImgQueue(j,[im],on);}
 function rptImgSetAll(jobId,cat,on){if(typeof guardEdit==='function'&&!guardEdit())return;const j=rptImgJob(jobId);if(!j)return;
   rptImgQueue(j,reportImages(j).filter(im=>(cat?im.category===cat:['before','during','after'].includes(im.category))&&!!im.docExclude===on),on);}
+// ===== แอดมินเพิ่มรูปในรายงานช่างเอง (2026-11-24) — อัป R2 แล้วเพิ่มแถวใน technician_report_images (report เดิม) ไม่แตะรูปที่ช่างอัป =====
+// ฟอร์มช่างโหลดแถวรูปทั้งหมดของรายงานกลับเข้าไปตอนเปิด → ช่างส่งงานซ้ำ รูปที่แอดมินเพิ่มยังอยู่ (ยกเว้นช่างเปิดฟอร์มค้างไว้ก่อนแอดมินเพิ่ม)
+async function rptShrinkPhoto(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error('เปิดรูปไม่ได้: '+(file.name||'')));i.src=url;});
+    const sc=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight));
+    const c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*sc);c.height=Math.round(img.naturalHeight*sc);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    const b=await new Promise(r=>c.toBlob(r,'image/jpeg',0.85));
+    if(!b)throw new Error('ย่อรูปไม่สำเร็จ');
+    return {blob:b,w:c.width,h:c.height};
+  }finally{URL.revokeObjectURL(url);}
+}
+function rptAddStatus(cat,t,bad){const el=document.getElementById('rg-add-st-'+cat);if(el){el.textContent=t;el.style.color=bad?'var(--red)':'';}}
+async function rptAdminRefresh(jobId){
+  await ensureJobImages(jobId,0);
+  if(document.getElementById('mrpt-jobid')?.value!==jobId)return;
+  const j=rptImgJob(jobId);if(j)document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+renderReportPM(j)+renderReportImages(j);
+}
+async function rptAdminAdd(jobId,cat,input){
+  const files=[...(input&&input.files||[])].filter(f=>/^image\//.test(f.type||'')||/\.(jpe?g|png|webp|heic|heif)$/i.test(f.name||''));if(input)input.value='';
+  if(!files.length)return;if(typeof guardEdit==='function'&&!guardEdit())return;
+  const j=rptImgJob(jobId);if(!j)return;
+  (window.__rgOpen||(window.__rgOpen=new Set())).add(cat);
+  try{
+    rptAddStatus(cat,'กำลังเตรียม…');
+    const rep=await fetchReportRowForJob(j.id);
+    if(!rep)throw new Error('งานนี้ยังไม่มีรายงานช่างในระบบ — ให้ช่างบันทึกร่าง/ส่งงานก่อน แล้วค่อยเพิ่มรูป');
+    const rid=String(rep.report_id||rep.id),who=getActorName(),rows=[];let n=0;
+    for(const f of files){
+      rptAddStatus(cat,`กำลังอัปรูป ${++n}/${files.length}…`);
+      const {blob,w,h}=await rptShrinkPhoto(f);
+      const fd=new FormData();fd.append('file',blob,`${cat}_admin_${Date.now()}.jpg`);fd.append('job_id',j.id);fd.append('category',cat);fd.append('token','admin-accounting');
+      const r=await fetch(ACCOUNTING_UPLOAD_ENDPOINT,{method:'POST',body:fd});
+      if(!r.ok)throw new Error('อัปโหลดรูปไม่สำเร็จ: '+(await r.text()).slice(0,200));
+      const up=await r.json().catch(()=>({}));const url=up.url||up.fileUrl||up.publicUrl||'';
+      if(!url)throw new Error('อัปโหลดสำเร็จแต่ไม่ได้รับลิงก์รูป');
+      const now=new Date().toISOString(),id=`${rid}:adm:${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}`;
+      const data={id,category:cat,label:REPORT_IMAGE_LABELS[cat]||cat,url,storage:'r2',uploadedAt:now,width:w,height:h,adminAdded:true,addedBy:who,name:f.name||''};
+      rows.push({id,report_id:rid,job_id:rep.job_id||j.id,category:cat,url,data,uploaded_at:now,updated_at:now});
+    }
+    rptAddStatus(cat,'กำลังบันทึก…');
+    const ir=await fetch(splitUrl('technician_report_images',''),{method:'POST',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify(rows)});
+    if(!ir.ok)throw new Error('บันทึกรูปลงรายงานไม่สำเร็จ: '+(await ir.text()).slice(0,200));
+    try{await writeAuditLog('admin_add_report_images','job',j.id,null,{category:cat,count:rows.length,urls:rows.map(x=>x.url)},null);}catch(e){}
+    await rptAdminRefresh(j.id);
+    rptAddStatus(cat,`เพิ่มแล้ว ${rows.length} รูป ✓`);
+  }catch(e){rptAddStatus(cat,'ไม่สำเร็จ',true);alert('เพิ่มรูปไม่สำเร็จ: '+(e.message||e));try{await rptAdminRefresh(j.id);}catch(x){}}
+}
+async function rptAdminDel(jobId,row){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const j=rptImgJob(jobId);if(!j)return;const im=rptImgFind(j,row);
+  if(!im||!im.adminAdded){alert('ลบได้เฉพาะรูปที่แอดมินเพิ่มเอง');return;}
+  if(!confirm('ลบรูปนี้ออกจากรายงานช่าง?'))return;
+  try{
+    const r=await fetch(splitUrl('technician_report_images',`?id=eq.${encodeURIComponent(row)}`),{method:'DELETE',headers:sbHeaders({'Prefer':'return=representation'})});
+    if(!r.ok)throw new Error(await r.text());
+    try{await writeAuditLog('admin_delete_report_image','job',j.id,{url:im.url,row},null,null);}catch(e){}
+    await rptAdminRefresh(j.id);
+  }catch(e){alert('ลบรูปไม่สำเร็จ: '+(e.message||e));}
+}
 // โหลดรูปที่ติ๊กไว้ทีเดียว: 1 รูป = ไฟล์เดียว · หลายรูป = ZIP (ชื่อไฟล์ PR_หมวด_ลำดับ)
 async function rptImgDownload(jobId){
   const j=rptImgJob(jobId);if(!j)return;
@@ -13720,7 +13812,8 @@ function openReportModal(id){
   document.getElementById('mrpt-note2').value=j.note2||tr.note||'';
   document.getElementById('mrpt-review-note').value=j.reviewNote||tr.reviewNote||'';
   try{mrptSetNoteColor(j.reviewNoteColor||tr.reviewNoteColor||'');}catch(e){}
-  document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+renderReportPM(j)+(reportImages(j).length||reportDocumentImages(j).length?renderReportImages(j):'<div class="text-box">กำลังโหลดรูปจากรายงานช่าง...</div>');
+  const ready0=[...reportImages(j),...reportDocumentImages(j)].length&&[...reportImages(j),...reportDocumentImages(j)].every(im=>im&&im._row);
+  document.getElementById('mrpt-images').innerHTML=renderReportRounds(j)+renderReportPM(j)+(ready0?renderReportImages(j):'<div class="text-box">กำลังโหลดรูปจากรายงานช่าง...</div>');
   ensureJobImages(id,0).then(()=>{
     if(document.getElementById('mrpt-jobid')?.value!==id)return;
     const jj=jobs.find(x=>x.id===id&&!isDeletedRecord(x))||j;
