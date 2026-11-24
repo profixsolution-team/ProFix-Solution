@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2358a6ff'/><text x='50' y='72' font-size='60' font-family='Arial' font-weight='bold' fill='%230d1117' text-anchor='middle'>P</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="photo-slots.js"></script>
+<script src="photo-slots.js?v=20261124"></script>
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--surface2:#1f2937;--surface3:#273344;--border:#30363d;--border2:#3d4754;--accent:#58a6ff;--accent-dim:#1a3a5c;--green:#3fb950;--green-dim:#1a3a1f;--yellow:#d29922;--yellow-dim:#3a2a0a;--red:#f85149;--red-dim:#3a0f0f;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--mono:"IBM Plex Mono",monospace;--sans:"Noto Sans Thai",sans-serif;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -1431,7 +1431,7 @@ let slotCur = { unit:'', phase:'', slot:'' };
 function slotOn(){ return !!slotState; }
 function slotTpl(u){ return SLOT_TPL[u&&u.tpl] || SLOT_TPL.repair_other; }
 function slotUnitLabel(u){ const t=slotTpl(u); const same=slotState.units.filter(x=>slotTpl(x).unit===t.unit); return u.name || `${t.unit}ตัวที่ ${same.indexOf(u)+1}`; }
-function slotSiteKeys(){ const s=new Set(); (slotState?.units||[]).forEach(u=>(slotTpl(u).site||[]).forEach(k=>s.add(k))); if(slotState?.pm) pmItems.forEach(it=>{ const t=SLOT_TPL[pmSlotTpl(it)]; (t?t.site:['front']).forEach(k=>s.add(k)); }); if(!s.size) s.add('front'); return ['front','back'].filter(k=>s.has(k)); }
+function slotSiteKeys(){ const s=new Set(); (slotState?.units||[]).forEach(u=>(slotTpl(u).site||[]).forEach(k=>s.add(k))); if(slotState?.pm) pmItems.forEach(it=>{ const t=SLOT_TPL[pmSlotTpl(it)]; (t?t.site:['front']).forEach(k=>s.add(k)); }); if(!s.size&&!(slotState?.pm&&pmItems.some(it=>SLOT_TPL[pmSlotTpl(it)]))) s.add('front'); return ['front','back'].filter(k=>s.has(k)); }
 function slotPhotosOf(id){ return ['before','during','after'].flatMap(c=>(photos[c]||[]).filter(p=>p.slot===id&&p.status!=='error')); }
 function slotDone(id){ return slotPhotosOf(id).length>0 || !!(slotState.na||{})[id]; }
 function slotPhasesFor(u){ const needQuote=document.getElementById('f-need-quote')?.checked; return slotTpl(u).phases.filter(p=>!needQuote||p.cat==='before'||p.k==='r'); }
@@ -1491,8 +1491,8 @@ function slotRender(){
     return `<button type="button" class="sl-unit" onclick="slotOpenUnit('${u.id}')"><span class="sl-uic">${t.ic}</span><span class="sl-um"><b>${esc(slotUnitLabel(u))}</b><small>${esc(t.l)}${u.loc?' · '+esc(u.loc):''}</small><small>${esc(ph)}</small><span class="sl-bar"><i style="width:${pct}%;background:${pct===100?'var(--green)':'var(--yellow)'}"></i></span></span><span class="sl-pill ${pct===100?'ok':done?'w':''}">${pct===100?'ครบ':`${done}/${req.length}`}</span></button>`; };
   el.innerHTML=`<div class="sec-title">📷 รูปแยกช่อง <span class="sl-test">ทดสอบ</span></div>
     <div class="sec-sub">กดช่องว่างเพื่อดูรูปตัวอย่างแล้วถ่าย · ระบบใส่วันเวลา/สาขาในรูปให้ · ${miss.length?`<b style="color:var(--yellow)">ยังขาด ${miss.length} ช่อง</b>`:'<b style="color:var(--green)">ครบทุกช่อง ✓</b>'}</div>
-    <div class="sl-h">🏪 รูปสาขา <small>ถ่ายครั้งเดียว ใช้กับทุกเครื่อง</small></div>
-    <div class="sl-grid">${site.map(k=>slotThumb('site.'+k)).join('')}</div>
+    ${site.length?`<div class="sl-h">🏪 รูปสาขา <small>ถ่ายครั้งเดียว ใช้กับทุกเครื่อง</small></div>
+    <div class="sl-grid">${site.map(k=>slotThumb('site.'+k)).join('')}</div>`:''}
     ${slotState.pm?'<div class="sl-empty" style="margin-top:10px">📋 รูปของแต่ละเครื่อง ถ่ายในหน้า "บันทึก PM รายเครื่อง" ด้านล่าง (กดที่เครื่อง → ส่วน 📸 รูปของเครื่องนี้)</div>':`<div class="sl-h" style="margin-top:14px">🔧 เครื่องในงานนี้ <small>${slotState.units.length} เครื่อง</small></div>
     ${slotState.units.map(unitRow).join('')||'<div class="sl-empty">ยังไม่มีเครื่อง — กด "＋ เพิ่มเครื่อง"</div>'}
     <button type="button" class="sl-add" onclick="slotAddUnitAsk()">＋ เพิ่มเครื่อง</button>`}`;
@@ -1679,7 +1679,7 @@ async function slotAddFiles(files){
   if(slotCur.slot===id && entries.every(e=>e.status==='ready')) slotPopClose();
 }
 // ---------- รูปแยกช่องในหน้า "บันทึก PM รายเครื่อง" (งาน PM ที่ผูกแผน) ----------
-// แต่ละเครื่อง (pmItems) ใช้แม่แบบตามชนิด: แอร์ → pm_air · ตู้แช่ → pm_fridge · ไส้กรอง → pm_filter · อื่น ๆ → รูปก่อน/หลังแบบเดิม
+// แต่ละเครื่อง (pmItems) ใช้แม่แบบตามชนิด: แอร์ → pm_air2 (แบบเดิม pm_air) · ตู้แช่ → pm_fridge2 (แบบเดิม pm_fridge) · ไส้กรอง → pm_filter · อื่น ๆ → รูปก่อน/หลังแบบเดิม
 // รูปเก็บใน it.photos.before/during/after (อัปโหลดทันทีเหมือนเดิม) + p.slot = "<ช่วง>.<ช่อง>" · N/A เก็บใน it.slot_na
 // รูปสาขา (หน้าร้าน/หลังร้าน) อยู่การ์ด "รูปแยกช่อง" ด้านบน ถ่ายครั้งเดียวต่องาน
 function slotPmOn(){ return !!pmCtx && (!!(jobData&&jobData.photoSlots&&jobData.photoSlots.on) || !slotLegacyJob()); } // ฟอร์ม PM เปิด = ช่องรูปรายเครื่องเปิด (pmInit/pmRender รันก่อน slotInit จึงไม่อิง slotState)
@@ -1689,7 +1689,12 @@ function slotLegacyJob(){
   const pmPh=!!(r.pm&&Array.isArray(r.pm.items)&&r.pm.items.some(it=>['before','during','after'].some(c=>(it.photos?.[c]||[]).length)));
   return (+r.imageCount>0) || (Array.isArray(r.images)&&r.images.length>0) || pmPh;
 }
-function pmSlotTpl(it){ if(!slotPmOn()||!it||!it.asset_type) return ''; const g=pmType(it.asset_type).g; return g==='air'?'pm_air':g==='fridge'?'pm_fridge':g==='filter'?'pm_filter':''; }
+function pmSlotTpl(it){ if(!slotPmOn()||!it||!it.asset_type) return ''; const g=pmType(it.asset_type).g; return g==='air'?pmSlotVer(it,'pm_air','pm_air2'):g==='fridge'?pmSlotVer(it,'pm_fridge','pm_fridge2'):g==='filter'?'pm_filter':''; }
+// แอร์/ตู้แช่แบบใหม่ (2026-11-24) = pm_air2 / pm_fridge2 · เครื่องที่ช่างถ่ายช่องที่มีเฉพาะแบบเดิมไว้แล้ว (เช่น b.ov1) → ใช้แบบเดิมต่อ รูปไม่หาย
+function pmSlotHas(T,key){ const [pk,sk]=String(key).split('.'); const p=T&&T.phases.find(x=>x.k===pk); return !!(p&&p.slots.some(x=>x.k===sk)); }
+function pmSlotVer(it,oldT,newT){ const O=SLOT_TPL[oldT],N=SLOT_TPL[newT]; if(!N) return oldT; if(!O) return newT;
+  const keys=[...['before','during','after'].flatMap(c=>(it.photos?.[c]||[]).map(p=>p&&p.slot).filter(Boolean)),...Object.keys(it.slot_na||{})];
+  return keys.some(k=>!pmSlotHas(N,k)&&pmSlotHas(O,k))?oldT:newT; }
 // ---------- อัปหลายรูปทีเดียว (2026-11-24 · ตาม mockups/pm-bulk-upload-v1.html) ----------
 // ช่างเลือกหลายรูปในหัวข้อที่เปิดอยู่ → เรียงตามเวลาถ่าย (EXIF/เวลาไฟล์ · ไม่มีเวลา = คงลำดับที่เลือก) → ใส่เฉพาะช่องที่ยังว่าง
 // → หน้า "ตรวจก่อนยืนยัน" (ชื่อช่อง+รูปตัวอย่าง | รูปของช่าง) แตะ 2 รูปสลับ · N/A เลื่อนรูปลงช่องถัดไป · เอาออก/รูปเกิน → ถาด
@@ -2521,11 +2526,31 @@ async function pmRpc(fn, body){
   if(!r.ok){ let m=t; try{ m=JSON.parse(t).message||t; }catch(e){} throw new Error(m); }
   return t ? JSON.parse(t) : null;
 }
+// ---------- PM ที่สั่งงานก่อนเปิดฟอร์มใหม่ (2026-11-24) ----------
+// งาน PM ที่ส่งให้ช่างก่อน 23 พ.ย. 2569 → ใช้ฟอร์มเดิม (รูปก่อน/ระหว่าง/หลัง) เหมือนตอนที่สั่งงาน
+// ยกเว้น: งานทดสอบ (photoSlots.on) · งานที่ช่างเริ่มกรอกฟอร์ม PM ใหม่ไปแล้ว (มี pm.items หรือ slots) → ใช้ฟอร์มใหม่ต่อ ข้อมูลไม่หาย
+const PM_NEW_FORM_FROM='2026-11-23';
+function jobSentDate(j){
+  const iso=v=>{ if(v==null||v==='') return '';
+    if(typeof v==='number'||/^\d{12,}$/.test(String(v))){ const d=new Date(+v); return isNaN(d)?'':new Date(d.getTime()+7*3600e3).toISOString().slice(0,10); }
+    const t=String(v).trim(); let m=/^(\d{4})-(\d{2})-(\d{2})/.exec(t); if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+    m=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/.exec(t); if(m){ let y=+m[3]; if(y>2400) y-=543; return `${y}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`; }
+    return ''; };
+  return iso(j&&j.assignedAt) || iso(j&&j.createdAt) || iso(j&&j.date);
+}
+function pmOldFormJob(){
+  if(!jobData) return false;
+  if(jobData.photoSlots&&jobData.photoSlots.on) return false;
+  const r=jobData.technicianReport;
+  if(r&&(r.slots||(r.pm&&Array.isArray(r.pm.items)&&r.pm.items.length))) return false;
+  const d=jobSentDate(jobData); return !!d && d<PM_NEW_FORM_FROM;
+}
 async function pmInit(){
   pmCtx=null;
   try{ pmCtx = await pmRpc('pm_tech_context', { p_job: (jobData&&jobData.id)||JOB_ID }); }
   catch(e){ console.warn('pm context', e); pmCtx=null; } // ยังไม่ได้รัน SQL / ไม่ใช่งาน PM → ฟอร์มปกติ
   if(!pmCtx || !pmCtx.visit) { pmCtx=null; return; }
+  if(pmOldFormJob()) { pmCtx=null; return; } // สั่งงานก่อน 23 พ.ย. → ฟอร์มเดิม
   const saved = jobData?.technicianReport?.pm;
   if(saved && saved.visit_id===pmCtx.visit.id) pmApplySnapshot(saved);
   const head=document.getElementById('j-id');

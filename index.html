@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/profix-icon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="photo-slots.js"></script>
+<script src="photo-slots.js?v=20261124"></script>
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--surface2:#1f2937;--surface3:#273344;--border:#30363d;--border2:#3d4754;--accent:#58a6ff;--accent-dim:#1a3a5c;--green:#3fb950;--green-dim:#1a3a1f;--yellow:#d29922;--yellow-dim:#3a2a0a;--red:#f85149;--red-dim:#3a0f0f;--purple:#bc8cff;--purple-dim:#2d1f4e;--orange:#f0883e;--orange-dim:#3a1e0a;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--mono:"IBM Plex Mono",monospace;--sans:"Noto Sans Thai",sans-serif;}
 body[data-theme="light"]{--bg:#f5f7fb;--surface:#ffffff;--surface2:#eef3f8;--surface3:#e3ebf4;--border:#d7e0ea;--border2:#bac8d8;--accent:#175fff;--accent-dim:#e7efff;--green:#138a3d;--green-dim:#e7f6ec;--yellow:#9a6700;--yellow-dim:#fff4d6;--red:#cf222e;--red-dim:#ffebe9;--purple:#8250df;--purple-dim:#f2eafd;--orange:#bc4c00;--orange-dim:#fff1e5;--text:#16202d;--text2:#536173;--text3:#7b8795;}
@@ -13606,8 +13606,8 @@ function slotJobModel(j){
   const by=new Map();reportImages(j).forEach(im=>{if(im&&im.slot&&im.url){if(!by.has(im.slot))by.set(im.slot,[]);by.get(im.slot).push(im);}});
   const na=S.na||{},units=S.units,quote=!!r.needQuote;let miss=0,total=0;
   const cell=(id,s)=>{const c={id,label:s.l,opt:!!s.opt,ims:by.get(id)||[],na:na[id]||''};if(!c.opt){total++;if(!c.ims.length&&!c.na)miss++;}return c;};
-  const siteKeys=[...new Set(units.flatMap(u=>slotTplOf(u).site||[]))];if(!siteKeys.length)siteKeys.push('front');
-  const out=[{key:'site',title:'🏪 รูปสาขา',phases:[{l:'ถ่ายครั้งเดียว ใช้ทุกเครื่อง',cells:['front','back'].filter(k=>siteKeys.includes(k)).map(k=>cell('site.'+k,SLOT_SITE[k]))}]}];
+  const siteKeys=[...new Set(units.flatMap(u=>slotTplOf(u).site||[]))];if(!siteKeys.length&&!units.length)siteKeys.push('front');
+  const out=siteKeys.length?[{key:'site',title:'🏪 รูปสาขา',phases:[{l:'ถ่ายครั้งเดียว ใช้ทุกเครื่อง',cells:['front','back'].filter(k=>siteKeys.includes(k)).map(k=>cell('site.'+k,SLOT_SITE[k]))}]}]:[];
   units.forEach(u=>{const t=slotTplOf(u);out.push({key:u.id,title:`${t.ic} ${slotUnitName(units,u)} · ${t.l}${u.loc?' · '+u.loc:''}`,unit:u,phases:t.phases.filter(p=>!quote||p.cat==='before'||p.k==='r').map(p=>({l:p.l,k:p.k,cells:p.slots.map(s=>cell(`${u.id}.${p.k}.${s.k}`,s))}))});});
   return {sections:out,miss,total,units};
 }
@@ -13623,8 +13623,8 @@ function rptSlotHtml(j){
 // ===== PDF รูปถ่ายแบบลูกค้า (2026-11-17) — หน้าตาตามไฟล์ตัวอย่าง "ตัวอย่าง เก็บรูปภาพ PM แอร์/ตู้แช่/ไส้กรอง.xlsx" =====
 // 1 หน้า A4 ต่อ 1 เครื่อง × 1 ช่วง · หัว ID / ประเภท / ชื่อไซต์ / ตัวที่ · ชื่อช่วง · ตาราง 3 คอลัมน์ (ชื่อช่องบน รูปล่าง)
 // รูปสาขา (หน้าร้าน/หลังร้าน) ใส่ซ้ำทุกหน้า · ไม่มีจุดนั้น/ไม่บังคับ = N/A · ช่องบังคับที่ขาด = ว่าง (ถามก่อน)
-const SLOT_PDF_HEAD={pm_air:['ประเภทแอร์','แอร์ตัวที่'],pm_fridge:['ประเภทตู้แช่','ตู้แช่ตัวที่'],pm_filter:['ประเภทเครื่องกรอง','เครื่องกรองตัวที่']};
-const SLOT_PDF_KIND={pm_air:'แอร์',pm_fridge:'ตู้แช่',pm_filter:'เครื่องกรองน้ำดื่ม'};
+const SLOT_PDF_HEAD={pm_air:['ประเภทแอร์','แอร์ตัวที่'],pm_air2:['ประเภทแอร์','แอร์ตัวที่'],pm_fridge:['ประเภทตู้แช่','ตู้แช่ตัวที่'],pm_fridge2:['ประเภทตู้แช่','ตู้แช่ตัวที่'],pm_filter:['ประเภทเครื่องกรอง','เครื่องกรองตัวที่']};
+const SLOT_PDF_KIND={pm_air:'แอร์',pm_air2:'แอร์',pm_fridge:'ตู้แช่',pm_fridge2:'ตู้แช่',pm_filter:'เครื่องกรองน้ำดื่ม'};
 const SLOT_PDF_CSS=`@page{size:A4 portrait;margin:9mm 9mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{margin:0;background:#e9edf3;font-family:Tahoma,'Noto Sans Thai',sans-serif;color:#000}
 .tb{position:sticky;top:0;z-index:5;background:#0b1220;color:#fff;padding:8px 14px;display:flex;align-items:center;gap:10px;font-size:13px}.tb span{flex:1}.tb button{border:0;border-radius:6px;padding:7px 14px;font-family:inherit;cursor:pointer}.tb .p{background:#175fff;color:#fff}
@@ -13645,7 +13645,7 @@ function slotPdfHtml(j,M,title){
     const u=sec.unit,t=slotTplOf(u),H=SLOT_PDF_HEAD[u.tpl]||['ประเภท','เครื่องตัวที่'];
     const no=units.filter(x=>slotTplOf(x).unit===t.unit).indexOf(u)+1;
     sec.phases.forEach(ph=>{
-      const cells=[...(t.site||['front']).map(siteCell).filter(Boolean),...ph.cells];
+      const cells=[...(t.siteOn&&!t.siteOn.includes(ph.k)?[]:(t.site||['front'])).map(siteCell).filter(Boolean),...ph.cells];
       pages.push(`<section class="pg"><table class="hd"><tr><td>ID: ${esc(j.id)}</td><td class="r">${esc(H[0])}: ${esc(u.kind||u.name||SLOT_PDF_KIND[u.tpl]||t.l)}</td></tr><tr><td>ชื่อไซต์: ${esc(j.branch||'')}</td><td class="r">${esc(H[1])}: ${no}${u.loc?` <span style="font-weight:400;font-size:9pt">(${esc(u.loc)})</span>`:''}</td></tr></table>
         <h2>${esc(ph.l)}</h2><div class="gr">${cells.map(c=>`<div class="c"><div class="lb">${esc(c.label)}</div><div class="im">${c.ims.length?`<img src="${esc(c.ims[0].url)}" alt="">`:(c.na||c.opt)?'N/A':''}</div></div>`).join('')}</div></section>`);
     });
@@ -13654,13 +13654,13 @@ function slotPdfHtml(j,M,title){
 }
 function slotPrintPdf(jobId){
   const j=jobs.find(x=>sameJob(x.id,jobId)&&!isDeletedRecord(x));const M=j&&slotJobModel(j);
-  if(!M||M.sections.length<2){alert('งานนี้ยังไม่มีรูปแยกช่องจากช่าง');return;}
+  if(!M||!M.sections.some(x=>x.key!=='site')){alert('งานนี้ยังไม่มีรูปแยกช่องจากช่าง');return;}
   if(M.miss&&!confirm(`ยังขาดรูป ${M.miss} ช่อง — ช่องที่ขาดจะเว้นว่างใน PDF\nเปิดหน้าพิมพ์ต่อไหม?`))return;
   const title=(typeof bundleJobName==='function'?bundleJobName({pr:j.id,branch:j.branch,client:j.client}):j.id)+' - รูปถ่าย PM';
   const w=window.open('','_blank');if(!w){alert('Browser บล็อก popup อยู่ กรุณาอนุญาต popup แล้วลองใหม่');return;}
   w.document.open();w.document.write(slotPdfHtml(j,M,title));w.document.close();
 }
-function slotGuessTpl(j){const t=String((j&&j.type)||'')+' '+String((j&&j.note)||'');if(/กรอง/.test(t))return 'pm_filter';if(/ตู้/.test(t))return 'pm_fridge';return 'pm_air';}
+function slotGuessTpl(j){const t=String((j&&j.type)||'')+' '+String((j&&j.note)||'');if(/กรอง/.test(t))return 'pm_filter';if(/ตู้/.test(t))return 'pm_fridge2';return 'pm_air2';}
 async function slotToggleJob(id){
   if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   const on=!(j.photoSlots&&j.photoSlots.on);
@@ -18143,8 +18143,43 @@ function pmOpenAsset(id){
     <div class="pm-ahead"><div><div class="pm-qrbox" id="pm-qrbox"></div>${a.label_photo_url?`<a class="pm-lbl" href="${esc(a.label_photo_url)}" target="_blank" rel="noopener" title="รูปฉลากเครื่อง"><img src="${esc(a.label_photo_url)}" alt="ฉลาก"><span>ฉลากเครื่อง</span></a>`:''}</div><div style="flex:1;min-width:0"><div class="pm-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${esc(v)}</b></div>`).join('')}</div>${a.note?`<div class="tm" style="margin-top:8px">${esc(a.note)}</div>`:''}</div></div>
     <div class="pm-sec"><div class="pm-sech"><b>ประวัติเครื่อง</b><span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="pmAddLog('${esc(id)}')">＋ เพิ่มบันทึก</button></div>${feed}</div>
     ${jobsHere.length?`<div class="pm-sec"><div class="pm-sech"><b>งานล่าสุดที่สาขานี้</b><span class="tm" style="font-size:12px">(จากคิวช่าง)</span></div>${jobsHere.map(j=>`<div class="pm-ev"><span class="d2-evdot" style="background:${pfStatusColor(j.status)}"></span><div><button type="button" class="link-btn" onclick="closeM('m-pm');openDet('${esc(j.id).replace(/'/g,'&#39;')}')">${esc(j.id)}</button> <span class="tm">· ${esc(j.type||'')} · ${esc(j.date?jqThDate(j.date):'')} · ${esc(j.status||'')}</span></div></div>`).join('')}</div>`:''}`,
-    `<button class="btn btn-ghost" onclick="pmPrintStickers(['${esc(id)}'])">🖨 พิมพ์ QR</button><button class="btn btn-ghost" onclick="pmEditAsset('${esc(id)}')">✏️ แก้ไขข้อมูล</button><button class="btn btn-primary" onclick="closeM('m-pm')">ปิด</button>`,true);
+    `<button class="btn btn-ghost" style="color:var(--red);margin-right:auto" onclick="pmDeleteAsset('${esc(id)}')">🗑 ลบเครื่อง</button><button class="btn btn-ghost" onclick="pmPrintStickers(['${esc(id)}'])">🖨 พิมพ์ QR</button><button class="btn btn-ghost" onclick="pmEditAsset('${esc(id)}')">✏️ แก้ไขข้อมูล</button><button class="btn btn-primary" onclick="closeM('m-pm')">ปิด</button>`,true);
   pmQrSvg(PM_QR_BASE+encodeURIComponent(pmCode(a)),132).then(svg=>{const b=document.getElementById('pm-qrbox');if(b)b.innerHTML=svg+`<div class="mono" style="font-weight:700;margin-top:4px">${esc(pmCode(a))}</div>${a.qr_code?'':'<div class="tm" style="font-size:11px">ยังไม่ติดสติกเกอร์</div>'}`;}).catch(()=>{});
+}
+// ลบเครื่องออกจากทะเบียน (2026-11-24) · ไม่มีประวัติ = ลบเลย · มีประวัติ/อยู่ในรายงาน PR = ให้เลือก "เลิกใช้" (เก็บประวัติ) หรือ ลบถาวร
+// ลบถาวร → pm_asset_logs ของเครื่องนี้หายด้วย (FK on delete cascade) · รายงานใน PR เดิมยังอยู่ แต่ลิงก์ไปหน้าเครื่องไม่ได้แล้ว
+function pmAssetJobRefs(id){return (typeof jobs!=='undefined'?jobs:[]).filter(j=>{const p=j&&j.technicianReport&&j.technicianReport.pm;return p&&Array.isArray(p.items)&&p.items.some(it=>it&&it.asset_id===id);}).map(j=>j.id);}
+function pmDeleteAsset(id){
+  const a=pm.assets.find(x=>x.id===id);if(!a)return;
+  const nLog=pm.logs.filter(l=>l.asset_id===id&&l.kind!=='bind_qr').length,refs=pmAssetJobRefs(id),code=esc(pmCode(a)),eid=esc(id);
+  const warnTech=`<div class="tm" style="font-size:12px;margin-top:6px">⚠️ ถ้าช่างกำลังเปิดฟอร์ม PM ของสาขานี้ค้างไว้ (ยังไม่กดส่ง) ให้ช่างเอาเครื่องนี้ออกจากรายงานก่อนส่ง ไม่งั้นส่งไม่ผ่าน</div>`;
+  if(!nLog&&!refs.length){
+    pmModal('ลบเครื่อง '+pmCode(a),`${a.asset_type} ${a.brand||''} · ${a.client} · ${a.branch}`,`<div>เครื่องนี้ยังไม่มีประวัติ PM/ซ่อม และไม่อยู่ในรายงาน PR ไหน — ลบออกจากทะเบียนได้เลย${a.qr_code?`<br><span class="tm">สติกเกอร์ ${code} จะว่าง ใช้ผูกกับเครื่องอื่นได้</span>`:''}</div>${warnTech}`,
+      `<button class="btn btn-ghost" onclick="pmOpenAsset('${eid}')">ยกเลิก</button><button class="btn btn-primary" style="background:var(--red);border-color:var(--red)" onclick="pmDeleteAssetSave('${eid}','delete')">🗑 ลบเครื่อง</button>`);
+    return;
+  }
+  pmModal('ลบเครื่อง '+pmCode(a),`${a.asset_type} ${a.brand||''} · ${a.client} · ${a.branch}`,`
+    <div class="tm" style="margin-bottom:10px">เครื่องนี้มีประวัติ ${nLog} รายการ${refs.length?` · อยู่ในรายงาน PR ${refs.length} งาน (${refs.slice(0,5).map(esc).join(', ')}${refs.length>5?' …':''})`:''}</div>
+    <div class="pm-delopt"><b>ตั้งเป็น "เลิกใช้ / ถอดออกแล้ว" (แนะนำ)</b><div class="tm">เครื่องหายจากแผน PM / ฟอร์มช่าง / พิมพ์ QR แต่ประวัติยังอยู่ ดูย้อนหลังได้ · เปลี่ยนกลับเป็นใช้งานได้</div>${a.status==='retired'?'<span class="tm">— ตอนนี้เป็นเลิกใช้อยู่แล้ว</span>':`<button class="btn btn-ghost btn-sm" onclick="pmDeleteAssetSave('${eid}','retire')">ตั้งเป็นเลิกใช้</button>`}</div>
+    <div class="pm-delopt"><b>ลบถาวร</b><div class="tm">ลบเครื่องพร้อมประวัติ ${nLog} รายการทิ้ง (กู้คืนไม่ได้) · เหมาะกับเครื่องที่ใส่ซ้ำ/ใส่ผิด${refs.length?' · รายงานใน PR เดิมยังอยู่ แต่กดไปหน้าเครื่องไม่ได้แล้ว':''}${a.qr_code?` · สติกเกอร์ ${code} จะว่าง`:''}</div><button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="pmDeleteAssetSave('${eid}','delete')">🗑 ลบถาวร</button></div>${warnTech}`,
+    `<button class="btn btn-ghost" onclick="pmOpenAsset('${eid}')">ยกเลิก</button>`);
+}
+async function pmDeleteAssetSave(id,mode){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const a=pm.assets.find(x=>x.id===id);if(!a)return;
+  try{
+    if(mode==='retire'){
+      const [saved]=await pmPatch('pm_assets',id,{status:'retired',updated_at:new Date().toISOString(),updated_by:getActorName()});
+      const i=pm.assets.findIndex(x=>x.id===id);if(i>=0)pm.assets[i]=saved||{...pm.assets[i],status:'retired'};
+      closeM('m-pm');renderPM();pmOpenAsset(id);return;
+    }
+    const nLog=pm.logs.filter(l=>l.asset_id===id&&l.kind!=='bind_qr').length;
+    if(nLog&&!confirm(`ยืนยันลบ ${pmCode(a)} พร้อมประวัติ ${nLog} รายการ?\nกู้คืนไม่ได้`))return;
+    await pmReq('pm_assets',`?id=eq.${encodeURIComponent(id)}`,{method:'DELETE',prefer:'return=minimal'});
+    pm.assets=pm.assets.filter(x=>x.id!==id);pm.logs=pm.logs.filter(l=>l.asset_id!==id);pmQrPick.delete(id);
+    closeM('m-pm');renderPM();
+    pmToast('ลบเครื่อง '+pmCode(a)+' แล้ว');
+  }catch(e){pmErr(e);}
 }
 function pmAddLog(assetId){
   pmModal('เพิ่มบันทึกเครื่อง '+assetId,'',`

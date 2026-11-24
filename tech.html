@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="photo-slots.js"></script>
+<script src="photo-slots.js?v=20261124"></script>
 <style>
 /* ===== งานของฉัน v5 (2026-11-17) — แบบแอป · ป้ายสถานะสีทึบ · ไอคอนเส้น ===== */
 :root{--brand:#175FFF;--brand2:#4F86FF;--ink:#0f172a;--ink2:#5b6476;--ink3:#9aa3b2;--line:#edf0f5;--bg:#f5f7fb;--card:#fff;
@@ -1205,7 +1205,7 @@ function revSlotStat(slots,keys,needQuote){
   const have=new Set(keys||[]),na=slots.na||{},site=new Set(),req=[];
   slots.units.forEach(u=>{const t=SLOT_TPL[u.tpl];if(!t)return;(t.site||['front']).forEach(k=>site.add(k));
     t.phases.filter(p=>!needQuote||p.cat==='before'||p.k==='r').forEach(p=>p.slots.forEach(sl=>{if(!sl.opt)req.push({id:`${u.id}.${p.k}.${sl.k}`,l:sl.l,unit:u.kind||t.unit||''});}));});
-  if(slots.units.length&&!site.size)site.add('front');
+  if(slots.units.length&&!site.size&&!slots.units.some(u=>SLOT_TPL[u.tpl]))site.add('front');
   site.forEach(k=>req.unshift({id:'site.'+k,l:(SLOT_SITE[k]||{}).l||k,unit:'รูปสาขา'}));
   if(!req.length)return null;
   const miss=req.filter(x=>!have.has(x.id)&&!na[x.id]);
