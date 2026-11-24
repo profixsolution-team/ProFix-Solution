@@ -5987,6 +5987,11 @@ function techTeamOptions(){
   liveJobs().forEach(j=>{const n=String(j.team||'').trim();if(!n)return;const k=techTeamKey(n);if(!m.has(k))m.set(k,{name:n,open:0});if(j.status!=='ปิดงาน')m.get(k).open++;});
   return [...m.values()].sort((a,b)=>a.name.localeCompare(b.name,'th'));
 }
+function techTeamsWithoutLeader(){
+  const m=new Map();
+  (technicians||[]).filter(t=>t.status==='active'&&!(t.is_admin&&!t.is_leader)).forEach(t=>(t.team_names||[]).forEach(n=>{const k=techTeamKey(n);if(!k)return;const x=m.get(k)||{name:n,n:0,lead:0};x.n++;if(t.is_leader)x.lead++;m.set(k,x);}));
+  return [...m.values()].filter(x=>x.n>=2&&!x.lead).sort((a,b)=>a.name.localeCompare(b.name,'th',{numeric:true}));
+}
 async function renderTechnicians(reload){
   const box=document.getElementById('tech-list');if(!box)return;
   const u=document.getElementById('tech-liff-url');if(u)u.value=TECH_LIFF_URL;
@@ -5996,7 +6001,9 @@ async function renderTechnicians(reload){
   const opts=techTeamOptions();
   const order={pending:0,active:1,disabled:2};
   const list=[...technicians].sort((a,b)=>(order[a.status]??3)-(order[b.status]??3));
-  box.innerHTML=list.map(t=>{
+  // ทีมที่มีช่าง (ใช้งาน) ≥2 คนแต่ยังไม่มีหัวหน้า → ไม่มีใครเห็นใบสำคัญรับเงิน/50 ทวิ ใน LINE (กติกาฝั่ง tech-portal 2026-11-24)
+  const noLead=techTeamsWithoutLeader();
+  box.innerHTML=(noLead.length?`<div class="table-wrap" style="padding:12px 14px;margin-bottom:12px;border-color:var(--yellow);background:var(--yellow-dim,#fff6e0);font-size:13px;">⚠️ <b>ทีมที่ยังไม่มีหัวหน้า ${noLead.length} ทีม</b> — ช่างในทีมเหล่านี้ยังดูใบสำคัญรับเงิน / 50 ทวิ ใน LINE ไม่ได้ จนกว่าจะติ๊ก "หัวหน้าทีม" ให้อย่างน้อย 1 คน<div style="margin-top:4px;">${noLead.map(x=>`<span class="chip" style="margin:2px 4px 2px 0;">${esc(x.name)} · ${x.n} คน</span>`).join('')}</div></div>`:'')+list.map(t=>{
     const sel=new Set((t.team_names||[]).map(techTeamKey));
     const stCls=t.status==='active'?'b-paid':t.status==='pending'?'b-unpaid':'b-closed';
     const stLbl=t.status==='active'?'ใช้งาน':t.status==='pending'?'รออนุมัติ':'ระงับ';
@@ -6011,7 +6018,7 @@ async function renderTechnicians(reload){
       <div class="form-row" style="margin-top:10px;"><div class="form-group"><label>ชื่อที่แสดง</label><input id="tn-${esc(t.id)}" value="${esc(t.display_name||'')}"></div><div class="form-group"><label>เบอร์โทร</label><input id="tp-${esc(t.id)}" value="${esc(t.phone||'')}"></div><div class="form-group"><label>สถานะ</label><select id="ts-${esc(t.id)}"><option value="active"${t.status==='active'?' selected':''}>ใช้งาน (อนุมัติ)</option><option value="pending"${t.status==='pending'?' selected':''}>รออนุมัติ</option><option value="disabled"${t.status==='disabled'?' selected':''}>ระงับ</option></select></div></div>
       <div style="font-size:12px;color:var(--text2);margin:4px 0;">ทีมที่ช่างคนนี้ดูงานได้ <span class="tm">(เลือกได้หลายทีม · ชื่อที่ต่างกันแค่เว้นวรรค/ขีด เช่น "ทีม3 - ทรงกลด" กับ "ทีม3 ทรงกลด" ระบบนับเป็นทีมเดียวกันให้แล้ว · ตัวเลขในวงเล็บ = งานที่ยังไม่ปิด)</span></div>
       <div style="max-height:150px;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:6px 10px;">${teamBoxes||'<span class="tm">ยังไม่มีชื่อทีม</span>'}</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;"><label style="display:inline-flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap;"><input type="checkbox" style="width:auto;" id="tl-${esc(t.id)}"${t.is_leader?' checked':''}> หัวหน้าทีม (รับแจ้งเตือนเฟส 2)</label>${'is_admin' in t?`<label style="display:inline-flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap;" title="เปิดลิงก์ LINE งานของฉัน แล้วเห็นงานทุกทีม · เลื่อนนัด / ย้ายทีมได้ · ไม่เห็นราคา"><input type="checkbox" style="width:auto;" id="ta-${esc(t.id)}"${t.is_admin?' checked':''}> แอดมิน (ดูงานทุกทีมใน LINE)</label>`:''}<span style="flex:1;"></span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;"><label style="display:inline-flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap;"><input type="checkbox" style="width:auto;" id="tl-${esc(t.id)}"${t.is_leader?' checked':''}> 👑 หัวหน้าทีม <span class="tm">(ดูใบสำคัญรับเงิน / 50 ทวิ ใน LINE + รับแจ้งเตือนงานของทีม)</span></label>${'is_admin' in t?`<label style="display:inline-flex;gap:6px;align-items:center;font-size:12px;white-space:nowrap;" title="เปิดลิงก์ LINE งานของฉัน แล้วเห็นงานทุกทีม · เลื่อนนัด / ย้ายทีมได้ · ไม่เห็นราคา"><input type="checkbox" style="width:auto;" id="ta-${esc(t.id)}"${t.is_admin?' checked':''}> แอดมิน (ดูงานทุกทีมใน LINE)</label>`:''}<span style="flex:1;"></span>
         ${t.status==='pending'?`<button class="btn btn-success btn-sm" onclick="saveTechnician('${esc(t.id)}','active')">✓ อนุมัติ</button>`:''}
         <button class="btn btn-primary btn-sm" onclick="saveTechnician('${esc(t.id)}')">บันทึก</button>
         <button class="btn btn-ghost btn-sm" style="color:var(--red);" onclick="deleteTechnician('${esc(t.id)}')">ลบ</button></div>

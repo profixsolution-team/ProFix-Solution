@@ -167,6 +167,8 @@ label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 .mrow .ic{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}.mrow .ic svg.i{width:22px;height:22px}
 .mrow .v{flex:1;min-width:0}.mrow .v b{display:block;font-size:16px}.mrow .v small{display:block;font-size:13px;color:var(--ink2);margin-top:1px}
 .mrow .chev{color:var(--ink3);display:flex}.mrow .chev svg.i{width:18px;height:18px}
+.mrow.lk .ic,.mrow.lk .v b{opacity:.5}
+.lkp .ld{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:14px;padding:10px 12px;margin-top:10px}.lkp .ld .v{flex:1;min-width:0}.lkp .ld small{display:block;font-size:12px;color:var(--ink2)}
 .mnote{font-size:12.5px;color:var(--ink3);text-align:center;margin:14px 6px 0;line-height:1.5}
 .miss{color:var(--late);font-weight:600}
 .pcard{display:block;width:100%;text-align:left;font:inherit;color:inherit;border:0;background:#fff;border-radius:18px;padding:14px 15px;margin-bottom:10px;box-shadow:0 2px 10px rgba(15,23,42,.04);cursor:pointer}
@@ -340,7 +342,7 @@ label{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px}
 <symbol id="img" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
 <symbol id="srch" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
 <symbol id="back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
-<symbol id="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol><symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
 <symbol id="snow" viewBox="0 0 24 24"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/></symbol>
 <symbol id="box" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M5 10h14M9 6.5v1M9 13v3"/></symbol>
 <symbol id="play" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></symbol>
@@ -897,7 +899,8 @@ function viewMe(){
   const y=String(todayISO()).slice(0,4),yWht=list.filter(p=>String(p.paid_at||'').slice(0,4)===y).reduce((s,p)=>s+Number(p.wht_amount||0),0);
   const sub=k=>!PAY?'กำลังโหลด...':P.error?'โหลดไม่สำเร็จ — แตะเพื่อลองใหม่':!P.canPay?'ดูได้เฉพาะหัวหน้าทีม':!list.length?'ยังไม่มีเอกสาร'
     :k==='v'?`${list.length} ใบ · ล่าสุด ${tpThaiDate(String(last.paid_at||'').slice(0,10))}`:`ปี ${+y+543} ถูกหักแล้ว ${baht(yWht)}`;
-  const row=(k,ic,c,t,s)=>`<button class="mrow" onclick="openMe('${k}')"><span class="ic ${c}">${I(ic)}</span><span class="v"><b>${t}</b><small>${s}</small></span><span class="chev">${I('chev')}</span></button>`;
+  const lk=k=>PAY&&!P.error&&!P.canPay&&k!=='profile';
+  const row=(k,ic,c,t,s)=>`<button class="mrow${lk(k)?' lk':''}" onclick="openMe('${k}')"><span class="ic ${c}">${I(ic)}</span><span class="v"><b>${t}</b><small>${s}</small></span><span class="chev">${I(lk(k)?'lock':'chev')}</span></button>`;
   return `<div class="tbar"><b>ฉัน</b></div>
     <div class="prof">${avHtml()}<div><b>${esc(me.display_name||lineProfile.name||'ช่าง')}</b><span>${esc((me.team_names||[]).join(' · ')||'ยังไม่ได้ผูกทีม')}${me.is_leader?' · หัวหน้าทีม':''}</span></div></div>
     <div class="mlist">${row('profile','idc','c1','ข้อมูลส่วนตัว','ชื่อ เบอร์โทร ทีม บัญชีรับเงิน')}${row('vouchers','cash','c3','ใบสำคัญรับเงิน',sub('v'))}${row('tawi','pct','c4','ใบ 50 ทวิ',sub('t'))}</div>
@@ -917,9 +920,17 @@ function meSub(k){
   let body='';
   if(P.error)body=`<div class="panel"><h2>โหลดไม่สำเร็จ</h2><p>${esc(P.error)}</p><button class="b ghost" onclick="PAY=null;meSub('${k}');loadPay()">ลองใหม่</button></div>`;
   else if(k==='profile')body=meProfile(P);
-  else if(!P.canPay)body=`<div class="panel"><h2>ดูได้เฉพาะหัวหน้าทีม</h2><p>ใบสำคัญรับเงินและ 50 ทวิ ออกในชื่อผู้รับเงินของทีม (หัวหน้าทีม) — ขอสำเนาจากหัวหน้าทีม หรือติดต่อแอดมิน</p></div>`;
+  else if(!P.canPay)body=lockedPanel(P);
   else body=k==='vouchers'?meVouchers(P):meTawi(P);
   $('detail').innerHTML=head+`<div class="d-body">${body}</div>`;
+}
+// สมาชิก (ไม่ใช่หัวหน้า) — บอกชื่อ/เบอร์หัวหน้าให้ขอสำเนา · ทีมหลายคนที่ยังไม่ตั้งหัวหน้า = ไม่มีใครเห็นจนกว่าแอดมินตั้ง
+function lockedPanel(P){
+  const L=P.locked||[],multi=L.length>1;
+  const rows=L.map(x=>{const ls=(x.leaders||[]);
+    return ls.length?ls.map(l=>`<div class="ld"><span class="v"><b>${esc(l.name||'หัวหน้าทีม')}</b><small>หัวหน้า${multi?' · '+esc(x.team):'ทีม'}</small></span>${l.phone?`<a class="b ghost" style="flex:0 0 auto;width:auto;padding:8px 12px" href="${telHref(l.phone)}">${I('phone')}โทร</a>`:''}</div>`).join('')
+      :`<div class="ld"><span class="v"><b>${multi?esc(x.team)+' — ':''}ยังไม่ได้ตั้งหัวหน้าทีม</b><small>แจ้งแอดมินให้ตั้งหัวหน้าทีมในระบบก่อน</small></span></div>`;}).join('');
+  return `<div class="panel lkp"><h2>${I('lock')} ดูได้เฉพาะหัวหน้าทีม</h2><p>ใบสำคัญรับเงินและ 50 ทวิ ออกในชื่อผู้รับเงินของทีม — ขอสำเนาจากหัวหน้าทีม</p>${rows}</div>`;
 }
 function meProfile(P){
   const pr=P.profile||{},ir=(ic,c,lab,val)=>`<div class="ir"><div class="ic ${c}">${I(ic)}</div><div class="v"><small>${lab}</small><div>${val||'<span class="miss">ยังไม่มีข้อมูล</span>'}</div></div></div>`;
@@ -1716,12 +1727,12 @@ function demoAdminApi(action,extra){
 function demoApi(action,extra){
   if(new URLSearchParams(location.search).get('demo')==='admin'&&(action==='me'||action.startsWith('admin')))return demoAdminApi(action,extra);
   const t=todayISO();
-  const tech={id:'TECH-demo',display_name:'ช่างอำนวย',status:'active',team_names:['ทีม1 - อำนวย'],is_leader:true};
+  const tech={id:'TECH-demo',display_name:'ช่างอำนวย',status:'active',team_names:['ทีม1 - อำนวย'],is_leader:new URLSearchParams(location.search).get('demo')!=='member'};
   if(action==='me')return Promise.resolve({ok:true,line:{name:'Amnuay',picture:''},tech:new URLSearchParams(location.search).get('demo')==='new'?null:tech});
   if(action==='register')return Promise.resolve({ok:true,tech:{...tech,status:'pending',requested_team:extra.team,display_name:extra.displayName}});
   if(action==='pay'){const it=(a,b,c,d,e)=>({id:a,branch:b,type:c,done:d,amount:e});
     const P=(id,no,pk,paid,items,adj)=>{const g=items.reduce((s,x)=>s+x.amount,0),w=Math.round(g*3)/100;return {id,doc_no:no,team:'ทีม1 - อำนวย',period_key:pk,payee_name:'นายอำนวย ใจดี',payee_tax_id:'1100700123456',payee_address:'99/1 ม.3 ต.คลองหนึ่ง อ.คลองหลวง จ.ปทุมธานี 12120',payee_bank:'กสิกรไทย 123-4-56789-0',payer_company:'profix',gross:g,wht_rate:3,wht_amount:w,adjust_amount:adj||0,adjust_note:adj?'ค่าน้ำมันเพิ่ม':'',net:g-w+(adj||0),paid_at:paid,transfer_ref:'',items};};
-    return Promise.resolve({ok:true,canPay:new URLSearchParams(location.search).get('demo')!=='member',profile:{display_name:'ช่างอำนวย',line_name:'Amnuay',phone:'081-234-5678',team_names:['ทีม1 - อำนวย'],is_leader:true},
+    return Promise.resolve({ok:true,canPay:new URLSearchParams(location.search).get('demo')!=='member',locked:new URLSearchParams(location.search).get('demo')==='member'?[{team:'ทีม1 - อำนวย',leaders:[{name:'ช่างอำนวย',phone:'081-234-5678'}]}]:[],profile:{display_name:'ช่างอำนวย',line_name:'Amnuay',phone:'081-234-5678',team_names:['ทีม1 - อำนวย'],is_leader:true},
       payees:[{team:'ทีม1 - อำนวย',payee_name:'นายอำนวย ใจดี',tax_id:'1100700123456',address:'99/1 ม.3 ต.คลองหนึ่ง อ.คลองหลวง จ.ปทุมธานี 12120',bank:'กสิกรไทย 123-4-56789-0'}],
       payouts:[P('TPAY-d3','PV202611-004','2026-11-1','2026-11-16',[it('PR434340','Pun Thai ชลบุรี7','PM แอร์ และ ตู้แช่','2026-11-03',1200),it('PR434341','Pun Thai ถ.เลี่ยงเมืองชลบุรี3','PM แอร์ และ ตู้แช่','2026-11-05',1200),it('PR431279','Pun Thai บางพระ1','ซ่อมตู้แช่','2026-11-12',2500)],300),
         P('TPAY-d2','PV202610-007','2026-10-2','2026-11-01',[it('PR432069','Pun Thai บางคล้า3','PM แอร์ และ ตู้แช่','2026-10-18',1200),it('PR432070','Pun Thai บางคล้า4','PM แอร์ และ ตู้แช่','2026-10-20',1200)]),
