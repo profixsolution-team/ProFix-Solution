@@ -2529,28 +2529,21 @@ async function pmRpc(fn, body){
 // ---------- PM ที่สั่งงานก่อนเปิดฟอร์มใหม่ (2026-11-24) ----------
 // งาน PM ที่ส่งให้ช่างก่อน 23 พ.ย. 2569 → ใช้ฟอร์มเดิม (รูปก่อน/ระหว่าง/หลัง) เหมือนตอนที่สั่งงาน
 // ยกเว้น: งานทดสอบ (photoSlots.on) · งานที่ช่างเริ่มกรอกฟอร์ม PM ใหม่ไปแล้ว (มี pm.items หรือ slots) → ใช้ฟอร์มใหม่ต่อ ข้อมูลไม่หาย
-const PM_NEW_FORM_FROM='2026-11-23';
-function jobSentDate(j){
-  const iso=v=>{ if(v==null||v==='') return '';
-    if(typeof v==='number'||/^\d{12,}$/.test(String(v))){ const d=new Date(+v); return isNaN(d)?'':new Date(d.getTime()+7*3600e3).toISOString().slice(0,10); }
-    const t=String(v).trim(); let m=/^(\d{4})-(\d{2})-(\d{2})/.exec(t); if(m) return `${m[1]}-${m[2]}-${m[3]}`;
-    m=/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/.exec(t); if(m){ let y=+m[3]; if(y>2400) y-=543; return `${y}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`; }
-    return ''; };
-  return iso(j&&j.assignedAt) || iso(j&&j.createdAt) || iso(j&&j.date);
-}
+// งาน PM ที่แอดมินตั้ง "ใช้ฟอร์มเดิม" ในคอนโซล (jobs.data.pmOldForm, 2026-11-24 — แทนกฎตัดตามวันที่) → ฟอร์มเดิม
+// ยกเว้น งานทดสอบรูปแยกช่อง และงานที่ช่างเริ่มบันทึกในฟอร์ม PM ใหม่ไปแล้ว (ไม่ซ่อนข้อมูลที่ช่างกรอก)
 function pmOldFormJob(){
-  if(!jobData) return false;
+  if(!jobData||!jobData.pmOldForm) return false;
   if(jobData.photoSlots&&jobData.photoSlots.on) return false;
   const r=jobData.technicianReport;
   if(r&&(r.slots||(r.pm&&Array.isArray(r.pm.items)&&r.pm.items.length))) return false;
-  const d=jobSentDate(jobData); return !!d && d<PM_NEW_FORM_FROM;
+  return true;
 }
 async function pmInit(){
   pmCtx=null;
   try{ pmCtx = await pmRpc('pm_tech_context', { p_job: (jobData&&jobData.id)||JOB_ID }); }
   catch(e){ console.warn('pm context', e); pmCtx=null; } // ยังไม่ได้รัน SQL / ไม่ใช่งาน PM → ฟอร์มปกติ
   if(!pmCtx || !pmCtx.visit) { pmCtx=null; return; }
-  if(pmOldFormJob()) { pmCtx=null; return; } // สั่งงานก่อน 23 พ.ย. → ฟอร์มเดิม
+  if(pmOldFormJob()) { pmCtx=null; return; } // แอดมินตั้งให้งานนี้ใช้ฟอร์มเดิม
   const saved = jobData?.technicianReport?.pm;
   if(saved && saved.visit_id===pmCtx.visit.id) pmApplySnapshot(saved);
   const head=document.getElementById('j-id');

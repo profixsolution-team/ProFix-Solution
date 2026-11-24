@@ -13661,6 +13661,19 @@ function slotPrintPdf(jobId){
   w.document.open();w.document.write(slotPdfHtml(j,M,title));w.document.close();
 }
 function slotGuessTpl(j){const t=String((j&&j.type)||'')+' '+String((j&&j.note)||'');if(/กรอง/.test(t))return 'pm_filter';if(/ตู้/.test(t))return 'pm_fridge2';return 'pm_air2';}
+// ฟอร์มช่าง PM รายงาน (2026-11-24): ปกติงาน PM ใช้ฟอร์ม PM ใหม่ · แอดมินตั้ง "ใช้ฟอร์มเดิม" ให้บางงานได้ (jobs.data.pmOldForm)
+// technician-submit อ่าน pmOldForm → ฟอร์มเดิม (ยกเว้นงานที่ช่างเริ่มบันทึกฟอร์ม PM ใหม่ไปแล้ว)
+function pmJobIsPM(j){return !!j&&((typeof pmVisitOfJob==='function'&&pmVisitOfJob(j.id))||/PM/i.test(String(j.type||'')));}
+function pmOldFormMenu(j,jid){return pmJobIsPM(j)?`<button onclick="pmOldFormToggle('${jid}')">📋 ฟอร์มช่าง PM: ${j.pmOldForm?'ตอนนี้ใช้ฟอร์มเดิม → เปลี่ยนเป็นฟอร์ม PM ใหม่':'ตอนนี้ใช้ฟอร์ม PM ใหม่ → เปลี่ยนเป็นฟอร์มเดิม'}</button>`:'';}
+async function pmOldFormToggle(id){
+  if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
+  const old=!j.pmOldForm,r=j.technicianReport,started=!!(r&&(r.slots||(r.pm&&Array.isArray(r.pm.items)&&r.pm.items.length)));
+  if(!confirm(old?`ให้งาน ${id} ใช้ "ฟอร์มเดิม" (ไม่มีบันทึก PM รายเครื่อง / รูปแยกช่อง)?${started?'\n\n⚠️ ช่างเริ่มบันทึกในฟอร์ม PM ใหม่ไปแล้ว — งานนี้จะยังเป็นฟอร์มใหม่ต่อ เพื่อไม่ให้ข้อมูลที่ช่างกรอกหาย':''}\n\nช่างต้องปิดแล้วเปิดหน้าส่งงานใหม่`:`ให้งาน ${id} กลับมาใช้ "ฟอร์ม PM ใหม่" (บันทึกรายเครื่อง + รูปแยกช่อง)?\n\nช่างต้องปิดแล้วเปิดหน้าส่งงานใหม่`))return;
+  const before=clonePlain(j);
+  try{await patchJobFieldsOnServer(j.id,{pmOldForm:old});}catch(e){alert('บันทึกไม่สำเร็จ: '+e.message);return;}
+  writeAuditLog('job_pm_old_form_toggle','job',j.id,before,{pmOldForm:old},clonePlain(j));
+  try{openDet(j.id);}catch(e){}
+}
 async function slotToggleJob(id){
   if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   const on=!(j.photoSlots&&j.photoSlots.on);
@@ -15140,7 +15153,7 @@ function openDet(id){
   document.getElementById('det-body').innerHTML=`<div class="dw-h">
     <div class="dw-top"><span class="dw-pr">${esc(j.id)}</span>${billTypeBadge(j,true)}<button class="btn btn-ghost btn-xs" title="คัดลอกเลขงาน" onclick="navigator.clipboard&&navigator.clipboard.writeText('${jid}')">📋</button>${pfSheetBtn(j.id,'','l')}${pfApprSlot(j.id)}<span style="flex:1"></span>${pfSheetBtn(j.id,'','r')}
       <button class="dw-ib" title="งานก่อนหน้า" ${pos>0?'':'disabled'} onclick="dwGo(-1)">‹</button><button class="dw-ib" title="งานถัดไป" ${pos>=0&&pos<ids.length-1?'':'disabled'} onclick="dwGo(1)">›</button>
-      <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button><button onclick="slotToggleJob('${jid}')">📷 รูปแยกช่อง (ทดสอบ): ${j.photoSlots&&j.photoSlots.on?'ปิด':'เปิด'}</button></div></div>
+      <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button><button onclick="slotToggleJob('${jid}')">📷 รูปแยกช่อง (ทดสอบ): ${j.photoSlots&&j.photoSlots.on?'ปิด':'เปิด'}</button>${pmOldFormMenu(j,jid)}</div></div>
       <button class="dw-ib" title="ปิด (Esc)" onclick="closeM('m-detail')">✕</button></div>
     <div class="dw-title">${esc(j.branch||'-')}</div><div class="tm dw-sub">${esc(j.client||'')}${j.type?' · '+esc(j.type):''}</div>
     <div class="dw-status">${statusSel}${isLevel1(j)?level1Badge(j):''}${techAcceptPill(j)?techAcceptPill(j):''}${reviewedByPill(j)}<span style="flex:1"></span>${dwNext(j)}</div>
