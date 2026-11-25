@@ -6717,6 +6717,7 @@ function setFinFilter(f){finFilter=f;renderFin();}
 var finView='all'; // all | need (ไม่มีใบเสนอราคา / ต้องแบ่งยอด) | ov (มีแก้เอง/ยอดเดิม)
 function setFinView(v){finView=v;renderFin();}
 function renderFin(){
+  finEnsureParts(()=>{if(document.getElementById('fin-tbody')?.offsetParent)renderFin();}); // ราคากลาง → เติมต้นทุนรายการที่ว่าง
   // การ์ดสรุป + ตาราง scope ตามเดือน/ทีมที่เลือก (ค่าเริ่มต้น = เดือนปัจจุบัน)
   companyEnsureSales('fin');
   if(!accountingLoaded&&!accountingLoadingPromise)ensureAccountingLoaded().then(()=>{if(document.getElementById('fin-tbody')?.offsetParent)renderFin();}).catch(()=>{}); // P&L อยู่ในแท็บ ภาพรวมการเงิน ของหน้า การเงิน & จ่ายช่าง
@@ -6799,6 +6800,28 @@ function financeSourceDocForJob(jobId){
   return single.length?pick(single):pick(docs);
 }
 // คำนวณยอดการเงินจากเอกสารขายของงานนี้ (ไม่แก้ข้อมูล) — ใช้ร่วมกันทั้งปุ่มรายงานเดี่ยวและปุ่มดึงทั้งหมด
+// ต้นทุนต่อหน่วยจากราคากลาง สำหรับรายการในใบเสนอราคาที่ "ไม่มีต้นทุนติดมา" (2026-11-25)
+// เช่น พิมพ์รายการเอง / ตอนทำใบเสนอราคาราคากลางยังไม่กรอกต้นทุน / ใบเก่าก่อนมี 4 ช่อง
+// จับคู่: ตัวที่เลือกจาก picker (source_ref_id) → รหัสตรงกัน → ชื่อตรงกันทุกตัวอักษร (ไม่เดาคำใกล้เคียง กันต้นทุนผิดงาน)
+function finPLUnitCost(it){
+  const ok=r=>r&&(Number(r.labor_cost)||Number(r.parts_cost));
+  let r=null;
+  try{if(it.source_ref_id)r=masterSplitPrices(it.source_ref_id,it.source_type);}catch(e){r=null;}
+  if(ok(r))return {labor_cost:Number(r.labor_cost||0),parts_cost:Number(r.parts_cost||0)};
+  const code=normalizePartKey(it.item_code),name=normalizePartKey(it.description);
+  const p=(code&&(parts||[]).find(q=>normalizePartKey(q.code)===code))||(name&&(parts||[]).find(q=>normalizePartKey(q.name)===name));
+  if(p&&(Number(p.buy_cost)||Number(p.buy_labor)))return {labor_cost:Number(p.buy_labor||0),parts_cost:Number(p.buy_cost||0)};
+  const m=(typeof masterPriceByName==='function')?((name&&masterPriceByName(it.description))||(code&&masterPriceByName(it.item_code))):null;
+  if(ok(m))return {labor_cost:Number(m.labor_cost||0),parts_cost:Number(m.parts_cost||0)};
+  return null;
+}
+// หน้าการเงินต้องมีราคากลาง (ตาราง parts) ในเครื่อง → โหลดครั้งเดียว แล้วคำนวณใหม่
+let finPartsAsked=0;
+function finEnsureParts(rerender){
+  if((typeof partsFresh!=='undefined'&&partsFresh)||Date.now()-finPartsAsked<30000)return; // ยังไม่ออนไลน์ → ลองใหม่ได้ทุก 30 วิ (ไม่วนรีเฟรช)
+  finPartsAsked=Date.now();
+  ensurePartsLoaded().then(()=>{finInvalidate();try{rerender&&rerender();}catch(e){}}).catch(()=>{});
+}
 function computeFinanceFromSales(jobId,live){
   const j=jobs.find(x=>x.id===jobId&&!isDeletedRecord(x));if(!j)return null;
   const inv=financeSourceDocForJob(jobId);
@@ -6819,6 +6842,11 @@ function computeFinanceFromSales(jobId,live){
   const sum=k=>items.reduce((s,it)=>s+num(it,k),0);
   // ถ้ารายการมีข้อมูลแยก ค่าของ/ค่าแรง × ขาย/ต้นทุน (จากราคากลาง) ให้ใช้ค่านั้น = แม่นที่สุด
   const hasSplit=items.some(it=>num(it,'labor_price')||num(it,'parts_price')||num(it,'labor_cost')||num(it,'parts_cost'));
+  // ต้นทุนรวมของรายการ: ใช้ต้นทุนที่บันทึกไว้ในใบ (ราคากลางตอนทำใบ) · รายการที่ต้นทุนว่างทั้ง 2 ช่อง → เติมจากราคากลางตอนนี้ × จำนวน (เฉพาะคำนวณสด)
+  let plLab=0,plPart=0,plFilled=0;
+  items.forEach(it=>{const lc=num(it,'labor_cost'),pc0=num(it,'parts_cost');if(lc||pc0){plLab+=lc;plPart+=pc0;return;}
+    if(!live)return;const u=finPLUnitCost(it);if(!u)return;const q=Number(it.quantity)||1;plLab+=u.labor_cost*q;plPart+=u.parts_cost*q;plFilled++;});
+  const plTxt=' (ต้นทุนจากราคากลาง'+(plFilled?` · เติมจากราคากลาง ${plFilled} รายการ`:'')+')';
   // ค่าเดินทาง: ถ้าแยกตามใบต้นทางได้ ให้ใช้ค่าเดินทางของใบต้นทางนั้น
   const srcDoc=(items[0]&&items[0].source_doc_id)?(salesInvoices||[]).find(d=>d.id===items[0].source_doc_id):null;
   const travel=qTravel!=null?qTravel:Number((srcDoc||inv).travel_amount||0);
@@ -6826,8 +6854,8 @@ function computeFinanceFromSales(jobId,live){
   let pc,partR,pt,partC,ptSrc,partCSrc;
   if(hasSplit){
     pc=sum('labor_price'); partR=sum('parts_price');
-    pt=sum('labor_cost');  partC=sum('parts_cost');
-    ptSrc=' (ต้นทุนจากราคากลาง)'; partCSrc=' (ต้นทุนจากราคากลาง)';
+    pt=plLab;  partC=plPart;
+    ptSrc=plTxt; partCSrc=plTxt;
     if(live){ // คำนวณสด: บิลซื้อจริงของ PR นี้ก่อนราคากลาง · ไม่มีค่าแรงต้นทุน → ราคาทีม
       const cs=jobCosts(jobId).reduce((s,c)=>s+Number(c.cost_amount||0),0);if(cs>0){partC=cs;partCSrc=' (ต้นทุนจริง)';}
       if(!pt){const tp=(teamPricing||[]).find(p=>String(p.team||'')===String(j.team||'')&&String(p.type||'')===String(j.type||''));if(tp){pt=Number(tp.price||0);ptSrc=' (ราคาทีม)';}}
@@ -6838,13 +6866,13 @@ function computeFinanceFromSales(jobId,live){
     partR=partsRevenue;
     pc=Math.max(0,Number(qSub!=null?qSub:inv.subtotal||0)-partsRevenue-travel);
     const costSum=jobCosts(jobId).reduce((s,c)=>s+Number(c.cost_amount||0),0);
-    partC=costSum>0?costSum:(live?0:Number(j.partC||0));
-    partCSrc=costSum>0?' (ต้นทุนจริง)':live?'':' (คงค่าเดิม)';
+    partC=costSum>0?costSum:live&&plPart>0?plPart:(live?0:Number(j.partC||0));
+    partCSrc=costSum>0?' (ต้นทุนจริง)':live&&plPart>0?plTxt:live?'':' (คงค่าเดิม)';
     const tp=(teamPricing||[]).find(p=>String(p.team||'')===String(j.team||'')&&String(p.type||'')===String(j.type||''));
-    pt=tp?Number(tp.price||0):(live?0:Number(j.pt||0));
-    ptSrc=tp?' (ราคาทีม)':live?'':' (คงค่าเดิม)';
+    if(live&&plLab>0){pt=plLab;ptSrc=plTxt;} // ใบเก่า: รายการตรงกับราคากลาง → ต้นทุนค่าแรงตามราคากลาง ก่อนราคาทีม
+    else{pt=tp?Number(tp.price||0):(live?0:Number(j.pt||0));ptSrc=tp?' (ราคาทีม)':live?'':' (คงค่าเดิม)';}
   }
-  return {job:j,inv,items,sharedDoc,pc,partR,pt,partC,fuel,ptSrc,partCSrc};
+  return {job:j,inv,items,sharedDoc,pc,partR,pt,partC,fuel,ptSrc,partCSrc,plFilled};
 }
 // =====================================================================
 // การเงินคำนวณสดจากเอกสาร (2026-11-24 · แบบ B — mockups/finance-live-v2.html)
@@ -6868,7 +6896,7 @@ function finCalc(j){
   if(res){
     const dn=res.inv.doc_no||res.inv.sales_invoice_no||'เอกสารขาย';
     Object.assign(out,{pc:finR(res.pc),partR:finR(res.partR),fuel:finR(res.fuel),pt:finR(res.pt),partC:finR(res.partC),inv:res.inv,shared:!!res.sharedDoc});
-    out.src={pc:'📄 '+dn,partR:'📄 '+dn,fuel:'📄 '+dn,pt:res.ptSrc.includes('ราคาทีม')?'👷 ราคาทีม':res.ptSrc.includes('ราคากลาง')?'📄 '+dn+' (ต้นทุน)':'—',partC:res.partCSrc.includes('จริง')?'🧾 บิลซื้อ':res.partCSrc.includes('ราคากลาง')?'📄 '+dn+' (ต้นทุน)':'—'};
+    out.src={pc:'📄 '+dn,partR:'📄 '+dn,fuel:'📄 '+dn,pt:res.ptSrc.includes('ราคาทีม')?'👷 ราคาทีม':res.ptSrc.includes('ราคากลาง')?'📄 '+dn+' · 📋 ราคากลาง'+(res.plFilled?` (เติม ${res.plFilled} รายการ)`:''):'—',partC:res.partCSrc.includes('จริง')?'🧾 บิลซื้อ':res.partCSrc.includes('ราคากลาง')?'📄 '+dn+' · 📋 ราคากลาง'+(res.plFilled?` (เติม ${res.plFilled} รายการ)`:''):'—'};
   }else{
     const tp=(teamPricing||[]).find(p=>String(p.team||'')===String(j.team||'')&&String(p.type||'')===String(j.type||''));
     const cs=jobCosts(j.id).reduce((s,c)=>s+Number(c.cost_amount||0),0);
@@ -11122,6 +11150,7 @@ function tpSetTab(t){
 }
 function renderTP(){
   tpMergeFinance();
+  finEnsureParts(()=>{if(document.getElementById('page-tech-pay')?.classList.contains('active'))renderTP();});
   document.querySelectorAll('#tp-tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tpState.tab));
   const list=document.getElementById('techpay-list'),ov=document.getElementById('tp-ov-wrap');
   if(ov)ov.style.display=tpState.tab==='ov'?'':'none';
@@ -11557,8 +11586,41 @@ async function clrMark(kind,ids,done){
     renderClear();
   }catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));}
 }
+// ----- ติ๊กแล้วเลือก "ปิดงานด้วย" ได้ (2026-11-25) — เฉพาะข้อที่เป็นงาน · ไม่เพิ่มสถานะใหม่ ใช้ "ปิดงาน" ที่มีอยู่ -----
+// ติ๊กไว้ให้: จ่ายช่างแล้วยังไม่ปิด / ไม่มีใบเสนอราคา (เช่น งานประกัน) · ข้ออื่นเลือกเอง (ขาดทุน/ยอดไม่ตรง อาจยังรอเก็บเงิน)
+// ปิดงานใช้ setJS ทางเดียวกับคิวช่าง → Admin Tracker / PM / LINE ช่าง เปลี่ยนตาม · "เอากลับ" แค่ยกเลิกซ่อน ไม่เปิดงานคืน
+const CLR_JOB_KINDS=new Set(['unbilled','legacy','stale','nodoc','neg']);
+const CLR_CLOSE_DEF=new Set(['stale','nodoc']);
+const CLR_CLOSE_HINT={unbilled:'ปิดเมื่อวางบิล/เก็บเงินนอกระบบเรียบร้อยแล้ว',legacy:'ยอดไม่ตรงเอกสารไม่เกี่ยวกับสถานะงาน — ปกติไม่ต้องปิด',neg:'งานขาดทุนอาจยังรอเก็บเงิน/จ่ายช่าง — ปิดเฉพาะงานที่จบแล้วจริง',stale:'จ่ายช่างแล้ว ควรปิดงาน',nodoc:'งานที่ไม่ต้องเก็บเงิน (เช่น งานประกัน) ปิดได้เลย'};
+let clrTickResolve=null;
+function clrTickDone(ok){const m=document.getElementById('m-clr-tick');const close=!!document.getElementById('clr-tick-close')?.checked;closeM('m-clr-tick');const r=clrTickResolve;clrTickResolve=null;if(r)r(ok?{close}:null);}
+function clrAskClose(kind,ids){
+  const list=ids.map(id=>jobs.find(j=>sameJob(j.id,id)&&!isDeletedRecord(j))).filter(Boolean);
+  const open=list.filter(j=>!TP_CLOSED_ST.has(String(j.status||'').trim()));
+  let m=document.getElementById('m-clr-tick');
+  if(!m){m=document.createElement('div');m.className='modal-overlay';m.id='m-clr-tick';document.body.appendChild(m);}
+  const T=(typeof CLR_TODO_TITLE!=='undefined'&&CLR_TODO_TITLE[kind])||'';
+  m.innerHTML=`<div class="modal" style="max-width:480px"><div class="modal-header"><div class="modal-title">✓ เคลียร์แล้ว</div><button class="close-btn" onclick="clrTickDone(false)">×</button></div>
+    <div class="modal-body"><div style="line-height:1.7">ซ่อน <b>${ids.length} รายการ</b>${T?` ในข้อ “${esc(T)}”`:''} ออกจากเช็กลิสต์<div class="tm" style="font-size:12px">ดู / เอากลับได้ที่ “🙈 ซ่อนไว้” ด้านล่างหน้า</div></div>
+      ${open.length?`<label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:12px;cursor:pointer"><input type="checkbox" id="clr-tick-close" ${CLR_CLOSE_DEF.has(kind)?'checked':''} style="margin-top:3px"><span><b>ปิดงานด้วย</b> (${open.length} งาน → สถานะ “ปิดงาน”)<br><span class="tm" style="font-size:12px">คิวช่าง / Admin Tracker / PM / LINE ช่าง เปลี่ยนตาม · ${esc(CLR_CLOSE_HINT[kind]||'')}</span>
+        <span class="tm" style="display:block;font-size:12px;margin-top:6px">${open.slice(0,8).map(j=>`${esc(j.id)} (${esc(j.status||'-')})`).join(' · ')}${open.length>8?` … อีก ${open.length-8} งาน`:''}</span></span></label>`
+        :list.length?'<div class="tm" style="font-size:12px;margin-top:10px">งานเหล่านี้ปิดแล้ว — ซ่อนอย่างเดียว</div>':''}
+    </div>
+    <div class="modal-footer"><span style="flex:1"></span><button class="btn btn-ghost" onclick="clrTickDone(false)">ยกเลิก</button><button class="btn btn-primary" onclick="clrTickDone(true)">✓ เคลียร์แล้ว</button></div></div>`;
+  if(clrTickResolve)clrTickResolve(null);
+  return new Promise(res=>{clrTickResolve=r=>res(r?{...r,open}:null);openM('m-clr-tick');});
+}
+async function clrTick(kind,ids){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  ids=[...new Set((ids||[]).map(String).filter(Boolean))];if(!ids.length)return;
+  if(!CLR_JOB_KINDS.has(kind))return clrMark(kind,ids,true);
+  const a=await clrAskClose(kind,ids);if(!a)return;
+  if(a.close&&a.open.length){for(const j of a.open){if(!TP_CLOSED_ST.has(String(j.status||'').trim()))await setJS(j.id,'ปิดงาน',{stay:true});}}
+  await clrMark(kind,ids,true);
+}
 function clrMarkAll(kind){
   const r=clrCompute(clrYm).rows.find(x=>x.k===kind);if(!r||!r.items.length)return;
+  if(CLR_JOB_KINDS.has(kind))return clrTick(kind,r.items.map(i=>i.k));
   if(!confirm(`ติ๊ก "เคลียร์แล้ว" ทั้ง ${r.items.length} รายการในข้อนี้ (เดือนนี้)?\nรายการจะหายจากเช็กลิสต์ · ดู/เอากลับได้ที่ "ซ่อนไว้" ด้านล่าง`))return;
   clrMark(kind,r.items.map(i=>i.k),true);
 }
@@ -11599,7 +11661,7 @@ function clrCompute(ym,ix){
   const stale=clrSplit('stale',tpOk?tpPaidNotClosed().filter(x=>clrIn(tpDoneDate(x.j),ym)):[],x=>x.j.id,x=>jL(x.j),hid);
   rows.push({g:2,k:'stale',t:'จ่ายช่างแล้ว แต่สถานะงานยังไม่ปิด',s:'ปกติระบบปิดให้ตอนกดจ่าย · กดปิดได้ที่แถบเหลืองในหน้าจ่ายช่าง',warn:true,
     n:stale.length,unit:'งาน',amt:null,go:['ไปจ่ายช่าง →',`goTo('tech-pay')`],
-    items:stale.map(x=>({k:x.j.id,cols:[x.j.id,x.j.branch||'',x.j.status||'',x.p.doc_no||''],open:`openDet('${clrQ(x.j.id)}')`})),head:['PR','สาขา','สถานะ','เอกสารจ่าย']});
+    items:stale.map(x=>({k:x.j.id,cols:[x.j.id,x.j.branch||'',x.p.doc_no||''],open:`openDet('${clrQ(x.j.id)}')`})),head:['PR','สาขา','เอกสารจ่าย']});
   // 3 ต้นทุน & ข้อมูลไม่ครบ
   const invM=new Map((purchaseInvoices||[]).filter(v=>v.status!=='cancelled'&&clrIn(v.invoice_date,ym)).map(v=>[v.id,v]));
   const loose=new Map();
@@ -11628,6 +11690,7 @@ function clrCompute(ym,ix){
   rows.forEach(r=>{r.tick=r.k!=='owe';}); // จ่ายช่าง = ต้องจ่ายจริงในหน้าจ่ายช่าง ไม่มีปุ่มซ่อน
   return {ym,rows,hidden:hid,open:rows.filter(r=>r.n>0).length,total:rows.length,kpi:{inc,cost,gp:inc-cost,n:done.length,cash,unpaid:unpaid.reduce((s,d)=>s+saleDocTotal(d),0)},tax};
 }
+function clrJobSel(id){const j=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x));return j?finJobStatusSel(j):'';}
 function clrQ(v){return esc(String(v||'')).replace(/'/g,'&#39;');}
 function clrAgeTxt(d){const day=String(d||'').slice(0,10);if(!day)return '—';const n=clrDays(day);return `${tpThaiDate(day)} ${n>90?`<span class="clr-pill bad">${n} วัน</span>`:n>30?`<span class="clr-pill warn">${n} วัน</span>`:''}`;}
 function clrGoSales(ym){saleMonth=ym||'';saleDate='';saleDateTo='';saleRange='';saleDocType='';saleSearch='';goTo('sales-tax');}
@@ -11644,6 +11707,7 @@ async function clrSetCutoff(){
 }
 function renderClear(){
   const box=document.getElementById('clr-wrap');if(!box)return;
+  finEnsureParts(()=>{if(document.getElementById('page-clear')?.classList.contains('active'))renderClear();});
   if(!accountingLoaded||!techPay.loaded&&!techPay.error){
     box.innerHTML='<div class="empty"><div>กำลังโหลดเอกสารขาย/ซื้อ และข้อมูลจ่ายช่าง…</div></div>';
     Promise.all([ensureAccountingLoaded(),ensureTechPayLoaded()]).then(()=>{if(document.getElementById('page-clear')?.classList.contains('active'))renderClear();});
@@ -11667,7 +11731,7 @@ function renderClear(){
   const todo=C.rows.filter(r=>r.n>0),okRows=C.rows.filter(r=>!r.n);
   const amtTxt=r=>r.amt==null||(r.approx&&!r.amt)?'':` · ${r.approx?'≈ ':''}฿${money(Math.abs(r.amt))}`;
   const detHtml=r=>`<div class="clr-det"><div class="clr-mut" style="margin-bottom:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:200px">${r.s}</span>${r.tick&&r.items.length>1?`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();clrMarkAll('${r.k}')">✓ เคลียร์ทั้งข้อ</button>`:''}</div>${r.aging?`<div class="clr-aging">${['0–30 วัน','31–60 วัน','61–90 วัน','เกิน 90 วัน'].map((l,i)=>`<div class="${i===3&&r.aging.agn[3]?'bad':i===2&&r.aging.agn[2]?'warn':''}"><small>ค้าง ${l}</small><b>฿${money(r.aging.ag[i])}</b>${r.aging.agn[i]} ใบ</div>`).join('')}</div>`:''}
-    <table class="clr-tb"><tr>${r.head.map(h=>`<th>${h}</th>`).join('')}<th></th></tr>${r.items.slice(0,60).map(it=>`<tr>${it.cols.map(c=>`<td>${c}</td>`).join('')}<td style="text-align:right;white-space:nowrap">${it.open?`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();${it.open}">เปิด</button>`:''}${r.tick?` <button class="btn btn-ghost btn-xs clr-tick" title="ไม่ต้องทำ / จัดการนอกระบบแล้ว → ซ่อนจากเช็กลิสต์ (เอากลับได้)" onclick="event.stopPropagation();clrMark('${r.k}',['${clrQ(it.k)}'],true)">✓ เคลียร์แล้ว</button>`:''}</td></tr>`).join('')}${r.items.length>60?`<tr><td colspan="${r.head.length+1}" class="clr-mut">… อีก ${r.items.length-60} รายการ</td></tr>`:''}</table></div>`;
+    <table class="clr-tb"><tr>${r.head.map(h=>`<th>${h}</th>`).join('')}<th></th></tr>${r.items.slice(0,60).map(it=>`<tr>${it.cols.map(c=>`<td>${c}</td>`).join('')}<td><div style="display:flex;gap:6px;justify-content:flex-end;align-items:center;flex-wrap:wrap">${CLR_JOB_KINDS.has(r.k)?clrJobSel(it.k):''}${it.open?`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();${it.open}">เปิด</button>`:''}${r.tick?`<button class="btn btn-ghost btn-xs clr-tick" title="ไม่ต้องทำ / จัดการนอกระบบแล้ว → ซ่อนจากเช็กลิสต์ (เอากลับได้)" onclick="event.stopPropagation();clrTick('${r.k}',['${clrQ(it.k)}'])">✓ เคลียร์แล้ว</button>`:''}</div></td></tr>`).join('')}${r.items.length>60?`<tr><td colspan="${r.head.length+1}" class="clr-mut">… อีก ${r.items.length-60} รายการ</td></tr>`:''}</table></div>`;
   const todoHtml=(r,i)=>{const key=clrYm+':'+r.k,open=clrOpen.has(key),T=TODO[r.k]||[r.t,'',''];
     const go=r.go&&T[2]?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();${r.go[1]}">${T[2]} →</button>`:'';
     return `<div class="clr-todo${open?' open':''}"><div class="clr-row2" onclick="clrToggle('${key}')"><span class="clr-no">${i+1}</span><div class="clr-t"><b>${T[0]}</b><small>👉 ${T[1]}${amtTxt(r)}</small></div><div class="clr-cnt"><b>${r.n}</b><small>${r.unit}</small></div>
@@ -11689,6 +11753,7 @@ function renderClear(){
     </details>`;
 }
 let clrMoreOpen=false;
+const CLR_TODO_TITLE={unbilled:'งานเสร็จแล้ว ยังไม่วางบิล',legacy:'ยอดเงินในงานไม่ตรงเอกสาร',stale:'จ่ายช่างแล้ว แต่งานยังไม่ปิด',nodoc:'งานยังไม่มีใบเสนอราคา',neg:'งานขาดทุน'};
 const CLR_OK={unbilled:'วางบิลครบ',unpaid:'รับเงินครบ',notax:'ใบกำกับครบ',owe:'จ่ายช่างครบ',legacy:'ยอดตรงเอกสาร',stale:'งานที่จ่ายแล้วปิดครบ',loose:'บิลซื้อผูกงานครบ',nodoc:'มีใบเสนอราคาครบ',neg:'ไม่มีงานขาดทุน'};
 async function tpCloseBackfill(btn){
   if(!guardEdit())return;
@@ -15304,6 +15369,7 @@ async function finSetJobStatus(id,s){
   if(s&&s!==j.status)await setJS(j.id,s,{stay:true});
   try{renderFin();}catch(e){}
   try{if(document.getElementById('page-tech-pay')?.classList.contains('active'))renderTP();}catch(e){}
+  try{if(document.getElementById('page-clear')?.classList.contains('active'))renderClear();}catch(e){}
   if(typeof tpState!=='undefined'&&tpState.open===j.id&&document.getElementById('tp-dw')?.classList.contains('on'))tpDrawer(j.id,true);
   const ff=document.getElementById('ff-jst');if(ff&&document.getElementById('ff-id')?.value===j.id)ff.outerHTML=finJobStatusSel(j).replace('<select ','<select id="ff-jst" ');
 }
