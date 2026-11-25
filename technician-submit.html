@@ -184,7 +184,7 @@ body.pm-t2 #pm-wrap{display:none!important;}
 .pm-mi2 span{font-size:11.5px;color:var(--text2);flex:none;}
 .pm-cf{margin-left:30px;}
 .pm-badge{display:inline-block;border-radius:7px;padding:3px 8px;font-size:11.5px;font-weight:700;margin-top:6px;}
-.pm-badge.ok{background:var(--green-dim);color:var(--green);}.pm-badge.bad{background:var(--red-dim);color:var(--red);}
+.pm-badge.ok{background:var(--green-dim);color:var(--green);}.pm-badge.bad{background:var(--red-dim);color:var(--red);}.pm-badge.info{background:transparent;color:var(--muted,#64748b);font-weight:500;padding:3px 0;}
 .pm-rmk{margin-top:6px;min-height:0!important;font-size:13px!important;}
 .pm-rmk.need{border-color:var(--red)!important;}
 .pm-rmk-add{background:none;border:0;color:var(--text3);font:600 12px var(--sans);padding:5px 0 0;cursor:pointer;}
@@ -2778,7 +2778,7 @@ function pmSheetCount(it){ const n=PM_SHEET_AIR.filter(([no])=>it.sheet?.[no]).l
 function pmCiSeg(it,no){ const v=it.sheet?.[no]; return `<button type="button" class="${v==='ok'?'y':''}" onclick="pmSetSheet(${no},'ok')">ปกติ</button><button type="button" class="${v==='ng'?'n':''}" onclick="pmSetSheet(${no},'ng')">ไม่ปกติ</button>`; }
 function pmCiFoot(it,no){
   const j=pmJudge(it,no), v=it.sheet?.[no], rk=String(it.sheet_rmk?.[no]||''), open=v==='ng'||rk||(it._rmk&&it._rmk[no]);
-  return (j?`<div class="pm-badge ${j.ok?'ok':'bad'}">${j.ok?'✓':'✕'} ${esc(j.msg)}</div>`:'')
+  return (j?`<div class="pm-badge info">ℹ️ ${esc(j.msg)} (ไว้ดูอ้างอิง ไม่บังคับ)</div>`:'')
     + (open?`<textarea class="pm-rmk${v==='ng'&&!rk.trim()?' need':''}" data-k="rmk-${no}" rows="2" placeholder="${v==='ng'?'ไม่ปกติ — ระบุสิ่งที่พบ (ต้องกรอก)':'หมายเหตุ (Remark)'}" oninput="pmRmk(${no},this.value,this)">${esc(rk)}</textarea>`:`<div><button type="button" class="pm-rmk-add" onclick="pmRmkOpen(${no})">＋ หมายเหตุ</button></div>`);
 }
 function pmMeasHtml(it,no){
@@ -2788,20 +2788,20 @@ function pmMeasHtml(it,no){
   if(no===7) return inp('wind','ความเร็วลม','m/s');
   if(no===13){ const p3=r.phase==='3'; return `<div class="pm-chips" style="flex-basis:100%"><button type="button" class="pm-cp${p3?'':' on'}" onclick="pmPhase('1')">1 เฟส</button><button type="button" class="pm-cp${p3?' on':''}" onclick="pmPhase('3')">3 เฟส</button></div>`
     +(p3?inp('amp1','L1','A')+inp('amp2','L2','A')+inp('amp3','L3','A'):inp('amp1','วัดได้','A'))+inp('amp_rated','ค่าตามป้าย (ถ้ามี)','A'); }
-  if(no===14) return (it.refrigerant?'':'<div class="pm-warn" style="flex-basis:100%;margin:0">เลือกชนิดน้ำยาด้านบนก่อน ระบบจะเทียบเกณฑ์ให้</div>')+inp('lp','Low','psi')+inp('hp','High (ถ้าวัด)','psi');
+  if(no===14) return (it.refrigerant?'':'<div class="pm-warn" style="flex-basis:100%;margin:0">เลือกชนิดน้ำยาด้านบน เพื่อดูเกณฑ์อ้างอิงของน้ำยานั้น</div>')+inp('lp','Low','psi')+inp('hp','High (ถ้าวัด)','psi');
   return '';
 }
 function pmSheetHtml(it){
   return `<div class="card">
       <div class="sec-title">🧪 ชนิดน้ำยา <span class="req-star">*</span></div>
       <div class="pm-chips">${Object.keys(PM_REF).map(r=>`<button type="button" class="pm-cp mono${it.refrigerant===r?' on':''}" onclick="pmSetRef('${r}')">${r}</button>`).join('')}</div>
-      <div class="pm-note">จำไว้กับเครื่อง รอบหน้าเลือกให้อัตโนมัติ · ใช้เทียบเกณฑ์ข้อ 14</div>
+      <div class="pm-note">จำไว้กับเครื่อง รอบหน้าเลือกให้อัตโนมัติ · ใช้แสดงเกณฑ์อ้างอิงข้อ 14</div>
     </div>
     <div class="card">
       <div class="sec-title">✅ PM Check Sheet (${PM_SHEET_AIR.length} ข้อ) <span class="req-star">*</span></div>
       <div class="pm-cl-h"><span id="pm-sh-cnt">${pmSheetCount(it)}</span><button type="button" class="pm-allok" onclick="pmSheetAllOk()">✓ ปกติทุกข้อที่ยังว่าง</button></div>
       ${PM_SHEET_AIR.map(([no,item,std])=>`<div class="pm-ci${PM_MEAS[no]?' meas':''}"><div class="pm-ci-h"><span class="pm-no">${no}</span><div class="pm-ci-t">${esc(item)}<div class="pm-std">${esc(no===14?pmRefStd(it.refrigerant):std)}</div></div><span class="pm-seg" id="pm-seg-${no}">${pmCiSeg(it,no)}</span></div>${PM_MEAS[no]?`<div class="pm-mrow">${pmMeasHtml(it,no)}</div>`:''}<div class="pm-cf" id="pm-cf-${no}">${pmCiFoot(it,no)}</div></div>`).join('')}
-      <div class="pm-note">ข้อที่มีค่าวัด ระบบเทียบเกณฑ์แล้วเลือก ปกติ/ไม่ปกติ ให้ — กดแก้ได้ · ข้อที่ไม่ปกติต้องเขียนหมายเหตุ</div>
+      <div class="pm-note">ข้อที่มีค่าวัด กรอกตามที่วัดได้เลย แล้วเลือก ปกติ/ไม่ปกติ เอง · ข้อที่เลือกไม่ปกติต้องเขียนหมายเหตุ</div>
     </div>`;
 }
 function pmCiRefresh(no){
@@ -2818,10 +2818,11 @@ function pmSetSheet(no,v){
 }
 function pmSheetAllOk(){
   if(!pmCur) return; pmCur.sheet=pmCur.sheet||{};
-  PM_SHEET_AIR.forEach(([no])=>{ if(pmCur.sheet[no]) return; const j=pmJudge(pmCur,no); pmCur.sheet[no]=j&&!j.ok?'ng':'ok'; });
+  PM_SHEET_AIR.forEach(([no])=>{ if(!pmCur.sheet[no]) pmCur.sheet[no]='ok'; });
   pmSheetRender(); scheduleLocalDraftSave();
 }
-function pmRejudge(no){ const j=pmJudge(pmCur,no); if(j){ pmCur.sheet=pmCur.sheet||{}; pmCur.sheet[no]=j.ok?'ok':'ng'; } }
+// 2026-11-25: ไม่เลือก ปกติ/ไม่ปกติ ให้อัตโนมัติจากค่าที่วัดแล้ว — ช่างกรอกค่าตามที่วัดได้ แล้วเลือกผลเอง (เกณฑ์แสดงไว้ดูอ้างอิงเท่านั้น)
+function pmRejudge(no){}
 function pmSetRef(r){ if(!pmCur) return; pmCur.refrigerant=r; pmRejudge(14); pmSheetRender(); scheduleLocalDraftSave(); }
 function pmPhase(p){ if(!pmCur) return; pmCur.readings.phase=p; pmRejudge(13); pmSheetRender(); scheduleLocalDraftSave(); }
 function pmRmk(no,v,el){ if(!pmCur) return; pmCur.sheet_rmk=pmCur.sheet_rmk||{}; pmCur.sheet_rmk[no]=v; if(el) el.classList.toggle('need', pmCur.sheet?.[no]==='ng'&&!v.trim()); pmMissRender(); scheduleLocalDraftSave(); }
