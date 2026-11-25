@@ -3521,7 +3521,7 @@ function applyRolePermissions(){
   // staff/viewer ไม่เห็นหน้าการเงิน/จ่ายช่าง (ต้นทุน-กำไร) และหน้าจัดการผู้ใช้ (admin เท่านั้น)
   const hidePages = (role==='admin') ? [] : ['finance','tech-pay','clear','users','pm'];
   document.querySelectorAll('.nav-item[data-page]').forEach(function(b){
-    b.style.display = hidePages.indexOf(b.getAttribute('data-page'))>=0 ? 'none' : '';
+    b.style.display = (hidePages.indexOf(b.getAttribute('data-page'))>=0 || b.getAttribute('data-page')==='finance') ? 'none' : ''; // 'finance' = เมนูซ้ำกับแท็บ ภาพรวมการเงิน (2026-11-25 ซ่อน)
   });
   // ซ่อนหัวข้อกลุ่มเมนูที่ไม่เหลือปุ่มให้เห็น (เช่น "การเงิน" ของ staff)
   document.querySelectorAll('.nav .nav-section').forEach(function(h){
@@ -11532,23 +11532,54 @@ function clrBilled(j,ix){
   const k=normalizePR(j.id);if((ix.prMax.get(k)||0)>=2)return true;
   try{return quotationSetForJob(j.id).some(q=>(ix.srcMax.get(String(q.id))||0)>=2);}catch(e){return false;}
 }
+// ----- ✓ เคลียร์แล้ว (2026-11-25): ติ๊กซ่อนรายการที่ไม่ต้องทำ/จัดการนอกระบบแล้ว เหมือนเช็กลิสต์ -----
+// เก็บใน console_ui_settings 1 แถวต่อรายการ (key clr_done|ข้อ|id) → ทุกแอดมินเห็นตรงกัน ไม่ทับกัน · เอากลับ = done:false
+let clrDone=new Map(),clrDoneAt=0,clrDoneErr='';
+const clrDK=(kind,id)=>kind+'\u0001'+id;
+function clrIsDone(kind,id){return clrDone.has(clrDK(kind,String(id)));}
+function clrSplit(kind,list,idOf,labelOf,hid){const keep=[];(list||[]).forEach(x=>{const id=String(idOf(x));if(clrIsDone(kind,id))hid.push({kind,id,label:labelOf(x),v:clrDone.get(clrDK(kind,id))});else keep.push(x);});return keep;}
+async function clrLoadDone(){
+  clrDoneAt=Date.now();
+  try{const rows=await sbFetchAllOptional('console_ui_settings','?select=key,value&key=like.clr_done*');
+    const m=new Map();(rows||[]).forEach(r=>{const v=r.value||{};if(v.done&&v.kind&&v.id!=null)m.set(clrDK(v.kind,String(v.id)),v);});clrDone=m;clrDoneErr='';
+  }catch(e){clrDoneErr=e.message||String(e);}
+}
+async function clrMark(kind,ids,done){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  ids=[...new Set((ids||[]).map(String).filter(Boolean))];if(!ids.length)return;
+  const at=new Date().toISOString(),by=getActorName();
+  const rows=ids.map(id=>({key:`clr_done|${kind}|${id}`,value:{done:!!done,kind,id,at,by},updated_at:at,updated_by:by}));
+  try{
+    const r=await fetch(splitUrl('console_ui_settings','?on_conflict=key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(rows)});
+    if(!r.ok)throw new Error(await r.text());
+    rows.forEach(x=>{const k=clrDK(kind,x.value.id);if(done)clrDone.set(k,x.value);else clrDone.delete(k);});
+    try{writeAuditLog(done?'clear_mark_done':'clear_mark_undo','clear',kind,null,{ids},null);}catch(e){}
+    renderClear();
+  }catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));}
+}
+function clrMarkAll(kind){
+  const r=clrCompute(clrYm).rows.find(x=>x.k===kind);if(!r||!r.items.length)return;
+  if(!confirm(`ติ๊ก "เคลียร์แล้ว" ทั้ง ${r.items.length} รายการในข้อนี้ (เดือนนี้)?\nรายการจะหายจากเช็กลิสต์ · ดู/เอากลับได้ที่ "ซ่อนไว้" ด้านล่าง`))return;
+  clrMark(kind,r.items.map(i=>i.k),true);
+}
 function clrCompute(ym,ix){
   ix=ix||saleRevIndex();
-  const done=clrDoneJobs(ym),rows=[];
+  const done=clrDoneJobs(ym),rows=[],hid=[];
+  const jL=j=>`${j.id} · ${j.branch||j.client||''}`,dL=d=>`${d.sales_invoice_no||d.doc_no||d.id} · ${d.customer_name||''}`;
   const docLive=d=>d&&d.status!=='cancelled';
   // 1 เงินเข้า
-  const unbilled=done.filter(j=>!clrBilled(j,ix));
+  const unbilled=clrSplit('unbilled',done.filter(j=>!clrBilled(j,ix)),j=>j.id,jL,hid);
   rows.push({g:1,k:'unbilled',t:'งานเสร็จแล้ว ยังไม่วางบิล',s:'ช่างส่งงาน/ตรวจแล้ว แต่ยังไม่มีใบแจ้งหนี้ ใบเสร็จ หรือใบกำกับที่ระบุ PR นี้',
     n:unbilled.length,unit:'งาน',amt:unbilled.reduce((s,j)=>s+finIncome(j),0),approx:true,go:['ไปใบกำกับขาย →',`clrGoSales('${ym}')`],
     items:unbilled.sort((a,b)=>tpDoneDate(a).localeCompare(tpDoneDate(b))).map(j=>({k:j.id,cols:[j.id,`${j.client||''} · ${j.branch||''}`,clrAgeTxt(tpDoneDate(j)),finIncome(j)>0?'฿'+money(finIncome(j)):'<span class="clr-mut">ไม่มีใบเสนอราคา</span>'],open:`openDet('${clrQ(j.id)}')`})),
     head:['PR','ลูกค้า · สาขา','เสร็จเมื่อ','ยอดตามเอกสาร']});
-  const unpaid=(salesInvoices||[]).filter(d=>docLive(d)&&ix.rk(d)>=2&&clrIn(d.invoice_date,ym)&&saleRevCounts(d,ix)&&!saleRevPaid(d,ix));
+  const unpaid=clrSplit('unpaid',(salesInvoices||[]).filter(d=>docLive(d)&&ix.rk(d)>=2&&clrIn(d.invoice_date,ym)&&saleRevCounts(d,ix)&&!saleRevPaid(d,ix)),d=>d.id,dL,hid);
   const ag=[0,0,0,0],agn=[0,0,0,0];unpaid.forEach(d=>{const n=clrDays(d.invoice_date),b=n<=30?0:n<=60?1:n<=90?2:3;ag[b]+=saleDocTotal(d);agn[b]++;});
   rows.push({g:1,k:'unpaid',t:'วางบิลแล้ว ยังไม่ได้รับเงิน',s:'เทียบกับเงินเข้าบัญชีธนาคาร แล้วเปิดบิลตั้งสถานะ “รับเงินแล้ว”',
     n:unpaid.length,unit:'ใบ',amt:unpaid.reduce((s,d)=>s+saleDocTotal(d),0),go:['ไปใบกำกับขาย →',`clrGoSales('${ym}')`],aging:{ag,agn},
     items:unpaid.sort((a,b)=>String(a.invoice_date).localeCompare(String(b.invoice_date))).map(d=>({k:d.id,cols:[d.sales_invoice_no||d.doc_no||d.id,d.customer_name||'',clrAgeTxt(d.invoice_date),'฿'+money(saleDocTotal(d))],open:`openSalesModal('${clrQ(d.id)}')`})),
     head:['เลขที่','ลูกค้า','วันที่บิล','ยอด']});
-  const noTax=(salesInvoices||[]).filter(d=>docLive(d)&&[2,3].includes(ix.rk(d))&&clrIn(d.invoice_date,ym)&&saleRevPaid(d,ix)&&(ix.srcMax.get(String(d.id))||0)<4&&!salesInvoiceJobs(d).some(p=>(ix.prMax.get(normalizePR(p))||0)>=4));
+  const noTax=clrSplit('notax',(salesInvoices||[]).filter(d=>docLive(d)&&[2,3].includes(ix.rk(d))&&clrIn(d.invoice_date,ym)&&saleRevPaid(d,ix)&&(ix.srcMax.get(String(d.id))||0)<4&&!salesInvoiceJobs(d).some(p=>(ix.prMax.get(normalizePR(p))||0)>=4)),d=>d.id,dL,hid);
   rows.push({g:1,k:'notax',t:'รับเงินแล้ว ยังไม่ออกใบกำกับภาษี',s:'ใบแจ้งหนี้/ใบเสร็จที่รับเงินแล้ว แต่ยังไม่มีใบกำกับภาษีของงานนี้',warn:true,
     n:noTax.length,unit:'ใบ',amt:noTax.reduce((s,d)=>s+saleDocTotal(d),0),go:['ไปใบกำกับขาย →',`clrGoSales('${ym}')`],
     items:noTax.map(d=>({k:d.id,cols:[d.sales_invoice_no||d.doc_no||d.id,d.customer_name||'',String(d.invoice_date||'').slice(0,10),'฿'+money(saleDocTotal(d))],open:`openSalesModal('${clrQ(d.id)}')`})),
@@ -11561,11 +11592,11 @@ function clrCompute(ym,ix){
     n:owe.length,unit:'งาน',amt:owe.reduce((s,j)=>s+finOf(j).pt,0),go:['ไปจ่ายช่าง →',`goTo('tech-pay')`],
     items:Object.entries(byTeam).sort((a,b)=>b[1].amt-a[1].amt).map(([t,v])=>({k:t,cols:[t,v.n+' งาน','฿'+money(v.amt),'หัก '+(techPay.settings.wht_rate??3)+'% ≈ ฿'+money(tpWht(v.amt))]})),
     head:['ทีม','งาน','ยอดจ่าย','หัก ณ ที่จ่าย']});
-  const legacy=finLegacyJobs().filter(j=>clrIn(tpDoneDate(j),ym));
+  const legacy=clrSplit('legacy',finLegacyJobs().filter(j=>clrIn(tpDoneDate(j),ym)),j=>j.id,jL,hid);
   rows.push({g:2,k:'legacy',t:'ยอดเดิมไม่ตรงเอกสาร',s:'งานที่เคยพิมพ์ยอดเอง ต่างจากเอกสาร — เลือก “ใช้ตามเอกสาร” หรือ “คงยอดเดิม”',warn:true,
     n:legacy.length,unit:'งาน',amt:null,go:['ตรวจ / เลือก →',`openFinLegacy()`],
     items:legacy.map(j=>({k:j.id,cols:[j.id,`${j.client||''} · ${j.branch||''}`,j.team||'',''],open:`openFinanceEdit('${clrQ(j.id)}')`})),head:['PR','ลูกค้า · สาขา','ทีม','']});
-  const stale=tpOk?tpPaidNotClosed().filter(x=>clrIn(tpDoneDate(x.j),ym)):[];
+  const stale=clrSplit('stale',tpOk?tpPaidNotClosed().filter(x=>clrIn(tpDoneDate(x.j),ym)):[],x=>x.j.id,x=>jL(x.j),hid);
   rows.push({g:2,k:'stale',t:'จ่ายช่างแล้ว แต่สถานะงานยังไม่ปิด',s:'ปกติระบบปิดให้ตอนกดจ่าย · กดปิดได้ที่แถบเหลืองในหน้าจ่ายช่าง',warn:true,
     n:stale.length,unit:'งาน',amt:null,go:['ไปจ่ายช่าง →',`goTo('tech-pay')`],
     items:stale.map(x=>({k:x.j.id,cols:[x.j.id,x.j.branch||'',x.j.status||'',x.p.doc_no||''],open:`openDet('${clrQ(x.j.id)}')`})),head:['PR','สาขา','สถานะ','เอกสารจ่าย']});
@@ -11574,15 +11605,15 @@ function clrCompute(ym,ix){
   const loose=new Map();
   (purchaseItems||[]).forEach(x=>{if(x.status==='cancelled'||['stock','general_expense'].includes(x.allocation_type))return;if(String(x.job_id||'').trim())return;
     const v=invM.get(x.purchase_invoice_id);if(!v)return;const o=loose.get(v.id)||{v,n:0,amt:0};o.n++;o.amt+=Number(x.subtotal||x.total_amount||0);loose.set(v.id,o);});
-  const lo=[...loose.values()];
+  const lo=clrSplit('loose',[...loose.values()],o=>o.v.id,o=>`${o.v.supplier_name||''} · ${o.v.purchase_no||''}`,hid);
   rows.push({g:3,k:'loose',t:'บิลซื้อยังไม่ผูกเลข PR',s:'รายการที่ไม่ได้ระบุ PR (และไม่ใช่สต็อก/ค่าใช้จ่ายทั่วไป) = ไม่เข้าต้นทุนงานไหนเลย',
     n:lo.length,unit:'ใบ',amt:lo.reduce((s,o)=>s+o.amt,0),go:['ไปบิลซื้อ →',`clrGoPurchase('${ym}')`],
     items:lo.map(o=>({k:o.v.id,cols:[o.v.supplier_name||'',o.v.purchase_no||'',String(o.v.invoice_date||'').slice(0,10),`${o.n} รายการ · ฿${money(o.amt)}`],open:`openPurchaseModal('${clrQ(o.v.id)}')`})),head:['ผู้ขาย','เลขที่','วันที่','ยังไม่ผูก']});
-  const nodoc=done.filter(j=>finOf(j).state==='nodoc');
+  const nodoc=clrSplit('nodoc',done.filter(j=>finOf(j).state==='nodoc'),j=>j.id,jL,hid);
   rows.push({g:3,k:'nodoc',t:'งานยังไม่มีใบเสนอราคา',s:'รายได้ของงานเป็น 0 ในรายงาน · ทำใบเสนอราคา หรือใส่ยอดเองในหน้าต่างการเงิน',warn:true,
     n:nodoc.length,unit:'งาน',amt:null,go:['ดูในภาพรวมการเงิน →',`clrGoFin('need')`],
     items:nodoc.map(j=>({k:j.id,cols:[j.id,`${j.client||''} · ${j.branch||''}`,j.type||'',j.team||''],open:`openFinanceEdit('${clrQ(j.id)}')`})),head:['PR','ลูกค้า · สาขา','ประเภท','ทีม']});
-  const neg=done.filter(j=>finIncome(j)>0&&gp(j)<0);
+  const neg=clrSplit('neg',done.filter(j=>finIncome(j)>0&&gp(j)<0),j=>j.id,jL,hid);
   rows.push({g:3,k:'neg',t:'งานกำไรติดลบ',s:'ต้นทุนมากกว่ารายได้ — เช็กว่าลืมคิดค่าอะไหล่ หรือผูกบิลซื้อผิดงาน',warn:true,
     n:neg.length,unit:'งาน',amt:neg.reduce((s,j)=>s+gp(j),0),go:null,
     items:neg.map(j=>({k:j.id,cols:[j.id,'฿'+money(finIncome(j)),'฿'+money(finCost(j)),`<b style="color:var(--red)">฿${money(gp(j))}</b>`],open:`openFinanceEdit('${clrQ(j.id)}')`})),head:['PR','รายได้','ต้นทุน','กำไร']});
@@ -11594,7 +11625,8 @@ function clrCompute(ym,ix){
   const pays=tpOk?(techPay.payouts||[]).filter(p=>p.status!=='cancelled'&&clrIn(p.paid_at,ym)):[];
   const tax={sv:sv.reduce((s,d)=>s+Number(d.vat_amount||0),0),sn:sv.length,pv:pv.reduce((s,v)=>s+Number(v.vat_amount||0),0),pn:pv.length,pnf:pv.filter(v=>!v.file_url).length,
     wht:pays.reduce((s,p)=>s+Number(p.wht_amount||0),0),wn:pays.length};
-  return {ym,rows,open:rows.filter(r=>r.n>0).length,total:rows.length,kpi:{inc,cost,gp:inc-cost,n:done.length,cash,unpaid:unpaid.reduce((s,d)=>s+saleDocTotal(d),0)},tax};
+  rows.forEach(r=>{r.tick=r.k!=='owe';}); // จ่ายช่าง = ต้องจ่ายจริงในหน้าจ่ายช่าง ไม่มีปุ่มซ่อน
+  return {ym,rows,hidden:hid,open:rows.filter(r=>r.n>0).length,total:rows.length,kpi:{inc,cost,gp:inc-cost,n:done.length,cash,unpaid:unpaid.reduce((s,d)=>s+saleDocTotal(d),0)},tax};
 }
 function clrQ(v){return esc(String(v||'')).replace(/'/g,'&#39;');}
 function clrAgeTxt(d){const day=String(d||'').slice(0,10);if(!day)return '—';const n=clrDays(day);return `${tpThaiDate(day)} ${n>90?`<span class="clr-pill bad">${n} วัน</span>`:n>30?`<span class="clr-pill warn">${n} วัน</span>`:''}`;}
@@ -11617,6 +11649,8 @@ function renderClear(){
     Promise.all([ensureAccountingLoaded(),ensureTechPayLoaded()]).then(()=>{if(document.getElementById('page-clear')?.classList.contains('active'))renderClear();});
     return;
   }
+  if(!clrDoneAt){box.innerHTML='<div class="empty"><div>กำลังโหลดรายการที่ติ๊กเคลียร์แล้ว…</div></div>';clrLoadDone().then(()=>{if(document.getElementById('page-clear')?.classList.contains('active'))renderClear();});return;}
+  if(Date.now()-clrDoneAt>60000)clrLoadDone().then(()=>{if(document.getElementById('page-clear')?.classList.contains('active'))renderClear();}); // แอดมินคนอื่นติ๊กไว้
   if(accountingLoadError){box.innerHTML=`<div class="empty"><div>โหลดเอกสารบัญชีไม่สำเร็จ: ${esc(accountingLoadError)}</div><button class="btn btn-ghost btn-sm" onclick="accountingLoaded=false;renderClear()">ลองใหม่</button></div>`;return;}
   const months=clrMonths();if(!months.includes(clrYm))clrYm=months[months.length-1];
   const ix=saleRevIndex(),C=clrCompute(clrYm,ix),cut=clrCutoff();
@@ -11632,18 +11666,20 @@ function renderClear(){
     neg:['งานขาดทุน (ต้นทุนมากกว่ารายได้)','เช็กว่าลืมคิดค่าอะไหล่ หรือผูกบิลซื้อผิดงาน','']};
   const todo=C.rows.filter(r=>r.n>0),okRows=C.rows.filter(r=>!r.n);
   const amtTxt=r=>r.amt==null||(r.approx&&!r.amt)?'':` · ${r.approx?'≈ ':''}฿${money(Math.abs(r.amt))}`;
-  const detHtml=r=>`<div class="clr-det"><div class="clr-mut" style="margin-bottom:6px">${r.s}</div>${r.aging?`<div class="clr-aging">${['0–30 วัน','31–60 วัน','61–90 วัน','เกิน 90 วัน'].map((l,i)=>`<div class="${i===3&&r.aging.agn[3]?'bad':i===2&&r.aging.agn[2]?'warn':''}"><small>ค้าง ${l}</small><b>฿${money(r.aging.ag[i])}</b>${r.aging.agn[i]} ใบ</div>`).join('')}</div>`:''}
-    <table class="clr-tb"><tr>${r.head.map(h=>`<th>${h}</th>`).join('')}<th></th></tr>${r.items.slice(0,60).map(it=>`<tr>${it.cols.map(c=>`<td>${c}</td>`).join('')}<td style="text-align:right">${it.open?`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();${it.open}">เปิด</button>`:''}</td></tr>`).join('')}${r.items.length>60?`<tr><td colspan="${r.head.length+1}" class="clr-mut">… อีก ${r.items.length-60} รายการ</td></tr>`:''}</table></div>`;
+  const detHtml=r=>`<div class="clr-det"><div class="clr-mut" style="margin-bottom:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="flex:1;min-width:200px">${r.s}</span>${r.tick&&r.items.length>1?`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();clrMarkAll('${r.k}')">✓ เคลียร์ทั้งข้อ</button>`:''}</div>${r.aging?`<div class="clr-aging">${['0–30 วัน','31–60 วัน','61–90 วัน','เกิน 90 วัน'].map((l,i)=>`<div class="${i===3&&r.aging.agn[3]?'bad':i===2&&r.aging.agn[2]?'warn':''}"><small>ค้าง ${l}</small><b>฿${money(r.aging.ag[i])}</b>${r.aging.agn[i]} ใบ</div>`).join('')}</div>`:''}
+    <table class="clr-tb"><tr>${r.head.map(h=>`<th>${h}</th>`).join('')}<th></th></tr>${r.items.slice(0,60).map(it=>`<tr>${it.cols.map(c=>`<td>${c}</td>`).join('')}<td style="text-align:right;white-space:nowrap">${it.open?`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();${it.open}">เปิด</button>`:''}${r.tick?` <button class="btn btn-ghost btn-xs clr-tick" title="ไม่ต้องทำ / จัดการนอกระบบแล้ว → ซ่อนจากเช็กลิสต์ (เอากลับได้)" onclick="event.stopPropagation();clrMark('${r.k}',['${clrQ(it.k)}'],true)">✓ เคลียร์แล้ว</button>`:''}</td></tr>`).join('')}${r.items.length>60?`<tr><td colspan="${r.head.length+1}" class="clr-mut">… อีก ${r.items.length-60} รายการ</td></tr>`:''}</table></div>`;
   const todoHtml=(r,i)=>{const key=clrYm+':'+r.k,open=clrOpen.has(key),T=TODO[r.k]||[r.t,'',''];
     const go=r.go&&T[2]?`<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();${r.go[1]}">${T[2]} →</button>`:'';
     return `<div class="clr-todo${open?' open':''}"><div class="clr-row2" onclick="clrToggle('${key}')"><span class="clr-no">${i+1}</span><div class="clr-t"><b>${T[0]}</b><small>👉 ${T[1]}${amtTxt(r)}</small></div><div class="clr-cnt"><b>${r.n}</b><small>${r.unit}</small></div>
       <div class="clr-acts">${go}<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();clrToggle('${key}')">${open?'ซ่อน ▴':'ดูรายการ ▾'}</button></div></div>${open?detHtml(r):''}</div>`;};
   const K=C.kpi,T=C.tax,ml=tpMonthLabel(clrYm,0);
   box.innerHTML=`<div class="clr-months">${strip}</div>
-    <div class="clr-head${C.open?'':' ok'}"><div><b>${ml}</b><span>${C.open?`เหลือ <em>${C.open}</em> เรื่องต้องทำ`:'🎉 เคลียร์ครบแล้ว'}</span></div><small>${C.open?'ทำจากข้อ 1 ลงไป · ทำเสร็จข้อไหน ข้อนั้นจะหายไปเอง':'ไม่มีอะไรค้างในเดือนนี้'}</small></div>
+    <div class="clr-head${C.open?'':' ok'}"><div><b>${ml}</b><span>${C.open?`เหลือ <em>${C.open}</em> เรื่องต้องทำ`:'🎉 เคลียร์ครบแล้ว'}</span></div><small>${C.open?'ทำจากข้อ 1 ลงไป · ทำเสร็จแล้วรายการหายไปเอง · รายการที่ไม่ต้องทำ (เช่น งานประกัน / จัดการนอกระบบ) กด ✓ เคลียร์แล้ว':'ไม่มีอะไรค้างในเดือนนี้'}</small></div>
     ${todo.length?`<div class="clr-list2">${todo.map(todoHtml).join('')}</div>`:''}
     ${okRows.length?`<div class="clr-okline">✓ เรียบร้อยแล้ว: ${okRows.map(r=>CLR_OK[r.k]||r.t).join(' · ')}</div>`:''}
     ${bf.length?`<div class="clr-bf">💰 นอกจากนี้ ลูกค้ายังค้างจ่าย <b>บิลเก่าก่อน ${tpMonthLabel(cut,0)}</b> ฿${money(bfAmt)} (${bf.length} ใบ) <a href="#" onclick="event.preventDefault();clrGoSales('')">ดู</a></div>`:''}
+    ${clrDoneErr?`<div class="clr-mut" style="margin:8px 0;color:var(--red)">โหลดรายการที่ติ๊กเคลียร์แล้วไม่สำเร็จ: ${esc(clrDoneErr)}</div>`:''}
+    ${C.hidden.length?`<details class="clr-more"><summary>🙈 ซ่อนไว้ (ติ๊กเคลียร์แล้ว) ${C.hidden.length} รายการในเดือนนี้</summary><table class="clr-tb" style="margin-top:8px"><tr><th>ข้อ</th><th>รายการ</th><th>ติ๊กโดย</th><th></th></tr>${C.hidden.map(h=>`<tr><td>${esc((TODO[h.kind]||[h.kind])[0])}</td><td>${esc(h.label)}</td><td class="clr-mut">${esc([h.v&&h.v.by,h.v&&String(h.v.at||'').slice(0,10)].filter(Boolean).join(' · '))}</td><td style="text-align:right"><button class="btn btn-ghost btn-xs" onclick="clrMark('${h.kind}',['${clrQ(h.id)}'],false)">↩ เอากลับ</button></td></tr>`).join('')}</table></details>`:''}
     <details class="clr-more"${clrMoreOpen?' open':''} ontoggle="clrMoreOpen=this.open"><summary>📊 ตัวเลขเดือนนี้ และภาษี (ส่งนักบัญชี)</summary>
       <div class="clr-kpis" style="margin-top:10px"><div class="in"><small>รายได้ (ตามเอกสาร)</small><b>฿${money(K.inc)}</b><i>${K.n} งานที่เสร็จ</i></div><div class="out"><small>ต้นทุน (ช่าง+ของ)</small><b>฿${money(K.cost)}</b><i>&nbsp;</i></div><div class="gp"><small>กำไรขั้นต้น</small><b>฿${money(K.gp)}</b><i>${K.inc?Math.round(K.gp/K.inc*100)+'%':'—'}</i></div><div><small>รับเงินแล้ว (บิลเดือนนี้)</small><b>฿${money(K.cash)}</b><i>ค้างรับ ฿${money(K.unpaid)}</i></div></div>
       <div class="clr-mut" style="margin:14px 0 6px"><b>ภาษีเดือนนี้</b> — ยอดประมาณจากเอกสารในระบบ ให้นักบัญชียืนยันก่อนยื่น</div>
