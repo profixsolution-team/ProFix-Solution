@@ -1057,6 +1057,8 @@ html.doc-mode .topbar2{display:none !important;}
 /* ===== หมายเหตุจากแอดมิน (จากรายงานช่าง) ===== */
 :root{--an:#f5b400;}
 .fin-note-b,.fin-note-p{--an:#0d9488;} /* โน้ตการเงิน (สีเขียวอมฟ้า แยกจากหมายเหตุแอดมิน) */
+.claim-pill{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;white-space:nowrap;}
+body[data-theme="dark"] .claim-pill{background:#2e1065;color:#ddd6fe;border-color:#5b21b6;}
 .tp-fnote{display:inline-block;margin-left:6px;font-size:11px;color:#0d9488;font-weight:700;}
 .adm-note{display:flex;align-items:flex-start;gap:6px;margin-top:6px;max-width:340px;background:color-mix(in srgb,var(--an) 16%,#fff);color:color-mix(in srgb,var(--an) 55%,#000);border:1px solid color-mix(in srgb,var(--an) 45%,#fff);border-radius:10px;padding:5px 9px;font-size:12px;line-height:1.45;white-space:normal;}
 .adm-note b{font-weight:700;flex:none;}
@@ -6141,7 +6143,7 @@ function renderJobs(){
   window.__jobQueueFil=fil;try{jqRenderTags(fil,scoped);}catch(e){}
   const tb=document.getElementById('job-tbody');
   if(!fil.length){tb.innerHTML=trackerEmptyHtml('jobs',allJobs.length,8);return;}
-  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');const _b=`${techUpdatePill(j)}${level1Badge(j)}${techAcceptPill(j)}${pmJobChip(j.id)}`;const _late=jqLateDays(j);return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="jq-pr">${mobileCard(j.id,j.type,j.team,j.date,stBadge,'',billTypeBadge(j))}<div class="jq-prid">${billTypeBadge(j)}${techUpdateMark(j)}${esc(j.id)}</div>${_b?`<div class="jq-badges">${_b}</div>`:''}</td><td><div class="jq-two"><b>${esc(j.branch||'-')}</b><small>${esc(j.client||'')}${j.ref&&j.ref!=='N/A'?' · '+esc(j.ref):''}</small>${adminNotePill(j)}</div></td><td>${esc(j.type||'-')}</td><td><span class="jq-team">${jqTeamAvatar(j.team)}<span>${esc(j.team||'-')}</span></span></td><td><div class="jq-two"><span class="${_late?'jq-late':''}">${esc(jqThDate(j.date))}${_late?` · เลย ${_late} วัน`:''}</span><small>Assign ${esc(jqThDate(j.assignedAt)||'-')}</small></div></td><td><select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="${SB[j.status]==='b-urgent'?'':'color:'+pfStatusColor(j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="jq-upd">${esc(jqRelTime(j.modifiedAt||j.techUpdateAt||''))}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
+  tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');const _b=`${claimPill(j)}${techUpdatePill(j)}${level1Badge(j)}${techAcceptPill(j)}${pmJobChip(j.id)}`;const _late=jqLateDays(j);return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="jq-pr">${mobileCard(j.id,j.type,j.team,j.date,stBadge,'',billTypeBadge(j))}<div class="jq-prid">${billTypeBadge(j)}${techUpdateMark(j)}${esc(j.id)}</div>${_b?`<div class="jq-badges">${_b}</div>`:''}</td><td><div class="jq-two"><b>${esc(j.branch||'-')}</b><small>${esc(j.client||'')}${j.ref&&j.ref!=='N/A'?' · '+esc(j.ref):''}</small>${adminNotePill(j)}</div></td><td>${esc(j.type||'-')}</td><td><span class="jq-team">${jqTeamAvatar(j.team)}<span>${esc(j.team||'-')}</span></span></td><td><div class="jq-two"><span class="${_late?'jq-late':''}">${esc(jqThDate(j.date))}${_late?` · เลย ${_late} วัน`:''}</span><small>Assign ${esc(jqThDate(j.assignedAt)||'-')}</small></div></td><td><select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="${SB[j.status]==='b-urgent'?'':'color:'+pfStatusColor(j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="jq-upd">${esc(jqRelTime(j.modifiedAt||j.techUpdateAt||''))}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
 async function setJS(id,s,opt){if(!guardEdit())return; // opt.stay = เรียกจากหน้าการเงิน → ไม่เด้งไปหน้าการเงินอีก
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
@@ -6753,7 +6755,7 @@ function renderFin(){
   fil=sortByActivity(fil.filter(j=>matchText(j,['id','ref','branch','client','team','type','date','status','pay','financeNote'],financeSearch)),'desc');
   document.getElementById('fin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('fin-tbl-title').textContent='P&L ต่องาน - '+finFilter+(financeDateFilter?' / '+financeDateFilter:'')+(financeSearch?' / ค้นหา: '+financeSearch:'');
-  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openDet('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}${finNotePill(j)}${finOf(j).state!=='doc'?`<div><a href="#" onclick="openFinanceEdit('${j.id}');return false" style="text-decoration:none">${finStateBadge(j)}</a></div>`:''}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg${finOf(j).how.pc==='doc'&&finOf(j).how.partR==='doc'&&finOf(j).how.fuel==='doc'?'':' fin-ov'}" type="number" value="${jobIncome(j)}" title="${esc(['pc','partR','fuel'].map(k=>FIN_LABEL[k]+': ฿'+money(finOf(j)[k])+' · '+finOf(j).src[k]).join('\n'))}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr${finOf(j).how.pt==='doc'?'':' fin-ov'}" type="number" value="${finOf(j).pt}" title="${esc(finOf(j).src.pt)}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr${finOf(j).how.partC==='doc'?'':' fin-ov'}" type="number" value="${finOf(j).partC}" title="${esc(finOf(j).src.partC)}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td>${finJobStatusSel(j)}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openFinanceEdit('${j.id}')">💰 การเงิน (ที่มาของยอด)</button><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button><button onclick="deleteJob('${j.id}')" style="color:var(--red);">ลบงาน</button></div></td></tr>`;}).join('');
+  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openDet('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}${claimPill(j)}${finNotePill(j)}${finOf(j).state!=='doc'?`<div><a href="#" onclick="openFinanceEdit('${j.id}');return false" style="text-decoration:none">${finStateBadge(j)}</a></div>`:''}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg${finOf(j).how.pc==='doc'&&finOf(j).how.partR==='doc'&&finOf(j).how.fuel==='doc'?'':' fin-ov'}" type="number" value="${jobIncome(j)}" title="${esc(['pc','partR','fuel'].map(k=>FIN_LABEL[k]+': ฿'+money(finOf(j)[k])+' · '+finOf(j).src[k]).join('\n'))}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr${finOf(j).how.pt==='doc'?'':' fin-ov'}" type="number" value="${finOf(j).pt}" title="${esc(finOf(j).src.pt)}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr${finOf(j).how.partC==='doc'?'':' fin-ov'}" type="number" value="${finOf(j).partC}" title="${esc(finOf(j).src.partC)}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td>${finJobStatusSel(j)}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openFinanceEdit('${j.id}')">💰 การเงิน (ที่มาของยอด)</button>${isClaimJob(j)?'':`<button onclick="closeClaimJob('${j.id}')">🛡 ปิดงานเคลม (ไม่เก็บเงิน)</button>`}<button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button><button onclick="deleteJob('${j.id}')" style="color:var(--red);">ลบงาน</button></div></td></tr>`;}).join('');
   renderFixedExpenses();
 }
 function setPay(id,s){if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(j){const before=clonePlain(j);j.pay=s;renderFin();renderDash();saveState();writeAuditLog('update_job_pay','job',id,before,{pay:s},clonePlain(j));}}
@@ -6932,7 +6934,7 @@ function finOf(j){
     else{o[k]=c[k];o.how[k]='doc';o.src[k]=c.src[k]||'—';}
   });
   const st=String(j.status||'');
-  o.state=c.shared?'split':(!c.inv&&isJobAfterSubmit(st)&&!/ยกเลิก|Reject|ปิดงานสำรวจ/.test(st))?'nodoc':FIN_KEYS.some(k=>o.how[k]!=='doc')?'ov':'doc';
+  o.state=c.shared?'split':(!c.inv&&isJobAfterSubmit(st)&&!/ยกเลิก|Reject|ปิดงานสำรวจ/.test(st)&&!isClaimJob(j))?'nodoc':FIN_KEYS.some(k=>o.how[k]!=='doc')?'ov':'doc';
   finMemo.set(j.id,{sig,v:o,t:Date.now()});
   return o;
 }
@@ -11080,7 +11082,7 @@ function tpPayerProfile(id){const list=salesCompanyProfiles();return list.find(p
 // แท็บ "ภาพรวมการเงิน": หน้าการเงินเดิม (ย้าย DOM มาไว้ในหน้านี้ ฟังก์ชัน renderFin เดิมทำงานตามปกติ)
 // สถานะจ่ายของงาน: จ่ายแล้ว (อยู่ในเอกสารจ่าย) / งานยังไม่เสร็จ / ก่อนเริ่มใช้ระบบ (เสร็จก่อนวันเริ่มในตั้งค่า = จ่ายนอกระบบ) / ยังไม่กรอกค่าแรง / รอจ่าย
 Object.assign(tpState,{tab:'pay',ym:'',half:0,f:'all',sel:new Set(),open:'',purAs:{}});
-const TP_PS={paid:['จ่ายแล้ว','ok'],ready:['รอจ่าย','warn'],miss:['ยังไม่กรอกค่าแรง','bad'],open:['งานยังไม่เสร็จ',''],pre:['ก่อนเริ่มใช้ระบบ','']};
+const TP_PS={claim:['งานเคลม (ไม่จ่าย)',''],paid:['จ่ายแล้ว','ok'],ready:['รอจ่าย','warn'],miss:['ยังไม่กรอกค่าแรง','bad'],open:['งานยังไม่เสร็จ',''],pre:['ก่อนเริ่มใช้ระบบ','']};
 function tpJobDate(j){return String(j.dateIn||j.date||j.assignedAt||'').slice(0,10);}
 function tpHasTeam(j){return !!(j.team&&j.team!=='ระบุทีมช่าง');}
 function tpPaidMap(){
@@ -11092,6 +11094,7 @@ function tpPayState(j,paid){
   if(!TP_DONE_STATUSES.has(j.status))return 'open';
   const start=String(techPay.settings.start_date||'').slice(0,10),d=tpDoneDate(j);
   if(start&&d&&d<start)return 'pre';
+  if(finOf(j).pt<=0&&isClaimJob(j))return 'claim'; // งานเคลมไม่มีค่าแรง = ไม่ค้างจ่าย
   return finOf(j).pt>0?'ready':'miss';
 }
 function tpCanPay(j,s){return s!=='paid'&&finOf(j).pt>0;}
@@ -11233,7 +11236,7 @@ function tpTeamPanelHtml(team,tjs,st,paid){
       <td style="white-space:nowrap">${+d.slice(8,10)} ${TP_TH_MONTH[+d.slice(5,7)-1]}</td>
       <td><span class="mono ta fw7">${esc(j.id)}</span>${finNoteText(j)?`<span class="tp-fnote" title="${esc(finNoteText(j))}">💰 โน้ต</span>`:''}${pl&&pl.length?`<span class="tp-clip${pn&&s!=='paid'?' new':''}" title="บิลซื้อที่ระบุ PR นี้">📎 บิลซื้อ ${pl.length}${pn&&s!=='paid'?' · ยังไม่ดึง':''}</span>`:''}<div class="tm" style="font-size:12px">${esc(j.branch||'-')}</div></td>
       <td style="font-size:12.5px">${esc(j.type||'-')}</td>
-      <td onclick="event.stopPropagation()">${finJobStatusSel(j)}</td>
+      <td onclick="event.stopPropagation()">${finJobStatusSel(j)}${claimPill(j)}</td>
       <td class="mono" style="text-align:right">${finOf(j).pt?money(finOf(j).pt):`<span class="${s==='miss'?'tr fw7':'tm'}">${s==='miss'?'+ กรอก':'—'}</span>`}</td>
       <td class="mono" style="text-align:right">${finOf(j).partC?money(finOf(j).partC)+(j.tpPartOwn?'<div class="tm" style="font-size:11px">ช่างออกเงิน</div>':''):'<span class="tm">—</span>'}</td>
       <td><span class="tp-pill ${P[1]}">${P[0]}</span>${po?`<div class="tm" style="font-size:11px">${esc(po.doc_no||'')}</div>`:''}</td></tr>`;};
@@ -11325,7 +11328,7 @@ function tpDrawer(id,keepFocus){
   dw.innerHTML=`<div class="tp-dw-h"><div class="flex g8" style="align-items:center"><b style="font-size:18px">${I}</b><span class="tp-pill ${P[1]}">${P[0]}</span><span style="flex:1"></span>
       <button class="btn btn-ghost btn-sm" title="งานก่อนหน้า" onclick="tpStep(-1)">‹</button><button class="btn btn-ghost btn-sm" title="งานถัดไป" onclick="tpStep(1)">›</button><button class="btn btn-ghost btn-sm" onclick="tpCloseDrawer()">✕</button></div>
     <div class="fw7" style="margin-top:6px">${esc(j.branch||'-')}</div><div class="tm" style="font-size:12px">${esc(j.team||'')} · ${esc(j.type||'-')} · เข้า ${tpThaiDate(d)}</div>
-    <div class="flex g8" style="margin-top:8px;flex-wrap:wrap;align-items:center"><span class="tm" style="font-size:12px">สถานะงาน</span>${finJobStatusSel(j)}</div>
+    <div class="flex g8" style="margin-top:8px;flex-wrap:wrap;align-items:center"><span class="tm" style="font-size:12px">สถานะงาน</span>${finJobStatusSel(j)}${claimBtn(j)}</div>
     <div class="flex g8" style="margin-top:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" data-id="${I}" onclick="openDet(this.dataset.id)">ดูข้อมูลงาน</button><button class="btn btn-ghost btn-xs" data-id="${I}" onclick="openReportModal(this.dataset.id)">รายงานช่าง</button></div></div>
   <div class="tp-dw-b">
     ${lock?`<div class="tp-note warn">จ่ายช่างแล้วในเอกสาร <b>${esc(po&&po.doc_no||'')}</b> — แก้ค่าแรง/ค่าของไม่ได้ ต้องยกเลิกเอกสารจ่ายก่อน</div>`:s==='open'?'<div class="tp-note">งานยังไม่เสร็จ — กรอกค่าแรงไว้ก่อนได้ จะขึ้นเป็น "รอจ่าย" เมื่อช่างส่งงานแล้ว</div>':s==='pre'?`<div class="tp-note">งานเสร็จก่อนวันเริ่มใช้ระบบจ่ายช่าง (${tpThaiDate(techPay.settings.start_date)}) — ถือว่าจ่ายนอกระบบแล้ว (เปลี่ยนวันเริ่มได้ที่ ⚙)</div>`:''}
@@ -11590,32 +11593,37 @@ async function clrMark(kind,ids,done){
 // ติ๊กไว้ให้: จ่ายช่างแล้วยังไม่ปิด / ไม่มีใบเสนอราคา (เช่น งานประกัน) · ข้ออื่นเลือกเอง (ขาดทุน/ยอดไม่ตรง อาจยังรอเก็บเงิน)
 // ปิดงานใช้ setJS ทางเดียวกับคิวช่าง → Admin Tracker / PM / LINE ช่าง เปลี่ยนตาม · "เอากลับ" แค่ยกเลิกซ่อน ไม่เปิดงานคืน
 const CLR_JOB_KINDS=new Set(['unbilled','legacy','stale','nodoc','neg']);
-const CLR_CLOSE_DEF=new Set(['stale','nodoc']);
-const CLR_CLOSE_HINT={unbilled:'ปิดเมื่อวางบิล/เก็บเงินนอกระบบเรียบร้อยแล้ว',legacy:'ยอดไม่ตรงเอกสารไม่เกี่ยวกับสถานะงาน — ปกติไม่ต้องปิด',neg:'งานขาดทุนอาจยังรอเก็บเงิน/จ่ายช่าง — ปิดเฉพาะงานที่จบแล้วจริง',stale:'จ่ายช่างแล้ว ควรปิดงาน',nodoc:'งานที่ไม่ต้องเก็บเงิน (เช่น งานประกัน) ปิดได้เลย'};
+const CLR_CLOSE_DEF={stale:'close',nodoc:'claim'}; // ค่าเริ่มต้นของตัวเลือกในหน้าต่าง (ข้ออื่น = ไม่เปลี่ยนสถานะ)
+const CLR_CLOSE_HINT={unbilled:'ปิดเมื่อวางบิล/เก็บเงินนอกระบบเรียบร้อยแล้ว',legacy:'ยอดไม่ตรงเอกสารไม่เกี่ยวกับสถานะงาน — ปกติไม่ต้องปิด',neg:'งานขาดทุนอาจยังรอเก็บเงิน/จ่ายช่าง — ปิดเฉพาะงานที่จบแล้วจริง',stale:'จ่ายช่างแล้ว ควรปิดงาน',nodoc:'ไม่มีใบเสนอราคาเพราะเป็นงานเคลม/ประกัน → ปิดงานเคลม · ถ้าลืมทำใบเสนอราคา อย่าเพิ่งติ๊ก'};
 let clrTickResolve=null;
-function clrTickDone(ok){const m=document.getElementById('m-clr-tick');const close=!!document.getElementById('clr-tick-close')?.checked;closeM('m-clr-tick');const r=clrTickResolve;clrTickResolve=null;if(r)r(ok?{close}:null);}
+function clrTickDone(ok){const act=document.querySelector('input[name="clr-tick-act"]:checked')?.value||'none';closeM('m-clr-tick');const r=clrTickResolve;clrTickResolve=null;if(r)r(ok?{act}:null);}
 function clrAskClose(kind,ids){
   const list=ids.map(id=>jobs.find(j=>sameJob(j.id,id)&&!isDeletedRecord(j))).filter(Boolean);
   const open=list.filter(j=>!TP_CLOSED_ST.has(String(j.status||'').trim()));
+  const claimable=list.filter(j=>!isClaimJob(j)&&!['ปิดงานสำรวจ','Reject','ยกเลิก'].includes(String(j.status||'').trim()));
   let m=document.getElementById('m-clr-tick');
   if(!m){m=document.createElement('div');m.className='modal-overlay';m.id='m-clr-tick';document.body.appendChild(m);}
   const T=(typeof CLR_TODO_TITLE!=='undefined'&&CLR_TODO_TITLE[kind])||'';
   m.innerHTML=`<div class="modal" style="max-width:480px"><div class="modal-header"><div class="modal-title">✓ เคลียร์แล้ว</div><button class="close-btn" onclick="clrTickDone(false)">×</button></div>
     <div class="modal-body"><div style="line-height:1.7">ซ่อน <b>${ids.length} รายการ</b>${T?` ในข้อ “${esc(T)}”`:''} ออกจากเช็กลิสต์<div class="tm" style="font-size:12px">ดู / เอากลับได้ที่ “🙈 ซ่อนไว้” ด้านล่างหน้า</div></div>
-      ${open.length?`<label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:12px;cursor:pointer"><input type="checkbox" id="clr-tick-close" ${CLR_CLOSE_DEF.has(kind)?'checked':''} style="margin-top:3px"><span><b>ปิดงานด้วย</b> (${open.length} งาน → สถานะ “ปิดงาน”)<br><span class="tm" style="font-size:12px">คิวช่าง / Admin Tracker / PM / LINE ช่าง เปลี่ยนตาม · ${esc(CLR_CLOSE_HINT[kind]||'')}</span>
-        <span class="tm" style="display:block;font-size:12px;margin-top:6px">${open.slice(0,8).map(j=>`${esc(j.id)} (${esc(j.status||'-')})`).join(' · ')}${open.length>8?` … อีก ${open.length-8} งาน`:''}</span></span></label>`
+      ${claimable.length?`<div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:12px"><div class="fw7" style="margin-bottom:6px">สถานะงาน</div>
+        ${[['none','ไม่เปลี่ยนสถานะ (ซ่อนอย่างเดียว)',''],['close','ปิดงาน',`${open.length} งาน → “ปิดงาน”`],['claim','🛡 ปิดงานเคลม (ไม่เก็บเงิน)',`${claimable.length} งาน → “ปิดงาน” + ป้ายเคลม`]].filter(([k])=>k!=='close'||open.length)
+          .map(([k,l,d])=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="radio" name="clr-tick-act" value="${k}" ${(CLR_CLOSE_DEF[kind]||'none')===k||(k==='none'&&CLR_CLOSE_DEF[kind]==='close'&&!open.length)?'checked':''} style="margin-top:3px"><span><b>${l}</b>${d?`<span class="tm" style="font-size:12px"> · ${d}</span>`:''}</span></label>`).join('')}
+        <div class="tm" style="font-size:12px;margin-top:4px;line-height:1.6">คิวช่าง / Admin Tracker / PM / LINE ช่าง เปลี่ยนตาม · ${esc(CLR_CLOSE_HINT[kind]||'')}</div>
+        <div class="tm" style="font-size:12px;margin-top:6px">${claimable.slice(0,8).map(j=>`${esc(j.id)} (${esc(j.status||'-')})`).join(' · ')}${claimable.length>8?` … อีก ${claimable.length-8} งาน`:''}</div></div>`
         :list.length?'<div class="tm" style="font-size:12px;margin-top:10px">งานเหล่านี้ปิดแล้ว — ซ่อนอย่างเดียว</div>':''}
     </div>
     <div class="modal-footer"><span style="flex:1"></span><button class="btn btn-ghost" onclick="clrTickDone(false)">ยกเลิก</button><button class="btn btn-primary" onclick="clrTickDone(true)">✓ เคลียร์แล้ว</button></div></div>`;
   if(clrTickResolve)clrTickResolve(null);
-  return new Promise(res=>{clrTickResolve=r=>res(r?{...r,open}:null);openM('m-clr-tick');});
+  return new Promise(res=>{clrTickResolve=r=>res(r?{...r,open,claimable}:null);openM('m-clr-tick');});
 }
 async function clrTick(kind,ids){
   if(typeof guardEdit==='function'&&!guardEdit())return;
   ids=[...new Set((ids||[]).map(String).filter(Boolean))];if(!ids.length)return;
   if(!CLR_JOB_KINDS.has(kind))return clrMark(kind,ids,true);
   const a=await clrAskClose(kind,ids);if(!a)return;
-  if(a.close&&a.open.length){for(const j of a.open){if(!TP_CLOSED_ST.has(String(j.status||'').trim()))await setJS(j.id,'ปิดงาน',{stay:true});}}
+  if(a.act==='close'){for(const j of a.open){if(!TP_CLOSED_ST.has(String(j.status||'').trim()))await setJS(j.id,'ปิดงาน',{stay:true});}}
+  else if(a.act==='claim'){for(const j of a.claimable)await closeClaimJob(j.id,{noAsk:true,quiet:true});try{renderJobs();renderAdmin();renderDash();}catch(e){}}
   await clrMark(kind,ids,true);
 }
 function clrMarkAll(kind){
@@ -11630,7 +11638,7 @@ function clrCompute(ym,ix){
   const jL=j=>`${j.id} · ${j.branch||j.client||''}`,dL=d=>`${d.sales_invoice_no||d.doc_no||d.id} · ${d.customer_name||''}`;
   const docLive=d=>d&&d.status!=='cancelled';
   // 1 เงินเข้า
-  const unbilled=clrSplit('unbilled',done.filter(j=>!clrBilled(j,ix)),j=>j.id,jL,hid);
+  const unbilled=clrSplit('unbilled',done.filter(j=>!isClaimJob(j)&&!clrBilled(j,ix)),j=>j.id,jL,hid);
   rows.push({g:1,k:'unbilled',t:'งานเสร็จแล้ว ยังไม่วางบิล',s:'ช่างส่งงาน/ตรวจแล้ว แต่ยังไม่มีใบแจ้งหนี้ ใบเสร็จ หรือใบกำกับที่ระบุ PR นี้',
     n:unbilled.length,unit:'งาน',amt:unbilled.reduce((s,j)=>s+finIncome(j),0),approx:true,go:['ไปใบกำกับขาย →',`clrGoSales('${ym}')`],
     items:unbilled.sort((a,b)=>tpDoneDate(a).localeCompare(tpDoneDate(b))).map(j=>({k:j.id,cols:[j.id,`${j.client||''} · ${j.branch||''}`,clrAgeTxt(tpDoneDate(j)),finIncome(j)>0?'฿'+money(finIncome(j)):'<span class="clr-mut">ไม่มีใบเสนอราคา</span>'],open:`openDet('${clrQ(j.id)}')`})),
@@ -11671,7 +11679,7 @@ function clrCompute(ym,ix){
   rows.push({g:3,k:'loose',t:'บิลซื้อยังไม่ผูกเลข PR',s:'รายการที่ไม่ได้ระบุ PR (และไม่ใช่สต็อก/ค่าใช้จ่ายทั่วไป) = ไม่เข้าต้นทุนงานไหนเลย',
     n:lo.length,unit:'ใบ',amt:lo.reduce((s,o)=>s+o.amt,0),go:['ไปบิลซื้อ →',`clrGoPurchase('${ym}')`],
     items:lo.map(o=>({k:o.v.id,cols:[o.v.supplier_name||'',o.v.purchase_no||'',String(o.v.invoice_date||'').slice(0,10),`${o.n} รายการ · ฿${money(o.amt)}`],open:`openPurchaseModal('${clrQ(o.v.id)}')`})),head:['ผู้ขาย','เลขที่','วันที่','ยังไม่ผูก']});
-  const nodoc=clrSplit('nodoc',done.filter(j=>finOf(j).state==='nodoc'),j=>j.id,jL,hid);
+  const nodoc=clrSplit('nodoc',done.filter(j=>!isClaimJob(j)&&finOf(j).state==='nodoc'),j=>j.id,jL,hid);
   rows.push({g:3,k:'nodoc',t:'งานยังไม่มีใบเสนอราคา',s:'รายได้ของงานเป็น 0 ในรายงาน · ทำใบเสนอราคา หรือใส่ยอดเองในหน้าต่างการเงิน',warn:true,
     n:nodoc.length,unit:'งาน',amt:null,go:['ดูในภาพรวมการเงิน →',`clrGoFin('need')`],
     items:nodoc.map(j=>({k:j.id,cols:[j.id,`${j.client||''} · ${j.branch||''}`,j.type||'',j.team||''],open:`openFinanceEdit('${clrQ(j.id)}')`})),head:['PR','ลูกค้า · สาขา','ประเภท','ทีม']});
@@ -15260,10 +15268,10 @@ function openDet(id){
   document.getElementById('det-body').innerHTML=`<div class="dw-h">
     <div class="dw-top"><span class="dw-pr">${esc(j.id)}</span>${billTypeBadge(j,true)}<button class="btn btn-ghost btn-xs" title="คัดลอกเลขงาน" onclick="navigator.clipboard&&navigator.clipboard.writeText('${jid}')">📋</button>${pfSheetBtn(j.id,'','l')}${pfApprSlot(j.id)}<span style="flex:1"></span>${pfSheetBtn(j.id,'','r')}
       <button class="dw-ib" title="งานก่อนหน้า" ${pos>0?'':'disabled'} onclick="dwGo(-1)">‹</button><button class="dw-ib" title="งานถัดไป" ${pos>=0&&pos<ids.length-1?'':'disabled'} onclick="dwGo(1)">›</button>
-      <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button><button onclick="slotToggleJob('${jid}')">📷 รูปแยกช่อง (ทดสอบ): ${j.photoSlots&&j.photoSlots.on?'ปิด':'เปิด'}</button>${pmOldFormMenu(j,jid)}</div></div>
+      <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button><button onclick="slotToggleJob('${jid}')">📷 รูปแยกช่อง (ทดสอบ): ${j.photoSlots&&j.photoSlots.on?'ปิด':'เปิด'}</button>${pmOldFormMenu(j,jid)}${claimMenu(j,jid)}</div></div>
       <button class="dw-ib" title="ปิด (Esc)" onclick="closeM('m-detail')">✕</button></div>
     <div class="dw-title">${esc(j.branch||'-')}</div><div class="tm dw-sub">${esc(j.client||'')}${j.type?' · '+esc(j.type):''}</div>
-    <div class="dw-status">${statusSel}${isLevel1(j)?level1Badge(j):''}${techAcceptPill(j)?techAcceptPill(j):''}${reviewedByPill(j)}<span style="flex:1"></span>${dwNext(j)}</div>
+    <div class="dw-status">${statusSel}${claimPill(j)}${isLevel1(j)?level1Badge(j):''}${techAcceptPill(j)?techAcceptPill(j):''}${reviewedByPill(j)}<span style="flex:1"></span>${dwNext(j)}</div>
     <div class="dw-steps">${DW_FLOW.map((f,i)=>`<div class="${i<k?'done':i===k?'cur':''}">${f}</div>`).join('')}</div>
     <div class="dw-tabs">${[['ov','ภาพรวม'],['link','ลิงก์ช่าง / ลูกค้า'],['doc','เอกสาร & การเงิน'],['hist','ประวัติ']].map(([t,l])=>`<button type="button" class="dw-tab" data-t="${t}" onclick="dwTabSet('${t}')">${l}</button>`).join('')}</div></div>
   <div class="dw-pane" data-t="ov">
@@ -15356,6 +15364,42 @@ function finNoteRefresh(jobId,taskId){
   try{renderFin();}catch(e){}
   try{if(document.getElementById('page-tech-pay')?.classList.contains('active'))renderTP();}catch(e){}
   const m=document.getElementById('m-detail');if(m&&m.classList.contains('open')){if(taskId)openAdminDetail(taskId);else if(currentDetailJobId&&sameJob(currentDetailJobId,jobId))openDet(currentDetailJobId);}
+}
+// ===== 🛡 ปิดงานเคลม (2026-11-25) =====
+// งานเคลม/ประกัน = ไม่เก็บเงินลูกค้า · ไม่เพิ่มสถานะใหม่ (LINE ช่าง / edge function รู้จัก "ปิดงาน" อยู่แล้ว) → สถานะ "ปิดงาน" + ธง j.claimNoCharge
+// ผล: ป้าย 🛡 เคลม · ไม่ขึ้น "ไม่มีใบเสนอราคา" / "ยังไม่วางบิล" ในหน้าการเงิน+เคลียร์ยอด · จ่ายช่าง: ค่าแรง 0 = "งานเคลม (ไม่จ่าย)" ไม่ค้าง (กรอกค่าแรงได้ถ้าจะจ่าย)
+// ถ้าเปลี่ยนสถานะกลับเป็นอย่างอื่น ธงไม่มีผล (นับเป็นงานเคลมเฉพาะตอนสถานะ "ปิดงาน")
+function isClaimJob(j){return !!(j&&j.claimNoCharge&&String(j.status||'').trim()==='ปิดงาน');}
+function claimPill(j){return isClaimJob(j)?'<span class="claim-pill" title="งานเคลม — ไม่เก็บเงินลูกค้า">🛡 เคลม</span>':'';}
+function claimMenu(j,jid){return isClaimJob(j)?`<button onclick="undoClaimJob('${jid}')">↩ ยกเลิกป้ายเคลม (กลับเป็นงานปกติที่เก็บเงิน)</button>`:`<button onclick="closeClaimJob('${jid}')">🛡 ปิดงานเคลม (ไม่เก็บเงิน)</button>`;}
+function claimBtn(j){if(isClaimJob(j))return claimPill(j);const id=esc(j.id);return `<button type="button" class="btn btn-ghost btn-xs" data-id="${id}" onclick="event.stopPropagation();closeClaimJob(this.dataset.id)" title="งานเคลม/ประกัน ไม่เก็บเงิน → ปิดงาน + ติดป้ายเคลม">🛡 ปิดงานเคลม</button>`;}
+function claimRefresh(id){
+  try{renderJobs();renderAdmin();renderDash();}catch(e){}
+  try{renderFin();}catch(e){}
+  try{if(document.getElementById('page-tech-pay')?.classList.contains('active'))renderTP();}catch(e){}
+  try{if(document.getElementById('page-clear')?.classList.contains('active'))renderClear();}catch(e){}
+  if(typeof tpState!=='undefined'&&tpState.open===id&&document.getElementById('tp-dw')?.classList.contains('on'))tpDrawer(id,true);
+  const m=document.getElementById('m-detail');if(m&&m.classList.contains('open')&&currentDetailJobId&&sameJob(currentDetailJobId,id))openDet(currentDetailJobId);
+}
+async function closeClaimJob(id,opt){
+  opt=opt||{};if(typeof guardEdit==='function'&&!guardEdit())return false;
+  const j=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x));if(!j)return false;
+  if(['ปิดงานสำรวจ','Reject','ยกเลิก'].includes(String(j.status||'').trim())){if(!opt.quiet)alert(`${j.id} สถานะ "${j.status}" อยู่แล้ว — ไม่ต้องปิดงานเคลม`);return false;}
+  if(!opt.noAsk&&!confirm(`ปิดงานเคลม ${j.id} ${j.branch||''}?\n\n• สถานะ → "ปิดงาน" (คิวช่าง / Admin Tracker / PM / LINE ช่าง เปลี่ยนตาม)\n• ติดป้าย 🛡 เคลม = งานไม่เก็บเงินลูกค้า → ไม่ขึ้นค้าง "ยังไม่วางบิล / ไม่มีใบเสนอราคา"\n• ยกเลิกป้ายได้ที่เมนู ⋯ ในหน้ารายละเอียดงาน`))return false;
+  try{
+    if(!j.claimNoCharge){const before=clonePlain(j),f={claimNoCharge:true,claimAt:new Date().toISOString(),claimBy:getActorName()};await patchJobFieldsOnServer(j.id,f);try{writeAuditLog('job_claim_close','job',j.id,before,f,clonePlain(j));}catch(e){}}
+    if(String(j.status||'').trim()!=='ปิดงาน')await setJS(j.id,'ปิดงาน',{stay:true});
+  }catch(e){alert('ปิดงานเคลมไม่สำเร็จ: '+(e.message||e));return false;}
+  if(!opt.quiet)claimRefresh(j.id);
+  return true;
+}
+async function undoClaimJob(id){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const j=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x));if(!j||!j.claimNoCharge)return;
+  if(!confirm(`ยกเลิกป้ายเคลมของ ${j.id}?\nงานจะกลับเป็นงานปกติที่ต้องเก็บเงิน (สถานะยังเป็น "${j.status}" — เปลี่ยนเองได้)`))return;
+  const before=clonePlain(j),f={claimNoCharge:false};
+  try{await patchJobFieldsOnServer(j.id,f);try{writeAuditLog('job_claim_undo','job',j.id,before,f,clonePlain(j));}catch(e){}}catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));return;}
+  claimRefresh(j.id);
 }
 // ===== เลือกสถานะงานจากหน้าการเงิน (2026-11-25) =====
 // ใช้ทางเดียวกับ dropdown สถานะในคิวช่าง (setJS → RPC เดียวกัน) → คิวช่าง / Admin Tracker ที่ผูก PR / แผน PM / LINE ช่าง / แดชบอร์ด เปลี่ยนตามทั้งหมด
@@ -16404,6 +16448,8 @@ var pmTeamPushIds=new Set(); // แถวที่แอดมินเปลี
 // ทีมแหล่งเดียว: งานที่ผูก PR แล้ว ทีมในแผน = ทีมในคิวช่าง (ชื่อทีมสะกดต่างกันเล็กน้อย → ใช้ชื่อในรายชื่อทีม)
 function pmTeamCanon(t){t=String(t||'').trim();if(!t)return '';const k=x=>String(x||'').toLowerCase().replace(/[\s\-–—_.()]/g,'');const m=(typeof teams!=='undefined'&&teams||[]).find(x=>k(x.name)===k(t));return m?m.name:t;}
 function pmVTeam(v){const j=v&&v.job_id?pmJob(v.job_id):null;return (j&&pmTeamCanon(j.team))||(v&&v.team)||'';}
+// งานที่ยังเลื่อนวันนัดได้ (2026-11-25) = ช่างยังไม่ส่งงาน/ไม่ปิด (รวมงานที่ช่างเคยเข้าแล้ว) — ใช้ซิงก์วันนัด แผน PM ↔ คิวช่าง ↔ Admin Tracker
+function pmJobMovable(pr){if(!pr)return null;const j=liveJobs().find(x=>sameJob(x.id,pr));return j&&!pmJobStDone(j.status)&&!isClosedJob(j)?j:null;}
 function pmJobOpenFor(pr){if(!pr)return null;const j=liveJobs().find(x=>sameJob(x.id,pr));return j&&!pmStartOf(j)&&!pmJobStDone(j.status)?j:null;}
 // ดันวัน/ทีมจากแผนไปคิวช่าง · ยิงพร้อมกันทีละ 4 งาน (แต่ละงานต้องอ่าน data ทั้งก้อนก่อนเขียน → ทีละงานช้ามากเมื่อนำเข้า Excel หลายสาขา)
 // ระหว่างดัน: pmPushBusy>0 → pmAutoLink ไม่ดึงวันจากคิวช่างกลับมาทับแผน · กันปิด/รีเฟรชหน้ากลางทาง (beforeunload)
@@ -16411,16 +16457,18 @@ function pmJobOpenFor(pr){if(!pr)return null;const j=liveJobs().find(x=>sameJob(
 var pmPushBusy=0;
 async function pmSyncJobDates(rows,opt){
   opt=opt||{};
-  const tasks=[];let skipped=0;
+  const tasks=[],dueSync=[];let skipped=0;
   for(const r of rows||[]){
     if(!r)continue;
     const tPush=pmTeamPushIds.has(r.id)&&!!r.team;pmTeamPushIds.delete(r.id);
     let dPush=!!r.planned_date;
     if(dPush&&'job_id' in r&&!pmPushIds.has(r.id))dPush=false;pmPushIds.delete(r.id);
     if(!dPush&&!tPush)continue;
-    const v=pm.visits.find(x=>x.id===r.id)||{},pr=r.job_id||v.job_id,jo=pmJobOpenFor(pr),j=jo||pmJob(pr);if(!j)continue;
+    const v=pm.visits.find(x=>x.id===r.id)||{},pr=r.job_id||v.job_id,j=pmJob(pr);if(!j)continue;
     const patch={},d=String(r.planned_date||'').slice(0,10);
-    if(dPush&&String(j.date||'').slice(0,10)!==d){if(jo)patch.date=d;else skipped++;} // วันนัด: เฉพาะงานที่ยังไม่เริ่ม
+    // วันนัด (2026-11-25): ดันทุกงานที่ช่างยังไม่ส่งงาน/ไม่ปิด — รวมงานที่ช่างเคยเข้าแล้ว (เช่น เข้าสำรวจ/รออะไหล่ แล้วเลื่อนนัด) · เดิมเฉพาะงานที่ยังไม่เริ่ม → บางงานไม่เปลี่ยนตาม
+    const movable=!!pmJobMovable(j.id);
+    if(dPush&&/^\d{4}-\d{2}-\d{2}$/.test(d)){if(!movable){if(String(j.date||'').slice(0,10)!==d)skipped++;}else{if(String(j.date||'').slice(0,10)!==d)patch.date=d;dueSync.push({pr:j.id,d});}}
     if(tPush&&pmTeamCanon(j.team)!==r.team)patch.team=r.team;     // ทีม: ทุกสถานะ (ข้อมูลเดียวกับคิวช่าง)
     if(Object.keys(patch).length)tasks.push({id:j.id,patch});
   }
@@ -16435,9 +16483,20 @@ async function pmSyncJobDates(rows,opt){
       }));
     }finally{pmPushBusy--;window.removeEventListener('beforeunload',guard);}
   }
-  if(n){if(!opt.quiet)pmToast(`อัปเดตคิวช่างตามแผน (วัน/ทีม) ${n} งาน`);try{renderJobs();}catch(e){}}
-  if(failed&&!opt.quiet)pmToast(`⚠ อัปเดตคิวช่างไม่สำเร็จ ${failed} งาน`);
-  return {n,skipped,failed};
+  // Admin Tracker (2026-11-25): งาน Admin ที่ผูก PR เดียวกัน → วันกำหนด (due) = วันนัดในแผน · ข้ามงาน Admin ที่จบแล้ว
+  let nT=0,i2=0;
+  if(dueSync.length){
+    await Promise.all(Array.from({length:Math.min(4,dueSync.length)},async()=>{
+      while(i2<dueSync.length){const x=dueSync[i2++];let rows=[];
+        try{rows=await sbFetchJson('admin_tasks',`?select=id,data&data->>jobId=eq.${encodeURIComponent(x.pr)}`);}catch(e){console.warn('pm→admin read',x.pr,e);failed++;continue;}
+        for(const t of rows||[]){const td=t.data||{};if(td.deletedAt||td.deleted_at||isAdminTaskDoneSt(td.status)||String(td.due||'').slice(0,10)===x.d)continue;
+          try{await patchTaskFieldsOnServer(t.id,{due:x.d});nT++;}catch(e){failed++;console.warn('pm→admin',t.id,e);}}}
+    }));
+  }
+  if(n||nT){if(!opt.quiet)pmToast(`อัปเดตตามแผน PM: คิวช่าง ${n} งาน${nT?` · Admin Tracker ${nT} งาน`:''}`);try{renderJobs();renderAdmin();}catch(e){}}
+  if(skipped&&!opt.quiet)setTimeout(()=>pmToast(`ℹ️ ไม่ได้เลื่อนวันในคิวช่าง ${skipped} งาน (ช่างส่งงาน/ปิดงานแล้ว)`),n||nT?3400:0);
+  if(failed&&!opt.quiet)pmToast(`⚠ อัปเดตคิวช่าง/Admin Tracker ไม่สำเร็จ ${failed} รายการ`);
+  return {n,nT,skipped,failed};
 }
 function pmToast(m){let t=document.getElementById('pm-toast');if(!t){t=document.createElement('div');t.id='pm-toast';t.className='pm-toast';document.body.appendChild(t);}t.textContent=m;t.classList.add('on');clearTimeout(pmToast.t);pmToast.t=setTimeout(()=>t.classList.remove('on'),3200);}
 function pmInsert(table,rows){return pmBulk(table,rows,'','return=representation');}
@@ -17865,7 +17924,7 @@ async function pmXSave(){
     const useDone=pmX.useDone;const vrows=pmX.rows.filter(x=>x.site&&x.res!=='dupname'&&(x.pr||x.date||x.team||(x.done&&useDone))).map(x=>{const v=pmVisit(c.id,pmRound,x.site.id);
       const row={...pmVBase(v,{id:pmId('PMV'),contract_id:c.id,round_no:pmRound,site_id:x.site.id,branch:x.site.branch,status:'planned'}),...(x.pr?{job_id:x.pr}:{}),...(x.date?{planned_date:x.date}:{}),...(x.team?{team:x.team}:{}),...(x.done&&useDone?{status:'done'}:{}),updated_at:now,updated_by:getActorName()};
       // ไฟล์ที่อัปล่าสุดชนะ: วันนัด/ทีมในไฟล์ → ดันไปที่งานในคิวช่างด้วย (ไม่งั้นตอนรีเฟรช ระบบซิงก์จะดึงวัน/ทีมเดิมจากคิวช่างกลับมาทับแผน)
-      // วันนัดเปลี่ยนได้เฉพาะงานที่ช่างยังไม่เริ่ม (pmJobOpenFor) · ทีมเปลี่ยนได้ทุกสถานะ เหมือนแก้ในหน้า PM
+      // วันนัดเปลี่ยนได้ทุกงานที่ช่างยังไม่ส่งงาน/ไม่ปิด (pmJobMovable) + Admin Tracker ตาม · ทีมเปลี่ยนได้ทุกสถานะ เหมือนแก้ในหน้า PM
       if(x.date)pmPushIds.add(row.id);if(x.team)pmTeamPushIds.add(row.id);
       return row;});
     for(let i=0;i<vrows.length;i+=200){const part=await pmBulk('pm_visits',vrows.slice(i,i+200),'?on_conflict=id','resolution=merge-duplicates,return=representation');(part&&part.length?part:vrows.slice(i,i+200)).forEach(r=>{const k=pm.visits.findIndex(v=>v.id===r.id);if(k>=0)pm.visits[k]={...pm.visits[k],...r};else pm.visits.push(r);});}
@@ -18140,7 +18199,8 @@ async function pmAutoLink(){
       if(!v.job_id||['skipped','cancelled'].includes(v.status))continue;
       if(v.updated_at&&new Date(v.updated_at).getTime()>recent)continue;
       const patch={};
-      if(v.status!=='done'){const j=pmJobOpenFor(v.job_id),d=j?String(j.date||'').slice(0,10):'';if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&d!==String(v.planned_date||'').slice(0,10))patch.planned_date=d;}
+      if(v.status!=='done'){const j=pmJobMovable(v.job_id),d=j?String(j.date||'').slice(0,10):''; // ดึงวันจากคิวช่างกลับ: ทุกงานที่ยังไม่ส่ง/ไม่ปิด (เดิมเฉพาะยังไม่เริ่ม)
+        if(/^\d{4}-\d{2}-\d{2}$/.test(d)&&d!==String(v.planned_date||'').slice(0,10))patch.planned_date=d;}
       const jt=pmJob(v.job_id),t=jt?pmTeamCanon(jt.team):'';if(t&&t!==(v.team||''))patch.team=t;
       if(!Object.keys(patch).length)continue;
       try{const res=await pmReq('pm_visits',`?id=eq.${encodeURIComponent(v.id)}&job_id=eq.${encodeURIComponent(v.job_id)}`,{method:'PATCH',prefer:'return=representation',body:JSON.stringify({...patch,updated_at:new Date().toISOString(),updated_by:'ระบบ (ตามคิวช่าง)'})});
