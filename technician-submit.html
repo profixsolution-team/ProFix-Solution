@@ -2574,9 +2574,44 @@ function pmApplySnapshot(s){
     label_photo: it.label_photo&&it.label_photo.url ? { url:it.label_photo.url, status:'ready' } : null,
     photos: { before:(it.photos?.before||[]).map(p=>({ ...p, status:'ready' })), during:(it.photos?.during||[]).map(p=>({ ...p, status:'ready' })), after:(it.photos?.after||[]).map(p=>({ ...p, status:'ready' })) }, slot_na:{...(it.slot_na||{})}
   }));
+  pmDedupe(); // ร่างเก่าที่มีเครื่องซ้ำ (key new-xxx + key = asset_id) → รวมเป็นรายการเดียว
 }
 function pmAllAssets(){ const seen=new Set(); return [...(pmCtx?.assets||[]), ...pmExtraAssets].filter(a=>!seen.has(a.id)&&seen.add(a.id)); }
-function pmItemOf(key){ return pmItems.find(it=>it.key===key); }
+// หาเครื่องด้วย key หรือ asset_id (2026-11-25): เครื่องใหม่ที่บันทึกเข้าทะเบียนแล้วได้ asset_id แต่ key ยังเป็น new-xxx
+//  เดิมหาด้วย key อย่างเดียว → แถวในรายการหาไม่เจอ ช่างแตะแล้วได้รายการว่างซ้อนอีกชุด → ส่งงานไม่ผ่าน "ขาด รูป N ช่อง"
+function pmItemOf(key){ if(!key) return undefined; return pmItems.find(it=>it.key===key) || pmItems.find(it=>it.asset_id&&String(it.asset_id)===String(key)); }
+function pmPhotoCount(it){ return ['before','during','after'].reduce((s,c)=>s+(it.photos?.[c]||[]).length,0); }
+// รวมรายการที่ซ้ำเครื่องเดียวกัน (asset_id เดียวกัน) ให้เหลือรายการเดียว — ใช้รายการที่กรอกครบที่สุดเป็นหลัก แล้วเติมข้อมูล/รูปที่ขาดจากอีกรายการ ไม่ทิ้งรูปที่ช่างถ่าย
+function pmDedupe(){
+  const by=new Map();
+  pmItems.forEach(it=>{ if(!it||!it.asset_id) return; const k=String(it.asset_id); if(!by.has(k)) by.set(k,[]); by.get(k).push(it); });
+  const drop=new Set();
+  by.forEach(list=>{
+    if(list.length<2) return;
+    list.sort((a,b)=>pmMissing(a).length-pmMissing(b).length || pmPhotoCount(b)-pmPhotoCount(a));
+    const p=list[0];
+    list.slice(1).forEach(o=>{
+      ['asset_type','qr_code','brand','model','capacity','serial_no','location','refrigerant'].forEach(f=>{ if(!String(p[f]||'').trim() && String(o[f]||'').trim()) p[f]=o[f]; });
+      if(!(p.label_photo&&p.label_photo.url) && o.label_photo) p.label_photo=o.label_photo;
+      if(o.has_qr) p.has_qr=true; if(o.scanned) p.scanned=true;
+      if(!p.condition && o.condition){ ['condition','cause','fix','follow_up','follow_up_note'].forEach(f=>{ p[f]=o[f]; }); }
+      ['checklist','readings','sheet','sheet_rmk'].forEach(f=>{ p[f]=p[f]||{}; Object.entries(o[f]||{}).forEach(([k,v])=>{ if(p[f][k]==null||p[f][k]==='') p[f][k]=v; }); });
+      p.photos=p.photos||{before:[],during:[],after:[]};
+      ['before','during','after'].forEach(c=>{ p.photos[c]=p.photos[c]||[]; (o.photos?.[c]||[]).forEach(ph=>{
+        if(!ph) return;
+        if(ph.slot){ if(pmSlotPhotos(p,ph.slot).length || (p.slot_na||{})[ph.slot]) return; }
+        else if(p.photos[c].some(x=>x===ph||(ph.url&&x.url===ph.url)||(ph.id&&x.id===ph.id))) return;
+        p.photos[c].push(ph);
+      }); });
+      p.slot_na=p.slot_na||{}; Object.keys(o.slot_na||{}).forEach(k=>{ if(!pmSlotPhotos(p,k).length) p.slot_na[k]=o.slot_na[k]; });
+      if(pmCur===o) pmCur=p;
+      drop.add(o);
+    });
+    if(p._fresh) delete p._fresh; // มีข้อมูลรวมเข้ามาแล้ว ไม่ใช่รายการที่เปิดดูเฉย ๆ
+  });
+  if(drop.size) pmItems=pmItems.filter(x=>!drop.has(x));
+  return drop.size;
+}
 function pmNewItem(a){
   return { key:a?a.id:('new-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)), asset_id:a?a.id:'', has_qr:!!(a&&a.qr_code), qr_code:'', scanned:false,
     asset_type:a?a.asset_type:'', brand:a?.brand||'', model:a?.model||'', capacity:a?.capacity||'', serial_no:a?.serial_no||'', no_label:false, location:a?.location||'', refrigerant:a?.refrigerant||'',
@@ -2613,6 +2648,7 @@ function pmSummaryText(){
 }
 function pmRender(){
   const el=document.getElementById('pm-wrap'); if(!el||!pmCtx) return;
+  pmDedupe();
   const assets=pmAllAssets();
   const rows=[...assets.map(a=>({a,it:pmItemOf(a.id)})), ...pmItems.filter(it=>!it.asset_id||!assets.some(a=>a.id===it.asset_id)).map(it=>({a:null,it}))];
   const done=rows.filter(r=>r.it&&!pmMissing(r.it).length).length;
@@ -3013,6 +3049,7 @@ function pmValidateForSubmit(){
   if(!pmCtx) return true;
   const ups=pmItems.flatMap(pmUploading);
   if(ups.length){ alert(`รูปของเครื่อง PM กำลังอัปโหลด ${ups.length} รูป — รอสักครู่แล้วกดส่งอีกครั้ง`); return false; }
+  if(pmDedupe()){ pmRender(); scheduleLocalDraftSave(); }
   const bad=pmItems.map(it=>({it,m:pmMissing(it)})).filter(x=>x.m.length);
   if(bad.length){ alert('ข้อมูลเครื่อง PM ยังไม่ครบ:\n'+bad.map(x=>`• ${pmShowCode(x.it)||'เครื่องใหม่'} ${x.it.asset_type||''} — ขาด ${x.m.join(', ')}`).join('\n')); pmTab(1,true); pmCur=bad[0].it; pmSheetRender(true); return false; }
   if(!pmItems.length){ alert('งาน PM ต้องบันทึกอย่างน้อย 1 เครื่อง (แท็บ ① บันทึกรายเครื่อง)'); pmTab(1); return false; }
