@@ -1056,6 +1056,8 @@ html.doc-mode .topbar2{display:none !important;}
 
 /* ===== หมายเหตุจากแอดมิน (จากรายงานช่าง) ===== */
 :root{--an:#f5b400;}
+.fin-note-b,.fin-note-p{--an:#0d9488;} /* โน้ตการเงิน (สีเขียวอมฟ้า แยกจากหมายเหตุแอดมิน) */
+.tp-fnote{display:inline-block;margin-left:6px;font-size:11px;color:#0d9488;font-weight:700;}
 .adm-note{display:flex;align-items:flex-start;gap:6px;margin-top:6px;max-width:340px;background:color-mix(in srgb,var(--an) 16%,#fff);color:color-mix(in srgb,var(--an) 55%,#000);border:1px solid color-mix(in srgb,var(--an) 45%,#fff);border-radius:10px;padding:5px 9px;font-size:12px;line-height:1.45;white-space:normal;}
 .adm-note b{font-weight:700;flex:none;}
 .adm-note span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
@@ -1990,7 +1992,7 @@ body.pfpv-lock{overflow:hidden;}
     <div class="table-wrap mobile-list mb16">
       <div class="table-header"><div class="table-title" id="fin-tbl-title">P&L ต่องาน</div><div class="flex g8" style="align-items:center;"><div class="fin-view" id="fin-view"></div><span class="mono tm" style="font-size:11px;" id="fin-cnt"></span></div></div>
       <div id="fin-legacy"></div>
-      <table><thead><tr><th>PR</th><th>สาขา</th><th>ทีม</th><th>รายรับ</th><th>จ่ายช่าง</th><th>ต้นทุนอะไหล่</th><th>กำไร</th><th>สถานะเงิน</th><th></th></tr></thead><tbody id="fin-tbody"></tbody></table>
+      <table><thead><tr><th>PR</th><th>สาขา</th><th>ทีม</th><th>รายรับ</th><th>จ่ายช่าง</th><th>ต้นทุนอะไหล่</th><th>กำไร</th><th>สถานะงาน</th><th>สถานะเงิน</th><th></th></tr></thead><tbody id="fin-tbody"></tbody></table>
     </div>
     <div class="table-wrap">
       <div class="table-header"><div class="table-title">รายจ่าย Fixed</div><button class="btn btn-ghost btn-sm" onclick="openFixedModal()">+ เพิ่ม</button></div>
@@ -2814,7 +2816,8 @@ body.pfpv-lock{overflow:hidden;}
       <div class="form-row"><div class="form-group"><label>ค่าแรง / รายรับงาน (฿)</label><input type="number" id="ff-pc"><div class="fin-src" id="ff-src-pc"></div></div><div class="form-group"><label>ขายอะไหล่ (฿)</label><input type="number" id="ff-partR"><div class="fin-src" id="ff-src-partR"></div></div></div>
       <div class="form-row"><div class="form-group"><label>จ่ายช่าง (฿)</label><input type="number" id="ff-pt"><div class="fin-src" id="ff-src-pt"></div></div><div class="form-group"><label>ต้นทุนอะไหล่ (฿)</label><input type="number" id="ff-partC"><div class="fin-src" id="ff-src-partC"></div></div></div>
       <div class="form-row"><div class="form-group"><label>ค่าเดินทาง (เก็บลูกค้า) (฿)</label><input type="number" id="ff-fuel"><div class="fin-src" id="ff-src-fuel"></div></div><div class="form-group"><label>สถานะเงิน</label><div class="select-tools"><select id="ff-pay"></select><button class="btn btn-ghost btn-sm" onclick="openListManager('payStatuses')" type="button">จัดการ</button></div></div></div>
-      <div class="form-group"><label>รายละเอียดการเงิน</label><textarea id="ff-note" placeholder="หมายเหตุการเก็บเงิน / ใบแจ้งหนี้"></textarea></div>
+      <div class="form-group"><label>สถานะงาน <span class="tm" style="font-weight:500">(เปลี่ยนทันที · คิวช่าง / Admin Tracker / PM เปลี่ยนตาม)</span></label><select id="ff-jst"></select></div>
+      <div class="form-group"><label>💰 โน้ตการเงิน <span class="tm" style="font-weight:500">(ขึ้นในรายละเอียดงานของคิวช่าง + Admin Tracker · ช่างไม่เห็น)</span></label><textarea id="ff-note" placeholder="หมายเหตุการเก็บเงิน / ใบแจ้งหนี้ / ตกลงกับลูกค้า…"></textarea><div class="fin-src" id="ff-note-meta"></div></div>
     </div>
     <div class="modal-footer"><button class="btn btn-ghost" id="ff-reset" onclick="finEditResetAll()">↺ ใช้ตามเอกสารทุกช่อง</button><span style="flex:1"></span><button class="btn btn-ghost" onclick="closeM('m-finance-edit')">ยกเลิก</button><button class="btn btn-primary" onclick="saveFinanceEdit()">✓ บันทึก</button></div>
   </div>
@@ -6140,7 +6143,7 @@ function renderJobs(){
   if(!fil.length){tb.innerHTML=trackerEmptyHtml('jobs',allJobs.length,8);return;}
   tb.innerHTML=fil.map(j=>{const mid='jm-'+j.id;const stBadge=statusBadge(j,j.status||'-');const _b=`${techUpdatePill(j)}${level1Badge(j)}${techAcceptPill(j)}${pmJobChip(j.id)}`;const _late=jqLateDays(j);return `<tr class="task-row${techUpdateRowClass(j)}" onclick="openDet('${j.id}')"><td class="jq-pr">${mobileCard(j.id,j.type,j.team,j.date,stBadge,'',billTypeBadge(j))}<div class="jq-prid">${billTypeBadge(j)}${techUpdateMark(j)}${esc(j.id)}</div>${_b?`<div class="jq-badges">${_b}</div>`:''}</td><td><div class="jq-two"><b>${esc(j.branch||'-')}</b><small>${esc(j.client||'')}${j.ref&&j.ref!=='N/A'?' · '+esc(j.ref):''}</small>${adminNotePill(j)}</div></td><td>${esc(j.type||'-')}</td><td><span class="jq-team">${jqTeamAvatar(j.team)}<span>${esc(j.team||'-')}</span></span></td><td><div class="jq-two"><span class="${_late?'jq-late':''}">${esc(jqThDate(j.date))}${_late?` · เลย ${_late} วัน`:''}</span><small>Assign ${esc(jqThDate(j.assignedAt)||'-')}</small></div></td><td><select class="status-select${SB[j.status]==='b-urgent'?' su-urgent':''}" onclick="event.stopPropagation()" onchange="setJS('${j.id}',this.value)" style="${SB[j.status]==='b-urgent'?'':'color:'+pfStatusColor(j.status)}">${J_ST.map(s=>`<option${s===j.status?' selected':''}>${s}</option>`).join('')}</select></td><td class="jq-upd">${esc(jqRelTime(j.modifiedAt||j.techUpdateAt||''))}</td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('${mid}',event)">...</button><div class="action-menu" id="${mid}"><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openDet('${j.id}')">ดูรายละเอียด</button><button onclick="editJob('${j.id}')">แก้ไขงาน</button><button onclick="renumberJob('${j.id}')">เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${j.id}')">ไปหน้าการเงิน</button><button onclick="deleteJob('${j.id}')">ลบงาน</button></div></td></tr>`;}).join('');
 }
-async function setJS(id,s){if(!guardEdit())return;
+async function setJS(id,s,opt){if(!guardEdit())return; // opt.stay = เรียกจากหน้าการเงิน → ไม่เด้งไปหน้าการเงินอีก
   const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   const before=clonePlain(j);
   j.status=s;if(s!=='รอเปิดงาน')j.isNew=false;
@@ -6153,7 +6156,7 @@ async function setJS(id,s){if(!guardEdit())return;
   }catch(e){
     alert('อัปเดตสถานะขึ้น Supabase ไม่สำเร็จ: '+e.message);
   }
-  if(s==='รอจ่าย'){goFinanceForJob(id);return;}
+  if(s==='รอจ่าย'&&!(opt&&opt.stay)){goFinanceForJob(id);return;}
 }
 function technicianFormUrl(id){return `technician-submit.html?job=${encodeURIComponent(id)}&rev=${Date.now()}`;}
 async function openTechnicianForm(id){
@@ -6749,7 +6752,7 @@ function renderFin(){
   fil=sortByActivity(fil.filter(j=>matchText(j,['id','ref','branch','client','team','type','date','status','pay','financeNote'],financeSearch)),'desc');
   document.getElementById('fin-cnt').textContent=fil.length+' รายการ';
   document.getElementById('fin-tbl-title').textContent='P&L ต่องาน - '+finFilter+(financeDateFilter?' / '+financeDateFilter:'')+(financeSearch?' / ค้นหา: '+financeSearch:'');
-  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openDet('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}${finOf(j).state!=='doc'?`<div><a href="#" onclick="openFinanceEdit('${j.id}');return false" style="text-decoration:none">${finStateBadge(j)}</a></div>`:''}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg${finOf(j).how.pc==='doc'&&finOf(j).how.partR==='doc'&&finOf(j).how.fuel==='doc'?'':' fin-ov'}" type="number" value="${jobIncome(j)}" title="${esc(['pc','partR','fuel'].map(k=>FIN_LABEL[k]+': ฿'+money(finOf(j)[k])+' · '+finOf(j).src[k]).join('\n'))}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr${finOf(j).how.pt==='doc'?'':' fin-ov'}" type="number" value="${finOf(j).pt}" title="${esc(finOf(j).src.pt)}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr${finOf(j).how.partC==='doc'?'':' fin-ov'}" type="number" value="${finOf(j).partC}" title="${esc(finOf(j).src.partC)}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openFinanceEdit('${j.id}')">💰 การเงิน (ที่มาของยอด)</button><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button><button onclick="deleteJob('${j.id}')" style="color:var(--red);">ลบงาน</button></div></td></tr>`;}).join('');
+  document.getElementById('fin-tbody').innerHTML=fil.map(j=>{const stBadge=hasTechUpdate(j)?statusBadge(j,j.status):`<span class="badge ${payLabel(j.pay)==='เก็บแล้ว'?'b-paid':'b-unpaid'}">${esc(payLabel(j.pay))}</span>`;return `<tr class="${techUpdateRowClass(j)}"><td class="mono ta" style="font-size:11px;">${mobileCard(j.id,j.type,j.team,j.date,stBadge,`<div><b>กำไร</b>฿${gp(j).toLocaleString()}</div><div><b>สาขา</b>${esc(j.branch)}</div>`)}<button class="link-btn" onclick="openDet('${j.id}')">${techUpdateMark(j)}${esc(j.id)}</button>${techUpdatePill(j)}${finNotePill(j)}${finOf(j).state!=='doc'?`<div><a href="#" onclick="openFinanceEdit('${j.id}');return false" style="text-decoration:none">${finStateBadge(j)}</a></div>`:''}</td><td style="font-size:12px;">${esc(j.branch)}</td><td style="font-size:12px;">${esc(j.team)}</td><td><input class="inline-input mono tg${finOf(j).how.pc==='doc'&&finOf(j).how.partR==='doc'&&finOf(j).how.fuel==='doc'?'':' fin-ov'}" type="number" value="${jobIncome(j)}" title="${esc(['pc','partR','fuel'].map(k=>FIN_LABEL[k]+': ฿'+money(finOf(j)[k])+' · '+finOf(j).src[k]).join('\n'))}" onchange="updateJobMoney('${j.id}','income',this.value)"></td><td><input class="inline-input mono tr${finOf(j).how.pt==='doc'?'':' fin-ov'}" type="number" value="${finOf(j).pt}" title="${esc(finOf(j).src.pt)}" onchange="updateJobMoney('${j.id}','pt',this.value)"></td><td><input class="inline-input mono tr${finOf(j).how.partC==='doc'?'':' fin-ov'}" type="number" value="${finOf(j).partC}" title="${esc(finOf(j).src.partC)}" onchange="updateJobMoney('${j.id}','partC',this.value)"></td><td class="mono fw7 ${gp(j)>=0?'tg':'tr'}" style="font-size:12px;">฿${gp(j).toLocaleString()}</td><td>${finJobStatusSel(j)}</td><td><select class="status-select" onchange="setPay('${j.id}',this.value)" style="color:${hasTechUpdate(j)?'var(--green)':payLabel(j.pay)==='เก็บแล้ว'?'var(--green)':payLabel(j.pay)==='เกินกำหนด'?'var(--red)':'var(--yellow)'}">${payStatuses.map(s=>`<option value="${esc(s)}"${payLabel(j.pay)===s?' selected':''}>${esc(s)}</option>`).join('')}</select></td><td class="action-cell"><button class="icon-btn" onclick="toggleMenu('fm-${j.id}',event)">...</button><div class="action-menu" id="fm-${j.id}"><button onclick="openFinanceEdit('${j.id}')">💰 การเงิน (ที่มาของยอด)</button><button onclick="openReportModal('${j.id}')">ตรวจรายงานช่าง</button><button onclick="openFinanceEdit('${j.id}')">แก้ไขรายละเอียด</button><button onclick="openDet('${j.id}')">ดูข้อมูลงาน</button><button onclick="deleteJob('${j.id}')" style="color:var(--red);">ลบงาน</button></div></td></tr>`;}).join('');
   renderFixedExpenses();
 }
 function setPay(id,s){if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(j){const before=clonePlain(j);j.pay=s;renderFin();renderDash();saveState();writeAuditLog('update_job_pay','job',id,before,{pay:s},clonePlain(j));}}
@@ -6767,14 +6770,14 @@ function finEditFill(j){
   document.getElementById('ff-state').innerHTML=f.state==='wait'?'กำลังโหลดเอกสารเพื่อคำนวณ…':`${finStateBadge(j)} ${f.inv?`จากเอกสาร <b>${esc(f.inv.doc_no||f.inv.sales_invoice_no||'')}</b>`:''}${f.state==='nodoc'?' — ออกใบเสนอราคาแล้วยอดรายรับจะขึ้นเอง':f.state==='split'?' — ใบนี้รวมหลายงาน แบ่งยอดไม่ได้ ควรออกใบเสนอราคาแยกต่องาน หรือพิมพ์ยอดเอง':''}`;
   document.getElementById('ff-reset').style.display=FIN_KEYS.some(k=>f.how[k]==='ov'||f.how[k]==='legacy')?'':'none';
 }
-function openFinanceEdit(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;fillSelects();document.getElementById('ff-id').value=id;finEditFill(j);document.getElementById('ff-pay').value=payLabel(j.pay);document.getElementById('ff-note').value=j.financeNote||'';openM('m-finance-edit');
+function openFinanceEdit(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;fillSelects();document.getElementById('ff-id').value=id;finEditFill(j);document.getElementById('ff-pay').value=payLabel(j.pay);document.getElementById('ff-note').value=finNoteText(j);document.getElementById('ff-note-meta').textContent=finNoteMeta(j)?'แก้ล่าสุด '+finNoteMeta(j):'';{const ff=document.getElementById('ff-jst');if(ff)ff.outerHTML=finJobStatusSel(j).replace('<select ','<select id="ff-jst" ');}openM('m-finance-edit');
   if(!finReady())ensureAccountingLoaded().then(()=>{if(document.getElementById('ff-id').value===id)finEditFill(j);}).catch(()=>{});}
 function finEditUseDoc(k){const j=jobs.find(x=>x.id===document.getElementById('ff-id').value&&!isDeletedRecord(x));if(!j)return;const f=finOf(j);if(f.calc)document.getElementById('ff-'+k).value=f.calc[k];document.getElementById('ff-'+k).classList.remove('fin-ov');document.getElementById('ff-src-'+k).textContent=(f.calc&&f.calc.src[k])||'';}
 function finEditResetAll(){const j=jobs.find(x=>x.id===document.getElementById('ff-id').value&&!isDeletedRecord(x));if(!j||!guardEdit())return;if(!confirm('ใช้ยอดตามเอกสารทุกช่อง (ลบค่าที่แก้เองของงานนี้)?'))return;
   finResetToDocs(j).then(()=>{finEditFill(j);renderFin();renderDash();}).catch(e=>alert('บันทึกไม่สำเร็จ: '+e.message));}
 function saveFinanceEdit(){if(!guardEdit())return;const id=document.getElementById('ff-id').value,j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
   const f=finOf(j),vals={};FIN_KEYS.forEach(k=>{const v=parseFloat(document.getElementById('ff-'+k).value)||0;if(Math.abs(v-f[k])>0.005||(f.how[k]!=='doc'&&f.calc&&Math.abs(v-f.calc[k])<=0.5))vals[k]=v;});
-  const extra={};const pay=document.getElementById('ff-pay').value,note=document.getElementById('ff-note').value;if(pay!==j.pay)extra.pay=pay;if(note!==(j.financeNote||''))extra.financeNote=note;
+  const extra={};const pay=document.getElementById('ff-pay').value,note=document.getElementById('ff-note').value;if(pay!==j.pay)extra.pay=pay;{const nf=finNoteFields(j,note);if(nf)Object.assign(extra,nf);}
   closeM('m-finance-edit');
   if(!Object.keys(vals).length&&!Object.keys(extra).length)return;
   finSetValues(j,vals,{extra}).then(()=>{renderFin();renderDash();try{renderTP();}catch(e){}}).catch(e=>alert('บันทึกไม่สำเร็จ: '+e.message));}
@@ -11199,9 +11202,9 @@ function tpTeamPanelHtml(team,tjs,st,paid){
     return `<tr class="tp-jr${tpState.open===j.id?' sel':''}" data-id="${esc(j.id)}" onclick="tpDrawer(this.dataset.id)">
       <td onclick="event.stopPropagation()">${tpCanPay(j,s)?`<input type="checkbox" ${tpState.sel.has(k)?'checked':''} data-id="${esc(j.id)}" onchange="tpSelJob(this.dataset.id,this.checked)" title="${s==='ready'?'เลือกจ่ายงานนี้':s==='pre'?'งานก่อนวันเริ่มใช้ระบบ — เลือกจ่ายได้ถ้ายังไม่เคยจ่าย':'งานยังไม่เสร็จ — เลือกจ่ายได้ถ้าตกลงจ่ายก่อน'}">`:s==='miss'?'<input type="checkbox" disabled title="กรอกค่าแรงช่างก่อน (กดที่แถว)">':''}</td>
       <td style="white-space:nowrap">${+d.slice(8,10)} ${TP_TH_MONTH[+d.slice(5,7)-1]}</td>
-      <td><span class="mono ta fw7">${esc(j.id)}</span>${pl&&pl.length?`<span class="tp-clip${pn&&s!=='paid'?' new':''}" title="บิลซื้อที่ระบุ PR นี้">📎 บิลซื้อ ${pl.length}${pn&&s!=='paid'?' · ยังไม่ดึง':''}</span>`:''}<div class="tm" style="font-size:12px">${esc(j.branch||'-')}</div></td>
+      <td><span class="mono ta fw7">${esc(j.id)}</span>${finNoteText(j)?`<span class="tp-fnote" title="${esc(finNoteText(j))}">💰 โน้ต</span>`:''}${pl&&pl.length?`<span class="tp-clip${pn&&s!=='paid'?' new':''}" title="บิลซื้อที่ระบุ PR นี้">📎 บิลซื้อ ${pl.length}${pn&&s!=='paid'?' · ยังไม่ดึง':''}</span>`:''}<div class="tm" style="font-size:12px">${esc(j.branch||'-')}</div></td>
       <td style="font-size:12.5px">${esc(j.type||'-')}</td>
-      <td>${statusBadge(j,j.status)}</td>
+      <td onclick="event.stopPropagation()">${finJobStatusSel(j)}</td>
       <td class="mono" style="text-align:right">${finOf(j).pt?money(finOf(j).pt):`<span class="${s==='miss'?'tr fw7':'tm'}">${s==='miss'?'+ กรอก':'—'}</span>`}</td>
       <td class="mono" style="text-align:right">${finOf(j).partC?money(finOf(j).partC)+(j.tpPartOwn?'<div class="tm" style="font-size:11px">ช่างออกเงิน</div>':''):'<span class="tm">—</span>'}</td>
       <td><span class="tp-pill ${P[1]}">${P[0]}</span>${po?`<div class="tm" style="font-size:11px">${esc(po.doc_no||'')}</div>`:''}</td></tr>`;};
@@ -11292,7 +11295,8 @@ function tpDrawer(id,keepFocus){
   const dw=document.getElementById('tp-dw');
   dw.innerHTML=`<div class="tp-dw-h"><div class="flex g8" style="align-items:center"><b style="font-size:18px">${I}</b><span class="tp-pill ${P[1]}">${P[0]}</span><span style="flex:1"></span>
       <button class="btn btn-ghost btn-sm" title="งานก่อนหน้า" onclick="tpStep(-1)">‹</button><button class="btn btn-ghost btn-sm" title="งานถัดไป" onclick="tpStep(1)">›</button><button class="btn btn-ghost btn-sm" onclick="tpCloseDrawer()">✕</button></div>
-    <div class="fw7" style="margin-top:6px">${esc(j.branch||'-')}</div><div class="tm" style="font-size:12px">${esc(j.team||'')} · ${esc(j.type||'-')} · เข้า ${tpThaiDate(d)} · ${esc(j.status||'')}</div>
+    <div class="fw7" style="margin-top:6px">${esc(j.branch||'-')}</div><div class="tm" style="font-size:12px">${esc(j.team||'')} · ${esc(j.type||'-')} · เข้า ${tpThaiDate(d)}</div>
+    <div class="flex g8" style="margin-top:8px;flex-wrap:wrap;align-items:center"><span class="tm" style="font-size:12px">สถานะงาน</span>${finJobStatusSel(j)}</div>
     <div class="flex g8" style="margin-top:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" data-id="${I}" onclick="openDet(this.dataset.id)">ดูข้อมูลงาน</button><button class="btn btn-ghost btn-xs" data-id="${I}" onclick="openReportModal(this.dataset.id)">รายงานช่าง</button></div></div>
   <div class="tp-dw-b">
     ${lock?`<div class="tp-note warn">จ่ายช่างแล้วในเอกสาร <b>${esc(po&&po.doc_no||'')}</b> — แก้ค่าแรง/ค่าของไม่ได้ ต้องยกเลิกเอกสารจ่ายก่อน</div>`:s==='open'?'<div class="tp-note">งานยังไม่เสร็จ — กรอกค่าแรงไว้ก่อนได้ จะขึ้นเป็น "รอจ่าย" เมื่อช่างส่งงานแล้ว</div>':s==='pre'?`<div class="tp-note">งานเสร็จก่อนวันเริ่มใช้ระบบจ่ายช่าง (${tpThaiDate(techPay.settings.start_date)}) — ถือว่าจ่ายนอกระบบแล้ว (เปลี่ยนวันเริ่มได้ที่ ⚙)</div>`:''}
@@ -11308,6 +11312,7 @@ function tpDrawer(id,keepFocus){
       <div class="tp-fld"><label>ค่าเดินทาง</label><input id="tpd-fuel" type="number" step="0.01" value="${n(finOf(j).fuel)}" placeholder="0"></div>
       <div class="tp-tot"><span>กำไรงานนี้</span><span class="mono ${gpv>=0?'tg':'tr'}">฿${money(gpv)}</span></div>
       <div class="tm" style="font-size:11.5px;margin-top:8px;line-height:1.6">${finStateBadge(j)} ยอดคำนวณจากใบเสนอราคา/บิลซื้อ/ราคาทีม อัตโนมัติ · แก้ตัวเลขในช่อง = ✎ แก้เอง · <a href="#" onclick="openFinanceEdit('${I}');return false">ดูที่มาของยอด</a></div></div>
+    <div class="tp-grp"><h4>💰 โน้ตการเงิน</h4><textarea id="tpd-note" rows="3" style="width:100%;box-sizing:border-box" placeholder="เช่น ลูกค้าขอแยกบิล / รอโอนงวด 2 / ค่าของช่างสำรองจ่าย…">${esc(finNoteText(j))}</textarea><div class="tm" style="font-size:11.5px;margin-top:4px;line-height:1.6">ขึ้นในรายละเอียดงานของคิวช่าง + Admin Tracker ด้วย · ช่างไม่เห็น${finNoteMeta(j)?` · แก้ล่าสุด ${esc(finNoteMeta(j))}`:''}</div></div>
     <div class="tm" style="font-size:12px">แก้ที่นี่ = แก้ที่งานในคิวช่างตัวเดียวกัน (ข้อมูลชุดเดียว)</div>
   </div>
   <div class="tp-dw-f"><button class="btn btn-ghost" onclick="tpCloseDrawer()">ปิด</button><span style="flex:1"></span><button class="btn btn-ghost" onclick="tpSaveDrawer(false)">บันทึก</button><button class="btn btn-primary" onclick="tpSaveDrawer(true)">บันทึก + งานถัดไป ›</button></div>`;
@@ -11321,6 +11326,7 @@ function tpSaveDrawer(next){
   const v=k=>{const el=document.getElementById('tpd-'+k);return el?(parseFloat(el.value)||0):Number(j[k]||0);};
   const patch={pc:v('pc'),partR:v('partR'),fuel:v('fuel')};
   if(tpPayState(j)!=='paid'){patch.pt=v('pt');patch.partC=v('partC');patch.tpPartOwn=!!document.getElementById('tpd-own')?.checked;}
+  {const ne=document.getElementById('tpd-note');const nf=ne?finNoteFields(j,ne.value):null;if(nf)Object.assign(patch,nf);}
   const ids=tpVisibleIds(),nx=ids[ids.indexOf(id)+1];
   if(!tpSaveJob(id,patch))return;
   if(next&&nx)tpDrawer(nx);else if(next)tpCloseDrawer();else tpDrawer(id,true);
@@ -15160,7 +15166,7 @@ function openDet(id){
     <div class="dw-steps">${DW_FLOW.map((f,i)=>`<div class="${i<k?'done':i===k?'cur':''}">${f}</div>`).join('')}</div>
     <div class="dw-tabs">${[['ov','ภาพรวม'],['link','ลิงก์ช่าง / ลูกค้า'],['doc','เอกสาร & การเงิน'],['hist','ประวัติ']].map(([t,l])=>`<button type="button" class="dw-tab" data-t="${t}" onclick="dwTabSet('${t}')">${l}</button>`).join('')}</div></div>
   <div class="dw-pane" data-t="ov">
-    ${adminNoteBlock(j)}
+    ${adminNoteBlock(j)}${finNoteBlock(j)}
     <div class="dw-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${v}</b></div>`).join('')}</div>
     <div class="dw-box"><div class="dw-box-t">ลูกค้า / สาขา</div>${esc(j.client)} - ${esc(j.branch)}${j.ref?` (${esc(j.ref)})`:''}</div>
     <div class="dw-box"><div class="dw-box-t">รายละเอียดงาน</div>${esc(j.note||'-')}</div>
@@ -15213,6 +15219,58 @@ function adminNoteBlock(j,taskId){
 function jobAdminNoteColor(j){const c=String((j&&(j.reviewNoteColor||j.technicianReport?.reviewNoteColor))||'');return /^#[0-9a-f]{6}$/i.test(c)?c:'';}
 function adminNoteStyle(j){const c=jobAdminNoteColor(j);return c?` style="--an:${c}"`:'';}
 function adminNotePill(j){const n=jobAdminNote(j);return n?`<div class="adm-note"${adminNoteStyle(j)} title="${esc(n)}"><b>📝 แอดมิน:</b><span>${esc(n)}</span></div>`:'';}
+// ===== 💰 โน้ตการเงิน (2026-11-25) =====
+// ช่องเดียวกับ "รายละเอียดการเงิน" เดิม (j.financeNote) — แยกจากหมายเหตุแอดมิน (reviewNote) · ช่างไม่เห็น (ไม่ขึ้นใน LINE) · เห็นเฉพาะ admin
+// เขียนได้ที่หน้าการเงิน (แท็บจ่ายช่าง / ภาพรวมการเงิน) · ขึ้นโชว์ในรายละเอียดงานของคิวช่าง + Admin Tracker (แก้ได้จากตรงนั้นด้วย)
+// บรรทัดอัตโนมัติ "ดึงจากเอกสาร … เมื่อ …" ของระบบเดิม เก็บไว้ท้ายช่อง แต่ไม่โชว์/ไม่ให้แก้ (กันรก)
+const FIN_NOTE_AUTO_RE=/^ดึงจากเอกสาร .*เมื่อ \d{4}-\d{2}-\d{2}/;
+function canSeeFinance(){return ((typeof AUTH!=='undefined'&&AUTH&&AUTH.role)||'admin')==='admin';}
+function finNoteLines(j){return String(j&&j.financeNote||'').split('\n');}
+function finNoteText(j){return finNoteLines(j).filter(l=>!FIN_NOTE_AUTO_RE.test(l.trim())).join('\n').trim();}
+function finNoteCompose(j,text){return [...finNoteLines(j).filter(l=>FIN_NOTE_AUTO_RE.test(l.trim())),String(text||'').trim()].filter(Boolean).join('\n');}
+function finNoteFields(j,text){ // null = ไม่เปลี่ยน
+  if(String(text||'').trim()===finNoteText(j))return null;
+  return {financeNote:finNoteCompose(j,text),financeNoteAt:new Date().toISOString(),financeNoteBy:getActorName()};
+}
+function finNoteMeta(j){const d=String(j&&j.financeNoteAt||'').slice(0,10);return [d,j&&j.financeNoteBy||''].filter(Boolean).join(' · ');}
+function finNoteBlock(j,taskId){
+  if(!j||!canSeeFinance())return '';const n=finNoteText(j);if(!n)return '';
+  const jid=esc(j.id).replace(/'/g,'&#39;'),tid=esc(taskId||'').replace(/'/g,'&#39;');
+  return `<div class="dw-note fin-note-b"><div class="t">💰 โน้ตการเงิน<small>${esc(finNoteMeta(j))} <button type="button" class="link-btn" style="font-size:11.5px" onclick="editJobFinNote('${jid}','${tid}')">✏️ แก้</button></small></div>${esc(n)}</div>`;
+}
+function finNotePill(j){const n=finNoteText(j);return n?`<div class="adm-note fin-note-p" title="${esc(n)}"><b>💰 การเงิน:</b><span>${esc(n)}</span></div>`:'';}
+async function editJobFinNote(jobId,taskId){
+  if(typeof guardEdit==='function'&&!guardEdit())return;
+  const j=liveJobs().find(x=>sameJob(x.id,jobId));if(!j){alert('ไม่พบงานในคิวช่าง');return;}
+  const v=await uiPrompt({title:'💰 โน้ตการเงิน',label:`${j.id} · ${j.branch||''} — ขึ้นในหน้าการเงิน + รายละเอียดงาน (คิวช่าง / Admin Tracker) · ช่างไม่เห็น (เว้นว่าง = ลบโน้ต)`,value:finNoteText(j),multiline:true});
+  if(v==null)return;
+  const fields=finNoteFields(j,v);if(!fields)return;
+  const before=clonePlain(j);
+  try{await patchJobFieldsOnServer(j.id,fields);
+    try{writeAuditLog('edit_finance_note','job',j.id,{financeNote:before.financeNote||''},fields,clonePlain(j));}catch(e){}
+    finNoteRefresh(j.id,taskId);
+  }catch(e){alert('บันทึกโน้ตการเงินไม่สำเร็จ: '+(e.message||e));}
+}
+function finNoteRefresh(jobId,taskId){
+  try{renderFin();}catch(e){}
+  try{if(document.getElementById('page-tech-pay')?.classList.contains('active'))renderTP();}catch(e){}
+  const m=document.getElementById('m-detail');if(m&&m.classList.contains('open')){if(taskId)openAdminDetail(taskId);else if(currentDetailJobId&&sameJob(currentDetailJobId,jobId))openDet(currentDetailJobId);}
+}
+// ===== เลือกสถานะงานจากหน้าการเงิน (2026-11-25) =====
+// ใช้ทางเดียวกับ dropdown สถานะในคิวช่าง (setJS → RPC เดียวกัน) → คิวช่าง / Admin Tracker ที่ผูก PR / แผน PM / LINE ช่าง / แดชบอร์ด เปลี่ยนตามทั้งหมด
+function finJobStatusSel(j){
+  const opts=J_ST.concat(j.status&&!J_ST.includes(j.status)?[j.status]:[]);
+  const urgent=SB[j.status]==='b-urgent';
+  return `<select class="status-select${urgent?' su-urgent':''}" style="${urgent?'':'color:'+pfStatusColor(j.status)}" data-id="${esc(j.id)}" onclick="event.stopPropagation()" onchange="finSetJobStatus(this.dataset.id,this.value)" title="เปลี่ยนสถานะงาน — คิวช่าง / Admin Tracker / PM / LINE ช่าง เปลี่ยนตาม">${opts.map(s=>`<option value="${esc(s)}"${s===j.status?' selected':''}>${esc(s)}</option>`).join('')}</select>`;
+}
+async function finSetJobStatus(id,s){
+  const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
+  if(s&&s!==j.status)await setJS(j.id,s,{stay:true});
+  try{renderFin();}catch(e){}
+  try{if(document.getElementById('page-tech-pay')?.classList.contains('active'))renderTP();}catch(e){}
+  if(typeof tpState!=='undefined'&&tpState.open===j.id&&document.getElementById('tp-dw')?.classList.contains('on'))tpDrawer(j.id,true);
+  const ff=document.getElementById('ff-jst');if(ff&&document.getElementById('ff-id')?.value===j.id)ff.outerHTML=finJobStatusSel(j).replace('<select ','<select id="ff-jst" ');
+}
 
 // ตัวเลือกสีป้ายหมายเหตุในหน้าตรวจรายงาน — เก็บเป็น reviewNoteColor ของงานนั้น
 var NOTE_COLOR_PRESETS=[['#f5b400','เหลือง (ค่าเริ่มต้น)'],['#ea580c','ส้ม'],['#dc2626','แดง'],['#16a34a','เขียว'],['#175fff','น้ำเงิน'],['#9333ea','ม่วง'],['#64748b','เทา']];
@@ -15396,7 +15454,7 @@ function openAdminDetail(id){
     <div class="dw-status">${statusSel}${techUpdatePill(t)}<span style="flex:1"></span>${prim}<button class="btn btn-ghost" onclick="editAdminTask('${tid}')">✏️ แก้ไข</button></div>
     <div style="height:14px"></div></div>
   <div class="dw-pane on">
-    ${(()=>{const lj=liveJobs().find(j=>sameJob(j.id,t.jobId||''));if(lj)return adminNoteBlock(lj,t.id); // หมายเหตุเดียวกับคิวช่าง
+    ${(()=>{const lj=liveJobs().find(j=>sameJob(j.id,t.jobId||''));if(lj)return adminNoteBlock(lj,t.id)+finNoteBlock(lj,t.id); // หมายเหตุเดียวกับคิวช่าง + โน้ตการเงิน
       return t.reportReviewNote&&!isAutoAdminNote(t.reportReviewNote)?`<div class="dw-note"><div class="t">📝 หมายเหตุ${t.reportReviewedAt?`<small>${esc(String(t.reportReviewedAt).slice(0,10))}</small>`:''}</div>${esc(t.reportReviewNote)}</div>`:'';})()}
     <div class="dw-info">${info.map(([l,v])=>`<div><div class="tm">${l}</div><b>${v}</b></div>`).join('')}</div>
     <div class="dw-box"><div class="dw-box-t">ลูกค้า / สาขา</div>${esc(taskSiteText(t)||'-')}</div>
