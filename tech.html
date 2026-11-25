@@ -128,6 +128,8 @@ svg.i{width:16px;height:16px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-
 .box{background:#fff;border-radius:20px;margin-top:12px;padding:14px;box-shadow:0 2px 10px rgba(15,23,42,.04)}
 .box>small{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink3);font-weight:600}
 .box p{font-size:14.5px;margin-top:5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.cf-row{display:flex;gap:8px;margin-top:10px}.cf-row>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}.cf-row .b{width:100%}
+.cf-st{font-size:11.5px;color:var(--ink3);text-align:center;min-height:15px}.cf-st.ok{color:#0d6b37;font-weight:600}
 .doc-link{display:flex;align-items:center;gap:10px;margin-top:9px;padding:10px 11px;border-radius:12px;background:var(--bg);text-decoration:none;font-size:14px}
 .doc-link .doc-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .d-foot{background:#fff;padding:12px 14px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -6px 20px rgba(15,23,42,.08);display:flex;gap:8px}
@@ -671,6 +673,7 @@ function openDetail(id,toDocs){
         ${ir('bld','c4','ลูกค้า',esc(j.client||''))}
       </div>
       <div class="box"><small>${I('note')}รายละเอียดจากแอดมิน / อาการที่แจ้ง</small><p>${esc(j.detail||'-')}${j.jobNote?`\n\nหมายเหตุงาน: ${esc(j.jobNote)}`:''}</p></div>
+      ${custForms(j)?custFormBox(j):''}
       ${d.length?`<div class="box" id="d-docs"><small>${I('file')}ใบงาน / เอกสารในแฟ้ม PR</small>${d.map(x=>`<a class="doc-link" href="${esc(x.url)}" target="_blank" rel="noopener">${I(x.image?'img':'file')}<span class="doc-name">${esc(x.name)}</span><span class="chip2 ${x.kind==='approval'?'yellow':'blue'}">${x.kind==='approval'?'ใบอนุมัติ':'ใบงาน'}</span></a>`).join('')}</div>`:''}
       <div class="info">
         ${ir('users','c5','ทีม',esc(j.team||''))}
@@ -684,11 +687,40 @@ function openDetail(id,toDocs){
     ${j.done?'':`<div class="d-foot">${isAdm()?admActions(j):jobActions(j,false)}</div>`}`;
   const wasOpen=$('detail').classList.contains('open');
   $('detail').classList.add('open');document.body.style.overflow='hidden';
+  if(custForms(j))custFormStatus(j.id);
   if(toDocs)setTimeout(()=>{const el=$('d-docs');if(el)el.scrollIntoView({block:'start'});},50);
   if(wasOpen)history.replaceState({detail:id},'');else history.pushState({detail:id},''); // ปุ่มย้อนกลับของมือถือ = ปิดหน้ารายละเอียด
 }
 function closeDetail(fromPop){$('detail').classList.remove('open');document.body.style.overflow='';if(!fromPop&&history.state&&history.state.detail)history.back();}
 window.addEventListener('popstate',()=>{if(!$('detail').classList.contains('open'))return;const s=history.state;if(s&&s.detail==='me'&&s.me)return meSub(s.me);if(s&&s.detail&&s.detail!=='me')return; /* ปิดตัวดูรูปแล้วกลับมาที่หน้ารายละเอียด */closeDetail(true);});
+// ===== ฟอร์มลูกค้าในไลน์ช่าง (2026-11-25): งานของลูกค้าที่ต้องเซ็น "แจ้งเข้าซ่อม" + "ตรวจรับงาน" (เช่น มากุโระ) =====
+// เปิดหน้าเดียวกับลิงก์ที่แอดมินส่งจากคอนโซล (checkin.html / acceptance.html ?job=PR) → ช่างยื่นมือถือให้สาขาเซ็นได้เลย · ข้อมูลเข้าตาราง job_checkins / job_acceptances เหมือนเดิม
+// เพิ่มลูกค้ารายอื่น = เติมชื่อใน CUST_FORM_RE
+const CUST_FORM_RE=/มากุโระ|maguro/i;
+function custForms(j){return !!j&&CUST_FORM_RE.test(`${j.client||''} ${j.branch||''}`);}
+function custFormBox(j){
+  const id=esc(j.id);
+  return `<div class="box" id="d-cf"><small>${I('file')}ฟอร์มลูกค้า — ให้สาขาเซ็นในมือถือช่าง</small>
+    <div class="cf-row"><div><button class="b ghost" onclick="openCustForm('checkin','${id}')">📝 แจ้งเข้าซ่อม</button><span class="cf-st" id="cf-checkin">กำลังเช็ก…</span></div>
+      <div><button class="b ghost" onclick="openCustForm('acceptance','${id}')">✅ ตรวจรับงาน</button><span class="cf-st" id="cf-acceptance">กำลังเช็ก…</span></div></div>
+    <div class="cf-st" style="text-align:left;margin-top:8px">แจ้งเข้าซ่อม = ตอนถึงสาขา · ตรวจรับงาน = หลังซ่อมเสร็จ ให้สาขาตรวจแล้วเซ็นรับ</div></div>`;
+}
+function openCustForm(kind,id){
+  if(DEMO){toast('โหมดตัวอย่าง — ไม่เปิดฟอร์มจริง');return;}
+  location.href=(kind==='checkin'?'checkin.html':'acceptance.html')+'?job='+encodeURIComponent(id)+'&from=tech';
+}
+async function custFormStatus(id){
+  const SB=FUNC_URL.replace(/\/functions\/v1\/.*$/,''),H={apikey:ANON_KEY,Authorization:'Bearer '+ANON_KEY};
+  const one=async(kind,table)=>{
+    const el=()=>document.getElementById('cf-'+kind);
+    if(DEMO){if(el())el().textContent='';return;}
+    try{const r=await fetch(`${SB}/rest/v1/${table}?job_id=eq.${encodeURIComponent(id)}&select=created_at&order=created_at.desc&limit=1`,{headers:H});
+      const rows=r.ok?await r.json():null;const e=el();if(!e)return;
+      if(rows&&rows.length){e.textContent='✓ เซ็นแล้ว '+thTime(rows[0].created_at);e.className='cf-st ok';}else e.textContent=rows?'ยังไม่เซ็น':'';}
+    catch(e){const x=el();if(x)x.textContent='';}
+  };
+  one('checkin','job_checkins');one('acceptance','job_acceptances');
+}
 async function startJob(id,btn){
   if(asTeamBlock())return;
   const j=findJob(id);
