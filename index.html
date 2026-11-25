@@ -11567,13 +11567,19 @@ function clrBilled(j,ix){
 // ----- ✓ เคลียร์แล้ว (2026-11-25): ติ๊กซ่อนรายการที่ไม่ต้องทำ/จัดการนอกระบบแล้ว เหมือนเช็กลิสต์ -----
 // เก็บใน console_ui_settings 1 แถวต่อรายการ (key clr_done|ข้อ|id) → ทุกแอดมินเห็นตรงกัน ไม่ทับกัน · เอากลับ = done:false
 let clrDone=new Map(),clrDoneAt=0,clrDoneErr='';
+// วันตัดยอดวางบิล (2026-11-25): งานที่เสร็จก่อนวันนี้ = วางบิล/เก็บเงินนอกระบบแล้ว (ช่วงก่อนออกใบแจ้งหนี้ในระบบ) → ไม่ขึ้นข้อ "ยังไม่วางบิล"
+//  แชร์ทุกแอดมิน: console_ui_settings key clr_billed_before = {date,by,at} · ไม่เปลี่ยนตัวเลขรายได้/ต้นทุนใด ๆ
+let clrBilledBefore='',clrBilledMeta=null;
+const clrPreBilled=j=>{const d=tpDoneDate(j);return !!(clrBilledBefore&&d&&d<clrBilledBefore);};
 const clrDK=(kind,id)=>kind+'\u0001'+id;
 function clrIsDone(kind,id){return clrDone.has(clrDK(kind,String(id)));}
 function clrSplit(kind,list,idOf,labelOf,hid){const keep=[];(list||[]).forEach(x=>{const id=String(idOf(x));if(clrIsDone(kind,id))hid.push({kind,id,label:labelOf(x),v:clrDone.get(clrDK(kind,id))});else keep.push(x);});return keep;}
 async function clrLoadDone(){
   clrDoneAt=Date.now();
-  try{const rows=await sbFetchAllOptional('console_ui_settings','?select=key,value&key=like.clr_done*');
-    const m=new Map();(rows||[]).forEach(r=>{const v=r.value||{};if(v.done&&v.kind&&v.id!=null)m.set(clrDK(v.kind,String(v.id)),v);});clrDone=m;clrDoneErr='';
+  try{const rows=await sbFetchAllOptional('console_ui_settings','?select=key,value&key=like.clr_*');
+    const m=new Map();(rows||[]).forEach(r=>{const v=r.value||{};
+      if(r.key==='clr_billed_before'){clrBilledBefore=/^\d{4}-\d{2}-\d{2}$/.test(String(v.date||''))?v.date:'';clrBilledMeta=v;return;}
+      if(String(r.key||'').startsWith('clr_done')&&v.done&&v.kind&&v.id!=null)m.set(clrDK(v.kind,String(v.id)),v);});clrDone=m;clrDoneErr='';
   }catch(e){clrDoneErr=e.message||String(e);}
 }
 async function clrMark(kind,ids,done){
@@ -11638,8 +11644,9 @@ function clrCompute(ym,ix){
   const jL=j=>`${j.id} · ${j.branch||j.client||''}`,dL=d=>`${d.sales_invoice_no||d.doc_no||d.id} · ${d.customer_name||''}`;
   const docLive=d=>d&&d.status!=='cancelled';
   // 1 เงินเข้า
-  const unbilled=clrSplit('unbilled',done.filter(j=>!isClaimJob(j)&&!clrBilled(j,ix)),j=>j.id,jL,hid);
-  rows.push({g:1,k:'unbilled',t:'งานเสร็จแล้ว ยังไม่วางบิล',s:'ช่างส่งงาน/ตรวจแล้ว แต่ยังไม่มีใบแจ้งหนี้ ใบเสร็จ หรือใบกำกับที่ระบุ PR นี้',
+  const unb0=done.filter(j=>!isClaimJob(j)&&!clrBilled(j,ix)),preBilled=unb0.filter(clrPreBilled);
+  const unbilled=clrSplit('unbilled',unb0.filter(j=>!clrPreBilled(j)),j=>j.id,jL,hid);
+  rows.push({g:1,k:'unbilled',t:'งานเสร็จแล้ว ยังไม่วางบิล',s:'ช่างส่งงาน/ตรวจแล้ว แต่ยังไม่มีใบแจ้งหนี้ ใบเสร็จ หรือใบกำกับที่ระบุ PR นี้'+(preBilled.length?` · ไม่นับ ${preBilled.length} งานที่เสร็จก่อน ${tpThaiDate(clrBilledBefore)} (วางบิลนอกระบบ)`:''),
     n:unbilled.length,unit:'งาน',amt:unbilled.reduce((s,j)=>s+finIncome(j),0),approx:true,go:['ไปใบกำกับขาย →',`clrGoSales('${ym}')`],
     items:unbilled.sort((a,b)=>tpDoneDate(a).localeCompare(tpDoneDate(b))).map(j=>({k:j.id,cols:[j.id,`${j.client||''} · ${j.branch||''}`,clrAgeTxt(tpDoneDate(j)),finIncome(j)>0?'฿'+money(finIncome(j)):'<span class="clr-mut">ไม่มีใบเสนอราคา</span>'],open:`openDet('${clrQ(j.id)}')`})),
     head:['PR','ลูกค้า · สาขา','เสร็จเมื่อ','ยอดตามเอกสาร']});
@@ -11696,7 +11703,7 @@ function clrCompute(ym,ix){
   const tax={sv:sv.reduce((s,d)=>s+Number(d.vat_amount||0),0),sn:sv.length,pv:pv.reduce((s,v)=>s+Number(v.vat_amount||0),0),pn:pv.length,pnf:pv.filter(v=>!v.file_url).length,
     wht:pays.reduce((s,p)=>s+Number(p.wht_amount||0),0),wn:pays.length};
   rows.forEach(r=>{r.tick=r.k!=='owe';}); // จ่ายช่าง = ต้องจ่ายจริงในหน้าจ่ายช่าง ไม่มีปุ่มซ่อน
-  return {ym,rows,hidden:hid,open:rows.filter(r=>r.n>0).length,total:rows.length,kpi:{inc,cost,gp:inc-cost,n:done.length,cash,unpaid:unpaid.reduce((s,d)=>s+saleDocTotal(d),0)},tax};
+  return {ym,rows,hidden:hid,preBilled:preBilled.length,open:rows.filter(r=>r.n>0).length,total:rows.length,kpi:{inc,cost,gp:inc-cost,n:done.length,cash,unpaid:unpaid.reduce((s,d)=>s+saleDocTotal(d),0)},tax};
 }
 function clrJobSel(id){const j=jobs.find(x=>sameJob(x.id,id)&&!isDeletedRecord(x));return j?finJobStatusSel(j):'';}
 function clrQ(v){return esc(String(v||'')).replace(/'/g,'&#39;');}
@@ -11706,12 +11713,41 @@ function clrGoPurchase(ym){purMonth=ym;purDate='';purDateTo='';purRange='';purSe
 function clrGoFin(v){goTo('finance');try{setFinView(v);}catch(e){}}
 function clrPick(ym){clrYm=ym;renderClear();}
 function clrToggle(k){clrOpen.has(k)?clrOpen.delete(k):clrOpen.add(k);renderClear();}
-async function clrSetCutoff(){
-  const p=uiPrompt({title:'✂️ วันตัดยอด',label:'เริ่มเคลียร์ตั้งแต่เดือนไหน — เดือนก่อนหน้านี้ถือเป็น “ยอดยกมา” (ไม่นับในหน้านี้) · จำไว้ในเครื่องนี้',value:clrCutoff(),okText:'บันทึก'});
-  try{const i=document.getElementById('uiprompt-input');i.type='month';i.value=clrCutoff();}catch(e){}
-  const v=String(await p||'').trim();if(!/^\d{4}-\d{2}$/.test(v))return;
-  try{localStorage.setItem(CLR_LS,v);}catch(e){}
-  if(clrYm&&clrYm<v)clrYm='';renderClear();
+function clrSetCutoff(){
+  let m=document.getElementById('m-clr-cut');
+  if(!m){m=document.createElement('div');m.className='modal-overlay';m.id='m-clr-cut';document.body.appendChild(m);}
+  const bm=clrBilledMeta&&clrBilledMeta.by?`<div class="tm" style="font-size:12px;margin-top:4px">ตั้งโดย ${esc(clrBilledMeta.by)}${clrBilledMeta.at?' · '+esc(new Date(clrBilledMeta.at).toLocaleString('th-TH',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'})):''}</div>`:'';
+  m.innerHTML=`<div class="modal" style="max-width:500px"><div class="modal-header"><div class="modal-title">✂️ วันตัดยอด</div><button class="close-btn" onclick="closeM('m-clr-cut')">×</button></div>
+    <div class="modal-body">
+      <div style="padding:12px;border:1px solid var(--border);border-radius:12px">
+        <div class="fw7">🧾 วางบิลนอกระบบ — งานที่เสร็จก่อนวันที่</div>
+        <input type="date" id="clr-cut-bb" class="form-input" style="margin-top:8px;max-width:220px" value="${esc(clrBilledBefore)}">
+        <div class="tm" style="font-size:12px;margin-top:6px;line-height:1.6">งานที่เสร็จก่อนวันนี้ถือว่า <b>วางบิล/เก็บเงินนอกระบบแล้ว</b> → ไม่ขึ้นในข้อ “งานเสร็จแล้ว ยังไม่วางบิล”<br>ใช้กับช่วงก่อนเริ่มออกใบแจ้งหนี้/ใบกำกับในระบบ · ทุกแอดมินเห็นเหมือนกัน · ลบวันที่ออก = ไม่ใช้<br>ไม่เปลี่ยนรายได้ ต้นทุน หรือสถานะงาน</div>${bm}
+      </div>
+      <div style="padding:12px;border:1px solid var(--border);border-radius:12px;margin-top:12px">
+        <div class="fw7">📅 เดือนแรกที่แสดงในหน้านี้</div>
+        <input type="month" id="clr-cut-mo" class="form-input" style="margin-top:8px;max-width:220px" value="${esc(clrCutoff())}">
+        <div class="tm" style="font-size:12px;margin-top:6px">เดือนก่อนหน้านี้ = ยอดยกมา ไม่แสดงในหน้านี้ · จำไว้ในเครื่องนี้</div>
+      </div>
+    </div>
+    <div class="modal-footer"><span style="flex:1"></span><button class="btn btn-ghost" onclick="closeM('m-clr-cut')">ยกเลิก</button><button class="btn btn-primary" onclick="clrSaveCutoff()">บันทึก</button></div></div>`;
+  openM('m-clr-cut');
+}
+async function clrSaveCutoff(){
+  const mo=String(document.getElementById('clr-cut-mo')?.value||'').trim(),bb=String(document.getElementById('clr-cut-bb')?.value||'').trim();
+  if(bb&&!/^\d{4}-\d{2}-\d{2}$/.test(bb)){alert('วันที่ไม่ถูกต้อง');return;}
+  if(bb!==clrBilledBefore){
+    if(typeof guardEdit==='function'&&!guardEdit())return;
+    const at=new Date().toISOString(),by=getActorName(),value={date:bb,by,at};
+    try{
+      const r=await fetch(splitUrl('console_ui_settings','?on_conflict=key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify([{key:'clr_billed_before',value,updated_at:at,updated_by:by}])});
+      if(!r.ok)throw new Error(await r.text());
+      clrBilledBefore=bb;clrBilledMeta=value;
+      try{writeAuditLog('clear_billed_before','clear','clr_billed_before',null,{date:bb},null);}catch(e){}
+    }catch(e){alert('บันทึกวันตัดยอดวางบิลไม่สำเร็จ: '+(e.message||e));return;}
+  }
+  if(/^\d{4}-\d{2}$/.test(mo)){try{localStorage.setItem(CLR_LS,mo);}catch(e){}if(clrYm&&clrYm<mo)clrYm='';}
+  closeM('m-clr-cut');renderClear();
 }
 function renderClear(){
   const box=document.getElementById('clr-wrap');if(!box)return;
@@ -11749,6 +11785,7 @@ function renderClear(){
     <div class="clr-head${C.open?'':' ok'}"><div><b>${ml}</b><span>${C.open?`เหลือ <em>${C.open}</em> เรื่องต้องทำ`:'🎉 เคลียร์ครบแล้ว'}</span></div><small>${C.open?'ทำจากข้อ 1 ลงไป · ทำเสร็จแล้วรายการหายไปเอง · รายการที่ไม่ต้องทำ (เช่น งานประกัน / จัดการนอกระบบ) กด ✓ เคลียร์แล้ว':'ไม่มีอะไรค้างในเดือนนี้'}</small></div>
     ${todo.length?`<div class="clr-list2">${todo.map(todoHtml).join('')}</div>`:''}
     ${okRows.length?`<div class="clr-okline">✓ เรียบร้อยแล้ว: ${okRows.map(r=>CLR_OK[r.k]||r.t).join(' · ')}</div>`:''}
+    ${C.preBilled?`<div class="clr-mut" style="margin:8px 2px">🧾 ไม่นับ ${C.preBilled} งานที่เสร็จก่อน ${tpThaiDate(clrBilledBefore)} ในข้อ “ยังไม่วางบิล” — ถือว่าวางบิลนอกระบบแล้ว · <a href="#" onclick="event.preventDefault();clrSetCutoff()">เปลี่ยน</a></div>`:''}
     ${bf.length?`<div class="clr-bf">💰 นอกจากนี้ ลูกค้ายังค้างจ่าย <b>บิลเก่าก่อน ${tpMonthLabel(cut,0)}</b> ฿${money(bfAmt)} (${bf.length} ใบ) <a href="#" onclick="event.preventDefault();clrGoSales('')">ดู</a></div>`:''}
     ${clrDoneErr?`<div class="clr-mut" style="margin:8px 0;color:var(--red)">โหลดรายการที่ติ๊กเคลียร์แล้วไม่สำเร็จ: ${esc(clrDoneErr)}</div>`:''}
     ${C.hidden.length?`<details class="clr-more"><summary>🙈 ซ่อนไว้ (ติ๊กเคลียร์แล้ว) ${C.hidden.length} รายการในเดือนนี้</summary><table class="clr-tb" style="margin-top:8px"><tr><th>ข้อ</th><th>รายการ</th><th>ติ๊กโดย</th><th></th></tr>${C.hidden.map(h=>`<tr><td>${esc((TODO[h.kind]||[h.kind])[0])}</td><td>${esc(h.label)}</td><td class="clr-mut">${esc([h.v&&h.v.by,h.v&&String(h.v.at||'').slice(0,10)].filter(Boolean).join(' · '))}</td><td style="text-align:right"><button class="btn btn-ghost btn-xs" onclick="clrMark('${h.kind}',['${clrQ(h.id)}'],false)">↩ เอากลับ</button></td></tr>`).join('')}</table></details>`:''}
@@ -11757,7 +11794,7 @@ function renderClear(){
       <div class="clr-mut" style="margin:14px 0 6px"><b>ภาษีเดือนนี้</b> — ยอดประมาณจากเอกสารในระบบ ให้นักบัญชียืนยันก่อนยื่น</div>
       <div class="clr-tax"><div><small>ภาษีขาย (ใบกำกับขาย ${T.sn} ใบ)</small><b>฿${money(T.sv)}</b></div><div><small>ภาษีซื้อ (ใบกำกับซื้อ ${T.pn} ใบ)</small><b>฿${money(T.pv)}</b>${T.pnf?`<span class="clr-pill warn">${T.pnf} ใบยังไม่แนบไฟล์</span>`:''}</div><div><small>ภ.พ.30 ต้องชำระ (ประมาณ)</small><b>฿${money(Math.max(0,T.sv-T.pv))}</b>${T.pv>T.sv?`<span class="clr-mut">ภาษีซื้อเกิน ฿${money(T.pv-T.sv)} ยกไป</span>`:''}</div><div><small>หัก ณ ที่จ่ายช่าง (ภ.ง.ด.3)</small><b>฿${money(T.wht)}</b><span class="clr-mut">จ่ายช่าง ${T.wn} งวด</span></div></div>
       <div class="flex g8" style="margin-top:10px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="clrGoSales('${clrYm}')">ภาษีขาย →</button><button class="btn btn-ghost btn-sm" onclick="clrGoPurchase('${clrYm}')">ภาษีซื้อ →</button><button class="btn btn-ghost btn-sm" onclick="goTo('tech-pay')">50 ทวิ / จ่ายช่าง →</button></div>
-      <div class="clr-mut" style="margin-top:14px">✂️ เริ่มนับตั้งแต่ <b>${tpMonthLabel(cut,0)}</b> (เดือนก่อนหน้า = ยอดยกมา ไม่นับ) · <a href="#" onclick="event.preventDefault();clrSetCutoff()">เปลี่ยน</a> · นับงานตามวันที่เสร็จ และเอกสารตามวันที่บนเอกสาร</div>
+      <div class="clr-mut" style="margin-top:14px">✂️ เริ่มนับตั้งแต่ <b>${tpMonthLabel(cut,0)}</b> (เดือนก่อนหน้า = ยอดยกมา ไม่นับ)${clrBilledBefore?` · 🧾 วางบิลนอกระบบ: งานที่เสร็จก่อน <b>${tpThaiDate(clrBilledBefore)}</b>`:''} · <a href="#" onclick="event.preventDefault();clrSetCutoff()">เปลี่ยน</a> · นับงานตามวันที่เสร็จ และเอกสารตามวันที่บนเอกสาร</div>
     </details>`;
 }
 let clrMoreOpen=false;
