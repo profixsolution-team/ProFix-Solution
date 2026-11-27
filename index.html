@@ -8845,41 +8845,58 @@ function vendorBranchesOf(clientName){
   return (branches||[]).filter(b=>String(b&&b.client||'').trim()===key);
 }
 // เติมตัวเลือกสาขาลง dropdown ของลูกค้าที่เลือกอยู่ (ใช้ select จริง ไม่ใช่ datalist — datalist ต้องพิมพ์ก่อนถึงจะเห็นตัวเลือก)
+// สาขาลูกค้าในเอกสารขาย — 2026-11-27: ลูกค้าบางรายมีหลายร้านใช้ "เลขสาขา" เดียวกัน (เช่น มากุโระ 00025)
+// → ตัวเลือกใช้ค่า b:<ลำดับสาขา> ไม่ใช่เลขสาขา (เดิมเลือกร้านที่ 2 แล้วเด้งกลับไปร้านแรก + ได้ที่อยู่ร้านแรก)
+const sbrNo=b=>String(b&&b.taxBranchNo||'').trim();
 function refreshSalesCustomerBranchOptions(clientName){
   const sel=document.getElementById('sale-customer-branch-pick');if(!sel)return;
   const cur=(document.getElementById('sale-customer-branch-no')?.value||'').trim();
+  const curAddr=(document.getElementById('sale-customer-address')?.value||'').trim();
   const list=vendorBranchesOf(clientName);
+  const same=cur?list.filter(b=>sbrNo(b)===cur):[];
+  const pick=same.length>1?(same.find(b=>String(b.addr||'').trim()===curAddr)||same[0]):same[0];
+  const dupCount={};list.forEach(b=>{const n=sbrNo(b);if(n)dupCount[n]=(dupCount[n]||0)+1;});
   const opts=['<option value="">สำนักงานใหญ่ (ไม่มีเลขสาขา)</option>'];
-  list.forEach(b=>{
-    const no=String(b.taxBranchNo||'').trim();
+  list.forEach((b,i)=>{
+    const no=sbrNo(b);
     if(!no)return; // สาขาที่ไม่ได้ใส่เลข = สำนักงานใหญ่อยู่แล้ว ไม่ต้องมีตัวเลือกซ้ำ
-    opts.push(`<option value="${esc(no)}"${no===cur?' selected':''}>${esc(b.name||'สาขา')} — สาขาที่ ${esc(no)}</option>`);
+    const hint=dupCount[no]>1&&b.addr?` · ${String(b.addr).replace(/\s+/g,' ').slice(0,40)}`:'';
+    opts.push(`<option value="b:${i}"${b===pick?' selected':''}>${esc(b.name||'สาขา')} — สาขาที่ ${esc(no)}${esc(hint)}</option>`);
   });
-  const known=list.some(b=>String(b.taxBranchNo||'').trim()===cur);
-  if(cur&&!known)opts.push(`<option value="${esc(cur)}" selected>สาขาที่ ${esc(cur)} (พิมพ์เอง)</option>`);
+  if(cur&&!pick)opts.push(`<option value="${esc(cur)}" selected>สาขาที่ ${esc(cur)} (พิมพ์เอง)</option>`);
   opts.push(`<option value="__custom__">✎ พิมพ์เลขสาขาเอง...</option>`);
   sel.innerHTML=opts.join('');
   if(!cur)sel.value='';
   sel.title=list.length?`ลูกค้ารายนี้มี ${list.length} สาขาที่บันทึกไว้`:'ลูกค้ารายนี้ยังไม่ได้บันทึกสาขา — เพิ่มได้ที่หน้า ลูกค้า / Vendor';
 }
-// เลือกสาขาจาก dropdown → ใส่เลขสาขาลงช่องจริง + ดึงที่อยู่สาขามาแทนให้
+// เลือกสาขาจาก dropdown → ใส่เลขสาขาลงช่องจริง + ดึงที่อยู่ของร้านที่เลือก (ไม่ใช่ร้านแรกที่เลขตรงกัน)
 function onSalesBranchSelect(val){
   const input=document.getElementById('sale-customer-branch-no');if(!input)return;
   if(val==='__custom__'){input.value='';input.focus();return;}
+  if(String(val||'').startsWith('b:')){
+    const b=vendorBranchesOf(document.getElementById('sale-customer')?.value||'')[+String(val).slice(2)];
+    if(b){input.value=sbrNo(b);const addr=document.getElementById('sale-customer-address');if(addr&&b.addr)addr.value=b.addr;return;}
+  }
   input.value=val||'';
   onSalesCustomerBranchPick(val);
 }
-// พิมพ์เลขสาขาเอง — ถ้าตรงกับสาขาที่บันทึกไว้ของลูกค้ารายนี้ ดึงที่อยู่สาขานั้นมาแทน + sync dropdown ให้ตรงกัน
+// พิมพ์เลขสาขาเอง — ตรงกับสาขาที่บันทึกไว้ร้านเดียว → ดึงที่อยู่ร้านนั้น · เลขซ้ำหลายร้าน → ไม่เดาที่อยู่ (ให้เลือกร้านจาก dropdown)
 function onSalesCustomerBranchPick(val){
   const clientName=document.getElementById('sale-customer')?.value||'';
   const v=String(val||'').trim();
-  const match=vendorBranchesOf(clientName).find(b=>String(b.taxBranchNo||'').trim()===v&&v);
-  if(match&&match.addr){
+  const list=vendorBranchesOf(clientName);
+  const matches=v?list.filter(b=>sbrNo(b)===v):[];
+  if(matches.length===1&&matches[0].addr){
     const addr=document.getElementById('sale-customer-address');
-    if(addr)addr.value=match.addr;
+    if(addr)addr.value=matches[0].addr;
   }
   const sel=document.getElementById('sale-customer-branch-pick');
-  if(sel&&[...sel.options].some(o=>o.value===v))sel.value=v;
+  if(sel){
+    const curAddr=(document.getElementById('sale-customer-address')?.value||'').trim();
+    const m=matches.length>1?(matches.find(b=>String(b.addr||'').trim()===curAddr)||matches[0]):matches[0];
+    const ov=m?'b:'+list.indexOf(m):v;
+    if([...sel.options].some(o=>o.value===ov))sel.value=ov;
+  }
 }
 function renderSalesCustomerOptions(selected=''){
   const sel=document.getElementById('sale-customer-select');if(!sel)return;
