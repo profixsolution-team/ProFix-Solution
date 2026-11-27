@@ -1395,10 +1395,75 @@ async function showForm(){
   await pmInit(); // งาน PM → แสดงส่วนเครื่องในสาขา (งานปกติไม่เปลี่ยน)
   slotInit(); // รูปแยกช่อง (เฉพาะงานที่แอดมินเปิดโหมดนี้) — หลัง pmInit: งาน PM ใช้ช่องรูปในหน้ารายเครื่อง
   await restoreLocalDraft(); // ร่างในเครื่อง (ถ้าใหม่กว่าข้อมูลบนระบบ) — ต้องทำก่อน toggle เพื่อให้ช่อง/โหมดตรงกับที่กรอกค้างไว้
+  srvSeeAll(); await srvMergeRemote(true); // รูปบนระบบที่ร่างในเครื่องนี้ไม่มี (อีกเครื่องเพิ่ม) → รวมเข้ามา
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
   renderThumbs('documents');
   toggleQuoteMode();
 }
+// ===== รวมรูปจากมือถือเครื่องอื่น (2026-11-27) =====
+// ปัญหา: กดบันทึก = ลบรูปบนระบบทั้งหมด แล้วใส่เฉพาะรูปในเครื่องนี้ → ช่าง 2 เครื่องช่วยกันถ่ายงานเดียว เครื่องที่บันทึกทีหลังลบรูปของอีกเครื่อง
+// แก้: จำว่ารูป/เครื่อง PM ไหนเครื่องนี้เคยเห็นแล้ว (srvSeen) · ตอนเปิดฟอร์ม/ก่อนบันทึก/ก่อนส่ง ดึงของล่าสุดบนระบบ
+//      → อันที่เครื่องนี้ไม่เคยเห็น = อีกเครื่องเพิ่ม → รวมเข้ามาก่อนบันทึก · อันที่เคยเห็นแล้วช่างลบเองในเครื่องนี้ = ไม่ดึงกลับ
+const srvSeen=new Set();
+let srvMergeAt=0;
+function srvSeeAll(){
+  allPhotoEntries().forEach(p=>{ if(p&&p.id) srvSeen.add(String(p.id)); });
+  (typeof pmItems!=='undefined'?pmItems:[]).forEach(it=>{ if(it.key) srvSeen.add('item:'+it.key); if(it.asset_id) srvSeen.add('item:'+it.asset_id);
+    ['before','during','after'].forEach(c=>(it.photos?.[c]||[]).forEach(p=>{ if(p&&p.id) srvSeen.add(String(p.id)); })); });
+}
+function pmNormItem({ sheet_rows, ...it }){ return { ...it, sheet:it.sheet||{}, sheet_rmk:it.sheet_rmk||{}, readings:it.readings||{}, checklist:it.checklist||{},
+  label_photo: it.label_photo&&it.label_photo.url ? { url:it.label_photo.url, status:'ready' } : null,
+  photos: { before:(it.photos?.before||[]).map(p=>({ ...p, status:'ready' })), during:(it.photos?.during||[]).map(p=>({ ...p, status:'ready' })), after:(it.photos?.after||[]).map(p=>({ ...p, status:'ready' })) }, slot_na:{...(it.slot_na||{})} }; }
+function pmMergeRemoteItems(items){
+  let n=0; const empty=v=>v==null||v==='';
+  items.forEach(ri=>{
+    if(!ri||!ri.key) return;
+    const it=pmItems.find(x=>x.key===ri.key)||(ri.asset_id&&pmItems.find(x=>x.asset_id&&String(x.asset_id)===String(ri.asset_id)));
+    if(!it){ // เครื่องที่อีกเครื่องเพิ่ม (ถ้าเครื่องนี้เคยเห็นแล้วลบออกเอง = ไม่เอากลับ)
+      if(srvSeen.has('item:'+ri.key)||(ri.asset_id&&srvSeen.has('item:'+ri.asset_id))) return;
+      const ni=pmNormItem(ri); pmItems.push(ni); n+=pmPhotoCount(ni)||1;
+      srvSeen.add('item:'+ri.key); if(ri.asset_id) srvSeen.add('item:'+ri.asset_id);
+      ['before','during','after'].forEach(c=>(ni.photos[c]||[]).forEach(p=>p.id&&srvSeen.add(String(p.id)))); return;
+    }
+    ['before','during','after'].forEach(c=>(ri.photos?.[c]||[]).forEach(p=>{
+      if(!p||!p.id||!p.url||srvSeen.has(String(p.id))) return; srvSeen.add(String(p.id));
+      it.photos=it.photos||{}; it.photos[c]=it.photos[c]||[];
+      if(['before','during','after'].some(k=>(it.photos[k]||[]).some(x=>String(x.id)===String(p.id)||(x.url&&x.url===p.url)))) return;
+      it.photos[c].push({ ...p, status:'ready' }); n++;
+    }));
+    // ข้อมูลเครื่องที่อีกเครื่องกรอกไว้ แต่เครื่องนี้ยังว่าง → เติมให้ (ไม่ทับที่กรอกแล้ว)
+    ['asset_type','brand','model','capacity','serial_no','location','refrigerant','qr_code','condition','cause','fix','follow_up'].forEach(k=>{ if(empty(it[k])&&!empty(ri[k])) it[k]=ri[k]; });
+    ['checklist','sheet','sheet_rmk','readings','slot_na'].forEach(k=>{ const src=ri[k]||{}; it[k]=it[k]||{}; Object.keys(src).forEach(x=>{ if(empty(it[k][x])&&!empty(src[x])) it[k][x]=src[x]; }); });
+    if(!it.label_photo&&ri.label_photo&&ri.label_photo.url) it.label_photo={ url:ri.label_photo.url, status:'ready' };
+  });
+  if(n) try{ pmDedupe(); }catch(e){}
+  return n;
+}
+async function srvMergeRemote(silent){
+  const rid=reportTableId((jobData&&jobData.id)||JOB_ID); let added=0; srvMergeAt=Date.now();
+  try{
+    const [ri,rr]=await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/technician_report_images?report_id=eq.${encodeURIComponent(rid)}&select=id,category,url,data`,{ headers:sbHeaders() }),
+      (typeof pmCtx!=='undefined'&&pmCtx)?fetch(`${SUPABASE_URL}/rest/v1/technician_reports?report_id=eq.${encodeURIComponent(rid)}&select=pm:report_data->pm&limit=1`,{ headers:sbHeaders() }):Promise.resolve(null) ]);
+    if(ri&&ri.ok) (await ri.json()).forEach(row=>{
+      const im=row.data||{}; if(im.pmItem) return; // รูปรายเครื่อง PM รวมจาก report_data.pm ด้านล่าง
+      const id=String(row.id||im.id||''), url=row.url||im.url||''; if(!id||!url||srvSeen.has(id)) return; srvSeen.add(id);
+      const cat=row.category||im.category||(im.documentOnly?'documents':'before'); if(!photos[cat]) return;
+      if(photos[cat].some(p=>String(p.id)===id||(p.url&&p.url===url))) return;
+      photos[cat].push({ id, existing:true, uploadedMeta:im, dataUrl:url, url, status:'ready', width:im.width||0, height:im.height||0, fileKey:im.name||url, ...slotPick(im) }); added++;
+    });
+    if(rr&&rr.ok){ const row=(await rr.json())[0]; const sp=row&&row.pm; if(sp&&Array.isArray(sp.items)&&sp.visit_id===pmCtx.visit.id) added+=pmMergeRemoteItems(sp.items); }
+  }catch(e){ console.warn('merge remote photos', e); }
+  if(added){
+    ['before','during','after','documents'].forEach(c=>{ try{ renderThumbs(c); }catch(e){} });
+    try{ if(slotOn()) slotRender(); }catch(e){}
+    try{ if(pmCtx){ if(pmCur&&!document.getElementById('pm-sheet').classList.contains('hidden')) pmSheetRender(); else pmRender(); } }catch(e){}
+    scheduleLocalDraftSave();
+    try{ tsToast(`📥 รวมรูปจากมือถืออีกเครื่องแล้ว ${added} รูป`, 2800); }catch(e){}
+  }
+  return added;
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && localDraftEnabled && Date.now()-srvMergeAt>20000) srvMergeRemote(); });
 // ดึงรูปที่อัปไว้แล้วจากตาราง technician_report_images มาแสดงในฟอร์ม (ช่างจะได้เห็นว่าอัปอะไรไปแล้ว)
 async function loadExistingPhotosIntoForm(jobId){
   try{
@@ -1597,9 +1662,14 @@ function slotGeoRefresh(){
   if(slotGeoBusy||!navigator.geolocation||(slotGeo&&Date.now()-slotGeoAt<120000)) return;
   slotGeoBusy=true;
   navigator.geolocation.getCurrentPosition(p=>{ slotGeo={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}; slotGeoAt=Date.now(); slotGeoBusy=false; },
-    ()=>{ slotGeoBusy=false; }, { enableHighAccuracy:true, timeout:10000, maximumAge:120000 });
+    ()=>{ slotGeoBusy=false; slotGeoFailAt=Date.now(); }, { enableHighAccuracy:true, timeout:10000, maximumAge:120000 });
 }
-async function slotGeoWait(ms){ slotGeoRefresh(); const t0=Date.now(); while(!slotGeo&&slotGeoBusy&&Date.now()-t0<ms) await new Promise(r=>setTimeout(r,200)); return slotGeo; }
+// รอพิกัดสั้น ๆ เฉพาะครั้งแรก (สูงสุด 1.2 วิ) · ในอาคาร GPS จับไม่ได้ → ไม่รอซ้ำทุกรูป (เดิมรอ 3 วิทุกรูป = ถ่ายแล้วช้า · 2026-11-27)
+let slotGeoFailAt=0;
+let slotGeoWaited=false; // รอไปแล้ว 1 ครั้งระหว่างที่ GPS ยังหาอยู่ → รูปถัดไปไม่ต้องรออีก
+async function slotGeoWait(ms){ const wasBusy=slotGeoBusy; slotGeoRefresh(); if(!wasBusy&&slotGeoBusy) slotGeoWaited=false;
+  if(slotGeo||slotGeoWaited||Date.now()-slotGeoFailAt<180000) return slotGeo;
+  slotGeoWaited=true; const t0=Date.now(), lim=Math.min(ms,1200); while(!slotGeo&&slotGeoBusy&&Date.now()-t0<lim) await new Promise(r=>setTimeout(r,150)); return slotGeo; }
 // ---------- เวลา/พิกัดที่ถ่ายจริง จากข้อมูลในไฟล์รูป (EXIF) ----------
 // รูปจากกล้องมือถือมี "ถ่ายเมื่อ" (DateTimeOriginal) + บางเครื่องมีพิกัด GPS ฝังในไฟล์ JPEG
 // ใช้ตอนช่างถ่ายไว้ก่อนแล้วมา "เลือกจากเครื่อง" ทีหลัง → ลายน้ำเป็นเวลาที่ถ่ายจริง ไม่ใช่เวลาที่แนบ
@@ -1642,6 +1712,7 @@ function parseExifTiff(v, t){
 }
 // เวลาที่ใช้ทำลายน้ำของรูป 1 ใบ: EXIF → เวลาไฟล์ (ถ้าเก่ากว่า 5 นาที) → เวลาที่แนบ
 async function photoTimeInfo(file){
+  if(file&&/^cam-\d+\.jpg$/.test(file.name||'')) return { at:new Date(Number(file.lastModified)||Date.now()), src:'now', geo:null }; // ถ่ายจากกล้องในหน้า = เวลานี้ ไม่ต้องอ่าน EXIF
   const now=Date.now(), ex=await readPhotoExif(file);
   if(ex&&ex.taken&&ex.taken.getTime()<=now+5*60000) return { at:ex.taken, src:'exif', geo:ex.geo };
   const lm=Number(file&&file.lastModified)||0;
@@ -1661,13 +1732,20 @@ let slotPickSrc='cam'; // ปุ่มที่ช่างกด: cam = ถ่�
 // ---------- กล้องในหน้าฟอร์ม (2026-11-27) ----------
 // ปัญหา: ใน LINE (แอนดรอยด์) ปุ่ม <input capture> เปิดแอปกล้องแยก → ระบบปิดหน้าเว็บทิ้งระหว่างถ่าย → กลับมาหน้าโหลดใหม่ รูปที่ถ่ายหาย
 // แก้: เปิดกล้องในหน้าเว็บเอง (getUserMedia แบบเดียวกับสแกน QR) ไม่ออกจากหน้า · เปิดไม่ได้ → ปุ่ม "ใช้กล้องของมือถือ" (แบบเดิม)
-let icamStream=null, icamFail=false;
+let icamStream=null, icamFail=false, icamIdle=null;
 function slotCamLabel(){ try{ if(slotCur.slot){ const f=slotFind(slotCur.slot); return f?f.label:''; } if(pmSlotKey&&pmCur){ const f=pmSlotFind(pmCur,pmSlotKey); return f?f.s.l:''; } }catch(e){} return ''; }
-function slotCamNative(){ slotCamClose(); slotPickSrc='cam'; document.getElementById('slot-cam').click(); }
+function slotCamNative(){ slotCamClose(true); slotPickSrc='cam'; document.getElementById('slot-cam').click(); }
+function icamLive(){ return !!(icamStream && icamStream.getVideoTracks().some(t=>t.readyState==='live')); }
 async function slotCamOpen(){
-  slotPickSrc='cam'; slotGeoRefresh();
+  slotPickSrc='cam'; slotGeoRefresh(); clearTimeout(icamIdle);
   if(icamFail || !navigator.mediaDevices?.getUserMedia) return slotCamNative();
   let box=document.getElementById('icam');
+  // กล้องยังเปิดค้างจากรูปก่อน (ภายใน 40 วิ) → โชว์ทันที ไม่ต้องเปิดกล้องใหม่ (เปิดกล้องใหม่ทุกครั้งช้า 1-2 วิบนแอนดรอยด์)
+  if(box && icamLive() && document.getElementById('icam-v')){
+    box.querySelector('.icam-top span').textContent=slotCamLabel(); box.className='icam';
+    const v=document.getElementById('icam-v'); if(v.paused) v.play().catch(()=>{}); return;
+  }
+  slotCamStop();
   if(!box){ box=document.createElement('div'); box.id='icam'; document.body.appendChild(box); }
   box.innerHTML=`<video id="icam-v" playsinline muted autoplay></video>
     <div class="icam-top"><button type="button" onclick="slotCamClose()">✕</button><span>${esc(slotCamLabel())}</span></div>
@@ -1675,7 +1753,7 @@ async function slotCamOpen(){
     <div class="icam-bot"><button type="button" class="icam-alt" onclick="slotCamNative()">ใช้กล้อง<br>ของมือถือ</button><button type="button" class="icam-shot" id="icam-shot" onclick="slotCamShot()" aria-label="ถ่ายรูป"></button><span class="icam-sp"></span></div>`;
   box.className='icam';
   try{
-    icamStream=await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1440} }, audio:false });
+    icamStream=await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'}, width:{ideal:1600}, height:{ideal:1200} }, audio:false });
     const v=document.getElementById('icam-v'); if(!v||!document.getElementById('icam')?.classList.contains('icam')){ slotCamStop(); return; }
     v.srcObject=icamStream; await v.play().catch(()=>{});
     const m=document.getElementById('icam-msg'); if(m) m.style.display='none';
@@ -1685,18 +1763,27 @@ async function slotCamOpen(){
     const sh=document.getElementById('icam-shot'); if(sh) sh.style.visibility='hidden';
   }
 }
-function slotCamStop(){ if(icamStream){ icamStream.getTracks().forEach(t=>t.stop()); icamStream=null; } }
-function slotCamClose(){ slotCamStop(); const b=document.getElementById('icam'); if(b){ b.className='hidden'; b.innerHTML=''; } }
+function slotCamStop(){ clearTimeout(icamIdle); if(icamStream){ icamStream.getTracks().forEach(t=>t.stop()); icamStream=null; } }
+// ปิดหน้ากล้อง: hard = ปิดกล้องจริงทันที · ปกติ = ซ่อนไว้ กล้องค้าง 40 วิ เผื่อถ่ายช่องถัดไป แล้วค่อยปิด
+function slotCamClose(hard){
+  const b=document.getElementById('icam');
+  if(hard || !icamLive()){ slotCamStop(); if(b){ b.className='hidden'; b.innerHTML=''; } return; }
+  if(b) b.className='hidden';
+  const v=document.getElementById('icam-v'); if(v) try{ v.pause(); }catch(e){}
+  clearTimeout(icamIdle); icamIdle=setTimeout(()=>slotCamClose(true), 40000);
+}
 async function slotCamShot(){
   const v=document.getElementById('icam-v'); if(!v||!v.videoWidth){ tsToast('กล้องยังไม่พร้อม รอสักครู่',1500); return; }
-  const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0,c.width,c.height);
-  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92)); c.width=c.height=0;
+  // ย่อตั้งแต่ตอนจับภาพ (ด้านยาวไม่เกิน 1600) แล้วปิดหน้ากล้องทันที — บีบอัด/ลายน้ำทำต่อเบื้องหลัง
+  const k=Math.min(1,1600/Math.max(v.videoWidth,v.videoHeight));
+  const c=document.createElement('canvas'); c.width=Math.round(v.videoWidth*k); c.height=Math.round(v.videoHeight*k); c.getContext('2d').drawImage(v,0,0,c.width,c.height);
   slotCamClose();
+  let blob=null; try{ blob=dataUrlToBlob(c.toDataURL('image/jpeg',0.88)); }catch(e){} c.width=c.height=0;
   if(!blob){ tsToast('ถ่ายรูปไม่สำเร็จ ลองใหม่',2000); return; }
   slotPickSrc='cam';
   slotAddFiles([new File([blob],'cam-'+Date.now()+'.jpg',{type:'image/jpeg',lastModified:Date.now()})]);
 }
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && icamStream) slotCamClose(); });
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && icamStream) slotCamClose(true); });
 function slotStampLines(f,ti){ return slotStampBase(f.unitLabel, f.label, ti); }
 function slotCompress(file, lines, maxW=1280, quality=0.72){
   return new Promise((resolve,reject)=>{
@@ -1716,7 +1803,8 @@ function slotCompress(file, lines, maxW=1280, quality=0.72){
       const bx=Math.max(0,width-bw-pad), by=Math.max(0,height-bh-pad);
       g.fillStyle='rgba(0,0,0,.5)'; g.fillRect(bx,by,bw,bh);
       g.fillStyle='#fff'; lines.forEach((t,i)=>{ const w=Math.min(tw(t),maxLine); g.fillText(t,bx+bw-pad-w,by+pad*0.7+lh*(i+1)-lh*0.28,maxLine); });
-      c.toBlob(blob=>{ if(!blob) return reject(new Error('บีบอัดรูปไม่สำเร็จ')); resolve({ blob, dataUrl:c.toDataURL('image/jpeg',quality), width, height }); c.width=c.height=0; },'image/jpeg',quality);
+      // บีบอัด JPEG รอบเดียว (เดิม toBlob + toDataURL = 2 รอบ) → ได้ทั้งรูปโชว์และไฟล์อัป
+      try{ const dataUrl=c.toDataURL('image/jpeg',quality); c.width=c.height=0; resolve({ blob:dataUrlToBlob(dataUrl), dataUrl, width, height }); }catch(err){ reject(err); }
     };
     img.onerror=e=>{ URL.revokeObjectURL(src); reject(e); }; img.src=src;
   });
@@ -1879,10 +1967,10 @@ async function pmSlotAdd(files){
   const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/')).slice(0,SLOT_PER()); if(!list.length) return; // ช่องละ 1 รูป (สาขาไม่จำกัด = หลายรูป)
   it.photos[f.cat]=it.photos[f.cat]||[]; if((it.slot_na||{})[k]) delete it.slot_na[k];
   const oldIds=new Set(photoUnlimited?[]:pmSlotPhotos(it,k).map(p=>p.id)); // รูปเดิมของช่องนี้ → ลบเมื่อรูปใหม่บีบอัดเสร็จ · สาขาไม่จำกัด = เพิ่มรูป
-  await slotGeoWait(3000);
   const picked=slotPickSrc==='gal';
   const entries=list.map(()=>{ const e={ id:Date.now()+'-'+Math.random().toString(36).slice(2,7), status:'compressing', slot:k }; it.photos[f.cat].push(e); return e; });
-  pmSheetRender(); slotPopClose();
+  pmSheetRender(); slotPopClose(); // ขึ้น "กำลังอัป…" ในช่องทันที ไม่ต้องรอพิกัด
+  await slotGeoWait(3000);
   for(let i=0;i<list.length;i++){ const e=entries[i];
     try{ const ti=await photoTimeInfo(list[i]); ti.picked=picked; const c=await slotCompress(list[i], slotStampBase(pmItemName(it), f.s.l, ti)); e.blob=c.blob; e.dataUrl=c.dataUrl; e.takenAt=ti.at.toISOString(); e.timeSrc=ti.src;
       if(oldIds.size) ['before','during','after'].forEach(c=>{ it.photos[c]=(it.photos[c]||[]).filter(p=>!oldIds.has(p.id)); }); }catch(err){ e.status='error'; pmRefreshPhotos(); continue; }
@@ -2014,11 +2102,7 @@ function compressImage(file, maxW=1100, quality=0.68){
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
       canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-      canvas.toBlob(blob=>{
-        if(!blob) return reject(new Error('บีบอัดรูปไม่สำเร็จ'));
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        resolve({ blob, dataUrl, width, height });
-      }, 'image/jpeg', quality);
+      try{ const dataUrl = canvas.toDataURL('image/jpeg', quality); resolve({ blob:dataUrlToBlob(dataUrl), dataUrl, width, height }); }catch(err){ reject(err); } // บีบอัดรอบเดียว
     };
     img.onerror = e => { URL.revokeObjectURL(src); reject(e); };
     img.src = src;
@@ -2170,6 +2254,7 @@ async function ensureUploadBlob(photo, category){
 
 async function saveDraft(opt){
   opt=opt||{}; const quiet=!!opt.quiet; // quiet = บันทึกอัตโนมัติจากปุ่ม "บันทึก" รายเครื่อง PM (ไม่บังหน้าจอ ไม่เด้ง alert)
+  await srvMergeRemote(); // รูปที่มือถืออีกเครื่องบันทึกไว้ → รวมก่อน ไม่งั้นบันทึกทับแล้วรูปเครื่องนั้นหาย
   const report = collectReportDraft();
   const allPhotos = allPhotoEntries();
   if(allPhotos.some(p=>p.status==='compressing')){ if(quiet) return false; alert('กรุณารอรูปบีบอัดเสร็จก่อน'); return; }
@@ -2197,6 +2282,7 @@ async function saveDraft(opt){
       isDraft: true,
       eventType: 'draft_saved'
     });
+    srvSeeAll();
     const patch = {
       id: job.id || JOB_ID,
       client: job.client || '',
@@ -2244,6 +2330,7 @@ async function saveDraft(opt){
 async function submitJob(){
   // บันทึกอัตโนมัติรายเครื่องค้างอยู่ → รอให้จบก่อน (กันร่างที่บันทึกทีหลังทับสถานะ "ส่งงานแล้ว")
   if(pmAutoBusy||pmAutoAgain){ pmAutoAgain=false; tsToast('☁️ กำลังบันทึกขึ้นระบบ รอสักครู่...',0); while(pmAutoBusy) await new Promise(r=>setTimeout(r,300)); tsToast('พร้อมส่งงาน',1200); }
+  await srvMergeRemote(); // รวมรูปจากมือถืออีกเครื่องก่อนตรวจ/ส่ง
   // validate text fields
   const report = collectReportDraft();
   if(pmCtx && !report.needQuote){
@@ -2324,6 +2411,7 @@ async function submitJob(){
       roundId: nextRound.id,
       eventType: report.needQuote ? 'parts_quote_needed' : 'submitted'
     });
+    srvSeeAll();
     const patch = {
       id: job.id || JOB_ID,
       client: job.client || '',

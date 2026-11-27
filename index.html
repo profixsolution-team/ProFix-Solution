@@ -8003,7 +8003,7 @@ function boqQuoteDocHtml(inv,items){
   const jobList=salesInvoiceJobs(inv);
   const firstPr=jobList[0]||'';
   const job=(jobs||[]).find(j=>sameJob(j.id,firstPr)&&!isDeletedRecord(j));
-  const branchText=[...new Set(jobList.map(pr=>{const jj=(jobs||[]).find(j=>sameJob(j.id,pr)&&!isDeletedRecord(j));return jj?jj.branch:'';}).filter(Boolean))].join(', ')||(job?.branch||'');
+  const branchText=salesDocPickedShop(inv)||[...new Set(jobList.map(pr=>{const jj=(jobs||[]).find(j=>sameJob(j.id,pr)&&!isDeletedRecord(j));return jj?jj.branch:'';}).filter(Boolean))].join(', ')||(job?.branch||'');
   const cause=job?.technicianReport?.cause||job?.cause||job?.symptom||'';
   const fix=job?.technicianReport?.fix||job?.fix||'';
   const adminDetail=((adminTasks||[]).find(t=>sameJob(t.jobId,job?.id)&&!isDeletedRecord(t))||{}).detail||'';
@@ -8140,7 +8140,7 @@ function salesDocHtml(inv,items){
   const rows=items.map((it,i)=>`<tr><td class="no">${i+1}</td><td class="cat">${esc(it.category||'')}</td><td class="desc">${esc(it.description||'')}</td><td class="qty">${money(it.quantity||0)}</td><td class="unit">${esc(it.unit||'')}</td><td class="price">${money(it.unit_price||0)}</td><td class="amount">${money(it.subtotal||0)}</td></tr>`).join('');
   const jobList=salesInvoiceJobs(inv);
   const jobText=jobList.join(', ');
-  const branchText=[...new Set(jobList.map(pr=>jobs.find(j=>sameJob(j.id,pr)&&!isDeletedRecord(j))?.branch).filter(Boolean))].join(', ');
+  const branchText=salesDocPickedShop(inv)||[...new Set(jobList.map(pr=>jobs.find(j=>sameJob(j.id,pr)&&!isDeletedRecord(j))?.branch).filter(Boolean))].join(', ');
   const lineSubtotal=items.reduce((sum,it)=>sum+Number(it.subtotal||0),0);
   const overheadEnabled=!(inv.overhead_enabled===false||inv.overhead_enabled==='false');
   const overheadRate=overheadEnabled?Number(inv.overhead_rate??salesOverheadRateBySubtotal(lineSubtotal)):0;
@@ -8848,6 +8848,14 @@ function vendorBranchesOf(clientName){
 // สาขาลูกค้าในเอกสารขาย — 2026-11-27: ลูกค้าบางรายมีหลายร้านใช้ "เลขสาขา" เดียวกัน (เช่น มากุโระ 00025)
 // → ตัวเลือกใช้ค่า b:<ลำดับสาขา> ไม่ใช่เลขสาขา (เดิมเลือกร้านที่ 2 แล้วเด้งกลับไปร้านแรก + ได้ที่อยู่ร้านแรก)
 const sbrNo=b=>String(b&&b.taxBranchNo||'').trim();
+// "สาขา :" บนเอกสาร = ปกติใช้ชื่อสาขาของงาน · ถ้าเลขสาขาลูกค้าใช้ร่วมหลายร้าน → ใช้ชื่อร้านที่เลือก (จับจากเลขสาขา + ที่อยู่ที่บันทึกในเอกสาร)
+function salesDocPickedShop(inv){
+  const no=String(inv&&inv.customer_branch_no||'').trim();if(!no)return '';
+  const list=vendorBranchesOf(inv.customer_name||'').filter(b=>sbrNo(b)===no);if(list.length<2)return '';
+  const nz=x=>String(x||'').replace(/\s+/g,' ').trim(),addr=nz(inv.customer_address);
+  const m=addr&&list.find(b=>nz(b.addr)===addr);
+  return m?String(m.name||'').trim():'';
+}
 function refreshSalesCustomerBranchOptions(clientName){
   const sel=document.getElementById('sale-customer-branch-pick');if(!sel)return;
   const cur=(document.getElementById('sale-customer-branch-no')?.value||'').trim();
