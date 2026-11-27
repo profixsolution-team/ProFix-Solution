@@ -13816,6 +13816,59 @@ function slotGuessTpl(j){const t=String((j&&j.type)||'')+' '+String((j&&j.note)|
 // ฟอร์มช่าง PM รายงาน (2026-11-24): ปกติงาน PM ใช้ฟอร์ม PM ใหม่ · แอดมินตั้ง "ใช้ฟอร์มเดิม" ให้บางงานได้ (jobs.data.pmOldForm)
 // technician-submit อ่าน pmOldForm → ฟอร์มเดิม (ยกเว้นงานที่ช่างเริ่มบันทึกฟอร์ม PM ใหม่ไปแล้ว)
 function pmJobIsPM(j){return !!j&&((typeof pmVisitOfJob==='function'&&pmVisitOfJob(j.id))||/PM/i.test(String(j.type||'')));}
+// ===== สาขาที่อัปรูปไม่จำกัด (2026-11-26) =====
+// เก็บใน console_ui_settings key photo_unlimited = {branches:[{client,branch,by,at}]} (ทุกแอดมินเห็นเหมือนกัน · เขียนได้เฉพาะแอดมิน)
+// ฟอร์มช่างถามผ่าน RPC profix_pub_photo_unlimited (console_photo_unlimited.sql) → เปิด = ช่องรูปใส่ได้หลายรูป + ไม่จำกัด 50 รูป/หมวด
+let photoUnl=null, phuJobId='';
+const phuNorm=s=>String(s||'').replace(/\s+/g,'').toLowerCase();
+function phuHas(client,branch){const b=phuNorm(branch);return !!b&&(photoUnl||[]).some(e=>phuNorm(e.branch)===b&&(!phuNorm(e.client)||phuNorm(e.client)===phuNorm(client)));}
+async function phuLoad(){try{const r=await sbFetchAllOptional('console_ui_settings','?select=value&key=eq.photo_unlimited');photoUnl=(r&&r[0]&&r[0].value&&Array.isArray(r[0].value.branches))?r[0].value.branches:[];}catch(e){photoUnl=photoUnl||[];}return photoUnl;}
+function photoUnlMenu(j,jid){return j&&String(j.branch||'').trim()?`<button onclick="phuOpen('${jid}')">📷 อัปรูปไม่จำกัด (สาขานี้)${photoUnl?(phuHas(j.client,j.branch)?': เปิดอยู่':': ปิดอยู่'):''}</button>`:'';}
+async function phuOpen(id){const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;phuJobId=id;await phuLoad();phuRender();}
+function phuRender(){
+  const j=jobs.find(x=>x.id===phuJobId);if(!j)return;
+  let m=document.getElementById('m-phu');
+  if(!m){m=document.createElement('div');m.className='modal-overlay';m.id='m-phu';document.body.appendChild(m);}
+  const on=phuHas(j.client,j.branch),admin=AUTH&&AUTH.role==='admin',list=photoUnl||[];
+  const when=e=>e.at?new Date(e.at).toLocaleString('th-TH',{day:'numeric',month:'short',year:'2-digit'}):'';
+  m.innerHTML=`<div class="modal" style="max-width:520px"><div class="modal-header"><div class="modal-title">📷 อัปรูปไม่จำกัด</div><button class="close-btn" onclick="closeM('m-phu')">×</button></div>
+    <div class="modal-body">
+      <div style="padding:12px;border:1px solid ${on?'var(--green)':'var(--border)'};border-radius:12px">
+        <div class="tm" style="font-size:12px">สาขาของงานนี้</div>
+        <div class="fw7" style="font-size:15px;margin-top:2px">${esc(j.branch)}</div>
+        <div class="tm" style="font-size:12px">${esc(j.client||'')}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px"><span class="badge" style="background:${on?'rgba(46,160,67,.15);color:var(--green)':'var(--bg3);color:var(--text3)'}">${on?'✓ เปิดอยู่ — ไม่จำกัดรูป':'ปิดอยู่ — แบบปกติ'}</span><span style="flex:1"></span>
+        ${admin?`<button class="btn ${on?'btn-ghost':'btn-primary'} btn-sm" onclick="phuToggle()">${on?'ปิด':'เปิดให้สาขานี้'}</button>`:'<span class="tm" style="font-size:12px">เฉพาะแอดมินเปิด/ปิดได้</span>'}</div>
+      </div>
+      <div class="tm" style="font-size:12px;margin-top:10px;line-height:1.7">เปิดแล้ว ฟอร์มช่างของ<b>ทุกงานในสาขานี้</b> (งานเดิมและงานใหม่):<br>• ช่องรูปแยกช่อง ใส่ได้หลายรูปต่อช่อง (ถ่าย/เลือกเพิ่มได้เรื่อย ๆ ไม่แทนรูปเดิม)<br>• รูปก่อน/ระหว่าง/หลังทำ ไม่จำกัด 50 รูป<br>ช่างที่เปิดฟอร์มค้างไว้ต้องเปิดลิงก์ใหม่ · ต้องรัน <code>console_photo_unlimited.sql</code> ก่อน</div>
+      <div class="fw7" style="margin-top:14px">สาขาที่เปิดไว้ทั้งหมด (${list.length})</div>
+      <div style="margin-top:6px;max-height:240px;overflow:auto">${list.length?list.map((e,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:0"><div style="font-weight:600">${esc(e.branch)}</div><div class="tm" style="font-size:11px">${esc(e.client||'ทุกลูกค้า')}${e.by?' · เปิดโดย '+esc(e.by):''}${e.at?' · '+esc(when(e)):''}</div></div>${admin?`<button class="btn btn-ghost btn-sm" onclick="phuRemove(${i})">ปิด</button>`:''}</div>`).join(''):'<div class="tm" style="font-size:12px">ยังไม่มี</div>'}</div>
+    </div>
+    <div class="modal-footer"><span style="flex:1"></span><button class="btn btn-ghost" onclick="closeM('m-phu')">ปิดหน้าต่าง</button></div></div>`;
+  openM('m-phu');
+}
+async function phuSave(next,action,info){
+  if(!AUTH||AUTH.role!=='admin'){alert('เฉพาะแอดมินเปิด/ปิดได้');return false;}
+  try{
+    const r=await fetch(splitUrl('console_ui_settings','?on_conflict=key'),{method:'POST',headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify({key:'photo_unlimited',value:{branches:next},updated_at:new Date().toISOString(),updated_by:getActorName()})});
+    if(!r.ok)throw new Error(await r.text());
+    photoUnl=next;try{writeAuditLog(action,'branch',info.branch,null,info,null);}catch(e){}
+    try{broadcastDataChanged('uisettings');}catch(e){}
+    return true;
+  }catch(e){alert('บันทึกไม่สำเร็จ: '+(e.message||e));return false;}
+}
+async function phuToggle(){
+  const j=jobs.find(x=>x.id===phuJobId);if(!j)return;await phuLoad();
+  const on=phuHas(j.client,j.branch);
+  const next=on?(photoUnl||[]).filter(e=>!(phuNorm(e.branch)===phuNorm(j.branch)&&(!phuNorm(e.client)||phuNorm(e.client)===phuNorm(j.client))))
+    :[...(photoUnl||[]),{client:String(j.client||'').trim(),branch:String(j.branch||'').trim(),by:getActorName(),at:new Date().toISOString()}];
+  if(await phuSave(next,on?'photo_unlimited_off':'photo_unlimited_on',{client:j.client||'',branch:j.branch||'',job:j.id}))phuRender();
+}
+async function phuRemove(i){
+  await phuLoad();const e=(photoUnl||[])[i];if(!e)return;
+  if(!confirm(`ปิด "อัปรูปไม่จำกัด" ของสาขา ${e.branch}?`))return;
+  if(await phuSave(photoUnl.filter((_,k)=>k!==i),'photo_unlimited_off',{client:e.client||'',branch:e.branch||''}))phuRender();
+}
 function pmOldFormMenu(j,jid){return pmJobIsPM(j)?`<button onclick="pmOldFormToggle('${jid}')">📋 ฟอร์มช่าง PM: ${j.pmOldForm?'ตอนนี้ใช้ฟอร์มเดิม → เปลี่ยนเป็นฟอร์ม PM ใหม่':'ตอนนี้ใช้ฟอร์ม PM ใหม่ → เปลี่ยนเป็นฟอร์มเดิม'}</button>`:'';}
 async function pmOldFormToggle(id){
   if(!guardEdit())return;const j=jobs.find(x=>x.id===id&&!isDeletedRecord(x));if(!j)return;
@@ -15305,7 +15358,7 @@ function openDet(id){
   document.getElementById('det-body').innerHTML=`<div class="dw-h">
     <div class="dw-top"><span class="dw-pr">${esc(j.id)}</span>${billTypeBadge(j,true)}<button class="btn btn-ghost btn-xs" title="คัดลอกเลขงาน" onclick="navigator.clipboard&&navigator.clipboard.writeText('${jid}')">📋</button>${pfSheetBtn(j.id,'','l')}${pfApprSlot(j.id)}<span style="flex:1"></span>${pfSheetBtn(j.id,'','r')}
       <button class="dw-ib" title="งานก่อนหน้า" ${pos>0?'':'disabled'} onclick="dwGo(-1)">‹</button><button class="dw-ib" title="งานถัดไป" ${pos>=0&&pos<ids.length-1?'':'disabled'} onclick="dwGo(1)">›</button>
-      <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button><button onclick="slotToggleJob('${jid}')">📷 รูปแยกช่อง (ทดสอบ): ${j.photoSlots&&j.photoSlots.on?'ปิด':'เปิด'}</button>${pmOldFormMenu(j,jid)}${claimMenu(j,jid)}</div></div>
+      <div class="dw-menu-w"><button class="dw-ib" title="เพิ่มเติม" onclick="dwMenu(event)">⋯</button><div class="dw-menu" id="dw-menu"><button onclick="editJob('${jid}')">✏️ แก้ไขงาน</button><button onclick="renumberJob('${jid}')">🔢 เปลี่ยนเลขงาน</button><button onclick="goFinanceForJob('${jid}')">💰 ไปหน้าการเงิน</button><button onclick="openDocBundle('${jid}')">📑 ดาวน์โหลดชุดเอกสาร</button><button onclick="slotToggleJob('${jid}')">📷 รูปแยกช่อง (ทดสอบ): ${j.photoSlots&&j.photoSlots.on?'ปิด':'เปิด'}</button>${photoUnlMenu(j,jid)}${pmOldFormMenu(j,jid)}${claimMenu(j,jid)}</div></div>
       <button class="dw-ib" title="ปิด (Esc)" onclick="closeM('m-detail')">✕</button></div>
     <div class="dw-title">${esc(j.branch||'-')}</div><div class="tm dw-sub">${esc(j.client||'')}${j.type?' · '+esc(j.type):''}</div>
     <div class="dw-status">${statusSel}${claimPill(j)}${isLevel1(j)?level1Badge(j):''}${techAcceptPill(j)?techAcceptPill(j):''}${reviewedByPill(j)}<span style="flex:1"></span>${dwNext(j)}</div>

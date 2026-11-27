@@ -274,6 +274,17 @@ body.pm-t2 #pm-wrap{display:none!important;}
 .pb-tray .tl{display:flex;gap:8px;overflow:auto}
 .pb-tray .tl span{flex:0 0 90px;aspect-ratio:4/3;border-radius:8px;background:#0b0f14 center/cover;border:2px solid transparent}
 .pb-tray .tl span.sel{border-color:var(--accent)}
+.icam{position:fixed;inset:0;z-index:300;background:#000;display:flex;flex-direction:column}
+.icam video{flex:1;width:100%;min-height:0;object-fit:contain;background:#000}
+.icam-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(rgba(0,0,0,.6),transparent);color:#fff;font-weight:600;font-size:14px}
+.icam-top button{width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:18px;flex:none}
+.icam-msg{position:absolute;left:0;right:0;top:40%;text-align:center;color:#fff;font-size:15px;line-height:1.8;padding:0 20px}
+.icam-big{margin-top:12px;border:0;border-radius:12px;padding:13px 20px;background:var(--accent);color:#0d1117;font:inherit;font-weight:700;font-size:15px}
+.icam-bot{display:flex;align-items:center;justify-content:space-between;padding:16px 26px calc(18px + env(safe-area-inset-bottom));background:#000}
+.icam-shot{width:74px;height:74px;border-radius:50%;border:5px solid #fff;background:rgba(255,255,255,.25);flex:none}
+.icam-shot:active{background:#fff}
+.icam-alt{width:84px;border:0;background:transparent;color:#cbd5e1;font:inherit;font-size:12px;line-height:1.3}
+.icam-sp{width:84px}
 .sl-pop{position:fixed;inset:0;z-index:260;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
 .sl-pop-in{width:100%;max-width:560px;max-height:92vh;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:14px 16px 22px}
 .sl-pop-h{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}.sl-pop-h>div,.sl-pop-h>b{flex:1}.sl-pop-h b{font-size:16px;display:block}.sl-pop-h small{font-size:12px;color:var(--text2)}.sl-pop-h button{border:0;background:var(--surface2);color:var(--text);width:32px;height:32px;border-radius:9px;font-size:15px;flex:none}
@@ -429,7 +440,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 
       <div class="up-group">
         <div class="up-head"><div class="up-label color-before">📸 ตรวจเช็คก่อนดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-before">0 รูป</div></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 50 รูป · ระบบจะข้ามรูปที่ซ้ำ</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · <span class="ph-max">สูงสุด 50 รูป</span> · ระบบจะข้ามรูปที่ซ้ำ</div>
         <div class="up-zone" onclick="document.getElementById('inp-before').click()">
           <div class="up-icon">➕</div><div class="up-hint">แตะเพื่อเพิ่มรูปตรวจเช็คก่อนดำเนินการ</div>
         </div>
@@ -439,7 +450,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 
       <div class="up-group">
         <div class="up-head"><div class="up-label color-during">🔧 ระหว่างดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-during">0 รูป</div></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 6 รูป · สูงสุด 50 รูป</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 6 รูป · <span class="ph-max">สูงสุด 50 รูป</span></div>
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
           <input type="checkbox" id="f-no-during" onchange="toggleNoPhotos('during')" style="width:18px;height:18px;flex:0 0 auto;">
           ไม่มีรูปภาพระหว่างดำเนินการ
@@ -453,7 +464,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 
       <div class="up-group">
         <div class="up-head"><div class="up-label color-after">✅ หลังดำเนินการ <span class="req-star">*</span></div><div class="up-count" id="cnt-after">0 รูป</div></div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · สูงสุด 50 รูป</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">ต้องมีอย่างน้อย 2 รูป · <span class="ph-max">สูงสุด 50 รูป</span></div>
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:500;color:var(--text);cursor:pointer;font-size:14px;">
           <input type="checkbox" id="f-no-after" onchange="toggleNoPhotos('after')" style="width:18px;height:18px;flex:0 0 auto;">
           ไม่มีรูปภาพหลังดำเนินการ
@@ -553,6 +564,20 @@ let photos = { before: [], during: [], after: [], documents: [] };
 let noPhoto = { during: false, after: false };
 const PHOTO_MIN = { before: 2, during: 6, after: 2 };
 const PHOTO_MAX = { before: 50, during: 50, after: 50 };
+// สาขาที่แอดมินเปิด "อัปรูปไม่จำกัด" (คอนโซล: เมนู ⋯ ของงาน · console_photo_unlimited.sql) → ช่องรูปแยกช่องใส่ได้หลายรูป (ถ่าย/เลือกเพิ่ม ไม่แทนรูปเดิม) + ไม่จำกัด 50 รูปต่อหมวด
+// ยังไม่ได้รัน SQL / เน็ตพัง = false → ฟอร์มเหมือนเดิม
+let photoUnlimited = false;
+async function photoUnlLoad(){
+  photoUnlimited = false;
+  try{
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/profix_pub_photo_unlimited`, { method:'POST', headers: sbHeaders(), body: JSON.stringify({ p_job: (jobData&&jobData.id)||JOB_ID }) });
+    if(r.ok) photoUnlimited = (await r.json()) === true;
+  }catch(e){ photoUnlimited = false; }
+  document.querySelectorAll('.ph-max').forEach(el=>{ el.textContent = photoUnlimited ? 'ไม่จำกัดจำนวน' : 'สูงสุด 50 รูป'; });
+  const gal=document.getElementById('slot-gal'); if(gal) gal.multiple = photoUnlimited;
+  if(photoUnlimited) setTimeout(()=>{ try{ tsToast('📷 สาขานี้อัปรูปได้ไม่จำกัด — ช่องเดียวใส่ได้หลายรูป', 3200); }catch(e){} }, 600);
+}
+const SLOT_PER = () => photoUnlimited ? 60 : 1; // จำนวนรูปที่รับต่อการเลือก 1 ครั้งในช่องรูปแยกช่อง
 const CAT_LABEL = { before: 'ตรวจเช็คก่อนดำเนินการ', during: 'ระหว่างดำเนินการ', after: 'หลังดำเนินการ', documents: 'ใบงาน/เอกสาร' };
 
 // ============================================================
@@ -1366,6 +1391,7 @@ async function showForm(){
   await loadCheckinSurveyPhotos(jobData.id || JOB_ID); // ดึงรูปสำรวจจากหน้าแจ้งเข้าซ่อม → รูปก่อนดำเนินการ
   ['before','during','after'].forEach(cat=>{renderThumbs(cat);toggleNoPhotos(cat,false);});
   renderThumbs('documents');
+  await photoUnlLoad(); // สาขาที่แอดมินเปิด "อัปรูปไม่จำกัด" → ช่องละหลายรูป + ไม่จำกัด 50 รูป
   await pmInit(); // งาน PM → แสดงส่วนเครื่องในสาขา (งานปกติไม่เปลี่ยน)
   slotInit(); // รูปแยกช่อง (เฉพาะงานที่แอดมินเปิดโหมดนี้) — หลัง pmInit: งาน PM ใช้ช่องรูปในหน้ารายเครื่อง
   await restoreLocalDraft(); // ร่างในเครื่อง (ถ้าใหม่กว่าข้อมูลบนระบบ) — ต้องทำก่อน toggle เพื่อให้ช่อง/โหมดตรงกับที่กรอกค้างไว้
@@ -1551,8 +1577,8 @@ function slotOpen(id){
     ${ex?`<div class="sl-exbig" style="background-image:url('${esc(ex)}')"><i>รูปตัวอย่าง</i></div>`:''}
     ${f.s.tip?`<div class="sl-tip">💡 ${esc(f.s.tip)}</div>`:''}
     ${na?`<div class="sl-tip" style="color:var(--yellow)">ตั้งเป็น N/A แล้ว: ${esc(na)} <button type="button" class="sl-lnk" onclick="slotNA('${id}',false)">ยกเลิก N/A</button></div>`:''}
-    <button type="button" class="sl-btn" style="margin-top:10px" onclick="document.getElementById('slot-cam').click()">📷 ${ps.length?'ถ่ายใหม่ (แทนรูปเดิม)':'ถ่ายรูป'}</button>
-    <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 ${ps.length?'เลือกรูปใหม่แทน':'เลือกจากเครื่อง'}</button>${na?'':`<button type="button" onclick="slotNA('${id}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
+    <button type="button" class="sl-btn" style="margin-top:10px" onclick="slotCamOpen()">📷 ${ps.length?(photoUnlimited?'ถ่ายเพิ่ม':'ถ่ายใหม่ (แทนรูปเดิม)'):'ถ่ายรูป'}</button>
+    <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 ${ps.length?(photoUnlimited?'เลือกเพิ่ม (หลายรูปได้)':'เลือกรูปใหม่แทน'):(photoUnlimited?'เลือกจากเครื่อง (หลายรูปได้)':'เลือกจากเครื่อง')}</button>${na?'':`<button type="button" onclick="slotNA('${id}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
   box.classList.remove('hidden');
 }
 function slotPopClose(){ document.getElementById('slot-pop').classList.add('hidden'); slotCur.slot=''; pmSlotKey=''; }
@@ -1632,12 +1658,50 @@ function slotStampBase(unitLabel,slotLabel,ti){
     (jobData?.branch||'')+(jobData?.client?' · '+jobData.client:''), `${jobData?.id||JOB_ID} · ${unitLabel}`, String(slotLabel||'').replace(/^รูปถ่าย|^รูป/,'').trim()].filter(x=>String(x).trim());
 }
 let slotPickSrc='cam'; // ปุ่มที่ช่างกด: cam = ถ่ายใหม่ในฟอร์ม · gal = เลือกจากเครื่อง
+// ---------- กล้องในหน้าฟอร์ม (2026-11-27) ----------
+// ปัญหา: ใน LINE (แอนดรอยด์) ปุ่ม <input capture> เปิดแอปกล้องแยก → ระบบปิดหน้าเว็บทิ้งระหว่างถ่าย → กลับมาหน้าโหลดใหม่ รูปที่ถ่ายหาย
+// แก้: เปิดกล้องในหน้าเว็บเอง (getUserMedia แบบเดียวกับสแกน QR) ไม่ออกจากหน้า · เปิดไม่ได้ → ปุ่ม "ใช้กล้องของมือถือ" (แบบเดิม)
+let icamStream=null, icamFail=false;
+function slotCamLabel(){ try{ if(slotCur.slot){ const f=slotFind(slotCur.slot); return f?f.label:''; } if(pmSlotKey&&pmCur){ const f=pmSlotFind(pmCur,pmSlotKey); return f?f.s.l:''; } }catch(e){} return ''; }
+function slotCamNative(){ slotCamClose(); slotPickSrc='cam'; document.getElementById('slot-cam').click(); }
+async function slotCamOpen(){
+  slotPickSrc='cam'; slotGeoRefresh();
+  if(icamFail || !navigator.mediaDevices?.getUserMedia) return slotCamNative();
+  let box=document.getElementById('icam');
+  if(!box){ box=document.createElement('div'); box.id='icam'; document.body.appendChild(box); }
+  box.innerHTML=`<video id="icam-v" playsinline muted autoplay></video>
+    <div class="icam-top"><button type="button" onclick="slotCamClose()">✕</button><span>${esc(slotCamLabel())}</span></div>
+    <div class="icam-msg" id="icam-msg">กำลังเปิดกล้อง…</div>
+    <div class="icam-bot"><button type="button" class="icam-alt" onclick="slotCamNative()">ใช้กล้อง<br>ของมือถือ</button><button type="button" class="icam-shot" id="icam-shot" onclick="slotCamShot()" aria-label="ถ่ายรูป"></button><span class="icam-sp"></span></div>`;
+  box.className='icam';
+  try{
+    icamStream=await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1440} }, audio:false });
+    const v=document.getElementById('icam-v'); if(!v||!document.getElementById('icam')?.classList.contains('icam')){ slotCamStop(); return; }
+    v.srcObject=icamStream; await v.play().catch(()=>{});
+    const m=document.getElementById('icam-msg'); if(m) m.style.display='none';
+  }catch(e){
+    console.warn('in-page camera', e); slotCamStop(); icamFail=true;
+    const m=document.getElementById('icam-msg'); if(m) m.innerHTML='เปิดกล้องในหน้านี้ไม่ได้<br><button type="button" class="icam-big" onclick="slotCamNative()">📷 ใช้กล้องของมือถือ</button>';
+    const sh=document.getElementById('icam-shot'); if(sh) sh.style.visibility='hidden';
+  }
+}
+function slotCamStop(){ if(icamStream){ icamStream.getTracks().forEach(t=>t.stop()); icamStream=null; } }
+function slotCamClose(){ slotCamStop(); const b=document.getElementById('icam'); if(b){ b.className='hidden'; b.innerHTML=''; } }
+async function slotCamShot(){
+  const v=document.getElementById('icam-v'); if(!v||!v.videoWidth){ tsToast('กล้องยังไม่พร้อม รอสักครู่',1500); return; }
+  const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.92)); c.width=c.height=0;
+  slotCamClose();
+  if(!blob){ tsToast('ถ่ายรูปไม่สำเร็จ ลองใหม่',2000); return; }
+  slotPickSrc='cam';
+  slotAddFiles([new File([blob],'cam-'+Date.now()+'.jpg',{type:'image/jpeg',lastModified:Date.now()})]);
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && icamStream) slotCamClose(); });
 function slotStampLines(f,ti){ return slotStampBase(f.unitLabel, f.label, ti); }
 function slotCompress(file, lines, maxW=1280, quality=0.72){
   return new Promise((resolve,reject)=>{
-    const img=new Image(), reader=new FileReader();
-    reader.onload=e=>{ img.src=e.target.result; }; reader.onerror=reject;
-    img.onload=()=>{
+    const img=new Image(); const src=URL.createObjectURL(file); // ไม่อ่านเป็น dataURL (รูปกล้อง 10-20MB → string ยักษ์ทำ LINE บนแอนดรอยด์ค้าง/รีโหลด)
+    img.onload=()=>{ setTimeout(()=>URL.revokeObjectURL(src),0);
       let { width, height }=img; const lim=Math.max(width,height);
       if(lim>maxW){ const k=maxW/lim; width=Math.round(width*k); height=Math.round(height*k); }
       const c=document.createElement('canvas'); c.width=width; c.height=height; const g=c.getContext('2d');
@@ -1652,19 +1716,19 @@ function slotCompress(file, lines, maxW=1280, quality=0.72){
       const bx=Math.max(0,width-bw-pad), by=Math.max(0,height-bh-pad);
       g.fillStyle='rgba(0,0,0,.5)'; g.fillRect(bx,by,bw,bh);
       g.fillStyle='#fff'; lines.forEach((t,i)=>{ const w=Math.min(tw(t),maxLine); g.fillText(t,bx+bw-pad-w,by+pad*0.7+lh*(i+1)-lh*0.28,maxLine); });
-      c.toBlob(blob=>resolve({ blob, dataUrl:c.toDataURL('image/jpeg',quality), width, height }),'image/jpeg',quality);
+      c.toBlob(blob=>{ if(!blob) return reject(new Error('บีบอัดรูปไม่สำเร็จ')); resolve({ blob, dataUrl:c.toDataURL('image/jpeg',quality), width, height }); c.width=c.height=0; },'image/jpeg',quality);
     };
-    img.onerror=reject; reader.readAsDataURL(file);
+    img.onerror=e=>{ URL.revokeObjectURL(src); reject(e); }; img.src=src;
   });
 }
 async function slotAddFiles(files){
   if(!slotCur.slot&&pmSlotKey&&pmCur){ const fl=Array.from(files||[]); document.getElementById('slot-cam').value=''; document.getElementById('slot-gal').value=''; return pmSlotAdd(fl); }
   const id=slotCur.slot; const f=id&&slotFind(id); if(!f) return;
-  const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/')).slice(0,1); // ช่องละ 1 รูป
+  const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/')).slice(0,SLOT_PER()); // ช่องละ 1 รูป (สาขาไม่จำกัด = หลายรูป)
   document.getElementById('slot-cam').value=''; document.getElementById('slot-gal').value='';
   if(!list.length) return;
   if((slotState.na||{})[id]) delete slotState.na[id];
-  const oldIds=new Set(slotPhotosOf(id).map(p=>p.id)); // รูปเดิมของช่องนี้ → ลบเมื่อรูปใหม่พร้อม (ถ้ารูปใหม่พัง รูปเดิมยังอยู่)
+  const oldIds=new Set(photoUnlimited?[]:slotPhotosOf(id).map(p=>p.id)); // รูปเดิมของช่องนี้ → ลบเมื่อรูปใหม่พร้อม (ถ้ารูปใหม่พัง รูปเดิมยังอยู่) · สาขาไม่จำกัด = เก็บรูปเดิมไว้ (เพิ่มรูป)
   const entries=list.map(file=>{ const e={ id:Date.now()+'-'+Math.random().toString(36).slice(2,7), file, fileKey:`${file.name}|${file.size}|${file.lastModified}`, compressed:null, dataUrl:null, status:'compressing', slot:id }; photos[f.cat].push(e); return e; });
   slotRender(); slotOpen(id);
   await slotGeoWait(3000);
@@ -1784,7 +1848,7 @@ function pmSlotCardHtml(it){
   const p=ps.find(x=>x.k===pmSlotPh), miss=pmSlotMissing(it).length;
   const tab=x=>{ const r=x.slots.filter(sl=>!sl.opt), d=r.filter(sl=>{const k=x.k+'.'+sl.k;return pmSlotPhotos(it,k).length||(it.slot_na||{})[k];}).length; return `<button type="button" class="${x.k===p.k?'on':''}" onclick="pmSlotPh='${x.k}';pmSheetRender()">${esc(x.l.replace('ดำเนินการ','')||x.l)}<small>${d===r.length?'✓ ':''}${d}/${r.length}</small></button>`; };
   const cell=sl=>{ const k=p.k+'.'+sl.k, ph=pmSlotPhotos(it,k), na=(it.slot_na||{})[k], img=ph[0]?(ph[0].dataUrl||ph[0].url):'', ex=sl.ex?SLOT_EX_BASE+sl.ex+'.jpg':'', busy=ph.some(x=>x.status==='uploading'||x.status==='compressing'), err=(['before','during','after'].flatMap(c=>it.photos?.[c]||[])).some(x=>x.slot===k&&x.status==='error');
-    return `<button type="button" class="sl-slot ${na?'na':img?'done':'empty'}${sl.opt?' opt':''}" onclick="pmSlotOpen('${k}')"><span class="sl-im" style="${img?`background-image:url('${esc(img)}')`:ex&&!na?`background-image:url('${esc(ex)}')`:''}">${na?'N/A':!img?(ex?'<i class="sl-ex">ตัวอย่าง</i><b>📷</b>':'<b>📷</b>'):''}${busy?'<i class="sl-busy">กำลังอัป…</i>':''}${err?'<i class="sl-busy" style="background:rgba(248,81,73,.6)">อัปไม่สำเร็จ</i>':''}${img&&!busy?'<i class="sl-ok">✓</i>':''}${ph.length>1?`<i class="sl-n">${ph.length}</i>`:''}</span><span class="sl-lb">${esc(sl.l.replace(/^รูปถ่าย|^รูป/,'').trim())}${sl.opt?' <small>(ไม่บังคับ)</small>':''}${na?`<small> · ${esc(na)}</small>`:''}</span></button>`; };
+    return `<button type="button" class="sl-slot ${na?'na':img?'done':'empty'}${sl.opt?' opt':''}" onclick="pmSlotOpen('${k}')"><span class="sl-im" style="${img?`background-image:url('${esc(img)}')`:ex&&!na?`background-image:url('${esc(ex)}')`:''}">${na?'N/A':!img?(ex?'<i class="sl-ex">ตัวอย่าง</i><b>📷</b>':'<b>📷</b>'):''}${busy?'<i class="sl-busy">กำลังอัป…</i>':''}${err?'<i class="sl-busy" style="background:rgba(248,81,73,.6)">อัปไม่สำเร็จ · แตะลองใหม่</i>':''}${img&&!busy?'<i class="sl-ok">✓</i>':''}${ph.length>1?`<i class="sl-n">${ph.length}</i>`:''}</span><span class="sl-lb">${esc(sl.l.replace(/^รูปถ่าย|^รูป/,'').trim())}${sl.opt?' <small>(ไม่บังคับ)</small>':''}${na?`<small> · ${esc(na)}</small>`:''}</span></button>`; };
   return `<div class="card"><div class="sec-title">📸 รูปของเครื่องนี้ <span class="req-star">*</span> <span class="sl-test">แยกช่อง</span></div>
     <div class="sec-sub">กดช่องเพื่อดูรูปตัวอย่างแล้วถ่าย · ไม่มีจุดนั้นกด N/A · ${miss?`<b style="color:var(--yellow)">ยังขาด ${miss} ช่อง</b>`:'<b style="color:var(--green)">ครบทุกช่อง ✓</b>'}</div>
     ${ps.length>1?`<div class="sl-tabs">${ps.map(tab).join('')}</div>`:''}<div class="sl-ph">${esc(p.l)}</div>
@@ -1794,6 +1858,7 @@ function pmSlotCardHtml(it){
 function pmSlotOpen(k){
   slotGeoRefresh();
   const it=pmCur, f=pmSlotFind(it,k); if(!f) return; pmSlotKey=k; slotCur.slot='';
+  pmRetryFailed(it,k); // รูปช่องนี้ที่อัปไม่สำเร็จ → ลองอัปใหม่
   const ph=pmSlotPhotos(it,k), na=(it.slot_na||{})[k], ex=f.s.ex?SLOT_EX_BASE+f.s.ex+'.jpg':'';
   const box=document.getElementById('slot-pop');
   box.innerHTML=`<div class="sl-pop-in"><div class="sl-pop-h"><div style="min-width:0"><b>${esc(f.s.l)}</b><small>${esc(pmItemName(it))} · ${esc(f.p.l)}${f.s.opt?' · ไม่บังคับ':''}</small></div><button type="button" onclick="slotPopClose()">✕</button></div>
@@ -1801,8 +1866,8 @@ function pmSlotOpen(k){
     ${ex?`<div class="sl-exbig" style="background-image:url('${esc(ex)}')"><i>รูปตัวอย่าง</i></div>`:''}
     ${f.s.tip?`<div class="sl-tip">💡 ${esc(f.s.tip)}</div>`:''}
     ${na?`<div class="sl-tip" style="color:var(--yellow)">ตั้งเป็น N/A แล้ว: ${esc(na)} <button type="button" class="sl-lnk" onclick="pmSlotNA('${k}',false)">ยกเลิก N/A</button></div>`:''}
-    <button type="button" class="sl-btn" style="margin-top:10px" onclick="document.getElementById('slot-cam').click()">📷 ${ph.length?'ถ่ายใหม่ (แทนรูปเดิม)':'ถ่ายรูป'}</button>
-    <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 ${ph.length?'เลือกรูปใหม่แทน':'เลือกจากเครื่อง'}</button>${na?'':`<button type="button" onclick="pmSlotNA('${k}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
+    <button type="button" class="sl-btn" style="margin-top:10px" onclick="slotCamOpen()">📷 ${ph.length?(photoUnlimited?'ถ่ายเพิ่ม':'ถ่ายใหม่ (แทนรูปเดิม)'):'ถ่ายรูป'}</button>
+    <div class="sl-two"><button type="button" onclick="document.getElementById('slot-gal').click()">🖼 ${ph.length?(photoUnlimited?'เลือกเพิ่ม (หลายรูปได้)':'เลือกรูปใหม่แทน'):(photoUnlimited?'เลือกจากเครื่อง (หลายรูปได้)':'เลือกจากเครื่อง')}</button>${na?'':`<button type="button" onclick="pmSlotNA('${k}',true)">ไม่มีจุดนี้ (N/A)</button>`}</div></div>`;
   box.classList.remove('hidden');
 }
 function pmSlotNA(k,on){ const it=pmCur; if(!it) return; it.slot_na=it.slot_na||{};
@@ -1811,9 +1876,9 @@ function pmSlotNA(k,on){ const it=pmCur; if(!it) return; it.slot_na=it.slot_na||
 function pmSlotRemove(pid){ const it=pmCur; if(!it) return; ['before','during','after'].forEach(c=>{ it.photos[c]=(it.photos[c]||[]).filter(x=>x.id!==pid); }); pmSheetRender(); scheduleLocalDraftSave(); if(pmSlotKey) pmSlotOpen(pmSlotKey); }
 async function pmSlotAdd(files){
   const it=pmCur, k=pmSlotKey, f=it&&pmSlotFind(it,k); if(!f) return;
-  const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/')).slice(0,1); if(!list.length) return; // ช่องละ 1 รูป
+  const list=Array.from(files||[]).filter(x=>x.type.startsWith('image/')).slice(0,SLOT_PER()); if(!list.length) return; // ช่องละ 1 รูป (สาขาไม่จำกัด = หลายรูป)
   it.photos[f.cat]=it.photos[f.cat]||[]; if((it.slot_na||{})[k]) delete it.slot_na[k];
-  const oldIds=new Set(pmSlotPhotos(it,k).map(p=>p.id)); // รูปเดิมของช่องนี้ → ลบเมื่อรูปใหม่บีบอัดเสร็จ
+  const oldIds=new Set(photoUnlimited?[]:pmSlotPhotos(it,k).map(p=>p.id)); // รูปเดิมของช่องนี้ → ลบเมื่อรูปใหม่บีบอัดเสร็จ · สาขาไม่จำกัด = เพิ่มรูป
   await slotGeoWait(3000);
   const picked=slotPickSrc==='gal';
   const entries=list.map(()=>{ const e={ id:Date.now()+'-'+Math.random().toString(36).slice(2,7), status:'compressing', slot:k }; it.photos[f.cat].push(e); return e; });
@@ -1844,7 +1909,7 @@ function slotValidate(){
 }
 
 async function addPhotos(cat, files){
-  const max = PHOTO_MAX[cat] ?? Infinity;
+  const max = photoUnlimited ? Infinity : (PHOTO_MAX[cat] ?? Infinity);
   let remaining = Number.isFinite(max) ? max - photos[cat].length : Infinity;
   if(Number.isFinite(max) && remaining <= 0){
     alert(`รูป${CAT_LABEL[cat]}อัปได้สูงสุด ${max} รูปแล้ว`);
@@ -1941,22 +2006,22 @@ function toggleQuoteMode(){
 function compressImage(file, maxW=1100, quality=0.68){
   return new Promise((resolve, reject)=>{
     const img = new Image();
-    const reader = new FileReader();
-    reader.onload = e => { img.src = e.target.result; };
-    reader.onerror = reject;
+    const src = URL.createObjectURL(file); // ไม่อ่านเป็น dataURL — ประหยัดหน่วยความจำ (รูปกล้องไฟล์ใหญ่)
     img.onload = ()=>{
+      setTimeout(()=>URL.revokeObjectURL(src),0);
       let { width, height } = img;
       if(width > maxW){ height = Math.round(height * maxW / width); width = maxW; }
       const canvas = document.createElement('canvas');
       canvas.width = width; canvas.height = height;
       canvas.getContext('2d').drawImage(img, 0, 0, width, height);
       canvas.toBlob(blob=>{
+        if(!blob) return reject(new Error('บีบอัดรูปไม่สำเร็จ'));
         const dataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve({ blob, dataUrl, width, height });
       }, 'image/jpeg', quality);
     };
-    img.onerror = reject;
-    reader.readAsDataURL(file);
+    img.onerror = e => { URL.revokeObjectURL(src); reject(e); };
+    img.src = src;
   });
 }
 
@@ -2913,13 +2978,18 @@ function pmRemoveItem(){
 }
 // ---------- รูปรายเครื่อง: บีบอัดแล้วอัปโหลดทันที (เก็บแค่ URL ในร่าง) ----------
 async function pmUploadEntry(entry, cat){
-  entry.status='uploading'; pmRefreshPhotos();
-  try{
-    const up=await uploadPhoto(entry.blob, cat, 'pm-'+entry.id, entry);
-    entry.url=up.url; entry.status='ready'; delete entry.blob;
-  }catch(e){ console.warn('pm photo upload', e); entry.status='error'; }
+  entry.status='uploading'; entry.upCat=cat; pmRefreshPhotos();
+  let err=null;
+  for(let i=0;i<3;i++){ // เน็ตหน้างานหลุดบ่อย → ลองซ้ำเอง 3 ครั้ง (2026-11-27)
+    try{ const up=await uploadPhoto(entry.blob, cat, 'pm-'+entry.id, entry); entry.url=up.url; entry.status='ready'; delete entry.blob; err=null; break; }
+    catch(e){ err=e; if(!(entry.blob instanceof Blob)) break; await new Promise(r=>setTimeout(r,1500*(i+1))); }
+  }
+  if(err){ console.warn('pm photo upload', err); entry.status='error'; }
   pmRefreshPhotos(); scheduleLocalDraftSave();
 }
+// รูปรายเครื่องที่อัปไม่สำเร็จ (ยังมีไฟล์ในเครื่อง) → ลองใหม่เมื่อเน็ตกลับมา / ช่างแตะช่องนั้น
+function pmRetryFailed(onlyIt,onlyKey){ pmItems.forEach(it=>{ if(onlyIt&&it!==onlyIt) return; ['before','during','after'].forEach(c=>(it.photos?.[c]||[]).forEach(p=>{ if(p&&p.status==='error'&&p.blob instanceof Blob&&(!onlyKey||p.slot===onlyKey)) pmUploadEntry(p, p.upCat||c); })); }); }
+window.addEventListener('online', ()=>pmRetryFailed());
 function pmRefreshPhotos(){ if(pmCur && !document.getElementById('pm-sheet').classList.contains('hidden')) pmSheetRender(); else pmRender(); }
 async function pmAddPhotos(slot, files){
   const it=pmCur; if(!it) return;
